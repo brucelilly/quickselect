@@ -1,0 +1,79 @@
+# Description: makefile that includes other makefiles
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2016 %Q%. \ makefile.include2 $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.include2
+MAKEFILES_READ += makefile.include2
+
+# broken dmake overrides $(OS) in an undocumented manner
+#	dmake by default ignores environment variables (requires
+#	   non-standard -E command-line flag option) and sets $(OS) to
+#	   something like "unix"
+#		this is one reason why there are makefile.stage?,
+#		  makefile.include? files
+#		work-around is setting environment via makefile and
+#		  scripts/shell/ident.sh, makefile.include1,
+#		  then re-run $(MAKE) [defined as 'dmake -E') with
+#		  makefile.stage2 and makefile.include2 as well as
+#		  makefile.include1
+# gmake fails if some included file doesn't exist (bootstrapping fails)
+#	  (reported gmake bug #47399)
+#	work-around is multiple runs to build files to be included
+#		this is why there are makefile.stage?, makefile.include? files
+
+# useful macros for embedding current (local) date or date-time in standard
+#  (e.g. EDSC EX000013.1, RFC 3339) format
+# Based on macros corresponding to environment variables set by
+#   $(SCRIPTSDIR)/ident.sh et al.
+# CURDATE, CURTIME to avoid possible name clash with $(DATE) or $(TIME)
+CURDATE = $(YEAR)-$(MONTH)-$(DAY)
+CURTIME = $(HOUR):$(MINUTE):$(SECOND)$(ZONE)
+DATE_TIME = $(CURDATE)T$(CURTIME)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += ADDRESS CURDATE CURTIME DATE_TIME DAY DISTRIBUTION DNS_MASTER DNS_TYPE DOMAIN FQDN HOST HOSTNAME HOUR MAIL_EXCHANGER MINUTE MONTH NETWORKS OS OSVERSION SECOND TOMORROW WORDSIZE YEAR YESTERDAY ZONE
+
+# dmake forces OS to something like "unix"; dmake needs non-standard -E command-line option flag
+include $(MAKEFILES_DIR)/makefile.$(OS)
+#	a set of prepared makefiles is supplied to fill this include
+#	  directive (nothing needs to be built for it by make)
+# 	should be included before makefile.project and makefile.$(OS)-$(FQDN) so that generic OS settings can be overriden
+# 	might use PROJECT_DIR (defined in makefile.directories)
+# 	uses PATH_PREFIX (defined in makefile.diectories)
+
+include $(MAKEFILES_DIR)/makefile.project
+# 	must appear before makefile.fqdn (makefile.project defines PROJECT_TOOLS, used in makefile.fqdn)
+# 	should be included after makefile.$(OS) so that generic OS settings may be overridden by a project
+
+include $(MAKEFILES_DIR)/makefile.fqdn
+# 	needed to build makefile.$(OS)-$(FQDN)
+# 	uses PROJECT_TOOLS, defined in makefile.project

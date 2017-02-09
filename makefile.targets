@@ -1,0 +1,127 @@
+#  Description: This is the description file used by the make command; project special targets specification
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2016 %Q%\ makefile.targets $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# This file lists special targets that should be visible from the top-level
+# makefile.
+# Because of gmake bug #47399, make runs in stages to build files which
+# must be included.  As a result, targets in the main project makefile.files
+# file are not visible to make when first run.  Therefore targets which
+# should be visible to make initially (to support `make foo`, where "foo" is
+# one such target) are put in makefile.targets.
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.targets
+MAKEFILES_READ += makefile.targets
+
+# makefile.targets is included by makefile; makefile.$(OS)-$(FQDN) is not
+#   included (and might not be built yet).
+#   consequently, program macros cannot be used here, nor are suffix rules from
+#      makefile.suffix_rules effective
+
+# dependencies
+# specific targets depend on invoking scripts
+#new ps update : $(SCRIPTSDIR)/update.sh 
+#current indices : $(SCRIPTSDIR)/daily.sh
+#sunrise : $(SCRIPTSDIR)/sun.sh
+
+# dependencies
+# everything depends on necessary scripts and makefiles
+# some dependencies (e.g. makefile.$(OS)) cannot be listed here as environment has not yet been set
+#  those are listed in makefile.files
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+.PRECIOUS : make_grap median_test lemd thermostatd
+heap_test lemd make_grap median_test numtest thermostatd udp windows linux junk5.ps junk5.pdf junk5.svg\
+ : depend $(LAST_STAGE) $(LAST_INCLUDE) $(MAKEFILES_DIR)/makefile.build # also $(DEPEND) 
+
+# dependencies
+# executable programs depend on depend.awk
+#sunrise : $(AWKSCRIPTSDIR)/depend.awk
+heap_test lemd make_grap median_test numtest thermostatd udp \
+ : $(AWKSCRIPTSDIR)/depend.awk
+
+# dependencies
+# graphs depend on weather.awk
+#current ps update : $(AWKSCRIPTSDIR)/weather.awk
+
+# dependencies
+# Executables depend on files as listed in $(PRE_DEPEND) and $(DEPEND), but
+#   those files might not exist and moreover, the macros might not be defined,
+#   when this file is read.
+# To ensure that executable files are built properly, make must run the recipe
+#   below.  Therefore executables depend on ALWAYS.
+#sunrise : ALWAYS
+#make_grap median_test 
+
+# update FAKE_TARGETS list before including makefile.include1
+FAKE_TARGETS += windows linux
+
+# targets with recipes given here depend on this file
+# but exclude raw data files, as they require rebuilding median_test with specific compile-time settings
+bmqsort.grap data4 data4.grap junk5.ps junk5.pdf junk5.svg paper.troff paper.ps paper.pdf \
+ : depend $(MAKEFILES_DIR)/makefile.targets
+
+# recipe
+# add environment variables via $(SCRIPTSDIR)/ident.sh to identify host, OS, etc.
+# override environment $SHELL with something sane (defined above)
+make_grap median_test \
+ :
+	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
+
+targetsclean : ALWAYS
+	rm -f adversary.*ps adversary.pdf bmqsort.*ps bmqsort.pdf \
+		data2.*ps data2.pdf data4.*ps data4.pdf \
+		data5.*ps data5.pdf data6.*ps data6.pdf \
+		data7.*ps data7.pdf data8.*ps data8.pdf \
+		data9.*ps data9.pdf data10.*ps data10.pdf \
+		data11.*ps data11.pdf m3.*ps m3.pdf paper.*ps paper.pdf \
+		random.*ps random.pdf shuffle.*ps shuffle.pdf
+
+targetscleaner : targetsclean
+	rm -f adversary.grap bmqsort.grap data2.grap data4.grap \
+		data5.grap data5t.grap data6.grap data6t.grap \
+		data7.grap data7t.grap data8.grap data8t.grap \
+		data9.grap data9t.grap data10.grap data11.grap m3.grap \
+		random.grap shuffle.grap
+
+targetscleanest : targetscleaner
+	rm -f adversary_comparison data2 data4 data4? data5 data5? \
+		data6 data6?  data7 data7? data8 data8? data9 data9? \
+		m3_comparison random_comparison raw_data shuffle_comparison
+
+FAKE_TARGETS += targetsclean targetscleaner targetscleanest
+
+clean : targetsclean
+
+cleaner : targetscleaner
+
+cleanest : targetscleanest

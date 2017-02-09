@@ -1,0 +1,824 @@
+#  Description: This is the description file used by the make command; project files specification
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.files $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# This file lists OS-independent source and header files.
+# It is used for generation of dependency files, for building and installation.
+
+# (All Macro Definitions are described on line preceding definition)
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.files
+MAKEFILES_READ += makefile.files
+
+# Editing hint:
+#   One file per line (with line ending escaped) makes additions,
+#   relocations, and deletions easy.  The next line after the last
+#   line used should begin with a quadrathorpe to eat the escaped
+#   line ending.
+# Editing hint: ensure that there are no trailing spaces in macro definitions!
+
+# Except where noted, file names are basenames, not full paths.
+
+# There are several categories of executable files built from sources.
+# Each executable file is built from a main-program object file and is linked with libraries.
+# Those main-program object files are listed as C99OBJS or OBJS depending on whether or not C99FLAGS is required for compilation.
+# This group defines C99 vs. earlier compilation per main-program object file.
+# Corresponding executable file targets should be added to makefile.targets
+#   to support independent executable builds.
+# median_test is C99 to use inline exchange (except illumos pukes all over that)
+C99OBJS =\
+ make_grap.o\
+ median_test.o\
+# 
+OBJS =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += C99OBJS OBJS
+
+# Header files used by main program source files, located in $(HDRDIR).
+HDRS =\
+ compare.h\
+ exchange.h\
+ zz_build_str.h\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += HDRS
+
+# Man page source for main program(s), located in $(MANDIR).
+MANS =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MANS
+
+# Resource files.
+RESOURCEFILES =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RESOURCEFILES
+
+# Configuration files.
+CONFIGFILES =\
+# $(PROJECT).conf\
+# $(PROJECT)2.conf\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += CONFIGFILES
+
+# Object files other than executable main-program files are placed in library archives.
+# Library archive names and archive member object files (leave unused ones empty)
+#  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
+# C99-compiled object files are listed separately
+LIB1ARCH = # liblemd.a
+C99LIB1OBJS =\
+#
+LIB1OBJS =\
+#
+# Header files associated with library, and residing in LIB1HDRDIR.
+LIB1HDRS =\
+#
+LIB1MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB1ARCH C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
+
+LIB2ARCH = # libthermostatd.a
+C99LIB2OBJS =\
+#
+LIB2OBJS =\
+#
+# Header files associated with library, and residing in LIB2HDRDIR.
+LIB2HDRS =\
+#
+LIB2MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB2ARCH C99LIB2OBJS LIB2OBJS LIB2HDRS LIB2MAN
+
+LIB3ARCH = # libradioclk.a
+C99LIB3OBJS =\
+#
+LIB3OBJS =\
+#
+LIB3HDRS =\
+#
+LIB3MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB3ARCH C99LIB3OBJS LIB3OBJS LIB3HDRS LIB3MAN
+
+LIB4ARCH = # libautobaud.a
+C99LIB4OBJS =\
+#
+LIB4OBJS =\
+#
+LIB4HDRS =\
+#
+LIB4MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB4ARCH C99LIB4OBJS LIB4OBJS LIB4HDRS LIB4MAN
+
+LIB5ARCH = # librefclock_fifo.a
+C99LIB5OBJS =\
+#
+LIB5OBJS =\
+#
+LIB5HDRS =\
+#
+LIB5MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB5ARCH C99LIB5OBJS LIB5OBJS LIB5HDRS LIB5MAN
+
+LIB6ARCH = # libusage.a
+C99LIB6OBJS =\
+#
+LIB6OBJS =\
+ syntax_check.o\
+ usage.o\
+#
+LIB6HDRS =\
+ usage.h\
+#
+LIB6MAN =\
+ usage.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB6ARCH C99LIB6OBJS LIB6OBJS LIB6HDRS LIB6MAN
+
+LIB7ARCH = #
+C99LIB7OBJS =\
+#
+LIB7OBJS =\
+#
+LIB7HDRS =\
+#
+LIB7MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB7ARCH C99LIB7OBJS LIB7OBJS LIB7HDRS LIB7MAN
+
+LIB8ARCH = libid.a
+C99LIB8OBJS =\
+#
+LIB8OBJS =\
+ get_host_name.o\
+ get_ips.o\
+#
+LIB8HDRS =\
+ get_host_name.h\
+ get_ips.h\
+#
+LIB8MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB8ARCH C99LIB8OBJS LIB8OBJS LIB8HDRS LIB8MAN
+
+LIB9ARCH = liblogger.a
+C99LIB9OBJS =\
+ logger.o\
+#
+LIB9OBJS =\
+#
+LIB9HDRS =\
+ logger.h\
+#
+LIB9MAN =\
+ logger.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB9ARCH C99LIB9OBJS LIB9OBJS LIB9HDRS LIB9MAN
+
+LIB10ARCH = libcivil_time.a
+C99LIB10OBJS =\
+ civil_time_normalize.o\
+ civil_time_output.o\
+ civil_time.o\
+#
+LIB10OBJS =\
+#
+LIB10HDRS =\
+ civil_time.h\
+#
+LIB10MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB10ARCH C99LIB10OBJS LIB10OBJS LIB10HDRS LIB10MAN
+
+LIB11ARCH = libutc_mktime.a
+C99LIB11OBJS =\
+ inverse_yday.o\
+ local_utc_offset.o\
+ normalize_date_time.o\
+ utc_mktime.o\
+ ydays.o\
+#
+LIB11OBJS =\
+#
+LIB11HDRS =\
+ utc_mktime.h\
+#
+LIB11MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB11ARCH C99LIB11OBJS LIB11OBJS LIB11HDRS LIB11MAN
+
+LIB12ARCH = libleap_second.a
+C99LIB12OBJS =\
+ leap_second.o\
+#
+LIB12OBJS =\
+#
+LIB12HDRS =\
+ leap_second.h\
+#
+LIB12MAN =\
+ leap_second.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB12ARCH C99LIB12OBJS LIB12OBJS LIB12HDRS LIB12MAN
+
+LIB13ARCH = libsnn.a
+C99LIB13OBJS =\
+ snn_double.o\
+ snn_int.o\
+#
+LIB13OBJS =\
+ sn1en.o\
+ snn.o\
+#
+LIB13HDRS =\
+ snn.h\
+#
+LIB13MAN =\
+ snn.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB13ARCH C99LIB13OBJS LIB13OBJS LIB13HDRS LIB13MAN
+
+LIB14ARCH = libstrntol.a
+C99LIB14OBJS =\
+#
+LIB14OBJS =\
+ strntol.o\
+#
+LIB14HDRS =\
+ strntol.h\
+#
+LIB14MAN =\
+ strntol.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB14ARCH C99LIB14OBJS LIB14OBJS LIB14HDRS LIB14MAN
+
+LIB15ARCH = # libastro.a
+C99LIB15OBJS =\
+#
+LIB15OBJS =\
+#
+LIB15HDRS =\
+#
+LIB15MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB15ARCH C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
+
+LIB16ARCH = # libangle.a
+C99LIB16OBJS =\
+#
+LIB16OBJS =\
+#
+LIB16HDRS =\
+#
+LIB16MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB16ARCH C99LIB16OBJS LIB16OBJS LIB16HDRS LIB16MAN
+
+LIB17ARCH = # libconfig.a
+C99LIB17OBJS =\
+#
+LIB17OBJS =\
+#
+LIB17HDRS =\
+#
+LIB17MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB17ARCH C99LIB17OBJS LIB17OBJS LIB17HDRS LIB17MAN
+
+LIB18ARCH = libpaths.a
+C99LIB18OBJS =\
+#
+LIB18OBJS =\
+ concatenate_path.o\
+ expand_path.o\
+ is_dir.o\
+ normalize_path.o\
+ path_basename.o\
+ path_dirname.o\
+ path_separator.o\
+ relative_path.o\
+#
+LIB18HDRS =\
+ paths_decl.h\
+#
+LIB18MAN =\
+# XXX one or more man pages
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB18ARCH C99LIB18OBJS LIB18OBJS LIB18HDRS LIB18MAN
+
+LIB19ARCH = libtimespec.a
+C99LIB19OBJS =\
+#
+LIB19OBJS =\
+ add.o\
+ cmp.o\
+ copy.o\
+ double_to.o\
+ normalize_near.o\
+ normalize_nonneg.o\
+ round.o\
+ subtract.o\
+ tmd_to.o\
+ to_double.o\
+ to_tmd.o\
+#
+LIB19HDRS =\
+ timespec.h\
+#
+LIB19MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB19ARCH C99LIB19OBJS LIB19OBJS LIB19HDRS LIB19MAN
+
+LIB20ARCH = libmedian.a
+C99LIB20OBJS =\
+ quickselect.o\
+ repeated_median.o\
+#
+LIB20OBJS =\
+#
+LIB20HDRS =\
+ quickselect.h\
+ repeated_median.h\
+#
+LIB20MAN =\
+ quickselect.3\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB20ARCH C99LIB20OBJS LIB20OBJS LIB20HDRS LIB20MAN
+
+LIB21ARCH = # libstring.a
+C99LIB21OBJS =\
+#
+LIB21OBJS =\
+#
+LIB21HDRS =\
+#
+LIB21MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB21ARCH C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
+
+LIB22ARCH = # libpool.a
+C99LIB22OBJS =\
+#
+LIB22OBJS =\
+#
+LIB22HDRS =\
+#
+LIB22MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB22ARCH C99LIB22OBJS LIB22OBJS LIB22HDRS LIB22MAN
+
+LIB23ARCH = libgraphing.a
+C99LIB23OBJS =\
+ trim.o\
+#
+LIB23OBJS =\
+ graphing.o\
+#
+LIB23HDRS =\
+ graphing.h\
+ trim.h\
+#
+LIB23MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB23ARCH C99LIB23OBJS LIB23OBJS LIB23HDRS LIB23MAN
+
+LIB24ARCH = librandom.a
+C99LIB24OBJS =\
+#
+LIB24OBJS =\
+ random64n.o\
+#
+LIB24HDRS =\
+ random64n.h\
+#
+LIB24MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB24ARCH C99LIB24OBJS LIB24OBJS LIB24HDRS LIB24MAN
+
+LIB25ARCH = libshuffle.a
+# shuffle is C99 to use inline exchange
+C99LIB25OBJS =\
+ shuffle.o\
+#
+LIB25OBJS =\
+#
+LIB25HDRS =\
+ shuffle.h\
+#
+LIB25MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB25ARCH C99LIB25OBJS LIB25OBJS LIB25HDRS LIB25MAN
+
+LIB26ARCH = #
+C99LIB26OBJS =\
+#
+LIB26OBJS =\
+#
+LIB26HDRS =\
+#
+LIB26MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB26ARCH C99LIB26OBJS LIB26OBJS LIB26HDRS LIB26MAN
+
+LIB27ARCH = #
+C99LIB27OBJS =\
+#
+LIB27OBJS =\
+#
+LIB27HDRS =\
+#
+LIB27MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB27ARCH C99LIB27OBJS LIB27OBJS LIB27HDRS LIB27MAN
+
+LIB28ARCH = # libip.a
+C99LIB28OBJS =\
+#
+LIB28OBJS =\
+#
+LIB28HDRS =\
+#
+LIB28MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB28ARCH C99LIB28OBJS LIB28OBJS LIB28HDRS LIB28MAN
+
+LIB29ARCH = # libresolv.a
+C99LIB29OBJS =\
+#
+LIB29OBJS =\
+ resolv.o\
+#
+LIB29HDRS =\
+ resolv_decl.h\
+#
+LIB29MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB29ARCH C99LIB29OBJS LIB29OBJS LIB29HDRS LIB29MAN
+
+LIB30ARCH = #
+C99LIB30OBJS =\
+#
+LIB30OBJS =\
+#
+LIB30HDRS =\
+#
+LIB30MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB30ARCH C99LIB30OBJS LIB30OBJS LIB30HDRS LIB30MAN
+
+LIB31ARCH = #
+C99LIB31OBJS =\
+#
+LIB31OBJS =\
+#
+LIB31HDRS =\
+#
+LIB31MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB31ARCH C99LIB31OBJS LIB31OBJS LIB31HDRS LIB31MAN
+
+LIB32ARCH = #
+C99LIB32OBJS =\
+#
+LIB32OBJS =\
+#
+LIB32HDRS =\
+#
+LIB32MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB32ARCH C99LIB32OBJS LIB32OBJS LIB32HDRS LIB32MAN
+
+LIB33ARCH = #
+C99LIB33OBJS =\
+#
+LIB33OBJS =\
+#
+LIB33HDRS =\
+#
+LIB33MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB33ARCH C99LIB33OBJS LIB33OBJS LIB33HDRS LIB33MAN
+
+LIB34ARCH = #
+C99LIB34OBJS =\
+#
+LIB34OBJS =\
+#
+LIB34HDRS =\
+#
+LIB34MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB34ARCH C99LIB34OBJS LIB34OBJS LIB34HDRS LIB34MAN
+
+LIB35ARCH = #
+C99LIB35OBJS =\
+#
+LIB35OBJS =\
+#
+LIB35HDRS =\
+#
+LIB35MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB35ARCH C99LIB35OBJS LIB35OBJS LIB35HDRS LIB35MAN
+
+LIB36ARCH = #
+C99LIB36OBJS =\
+#
+LIB36OBJS =\
+#
+LIB36HDRS =\
+#
+LIB36MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB36ARCH C99LIB36OBJS LIB36OBJS LIB36HDRS LIB36MAN
+
+LIB37ARCH = #
+C99LIB37OBJS =\
+#
+LIB37OBJS =\
+#
+LIB37HDRS =\
+#
+LIB37MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB37ARCH C99LIB37OBJS LIB37OBJS LIB37HDRS LIB37MAN
+
+LIB38ARCH = #
+C99LIB38OBJS =\
+#
+LIB38OBJS =\
+#
+LIB38HDRS =\
+#
+LIB38MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB38ARCH C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
+
+LIB39ARCH = #
+C99LIB39OBJS =\
+#
+LIB39OBJS =\
+#
+LIB39HDRS =\
+#
+LIB39MAN =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB39ARCH C99LIB39OBJS LIB39OBJS LIB39HDRS LIB39MAN
+
+# Full paths to installed user programs using makefile.$(OS)-defined $(INSTALL_USER_BINDIR)
+# (dependencies and recipes to install these are automatically generated)
+# this group lists all user programs to be installed
+INSTALLED_USER_PROGRAMS =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += INSTALLED_USER_PROGRAMS
+
+# linked programs
+
+# Full paths to installed administrative programs using makefile.$(OS)-defined $(INSTALL_ADMIN_BINDIR).
+# (dependencies and recipes to install these are automatically generated).
+# this group lists all administrative programs to be installed.
+INSTALLED_ADMIN_PROGRAMS =\
+# $(INSTALL_ADMIN_BINDIR)/
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += INSTALLED_ADMIN_PROGRAMS
+
+# Full paths to installed daemons using makefile.$(OS)-defined $(INSTALL_DAEMON_BINDIR).
+# (dependencies and recipes to install these are automatically generated).
+# this group lists all system daemons to be installed.
+INSTALLED_DAEMONS =\
+# $(INSTALL_DAEMON_BINDIR)/
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += INSTALLED_DAEMONS
+
+# XXX need a mechanism to specify installed startup files (e.g. /etc/rc.d/xxx)
+
+# simple names of man pages, by sections, to be installed using makefile.$(OS)-defined $(PUBLIC_MANDIR) and appropriate subdirectories.
+# recipes are required for pages which must be generated.
+INSTMAN1 =\
+#
+INSTMAN2 =\
+#
+INSTMAN3 =\
+ logger.3\
+#
+INSTMAN4 =\
+#
+INSTMAN5 =\
+#
+INSTMAN6 =\
+#
+INSTMAN7 =\
+#
+INSTMAN8 =\
+#
+INSTMAN9 =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += INSTMAN1 INSTMAN2 INSTMAN3 INSTMAN4 INSTMAN5 INSTMAN6 INSTMAN7 INSTMAN8 INSTMAN9
+
+# Help system files.
+# simple names of help files to be installed in makefile.$(OS)-defined PUBLIC_HELPLIB.
+HELP_FILES =\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += HELP_FILES
+
+# Source files:
+# Program source:
+#   Main program and library source file names are automatically derived
+#     from the object file names specified above.  (the list of all
+#     source files is automatically generated from the *OBJS* macros).
+# Some source files are built (e.g. by yacc, lex, gperf): built files need not be processed by indent.
+#   Dependencies should be specified for these.
+#   If default rules are not used, recipes should also be provided.
+BUILTC =\
+ functions.c\
+ $(NMEA_PREFIX_UNDERSCORE)ragel_lex.c\
+ $(NMEA_PREFIX_UNDERSCORE)lemon_parse.c\
+ ports.c\
+ sentences.c\
+ serial_pins.c\
+ transition.c\
+ version.c\
+#
+# Some header files are built.
+BUILTH =\
+ nmea.h\
+ $(NMEA_PREFIX_UNDERSCORE)lemon_parse.h\
+#
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += BUILTC BUILTH
+ 
+# Scripts may be installed as executable files, or used for building.
+# Several of these are used by the build system; project-specific ones
+#    may be added.
+SHELLSCRIPTS =\
+ date.sh\
+ host.sh\
+ ident.sh\
+ network.sh\
+ system.sh\
+ time.sh\
+ zone.sh\
+#
+AWKSCRIPTS =\
+ cflow_dot.awk\
+ decomment.awk\
+ depend.awk\
+ fix_switch.awk\
+ lems-summary.awk\
+#
+
+# Shorthand for all scripts (for .PRECIOUS).
+SCRIPTS = $(SHELLSCRIPTS) $(AWKSCRIPTS)
+.PRECIOUS : $(SCRIPTS)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
+
+# It is possible to override OS macros (e.g. PUBLIC_MANDIR, OS_LIBS) here.
+# Note that overriding here affects the project for all hosts.
+
+# It is possible to override compilation option macros (e.g. OPTIMIZE) here.
+# Note that overriding here affects the project for all hosts.
+#OPTIMIZE = -O0
+#OPTIMIZE = -O1
+#OPTIMIZE = -O2
+#OPTIMIZE = -O3
+#OPTIMIZE = -Ofast
+#OPTIMIZE = -Os
+#OPTIMIZE = -Oz
+# One way to force C99 for all files...
+#C = $(C99)
+# Or force C89/90 for all...
+#C99 = $(C)
+# profiling
+#PROFILE =
+#PROFILE = -pg
+#PROFILE = -pg -fprofile-arcs -ftest-coverage
+# debugging symbols
+# -grecord-gcc-switches fails for gcc 4.5.3 on Linux and NetBSD
+#DEBUG_SYM = -g -grecord-gcc-switches
+#DEBUG_SYM = -g
+#DEBUG_SYM = 
+# OS library macro
+#OS_LIBS =
+# Project library macro
+#PROJECT_LIBS = -lm -lrt -pthread
+
+# It is possible to define custom project-specific SUFFIXES here,
+#   but they will be lower priority than pre-defined ones
+#   (unless pre-defined ones are wiped out)
+# Note that overriding here affects the project for all hosts.
+
+# It is possible to define custom project-specific suffix rules here.
+# Note that overriding here affects the project for all hosts.
+
+# It is possible to pre-define imported files from other projects here,
+#   but dependencies and rules need to be provided.
+# Note that overriding here affects the project for all hosts.
+
+# Targets (including fake ones) should be added to makefile.targets.
+
+# dependencies which could not be specified in makefile.targets
+
+# XXX rules to make built files need to go here; they need to be translated from old-makefiles/makefile.files
+
+# windows/linux sync
+DATADIR = /data
+PROJECTSDIR = $(DATADIR)/projects
+AUTOMATIONDIR = $(PROJECTSDIR)/automation
+DIR940 = $(AUTOMATIONDIR)/940
+WINDOWS940 = /windows/D/misc/940
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += DATADIR PROJECTSDIR AUTOMATIONDIR DIR940 WINDOWS940
+
+windows : $(WINDOWS940) $(DIR940) 
+	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(DIR940)/ $(WINDOWS940)/
+	rm -f $(WINDOWS940)/lemd $(WINDOWS940)/queuetest $(WINDOWS940)/rmtest $(WINDOWS940)/sort $(WINDOWS940)/zctest $(WINDOWS940)/*.o $(WINDOWS940)/thermostatd 
+	rm -f $(WINDOWS940)/core $(WINDOWS940)/junk* 
+	rm -f $(WINDOWS940)/[lpz].*
+	rm -f $(WINDOWS940)/.~lock.*.ods*
+
+linux : $(DIR940) $(WINDOWS940) 
+	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(WINDOWS940)/ $(DIR940)/
+	chown bruce:users $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940) $(DIR940)/*.ods
+	chmod u+rws,g+rws $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940)
+	chmod a+rw $(DIR940)/*.ods
+
+# hints
+# admin -i$$base -r$(SID) -fq"$(MAINTAINER)" -ft$(ADDRESS) $$file

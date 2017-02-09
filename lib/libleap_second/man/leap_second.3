@@ -1,0 +1,262 @@
+.\" Description: leap_second.3 version 2.1 man page 2015-10-01T03:23:59Z
+.\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
+.\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
+.\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
+.\"			c appears at bottom center of page, n at top center
+.\" .SH text		subhead
+.\" .SS text		sub-subhead
+.\" .B text		make text bold
+.\" .I text		make text italic
+.\" .SM text		make text 1 point smaller than default
+.\" .RI a b		concatenate and alternate Roman, Italic fonts <=6 args
+.\" .IR .RB .BR .IB .BI	similar to .RI
+.\" .PP			new paragraph
+.\" .HP in		hanging paragraph with indent in
+.\" .TP in		indented paragraph with hanging tag (on next line)
+.\" .IP t in		indented paragraph with hanging tag t (arg 1)
+.\" .RS in		increase relative indent by in
+.\" .RE k		return to kth relative indent level (1-based)
+.\" .DT			default tab settings
+.\" .PD v		inter-paragraph spacing v (default 0.4v troff, 1v nroff)
+.\" \*R			registered symbol	(Reg.)
+.\" \*S			change to default type size
+.lg 0	\" avoid groff's butt-ugly ligatures
+.nh	\" no hyphenation
+.ds ]W \" no 7th Edition designation
+.ds xx leap_second
+.TH \*(xx 3 ""
+.SH NAME	\" 1 line	name \- explanatory text
+.B \*(xx
+\- identify and enumerate leap seconds
+.SH SYNOPSIS
+\fB#include <leap_second.h>\fP
+.PP
+.B int leap_second(const struct tm *ptm,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int leap_seconds_between(const struct tm *ptm1,
+.B const struct tm *ptm2,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.SH DESCRIPTION
+.nh	\" no hyphenation
+The
+.B leap_second
+function indicates
+whether
+or not
+the date\-time
+referenced by
+the data pointed to
+by the supplied argument
+corresponds to a known
+(i.e. past, present, or announced future)
+leap second,
+and
+the type of
+leap second
+(positive or negative).
+The
+date\-time
+specified must be
+UTC.
+.PP
+.B leap_seconds_between
+counts the number of leap seconds
+between (inclusive)
+the two specified
+date\-times.
+The
+date\-times
+specified must be
+UTC.
+.PP
+All \*(xx functions
+take as the final two arguments
+an optional pointer to a logging function
+and
+a pointer to
+logging configuration data.
+See
+.B logger(3)
+for details.
+.PP
+.SH RETURN VALUE
+.B leap_second
+returns
+zero
+on error (e.g. NULL pointer)
+or if the specified
+date\-time
+does not correspond to a known
+leap second.
+Because
+zero may be returned
+either in the event of an error
+or
+for valid input,
+a caller may set
+the global variable
+.I errno
+to zero
+before calling
+.B leap_second
+and then check
+the value of
+.I errno
+if
+.B leap_second
+returns zero.
+.B leap_second
+returns
+1
+to indicate that
+the specified date\-time
+corresponds to
+a known
+positive
+leap second,
+and
+returns
+-1
+to indicate a known
+negative
+leap second.
+.PP
+.B leap_seconds_between
+returns
+the
+cumulative
+number of seconds of adjustment
+between
+the specified
+date\-times (inclusive),
+or -1 on error (e.g. a NULL pointer).
+Because
+-1
+might be a valid result
+(if there is ever a negative leap second),
+a caller may set
+the global variable
+.I errno
+to zero
+before calling
+.B leap_second
+and then check
+the value of
+.I errno
+if
+.B leap_seconds_between
+returns -1.
+.PP
+.SH BUGS and CAVEATS
+.PP
+See above regarding return values and
+.IR errno .
+.PP
+If you
+lie to the functions,
+(e.g. by providing date\-time other than UTC),
+they
+may lie to you.
+.PP
+.B leap_second
+uses a static compiled
+table of
+known
+leap seconds.
+On the one hand,
+this requires an update
+each time a new leap second is announced.
+On the other hand,
+.B leap_second
+is impervious to
+denial\-of\-service
+or other
+attacks
+which might be possible if
+.B leap_second
+were to read a
+table of known leap seconds
+from
+an external file
+or other
+external resource.
+.PP
+.SH SEE ALSO
+.IR logger .
+.PP
+IERS Bulletin C
+.PP
+ftp://hpiers.obspm.fr/iers/bul/bulc/BULLETINC.GUIDE
+.br
+https://www.iers.org/SharedDocs/News/EN/BulletinC.html
+.br
+ftp://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat
+.PP
+https://hpiers.obspm.fr/eop\-pc/index.php?index=TAI\-UTC_tab&lang=en
+.PP
+https://itunews.itu.int/En/4268\-Leap\-seconds\-BRRole\-of\-the\-
+.br
+International\-Earth\-Rotation\-and\-Reference\-Systems\-Service.note.aspx
+.PP
+https://www.ucolick.org/~sla/leapsecs/amsci.html
+.PP
+https://www.ucolick.org/~sla/leapsecs/timescales.html
+.PP
+https://www.ucolick.org/~sla/leapsecs/dutc.html
+.PP
+https://www.iana.org/time\-zones
+.PP
+https://github.com/eggert/tz/blob/master/README
+.PP
+.SH AUTHOR
+Bruce Lilly <bruce.lilly@gmail.com>
+.SH LICENSE
+.PP
+The following license covers this software, including makefiles and documentation:
+.PP
+This software is covered by the zlib/libpng license.
+.br
+The zlib/libpng license is a recognized open source license by the
+Open Source Initiative: http://opensource.org/licenses/Zlib
+.br
+The zlib/libpng license is a recognized \(dqfree\(dq software license by the
+Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+.br
+.lt +0.6i
+.po 0.7i
+.tl '*************** 'Copyright notice (part of the license)'***************'
+.po
+.lt
+.br
+@(#)leap_second.3 2.1 2015-10-01T03:23:59Z copyright 2015 Bruce Lilly
+.br
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
+.PP
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
+subject to the following restrictions:
+.IP 1. 0.3i
+The origin of this software must not be misrepresented; you must not claim
+that you wrote the original software. If you use this software in a
+product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+.IP 2. 0.3i
+Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+.IP 3. 0.3i
+This notice may not be removed or altered from any source distribution.
+.RS 0
+.lt +0.6i
+.po 0.7i
+.tl '*************************'(end of license)'*************************'
+.po
+.lt
+.PP
+You may send bug reports to bruce.lilly@gmail.com with subject "\*(xx".
+.\" maintenance note: master file  /src/relaymail/lib/libleap_second/man/s.leap_second.3

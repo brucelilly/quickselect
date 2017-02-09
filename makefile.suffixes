@@ -1,0 +1,82 @@
+#  Description: This is the description file used by the make command; known file suffixes
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.suffixes $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# this file contains a list of known suffixes in hierarchical order
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.suffixes
+MAKEFILES_READ += makefile.suffixes
+
+# scripts and specialized object files, traced C code
+.SUFFIXES : # disable default suffixes, e.g. .sh (to avoid issues with scripts named install.sh, etc.)
+.SUFFIXES :	.in .in~
+.SUFFIXES :	.h .h~
+.SUFFIXES :	.gperf .gperf~ .y .y~ .l .l~ .rl .rl~
+.SUFFIXES :	.c .c~ .cpp .cpp~
+.SUFFIXES :	.i .d .ln
+.SUFFIXES :	.cflow
+.SUFFIXES :	.o .lo .tc .to # .sh
+.SUFFIXES :	.a .la
+.SUFFIXES :	.gnuplot 
+# XXX is this the right place for .hpgl?
+.SUFFIXES :	.hpgl 
+# troff stuff; man pages etc. and postscript output
+.SUFFIXES :	.chem .df .dot .dot~ .eqn .grap .ngrap .pic .pic~ .npic .tbl .ntbl .abnf .nabnf
+.SUFFIXES :	.ms .ms~ .tms .mspe .mspe~ .mm .mm~ .me .me~ .0 .1 .2 .3 .4 .5 .6 .7 .8 .9 .0~ .1~ .2~ .3~ .4~ .5~ .6~ .7~ .8~ .9~ 
+.SUFFIXES :	.troff .nroff .roff
+.SUFFIXES :	.txt .dvi .ps .psa4 .pdfa4 .pdf
+.SUFFIXES :	.emf
+.SUFFIXES :	.eps .ai
+.SUFFIXES :	.sk .svg
+.SUFFIXES :	.html
+.SUFFIXES :	.pnm .png
+.SUFFIXES :	.cad .dxf .em .epic .esc2 .fig .gpt .img .jpg .mf .pbm .pcl .pcx .rgip .tiff
+.SUFFIXES :	.out .file .file~
+# gzip
+.SUFFIXES :	.gz .gz~
+
+FAKE_TARGETS += .in .in~ .h .h~ .gperf .gperf~ .y .y~ .l .l~ .rl .rl~
+FAKE_TARGETS += .c .c~ .cpp .cpp~ .i .d .ln .cflow .o .lo .do .po .to
+FAKE_TARGETS += .a .la .gnuplot
+FAKE_TARGETS += .hpgl
+FAKE_TARGETS += .chem .df .dot .dot~ .eqn .grap .ngrap .pic .pic~ .npic
+FAKE_TARGETS += .tbl .ntbl .abnf .nabnf .ms .ms~ .tms .mspe .mspe~ .mm .mm~ .me .me~
+FAKE_TARGETS += .0 .1 .2 .3 .4 .5 .6 .7 .8 .9
+FAKE_TARGETS += .0~ .1~ .2~ .3~ .4~ .5~ .6~ .7~ .8~ .9~ 
+FAKE_TARGETS += .troff .nroff .roff .txt .dvi .ps .psa4 .pdfa4 .pdf .emf
+FAKE_TARGETS += .eps .ai .sk .svg .html .pnm .png
+FAKE_TARGETS += .cad .dxf .em .epic .esc2 .fig .gpt .img .jpg .mf .pbm .pcl
+FAKE_TARGETS += .pcx .rgip .tiff
+FAKE_TARGETS += .out .file .file~
+FAKE_TARGETS += .gz .gz~

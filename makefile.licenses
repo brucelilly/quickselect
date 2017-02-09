@@ -1,0 +1,79 @@
+# Description: license makefile that emits license/copyright notices # $Id: ~\|^` @(#)%M% %I% %O% copyright 2015 %Q%\ makefile $
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 %Q%\ makefile.licenses $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : makefile makefile.licenses
+MAKEFILES_READ += makefile makefile.licenses
+
+# licenses reside under top-level directory "licenses"
+#  each license has an eponymous subdirectory under "licenses"
+#   each license subdirectory contains at least a "license" file containing the license text per se
+#   license subdirectories may contain the following (optional) files:
+#    "header" contains text emitted prior to license text per se
+#    "trailer" contains text emitted after to license text per se
+#    "description" contains any informative information about the license:
+#       e.g. links, references, known compatibility issues
+#   when license text is displayed, make generates an "emitted" file in the license subdirectory
+#   make clean removes the "emitted" files
+
+# Dependency lines indicate which licenses apply to each source/header/makefile file.
+# The dependencies target the "emitted" file in the license subdirectory of "licenses".
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to everything.
+$(MAKEFILES_DIR)/licenses/zlib/emitted : \
+ $(MAKEFILES_DIR)/README.ident $(MAKEFILES_DIR)/README.makefiles \
+ $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.project \
+ $(MAKEFILES_DIR)/makefile.files $(MAKEFILES_DIR)/makefile.directories \
+ $(MAKEFILES_DIR)/makefile.licenses $(MAKEFILES_DIR)/makefile.imports \
+ $(MAKEFILES_DIR)/makefile.ccc-analyzer $(MAKEFILES_DIR)/makefile.clang \
+ $(MAKEFILES_DIR)/makefile.gcc $(MAKEFILES_DIR)/makefile.pcc \
+ $(MAKEFILES_DIR)/makefile.suncc \
+ $(MAKEFILES_DIR)/makefile.freebsd $(MAKEFILES_DIR)/makefile.linux \
+ $(MAKEFILES_DIR)/makefile.netbsd $(MAKEFILES_DIR)/makefile.solaris \
+ $(MAKEFILES_DIR)/makefile.build $(MAKEFILES_DIR)/makefile.depend \
+ $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.fqdn \
+ $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.suffix_rules $(MAKEFILES_DIR)/makefile.suffixes \
+ $(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
+ $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+ $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.include5 \
+ $(MAKEFILES_DIR)/makefile.stage6 $(MAKEFILES_DIR)/makefile.include6 \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(AWKSCRIPTSDIR)/cflow_dot.awk $(AWKSCRIPTSDIR)/decomment.awk \
+ $(AWKSCRIPTSDIR)/depend.awk $(AWKSCRIPTSDIR)/fix_switch.awk \
+ $(ALL_SOURCES) $(ALL_HEADERS) \
+#
+

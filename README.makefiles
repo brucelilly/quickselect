@@ -1,0 +1,492 @@
+Description: makefile structure for fast, portable project builds
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ README.makefiles $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+/********************** Long description and rationale: ***********************
+See "Recursive Make Considered Harmful".
+The following links were verified 2015-08-05. No secure (https) versions at
+that time.
+   http://aegis.sourceforge.net/auug97.pdf
+	reverified 2016-03-08
+	still no https
+   http://lcgapp.cern.ch/project/architecture/recursive_make.pdf
+	reverified 2016-03-08
+	https link exists, but:
+		lcgapp.cern.ch uses an invalid security certificate.
+		The certificate is not trusted because the issuer certificate is unknown.
+		The certificate is only valid for the following names: cdash.cern.ch, geant4.cern.ch
+		The certificate expired on 12/01/15 05:30. The current time is 03/08/16 08:43.
+   http://www.tuhs.org/Archive/Documentation/AUUGN/AUUGN-V19.1.pdf
+	reverified 2016-03-08
+	https link exists, but:
+		a self-signed certificate is used, which may be rejected by
+			some browsers
+
+Some projects are built using programs that run long-winded scripts
+which are about as readable as the teleplay for the motion picture
+"Mars Attacks!" (e.g. "Ac. Ac_ac. Ac_ac_ac.") and generated obfuscated
+Makefiles that contain only a fraction of the project information but
+which are used separately, resulting in the poor performance noted in
+"Recursive Make Considered Harmful". Many of these programs have their
+own programming language and file formats, which must be learned and
+mastered, and may require use of auxiliary programs, many of which also
+have their own programming language and format.
+
+Another approach is to partition the task of building a project into
+smaller pieces while building from a makefile which contains full project
+information and therefore avoids the problems and poor performance of
+recursive make. [If you haven't read "Recursive Make Considered Harmful"
+recently, please take the time to do so now, as it explains clearly the
+problems and potential solutions. Links are supplied above.]
+
+The following files are used to partition the project task into manageable
+pieces which encapsulate project-specific information, operating system
+dependencies, compilation system dependencies, etc., separate from
+boilerplate generation of dependencies:
+
+makefile			Initial makefile: includes
+					makefile.include1 and makefile.targets.
+					Invokes $(MAKE) with makefile.stage2
+					through makefile.stage6 as needed to
+					build other files which are included
+					to provide complete project information.
+					Stages are necessary to work around bugs
+					in some implementations of make.
+makefile.build			Main makefile for building: has generic
+					rules and rules for building files used
+					for program analysis and maintenance.
+makefile.ccbase-$(OS)-$(FQDN)	Built and included in order to define macro
+					CCBASE, which is the basename of the
+					compiler to be used (which might be
+					specified via a full path).  Built
+					and included because some implementations
+					of make have no way to define a macro by
+					running a program, and others have only
+					non-portable ways of doing so.
+makefile.ccc-analyzer		Compiler-specific macros for running
+					ccc-analyzer.
+makefile.clang			Compiler-specific macros for llvm-clang.
+makefile.depend			Makefile to build dependency files prior
+					to main target builds; generic
+					rules.  Figures out dependencies
+					from object files, libraries, etc.
+					defined in makefile.files, and uses
+					the selected compiler to find header
+					file dependencies for source files.
+makefile.directories		Defines project directory organization.
+makefile.files			Makefile defining files relevant to
+					project and for project-specific
+					dependencies and recipes.
+makefile.fqdn			Contains dependencies and recipe for building
+					makefile.$(OS)-$(FQDN).
+makefile.freebsd		OS-specific macros for FreeBSD
+makefile.gcc			Compiler-specific macros for gcc.
+makefile.imports		Optionally defines dependencies and recipes
+					for importing files from other projects.
+makefile.include1 through	Ideally, all of the include directives would be
+makefile.include6			in one place to simplify maintenance.
+					However, at least one implementation of
+					make fails to build files to be included
+					even when all dependency and recipe
+					information is know.  In order to work
+					around this bug, the files to be
+					included are divided into six groups
+					based on the need to build some files
+					which are included (e.g. dependencies
+					derived from output from running the
+					selected compiler on source files in
+					generate-dependency-list mode).
+					The initial makefile includes
+					makefile.include1; makefile.stage2
+					includes makefile.include1 and
+					makefile.include2, etc. to
+					makefile.stage6 which includes
+					makefile.include1 through
+					makefile.include6.
+makefile.licenses		Contains the license file dependency information
+					for makefiles, project files, etc. and
+					emits license information when affected
+					files such as makefile.$(FQDN) are
+					changed, built, or rebuilt.
+makefile.linux			OS-specific macros for generic Linux.
+makefile.linux.gentoo		Distribution-specific macros for Gentoo Linux.
+makefile.linux.opensuse		Distribution-specific macros for OpenSUSE Linux.
+makefile.make			Defines SHELL, MAKE, and initializes several
+					other macros.
+makefile.netbsd			OS-specific macros for NetBSD.
+makefile.pcc			Compiler-specific macros for pcc.
+makefile.platform		Defines macros useful to partition built files
+					into subdirectories based on
+					$(ARCHTECTURE)-$(OS)-$(CCBASE).
+makefile.project		Defines macros specific to the project
+					being built: project name, maintainer,
+					version, special compiler defines, tools
+					required, etc.
+makefile.solaris		OS-specific macros for Solaris-like OSes.
+makefile.stage2 through		Provides for generation of files to be
+makefile.stage6				included (e.g. makefile.$(OS)-$(FQDN))
+					which might not exist when make is
+					first run, or which might need to be
+					rebuild after some files are edited,
+					primarily due to bugs in some make
+					implementations that do not run known
+					recipes to build included files. These
+					files include corresponding
+					makefile.include2 through
+					makefile.include6 to include necessary
+					files as they are built.
+makefile.suffix_rules		Suffix-based rules. 
+makefile.suffixes		Defines .SUFFIXES
+makefile.suncc			Compiler-specific macros for SunStudio.
+makefile.targets		Contains the names of targets (but not
+					dependencies or recipes) that are
+					unavailable in makefile due to bugs
+					in some implementations of make.
+makefile.tools			Default tools (programs) used (especially
+					compiler); template for
+					makefile.$(OS)-$(FQDN).
+makefile.$(OS)-$(FQDN)		Machine-specific choice of tools. Can
+					override or append macros defined
+					in makefile.$(OS) and/or
+					makefile.project. A combination of
+					$(OS) and $(FQDN) supports independent
+					files for multiboot hosts.
+
+Everything is handled by make and a few small (shell and awk) scripts,
+as well as commonly-available tools such as awk, grep, sed, and sort;
+there is no hyper-turbo-mega-auto-this or hyper-turbo-mega-auto-that
+(each with their own peculiar syntax) required.  None of the tools
+used is expected to whine about not having a minus-minus-tag option
+argument supplied to it...
+
+The makefiles are maintained as follows:
+makefiles maintainer:	makefile, makefile.stage*, makefile.include*,
+				makefile.depend, makefile.build,
+				makefile.$(OS), makefile.$(CCBASE),
+				makefile.tools, makefile.fqdn, makefile.depend,
+				makefile.platform; rarely makefile.make,
+				makefile.suffixes, makefile.suffix_rules;
+				(these are generic boilerplate, at least for C
+				source projects)
+project maintainer:	makefile.project, makefile.directories, makefile.files,
+				makefile.licenses, makefile.targets; rarely
+				makefile.make, makefile.suffixes,
+				makefile.suffix_rules, makefile.build
+user:			makefile.$(OS)-$(FQDN); maybe OS- or compiler-specific
+				makefiles, maybe site-wide defaults in
+				makefile.project
+others as needed
+
+These are used as follows:
+makefile includes makefile.include1 and makefile.targets. Files included by
+	makefile.include1 are makefile.directories and makefile.make. Targets
+	for make which are not otherwise directly visisble in makefile (e.g.
+	because they are defined in makefile.build, which is included only
+	after some files to be included are built (because of bugs in some
+	implementations of make)) are listed in makefile.targets so that one
+	may simply invoke `make install` without having to figure out where
+	the "install" target is defined.  Those included files provide some
+	initial information to make; more is provided by running some simple
+	scripts to pass system information (e.g. machine architecture,
+	library archive directory hierarchy, etc.) to make, which can then
+	proceed to run any needed recipes to build intermediate files to be
+	included by make to provide more complete project information (source
+	files, header files, dependencies generated by the compiler, etc.).
+	[Relevant environment variables are set by sourcing shell script files;
+	see README.ident for details.]  Complete project information is built
+	quickly, checking along the way for availability of necessary tools.
+	Barring errors caused by missing tools, complete programs can be
+	built and installed.
+makefile.build consists of boilerplate dependencies and recipes for building
+	and installing programs, and optionally for generating files for program
+	analysis (static analysis, flow graphs).
+makefile.directories defines project directories. It is one of only a few files
+	which need to be customized for a particular project.
+makefile.suffix_rules provides generic suffix-based rules.
+makefile.$(OS) may include a distribution-specific
+	makefile.$(OS).$(DISTRIBUTION) if needed.
+makefile.project has project-specific macros, some of which may override or
+	modify macros defined in makefile.$(OS).  This is another of the small
+	set of files which need to be customized for a project.
+makefile.$(OS)-$(FQDN) is initialized from makefile.tools if it does not
+	already exist or if it is out-of-date. It may be used to override or
+	modify OS or project macros.  Tools (e.g. troff) required by a project
+	(and specified in makefile.project) are checked for availability while
+	building makefile.$(OS)-$(FQDN).
+makefile.ccbase-$(OS)-$(FQDN) defines CCBASE, which allows the compiler-specific
+	makefile.$(CCBASE) (one of makefile.pcc, makefile.clang, etc.) to be
+	included.
+makefile.files defines project-specific files (e.g. LIB1ARCH).  It needs to be
+	customized for each project to list project-specific object files, etc.
+makefile.targets is modified by a project to list the targets defined in
+	makefile.files, so they are accessible to makefile.
+makefile.licenses determine which (if any) license files need to be displayed.
+	It should be customized for a project to reflect which licenses apply to
+	the various project files.
+makefile.imports uses macros defined in makefile.directories and makefile.files
+	to import needed files from other projects.
+makefile.depend has dependencies and recipes to build a few files which are
+	subsequently included to provide full project dependency and recipe
+	information.  One of the generated files also supports a target
+	("macros") to list all known macros used in the set of makefiles,
+	with their values, where they are defined, and where they are used.
+
+Most of the files are boilerplate that should not normally require editing.
+Boilerplate files include makefile, makefile.build, makefile.depend,
+makefile.fqdn, makefile.make, makefile.stage*, makefile.include*,
+makefile.suffixes, makefile.suffix_rules, makefile.tools, the compiler-specific
+makefiles, and the OS-specific makefiles. The makefile.$(OS)-$(FQDN) file is
+generated per-host from makefile.tools and information in makefile.project, and
+is typically edited to select the compiler to use.  By putting boilerplate in
+separate files, clutter in the files requiring editing is minimized.  About 60%
+of the total numer of lines in the makefiles is in the boilerplate makefiles.
+
+That leaves makefile.project, makefile.directories, makefile.files,
+makefile.targets, and makefile.licenses as the files that typically need to be
+edited for a specific project.  There are comments in them that indicate what
+needs to be edited; briefly, makefile.project defines the project name and some
+project-specific settings, makefile.directories describes the project directory
+structure for source files, header files, generated object and binary files,
+etc., makefile.files lists specific header file, man page file and object
+file/library archive files, main program object files, ancillary object files
+which are placed in library archives, header files in a project (the
+boilerplate files build dependencies and rules for building library archives
+and executables, and for installing executables and man pages), dependencies
+and recipes for any unusual project-specific targets, and finally,
+makefiles.licenses describes the relationship of licenses to
+source/documentation files.  Note that C source code files are not listed
+except in makefile.licenses and makefile.imports; these are determined from the
+names of specified main-program and library object files (exceptions would be
+any unusual project-specific C source files that have to be generated).
+Required programs (awk, sed, etc.) are listed in makefile.project.
+
+In some cases, one or more of the boilerplate files may need to be edited;
+e.g. the OS-specific makefile might need to be edited for a specific system
+to account for differences in library implementations (e.g. FAM vs. gamin).
+Such dependencies may be overriden instead by settings in makefile.project,
+which in turn can be overriden by settings in makefile.$(OS)-$(FQDN).
+
+Building executables proceeds in stages, but these stages are quite different
+from the bits-and-pieces approach of recursive make as described in "Recursive
+Make Considered Harmful".  The first stage is to identify the host, operating
+system, compilation system, etc. (see also README.ident).  The second stage
+is to bootstrap some compiler-independent dependency information based on the
+identified information and specified project directories and files. Then
+compiler-generated dependency information from the specified project files is
+generated, using the specified compilation system to determine compilation
+dependencies (object files depend on source files and header files, library
+archives depend on object files, executables depend on objects files and
+optionally library archives). The final stage is to build the specified target
+for the specified operating system using the specified compilation system,
+project files, and built dependency information. Typical use is:
+	for a new project or conversion of an existing project to this system,
+		or when making project organization changes:
+			edit makefile.project, makefile.directories,
+			makefile.files, makefile.targets, and makefile.licenses
+			for the project specifics.  It is also possible to
+			edit makefile.make to specify a particular shell and/or
+			a particular make implementation.  Choice of
+			subdirectory for dependency files can be made in
+			makefile.platform, although the default should work
+			fine.
+	`make host` # generates makefile.$(OS)-$(FQDN) if it does not exist,
+		or updates it if it is out-of-date.
+	edit makefile.$(OS)-$(FQDN) if necessary to use specific tools.
+	[the above two steps can be skipped to use defaults, or after
+	makefile.$(OS)-$(FQDN) has been built if no changes are required)]
+	`make`
+	top-level directory links or copies of built executables, text
+		versions of man pages, output from analysis tools (see
+		below) may be made by specifying the corresponding
+		target name to make.
+	optionally `make test`
+	optional static analysis may be performed (with suitable tools
+		installed) via `make analyses`, or individual analysis
+		files can be generated by:
+			`make cppcheck.out`
+			`make flawfinder.out`
+			`make lint.out`
+			`make rats.out`
+			`make sparse.out`
+			`make splint.out`
+			`make uno.out`
+	files useful for editing source via cscope may optionally be
+		built via:
+			`make cscope.files` && `make cscope.out`
+		(these are also built by `make analyses`)
+	optionally, function call flow graphs may be generated (with
+		suitable tools installed) via:
+			`make generic.pdf`
+		(these are also built by `make analyses`)
+	if you're crazy about angle brackets, you can generate HTML
+		files for the source code using:
+			`make cxref`
+		(these are also built by `make analyses`)
+	`make install` # typically has to be run as superuser to get
+		correct ownership and permissions
+	cleanup may be performed with:
+		`make clean` # (removes top-level links/copies, core files)
+		`make cleaner` # (removes HTML files, text, ps, and pdf
+			versions of man pages, analysis output files,
+			cscope.files, and csope.out)
+		`make cleanest` # (removes built .c and .h files,
+			source files which can be regenerated from
+			SCCS master files, object files and libraries,
+			local hierarchy built executables (but not
+			installed ones, of course))
+	There are many macros defined in the various makefiles; these
+		can be listed via:
+			`make macros`
+
+No build system is without issues.  While this approach avoids the many
+auxiliary programs and associated languages and file formats, there are
+differences between implementations of make and of shells, and the
+limitations of some of those implementations make them unsuitable for
+use.  Fortunately there are a number of readily and freely available
+implementations which do work well, with no need to learn obscure file
+formats and programming languages.
+
+"We do not pretend to have achieved perfection.
+But we have a system, and it works."
+    The Day the Earth Stood Still (1951)
+
+Naming is intended to result in all makefiles being grouped together in
+a directory listing (as opposed to "aardvark.mk", "zygote.mk", etc.).
+Listing all makefiles including version-controlled ones is as simple as
+$ ls *akefile*
+(In this case, the listing will also include this file, viz.
+README.makefiles.) Listing w/o version-controlled files:
+$ ls ?akefile*
+Note that things get much more complicated with *.mk naming (especially
+if one wants non-version-controlled files including aardvark.mk,
+foo.bar.mk, s.mk, q.mk, and zygote.mk (but not s.s.mk or p.mk or s.q.mk
+or p.q.mk, etc.).
+
+Note that support for SCCS (the first, and still the best version control
+system) is well-integrated with make; the makefiles may be maintained
+under version control and will automatically be retrieved by make as
+required using the SCCS command get. E.g:
+
+$ ls *akefile.[fb]??
+s.makefile.bar
+s.makefile.foo
+
+Note that there is no makefile.foo or makefile.bar.
+
+$ make -f makefile.foo
+make: makefile.foo: No such file or directory
+get   s.makefile.foo
+1.1
+No id keywords (cm7)
+2 lines
+makefile.foo:2: makefile.bar: No such file or directory
+get   s.makefile.bar
+1.1
+No id keywords (cm7)
+5 lines
+echo here I am
+here I am
+
+Note that make has automatically retrieved both files (makefile.bar is
+included by makefile.foo) and built the primary target (which is specified
+in makefile.bar), without manual intervention.
+
+Known issues (a.k.a. bugs):
+	differences in make implementations:
+		There are work-arounds for these, which is one reason for
+		the fairly large number of makefiles.
+		e.g. GNU make, a.k.a. gmake, can retrieve files from SCCS
+			to be included (as in the example above), but
+			fails miserably for non-SCCS files, even if all
+			necessary information to build the files is known
+			(gmake bug #47399).  This is why there are
+			makefile.stage* and makefile.include* files.
+		some variants fail to send commands to a reasonable shell,
+			so shell built-in functions such as "print" fail.
+		NetBSD make always seems to get lost in the "obj"
+			subdirectory, then whines about not being able to
+			find the makefile anymore.  Work around this by
+			supplying full paths to everything.
+		Normally, the -e option flag tells make to use environment
+			variables to override macros.  Dmake does things
+			backwards, requiring a non-stadard -E option to
+			do the same thing.  Options may be specified as
+			part of the MAKE macro defined in makefile.make.
+	variability of tool options:
+		e.g. GNU ls option "--full-time" lists times precisely.
+		     BSD ls uses option "-T" to list times precisely.
+		     [neither of the above recognizes the other's option]
+		     heirloom ls has no option for precise time listing.
+		Ideally, some future version of POSIX will standardize
+			options, and in the fullness of time (no pun
+			intended) the problem will diminish.
+		Some developers have even seen fit to tinker with classic
+			programs such as head and tail, inventing
+			incompatible ways of passing option arguments.
+	naming of tools:
+		GNU tools on Linux typically have no specialized name.
+			In some cases there is a link to an alternate
+			name with an initial 'g' (e.g. gawk); in other cases
+			(e.g. ls) there is no such link.
+		On other operating systems, GNU tools are typically named
+			with an initial 'g', e.g. gawk, gsed, gls, gdate,
+			etc.
+		In some cases multiple tools with the same name (e.g.
+			several different versions of "ls") are available,
+			but installed in different directories.  $PATH may
+			be different on different hosts.
+		Makefile.$(OS)-$(FQDN) can be used to specify the name or path
+			for a specific tool on a per-host basis.  Tool
+			naming could also be addressed in makefile.$(OS),
+			but that may be risky (in part due to differences
+			in various OS distributions).  For that reason,
+			makefile.$(OS)-$(FQDN) combines the OS and host, so
+			that even multiboot systems can be configured
+			correctly.
+	availability of tools:
+		Some useful tools (e.g. pdfopt) are readily available on
+			some systems but not on others.
+		If a required tool is not readily available it must be
+			built and installed or a substitute must be found.
+			Use of a substitute might require changes to
+			makefile.suffix_rules.  Several of the rules
+			accommodate missing or alternate tools, as do the
+			ident scripts.
+	specific host installations:
+		A given host might not have some tools installed, or it
+			might use different tools (e.g. compiler) from
+			those used on other hosts with the same architecture,
+			OS and/or compiler.
+		This might limit the usefulness of the architecture-OS-compiler
+			subdirectory organization for dependencies, object
+			files, libraries, and executable files.
+******************************************************************************/

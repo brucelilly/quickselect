@@ -1,0 +1,168 @@
+.\" Description: strntol.3 version 2.1 man page 2015-10-01T02:32:23Z
+.\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
+.\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
+.\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
+.\"			c appears at bottom center of page, n at top center
+.\" .SH text		subhead
+.\" .SS text		sub-subhead
+.\" .B text		make text bold
+.\" .I text		make text italic
+.\" .SM text		make text 1 point smaller than default
+.\" .RI a b		concatenate and alternate Roman, Italic fonts <=6 args
+.\" .IR .RB .BR .IB .BI	similar to .RI
+.\" .PP			new paragraph
+.\" .HP in		hanging paragraph with indent in
+.\" .TP in		indented paragraph with hanging tag (on next line)
+.\" .IP t in		indented paragraph with hanging tag t (arg 1)
+.\" .RS in		increase relative indent by in
+.\" .RE k		return to kth relative indent level (1-based)
+.\" .DT			default tab settings
+.\" .PD v		inter-paragraph spacing v (default 0.4v troff, 1v nroff)
+.\" \*R			registered symbol	(Reg.)
+.\" \*S			change to default type size
+.lg 0	\" avoid groff's butt-ugly ligatures
+.nh	\" no hyphenation
+.ds ]W \" no 7th Edition designation
+.ds xx strntol
+.TH \*(xx 3 ""
+.SH NAME	\" 1 line	name \- explanatory text
+.B \*(xx
+\- convert string to long integer using up to a specified maximum number of significant input digits
+.SH SYNOPSIS
+\fB#include <strntol.h>\fP
+.PP
+.B long strntol(const char *s, size_t n, char **endptr, int base,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.SH DESCRIPTION
+.nh	\" no hyphenation
+.B strntol
+is similar to
+.I strtol
+but provides a means to limit the extent of the conversion.
+The string pointer,
+.IR endptr ,
+and
+.I base
+are exactly like
+.IR strtol .
+The
+second
+argument
+.I n
+specifies the maximum number of significant digits
+of the input string to use for the conversion.
+A leading '0' digit for base 8
+(which is implied if base is given as 0 and if the first input string digit is '0' not followed by 'x' or 'X'),
+or a leading "0x" or "0X" for base 16
+(implied for base given as 0 if the input string begins that way after optional leading whitespace and sign character)
+are not counted as significant.
+Like
+.IR strtol ,
+leading whitespace is ignored.
+The sign character,
+being a non\-digit,
+is not counted
+as significant
+by
+.BR strntol .
+The \*(xx function
+takes as the final two arguments
+an optional pointer to a logging function
+and
+a pointer to
+logging configuration data.
+See
+.B logger(3)
+for details.
+.PP
+.SH EXAMPLE
+.PP
+char *e;
+.br
+long result;
+.br
+result = strntol("\-123456789", 4U, &e, 10, NULL, NULL);
+.PP
+returns
+\-1234L
+in
+.I result
+with
+.I e
+pointing to the digit '5'.
+.SH RETURN VALUE
+.B strntol
+may return 0L
+or
+.B LONG_MIN
+or
+.B LONG_MAX
+on input error,
+with
+.I errno
+set to
+.B EINVAL
+or
+.BR ERANGE .
+.SH BUGS and CAVEATS
+Because the return values on error
+are also valid return values for legal input,
+.I errno
+can
+be set to 0 before calling
+.IR strntol ,
+and checked after it returns
+if error checking is desired.
+.SH SEE ALSO
+.IR logger ,
+.I strtol
+.SH AUTHOR
+Bruce Lilly <bruce.lilly@gmail.com>
+.SH LICENSE
+.PP
+The following license covers this software, including makefiles and documentation:
+.PP
+This software is covered by the zlib/libpng license.
+.br
+The zlib/libpng license is a recognized open source license by the
+Open Source Initiative: http://opensource.org/licenses/Zlib
+.br
+The zlib/libpng license is a recognized \(dqfree\(dq software license by the
+Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+.br
+.lt +0.6i
+.po 0.7i
+.tl '*************** 'Copyright notice (part of the license)'***************'
+.po
+.lt
+.br
+@(#)strntol.3 2.1 2015-10-01T02:32:23Z copyright 2015 Bruce Lilly
+.br
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
+.PP
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
+subject to the following restrictions:
+.IP 1. 0.3i
+The origin of this software must not be misrepresented; you must not claim
+that you wrote the original software. If you use this software in a
+product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+.IP 2. 0.3i
+Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+.IP 3. 0.3i
+This notice may not be removed or altered from any source distribution.
+.RS 0
+.lt +0.6i
+.po 0.7i
+.tl '*************************'(end of license)'*************************'
+.po
+.lt
+.PP
+You may send bug reports to bruce.lilly@gmail.com with subject "\*(xx".
+.\" maintenance note: master file  /src/relaymail/s.strntol.3

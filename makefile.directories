@@ -1,0 +1,703 @@
+#  Description: This is the description file used by the make command; project directory hierarchy specification
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ makefile.directories $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to MAKEFILES_READ macro
+MAKEFILES_READ += makefile.directories
+
+# This file lists OS-independent source, header file, etc.
+# and hierarchy (but not final installation) directories.
+# It is used for generation of dependency files, for building and installation.
+
+# (All Macro Definitions are described on line preceding definition)
+
+# MAKEFILES_DIR is the directory containing the makefiles and is the base
+#   for sources, scripts, etc.
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles.
+#   Unfortunately, this makes the makefiles less portable (they are rooted to a
+#   specific path).
+#MAKEFILES_DIR = /data/projects/automation/940
+# If you don't plan to use NetBSD /usr/bin/make, you can instead use ".", which
+#   preserves portability.
+MAKEFILES_DIR = .
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MAKEFILES_DIR
+
+# Add makefile name to .PRECIOUS pseudo-target
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.directories
+
+# $(PROJECT_DIR) and $(PATH_PREFIX) may be used in makefile.$(OS) for
+#   configuration files, etc.
+PROJECT_DIR = /data/lems
+LEMD_PROJECT_DIR = /data/lems
+THERMOSTATD_PROJECT_DIR = /data/weather
+LEMD_PUBLIC_CONFIGDIR = $(LEMD_PROJECT_DIR)
+THERMOSTATD_PUBLIC_CONFIGDIR = $(THERMOSTATD_PROJECT_DIR)
+PATH_PREFIX = /usr/local
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT_DIR LEMD_PROJECT_DIR THERMOSTATD_PROJECT_DIR LEMD_PUBLIC_CONFIGDIR THERMOSTATD_PUBLIC_CONFIGDIR PATH_PREFIX
+
+# Some directories are OS-, platform-, and project-independent:
+ETC = /etc
+DATA_CONFIG = /data/config
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += ETC DATA_CONFIG
+
+# Project subdirectory hierarchy layout:
+# Directories: all relative to MAKEFILES_DIR, except where otherwise noted.
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to everything
+
+# Some directories are configured to support per-platform versions.
+# See makefile.platform
+
+# Some directories are platform-independent.
+
+# source directory for main program(s).
+# relative to $(MAKEFILES_DIR), also to $(DEPEND_DIR)
+# no full path here
+SRCDIR = src
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SRCDIR
+
+# Directory containing header files for main program(s).
+# full path
+HDRDIR = $(MAKEFILES_DIR)/include
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += HDRDIR
+
+# If header files and/or main program source files are imported, indicate
+#   the destination for use with makefile.imports
+# note that $(HDRDIR) is a full path, $(SRCDIR) is not (and should
+#   have $(MAKEFILES_DIR)/ prepended.
+# Do not define the destination macro if the source is in the same project
+
+COMPARE_DESTHDRDIR = $(HDRDIR)
+EXCHANGE_DESTHDRDIR = $(HDRDIR)
+ZZ_BUILD_STR_DESTHDRDIR = $(HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += COMPARE_DESTHDRDIR EXCHANGE_DESTHDRDIR ZZ_BUILD_STR_DESTHDRDIR
+
+# Directory containing help files for main programs.
+# full path
+HELPDIR = $(MAKEFILES_DIR)/help.dir
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += HELPDIR
+
+# Directory containing resource files.
+# full path
+RESOURCEDIR = $(MAKEFILES_DIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RESOURCEDIR
+
+# Directory containing configuration file sources.
+# full path
+CONFIGDIR = $(MAKEFILES_DIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += CONFIGDIR
+
+# Directory containing man page files for main programs.
+# full path
+MANDIR = $(MAKEFILES_DIR)/man
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MANDIR
+
+# Directory for version-controlled files for main program sources.
+#  Relative to SRCDIR, HDRDIR, MANDIR, etc..
+# no full path here
+SCCSDIR = .
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SCCSDIR
+
+# libraries
+# overall subdirectory for libraries.
+# no full path here
+# relative to $(MAKEFILES_DIR), also to $(DEPEND_DIR)
+LIBDIR = lib
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIBDIR
+
+# first object library, source, header, help file, man page, object, and version-control subdirectories.
+# First is relative to $(LIBDIR).
+# Remaining ones are relative to the first one.
+# If code is imported, include lines to specify the source and header
+#   destinations for use with makefile.imports
+# Editing hint: ensure that there are no trailing spaces in macro definitions!
+LIB1DIR = liblemd
+LIB1SRCDIR = src
+LIB1HDRDIR = include
+LIB1HELPDIR = help
+LIB1MANDIR = man
+LIB1OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB1DIR LIB1SRCDIR LIB1HDRDIR LIB1HELPDIR LIB1MANDIR LIB1OBJDIR
+
+LEMD_DESTSRCDIR = $(MAKEFILES_DIR)/$(SRCDIR)
+LIBLEMD_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB1DIR)/$(LIB1SRCDIR)
+LIBLEMD_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB1DIR)/$(LIB1HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LEMD_DESTSRCDIR LIBLEMD_DESTSRCDIR LIBLEMD_DESTHDRDIR
+
+# second library directories (if needed)
+LIB2DIR = libthermostatd
+LIB2SRCDIR = src
+LIB2HDRDIR = include
+LIB2HELPDIR = help
+LIB2MANDIR = man
+LIB2OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB2DIR LIB2SRCDIR LIB2HDRDIR LIB2HELPDIR LIB2MANDIR LIB2OBJDIR
+
+THERMOSTATD_DESTSRCDIR = $(MAKEFILES_DIR)/$(SRCDIR)
+THERMOSTATD_DESTHDRDIR = $(HDRDIR)
+LIBTHERMOSTATD_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB2DIR)/$(LIB2SRCDIR)
+LIBTHERMOSTATD_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB2DIR)/$(LIB2HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += THERMOSTATD_DESTSRCDIR THERMOSTATD_DESTHDRDIR LIBTHERMOSTATD_DESTSRCDIR LIBTHERMOSTATD_DESTSRCDIR LIBTHERMOSTATD_DESTHDRDIR
+
+# third (etc.) library directories (if needed)
+LIB3DIR = libradioclk
+LIB3SRCDIR = src
+LIB3HDRDIR = include
+LIB3HELPDIR = help
+LIB3MANDIR = man
+LIB3OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB3DIR LIB3SRCDIR LIB3HDRDIR LIB3HELPDIR LIB3MANDIR LIB3OBJDIR
+
+LIBRADIOCLK_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB3DIR)/$(LIB3SRCDIR)
+LIBRADIOCLK_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB3DIR)/$(LIB3HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIBRADIOCLK_DESTSRCDIR LIBRADIOCLK_DESTHDRDIR
+
+LIB4DIR = libautobaud
+LIB4SRCDIR = src
+LIB4HDRDIR = include
+LIB4HELPDIR = help
+LIB4MANDIR = man
+LIB4OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB4DIR LIB4SRCDIR LIB4HDRDIR LIB4HELPDIR LIB4MANDIR LIB4OBJDIR
+
+AUTOBAUD_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB4DIR)/$(LIB4SRCDIR)
+AUTOBAUD_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB4DIR)/$(LIB4HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += AUTOBAUD_DESTSRCDIR AUTOBAUD_DESTHDRDIR
+
+LIB5DIR = librefclock_fifo
+LIB5SRCDIR = src
+LIB5HDRDIR = include
+LIB5HELPDIR = help
+LIB5MANDIR = man
+LIB5OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB5DIR LIB5SRCDIR LIB5HDRDIR LIB5HELPDIR LIB5MANDIR LIB5OBJDIR
+
+LIBREFCLOCK_FIFO_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB5DIR)/$(LIB5SRCDIR)
+LIBREFCLOCK_FIFO_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB5DIR)/$(LIB5HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIBREFCLOCK_FIFO_DESTSRCDIR LIBREFCLOCK_FIFO_DESTHDRDIR
+
+LIB6DIR = libusage
+LIB6SRCDIR = src
+LIB6HDRDIR = include
+LIB6HELPDIR = help
+LIB6MANDIR = man
+LIB6OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB6DIR LIB6SRCDIR LIB6HDRDIR LIB6HELPDIR LIB6MANDIR LIB6OBJDIR
+
+USAGE_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB6DIR)/$(LIB6SRCDIR)
+USAGE_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB6DIR)/$(LIB6HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += USAGE_DESTSRCDIR USAGE_DESTHDRDIR
+
+LIB7DIR = .#
+LIB7SRCDIR = src
+LIB7HDRDIR = include
+LIB7HELPDIR = help
+LIB7MANDIR = man
+LIB7OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB7DIR LIB7SRCDIR LIB7HDRDIR LIB7HELPDIR LIB7MANDIR LIB7OBJDIR
+
+LIB8DIR = libid
+LIB8SRCDIR = src
+LIB8HDRDIR = include
+LIB8HELPDIR = help
+LIB8MANDIR = man
+LIB8OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB8DIR LIB8SRCDIR LIB8HDRDIR LIB8HELPDIR LIB8MANDIR LIB8OBJDIR
+
+ID_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB8DIR)/$(LIB8SRCDIR)
+ID_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB8DIR)/$(LIB8HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += ID_DESTSRCDIR ID_DESTHDRDIR
+
+LIB9DIR = liblogger
+LIB9SRCDIR = src
+LIB9HDRDIR = include
+LIB9HELPDIR = help
+LIB9MANDIR = man
+LIB9OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB9DIR LIB9SRCDIR LIB9HDRDIR LIB9HELPDIR LIB9MANDIR LIB9OBJDIR
+
+LOGGER_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9SRCDIR)
+LOGGER_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9HDRDIR)
+LOGGER_DESTMANDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9MANDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LOGGER_DESTSRCDIR LOGGER_DESTHDRDIR LOGGER_DESTMANDIR
+
+LOG_STREAM_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9SRCDIR)
+LOG_STREAM_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LOG_STREAM_DESTSRCDIR LOG_STREAM_DESTHDRDIR
+
+LOG_SUPPORT_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9SRCDIR)
+LOG_SUPPORT_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LOG_SUPPORT_DESTSRCDIR LOG_SUPPORT_DESTHDRDIR
+
+LOG_SYSLOG_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9SRCDIR)
+LOG_SYSLOG_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB9DIR)/$(LIB9HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LOG_SYSLOG_DESTSRCDIR LOG_SYSLOG_DESTHDRDIR
+
+LIB10DIR = libcivil_time
+LIB10SRCDIR = src
+LIB10HDRDIR = include
+LIB10HELPDIR = help
+LIB10MANDIR = man
+LIB10OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB10DIR LIB10SRCDIR LIB10HDRDIR LIB10HELPDIR LIB10MANDIR LIB10OBJDIR
+
+CIVIL_TIME_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB10DIR)/$(LIB10SRCDIR)
+CIVIL_TIME_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB10DIR)/$(LIB10HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += CIVIL_TIME_DESTSRCDIR CIVIL_TIME_DESTHDRDIR
+
+LIB11DIR = libutc_mktime
+LIB11SRCDIR = src
+LIB11HDRDIR = include
+LIB11HELPDIR = help
+LIB11MANDIR = man
+LIB11OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB11DIR LIB11SRCDIR LIB11HDRDIR LIB11HELPDIR LIB11MANDIR LIB11OBJDIR
+
+MKTIME_TEST_DESTSRCDIR = $(MAKEFILES_DIR)/$(SRCDIR)
+MKTIME_TEST_DESTHDRDIR = $(HDRDIR)
+UTC_MKTIME_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB11DIR)/$(LIB11SRCDIR)
+UTC_MKTIME_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB11DIR)/$(LIB11HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MKTIME_TEST_DESTSRCDIR MKTIME_TEST_DESTHDRDIR UTC_MKTIME_DESTSRCDIR UTC_MKTIME_DESTHDRDIR
+
+LIB12DIR = libleap_second
+LIB12SRCDIR = src
+LIB12HDRDIR = include
+LIB12HELPDIR = help
+LIB12MANDIR = man
+LIB12OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB12DIR LIB12SRCDIR LIB12HDRDIR LIB12HELPDIR LIB12MANDIR LIB12OBJDIR
+
+LEAP_SECOND_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB12DIR)/$(LIB12SRCDIR)
+LEAP_SECOND_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB12DIR)/$(LIB12HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LEAP_SECOND_DESTSRCDIR LEAP_SECOND_DESTHDRDIR
+
+LIB13DIR = libsnn
+LIB13SRCDIR = src
+LIB13HDRDIR = include
+LIB13HELPDIR = help
+LIB13MANDIR = man
+LIB13OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB13DIR LIB13SRCDIR LIB13HDRDIR LIB13HELPDIR LIB13MANDIR LIB13OBJDIR
+
+SNN_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB13DIR)/$(LIB13SRCDIR)
+SNN_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB13DIR)/$(LIB13HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SNN_DESTSRCDIR SNN_DESTHDRDIR
+
+LIB14DIR = libstrntol
+LIB14SRCDIR = src
+LIB14HDRDIR = include
+LIB14HELPDIR = help
+LIB14MANDIR = man
+LIB14OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB14DIR LIB14SRCDIR LIB14HDRDIR LIB14HELPDIR LIB14MANDIR LIB14OBJDIR
+
+STRNTOL_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB14DIR)/$(LIB14SRCDIR)
+STRNTOL_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB14DIR)/$(LIB14HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += STRNTOL_DESTSRCDIR STRNTOL_DESTHDRDIR
+
+LIB15DIR = libastro
+LIB15SRCDIR = src
+LIB15HDRDIR = include
+LIB15HELPDIR = help
+LIB15MANDIR = man
+LIB15OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB15DIR LIB15SRCDIR LIB15HDRDIR LIB15HELPDIR LIB15MANDIR LIB15OBJDIR
+
+SUNRISE_TEST_DESTSRCDIR = $(MAKEFILES_DIR)/$(SRCDIR)
+ASTRO_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15SRCDIR)
+ASTRO_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SUNRISE_TEST_DESTSRCDIR ASTRO_DESTSRCDIR ASTRO_DESTHDRDIR
+
+JD_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15SRCDIR)
+JD_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += JD_DESTSRCDIR JD_DESTHDRDIR
+
+MJD_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15SRCDIR)
+MJD_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB15DIR)/$(LIB15HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MJD_DESTSRCDIR MJD_DESTHDRDIR
+
+LIB16DIR = libangle
+LIB16SRCDIR = src
+LIB16HDRDIR = include
+LIB16HELPDIR = help
+LIB16MANDIR = man
+LIB16OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB16DIR LIB16SRCDIR LIB16HDRDIR LIB16HELPDIR LIB16MANDIR LIB16OBJDIR
+
+ANGLE_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB16DIR)/$(LIB16SRCDIR)
+ANGLE_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB16DIR)/$(LIB16HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += ANGLE_DESTSRCDIR ANGLE_DESTHDRDIR
+
+PI_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB16DIR)/$(LIB16SRCDIR)
+PI_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB16DIR)/$(LIB16HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PI_DESTSRCDIR PI_DESTHDRDIR
+
+LIB17DIR = libconfig
+LIB17SRCDIR = src
+LIB17HDRDIR = include
+LIB17HELPDIR = help
+LIB17MANDIR = man
+LIB17OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB17DIR LIB17SRCDIR LIB17HDRDIR LIB17HELPDIR LIB17MANDIR LIB17OBJDIR
+
+INDENT_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17SRCDIR)
+INDENT_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += INDENT_DESTSRCDIR INDENT_DESTHDRDIR
+
+RE_CONFIG_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17SRCDIR)
+RE_CONFIG_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RE_CONFIG_DESTSRCDIR RE_CONFIG_DESTHDRDIR
+
+SIMPLE_CONFIG_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17SRCDIR)
+SIMPLE_CONFIG_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SIMPLE_CONFIG_DESTSRCDIR SIMPLE_CONFIG_DESTHDRDIR
+
+SORTED_ARRAY_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17SRCDIR)
+SORTED_ARRAY_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SORTED_ARRAY_DESTSRCDIR SORTED_ARRAY_DESTHDRDIR
+
+LIB18DIR = libpaths
+LIB18SRCDIR = src
+LIB18HDRDIR = include
+LIB18HELPDIR = help
+LIB18MANDIR = man
+LIB18OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB18DIR LIB18SRCDIR LIB18HDRDIR LIB18HELPDIR LIB18MANDIR LIB18OBJDIR
+
+PATHS_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB18DIR)/$(LIB18SRCDIR)
+PATHS_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB18DIR)/$(LIB18HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PATHS_DESTSRCDIR PATHS_DESTHDRDIR
+
+LIB19DIR = libtimespec
+LIB19SRCDIR = src
+LIB19HDRDIR = include
+LIB19HELPDIR = help
+LIB19MANDIR = man
+LIB19OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB19DIR LIB19SRCDIR LIB19HDRDIR LIB19HELPDIR LIB19MANDIR LIB19OBJDIR
+
+TIMESPEC_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB19DIR)/$(LIB19SRCDIR)
+TIMESPEC_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB19DIR)/$(LIB19HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += TIMESPEC_DESTSRCDIR TIMESPEC_DESTHDRDIR
+
+LIB20DIR = libmedian
+LIB20SRCDIR = src
+LIB20HDRDIR = include
+LIB20HELPDIR = help
+LIB20MANDIR = man
+LIB20OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB20DIR LIB20SRCDIR LIB20HDRDIR LIB20HELPDIR LIB20MANDIR LIB20OBJDIR
+
+MEDIAN_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB20DIR)/$(LIB20SRCDIR)
+MEDIAN_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB20DIR)/$(LIB20HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MEDIAN_DESTSRCDIR MEDIAN_DESTHDRDIR
+
+LIB21DIR = libstring
+LIB21SRCDIR = src
+LIB21HDRDIR = include
+LIB21HELPDIR = help
+LIB21MANDIR = man
+LIB21OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB21DIR LIB21SRCDIR LIB21HDRDIR LIB21HELPDIR LIB21MANDIR LIB21OBJDIR
+
+STRING_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB21DIR)/$(LIB21SRCDIR)
+STRING_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB21DIR)/$(LIB21HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += STRING_DESTSRCDIR STRING_DESTHDRDIR
+
+LIB22DIR = libpool
+LIB22SRCDIR = src
+LIB22HDRDIR = include
+LIB22HELPDIR = help
+LIB22MANDIR = man
+LIB22OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB22DIR LIB22SRCDIR LIB22HDRDIR LIB22HELPDIR LIB22MANDIR LIB22OBJDIR
+
+POOL_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB22DIR)/$(LIB22SRCDIR)
+POOL_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB22DIR)/$(LIB22HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += POOL_DESTSRCDIR POOL_DESTHDRDIR
+
+QUEUE_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB22DIR)/$(LIB22SRCDIR)
+QUEUE_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB22DIR)/$(LIB22HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += QUEUE_DESTSRCDIR QUEUE_DESTHDRDIR
+
+LIB23DIR = libgraphing
+LIB23SRCDIR = src
+LIB23HDRDIR = include
+LIB23HELPDIR = help
+LIB23MANDIR = man
+LIB23OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB23DIR LIB23SRCDIR LIB23HDRDIR LIB23HELPDIR LIB23MANDIR LIB23OBJDIR
+
+GRAPHING_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB23DIR)/$(LIB23SRCDIR)
+GRAPHING_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB23DIR)/$(LIB23HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += GRAPHING_DESTSRCDIR GRAPHING_DESTHDRDIR
+
+LIB24DIR = librandom
+LIB24SRCDIR = src
+LIB24HDRDIR = include
+LIB24HELPDIR = help
+LIB24MANDIR = man
+LIB24OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB24DIR LIB24SRCDIR LIB24HDRDIR LIB24HELPDIR LIB24MANDIR LIB24OBJDIR
+
+RANDOM_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB24DIR)/$(LIB24SRCDIR)
+RANDOM_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB24DIR)/$(LIB24HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RANDOM_DESTSRCDIR RANDOM_DESTHDRDIR
+
+LIB25DIR = libshuffle
+LIB25SRCDIR = src
+LIB25HDRDIR = include
+LIB25HELPDIR = help
+LIB25MANDIR = man
+LIB25OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB25DIR LIB25SRCDIR LIB25HDRDIR LIB25HELPDIR LIB25MANDIR LIB25OBJDIR
+
+SHUFFLE_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB25DIR)/$(LIB25SRCDIR)
+SHUFFLE_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB25DIR)/$(LIB25HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SHUFFLE_DESTSRCDIR SHUFFLE_DESTHDRDIR
+
+LIB26DIR = .#
+LIB26SRCDIR = src
+LIB26HDRDIR = include
+LIB26HELPDIR = help
+LIB26MANDIR = man
+LIB26OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB26DIR LIB26SRCDIR LIB26HDRDIR LIB26HELPDIR LIB26MANDIR LIB26OBJDIR
+
+LIB27DIR = .#
+LIB27SRCDIR = src
+LIB27HDRDIR = include
+LIB27HELPDIR = help
+LIB27MANDIR = man
+LIB27OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB27DIR LIB27SRCDIR LIB27HDRDIR LIB27HELPDIR LIB27MANDIR LIB27OBJDIR
+
+LIB28DIR = libip
+LIB28SRCDIR = src
+LIB28HDRDIR = include
+LIB28HELPDIR = help
+LIB28MANDIR = man
+LIB28OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB28DIR LIB28SRCDIR LIB28HDRDIR LIB28HELPDIR LIB28MANDIR LIB28OBJDIR
+
+IP_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB28DIR)/$(LIB28SRCDIR)
+IP_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB28DIR)/$(LIB28HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += IP_DESTSRCDIR IP_DESTHDRDIR
+
+LIB29DIR = libresolv
+LIB29SRCDIR = src
+LIB29HDRDIR = include
+LIB29HELPDIR = help
+LIB29MANDIR = man
+LIB29OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB29DIR LIB29SRCDIR LIB29HDRDIR LIB29HELPDIR LIB29MANDIR LIB29OBJDIR
+
+RESOLV_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB29DIR)/$(LIB29SRCDIR)
+RESOLV_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB29DIR)/$(LIB29HDRDIR)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RESOLV_DESTSRCDIR RESOLV_DESTHDRDIR
+
+LIB30DIR = .#
+LIB30SRCDIR = src
+LIB30HDRDIR = include
+LIB30HELPDIR = help
+LIB30MANDIR = man
+LIB30OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB30DIR LIB30SRCDIR LIB30HDRDIR LIB30HELPDIR LIB30MANDIR LIB30OBJDIR
+
+LIB31DIR = .#
+LIB31SRCDIR = src
+LIB31HDRDIR = include
+LIB31HELPDIR = help
+LIB31MANDIR = man
+LIB31OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB31DIR LIB31SRCDIR LIB31HDRDIR LIB31HELPDIR LIB31MANDIR LIB31OBJDIR
+
+LIB32DIR = .#
+LIB32SRCDIR = src
+LIB32HDRDIR = include
+LIB32HELPDIR = help
+LIB32MANDIR = man
+LIB32OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB32DIR LIB32SRCDIR LIB32HDRDIR LIB32HELPDIR LIB32MANDIR LIB32OBJDIR
+
+LIB33DIR = .#
+LIB33SRCDIR = src
+LIB33HDRDIR = include
+LIB33HELPDIR = help
+LIB33MANDIR = man
+LIB33OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB33DIR LIB33SRCDIR LIB33HDRDIR LIB33HELPDIR LIB33MANDIR LIB33OBJDIR
+
+LIB34DIR = .#
+LIB34SRCDIR = src
+LIB34HDRDIR = include
+LIB34HELPDIR = help
+LIB34MANDIR = man
+LIB34OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB34DIR LIB34SRCDIR LIB34HDRDIR LIB34HELPDIR LIB34MANDIR LIB34OBJDIR
+
+LIB35DIR = .#
+LIB35SRCDIR = src
+LIB35HDRDIR = include
+LIB35HELPDIR = help
+LIB35MANDIR = man
+LIB35OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB35DIR LIB35SRCDIR LIB35HDRDIR LIB35HELPDIR LIB35MANDIR LIB35OBJDIR
+
+LIB36DIR = .#
+LIB36SRCDIR = src
+LIB36HDRDIR = include
+LIB36HELPDIR = help
+LIB36MANDIR = man
+LIB36OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB36DIR LIB36SRCDIR LIB36HDRDIR LIB36HELPDIR LIB36MANDIR LIB36OBJDIR
+
+LIB37DIR = .#
+LIB37SRCDIR = src
+LIB37HDRDIR = include
+LIB37HELPDIR = help
+LIB37MANDIR = man
+LIB37OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB37DIR LIB37SRCDIR LIB37HDRDIR LIB37HELPDIR LIB37MANDIR LIB37OBJDIR
+
+LIB38DIR = .#
+LIB38SRCDIR = src
+LIB38HDRDIR = include
+LIB38HELPDIR = help
+LIB38MANDIR = man
+LIB38OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB38DIR LIB38SRCDIR LIB38HDRDIR LIB38HELPDIR LIB38MANDIR LIB38OBJDIR
+
+LIB39DIR = .#
+LIB39SRCDIR = src
+LIB39HDRDIR = include
+LIB39HELPDIR = help
+LIB39MANDIR = man
+LIB39OBJDIR = obj
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LIB39DIR LIB39SRCDIR LIB39HDRDIR LIB39HELPDIR LIB39MANDIR LIB39OBJDIR
+
+# Scripts may be installed as executable files, or used for building.
+# shell script sources:
+SCRIPTSDIR = $(MAKEFILES_DIR)/scripts/shell
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SCRIPTSDIR
+# awk scripts:
+AWKSCRIPTSDIR = $(MAKEFILES_DIR)/scripts/awk
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += AWKSCRIPTSDIR
+

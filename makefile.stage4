@@ -1,0 +1,58 @@
+# Description: wrapper makefile that determines {host,OS,tools}-specific makefiles to use
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.stage4 $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to MAKEFILES_READ macro
+MAKEFILES_READ += makefile makefile.stage2 makefile.stage3 makefile.stage4
+
+default_target : depend
+
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+# MAKEFILES_DIR not yet defined...
+include makefile.include1
+
+# Add makefile name to .PRECIOUS pseudo-target
+.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.stage4
+
+include $(MAKEFILES_DIR)/makefile.include2
+include $(MAKEFILES_DIR)/makefile.include3
+include $(MAKEFILES_DIR)/makefile.include4
+
+# have now included through makefile.depend
+
+# Now that makefile.suffixes and makefile.suffix_rules have been included,
+#   it's time to run the NO_FAKE_TARGETS recipe again.
+# PRE_DEPEND is defined in makefile.platform, included by makefile.include4
+# makefile.depend has dependencies and recipe for building PRE_DEPEND; it also
+#   is included by makefile.include4
+depend : NO_FAKE_TARGETS $(PRE_DEPEND)
+

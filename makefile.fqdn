@@ -1,0 +1,141 @@
+#  Description: This is the description file used by the make command; build host-specific makefile for definitions and overrides
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.fqdn $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.fqdn
+MAKEFILES_READ += makefile.fqdn
+
+# dependencies
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+$(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) : \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.include1 \
+  $(MAKEFILES_DIR)/makefile.directories $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
+  $(MAKEFILES_DIR)/makefile.$(OS) $(MAKEFILES_DIR)/makefile.project \
+  $(MAKEFILES_DIR)/makefile.fqdn $(MAKEFILES_DIR)/makefile.tools 
+
+# recipe
+# N.B. BSD test doesn't grok ==
+# pdksh (NetBSD default ksh) whence emits "not found" on stdout instead of stderr
+# "for name_prog" line should have tool dependencies (e.g AWK,gawk) listed before "NONE"
+# awk, grep, sed, and sort are always required
+#  see makefile.project for additional tools
+# separator between macro and program cannot be a shell special character ~#$&*?()={}[]|\"'<>/:;%`
+# separator between macro and program should not be a character commonly used in macro names or program names _+-. (and of course letters and digits)
+# separator between macro and program cannot be a character which is mangled by make when passing to a shell @^
+# separator could be !,
+# use ',' for optional tools (continue with tool defined as an empty string)
+# use '!' for mandatory tools (stop if tool is not installed)
+# dmake botches $${foo%%pattern} and $${foo##pattern} by not evaluating with a proper $(SHELL)
+#   therefore, as a work-around, sed is used to split ${name_prog}
+# Note: $prog or $path may be used for the variable "line" value in the recipe
+# NetBSD /usr/bin/make doesn't use $(SHELL), and therefore botches the shell
+#  built-in "print"; workaround is to use the inferior "echo"
+# dmake and NetBSD /usr/bin.make botch passing "whence" to $(SHELL)
+#   workaround is to invoke $(SHELL) -c "whence ..."
+# macro UC_NAME_PREFIX is also defined in the generated file because dmake has
+#   no way to define a macro by running a shell command, and gmake and bmake
+#   mechanisms are non-portable.
+$(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) : 
+	> $@.$${PPID}.temp
+	@echo "# $@ generated on host $(FQDN) at $(DATE_TIME) from $(MAKEFILES_READ)" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# $@ rebuilt when out-of-date with respect to: $?" >> $@.$${PPID}.temp
+	@if test -n "$?" ; then ( gls -lrt --full-time $? 2>/dev/null || ls -lrt --full-time $? 2>/dev/null || ls -lrtT $? 2>/dev/null || ls -lrt $? ) | sed -e 's/^/# /' >> $@.$${PPID}.temp ; fi
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# environment:" >> $@.$${PPID}.temp
+	@env | sed -e 's/^/# /' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Boilerplate text generated from the template in makefile.tools follows below.' >> $@.$${PPID}.temp
+	@echo '# The compiler choice macro CC may be edited project-wide or site-wide by' >> $@.$${PPID}.temp
+	@echo '#   editing the line in makefile.tools.  Host-specific changes (including' >> $@.$${PPID}.temp
+	@echo '#   OS for multi-boot hosts) may be made by editing the CC macro definition' >> $@.$${PPID}.temp
+	@echo '#   (below) in this file.' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@sed -e s/TOOLS/$(OS)-$(FQDN)/ < $(MAKEFILES_DIR)/makefile.tools >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# UC_NAME_PREFIX is an all-upper-case version of NAME_PREFIX defined in' >> $@.$${PPID}.temp
+	@echo '#   makefile.project.' >> $@.$${PPID}.temp
+	@echo '# NAME_PREFIX and UC_NAME_PREFIX are used in makefile.suffix_rules.' >> $@.$${PPID}.temp
+	@echo '# Do not change UC_NAME_PREFIX here, edit NAME_PREFIX in makefile.project instead.' >> $@.$${PPID}.temp
+	@echo "UC_NAME_PREFIX = `echo '$(NAME_PREFIX)' | sed -e 'y/abcdefghijklmnopqrstuvwxyz/ABCDEFGHIJKLMNOPQRSTUVWXYZ/'`" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Do not change the following line (it is used for `make macros` for debugging).' >> $@.$${PPID}.temp
+	@echo "MACROS += UC_NAME_PREFIX" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Tools (programs) used by this host for this project, generated by' >> $@.$${PPID}.temp
+	@echo '#   makefile.fqdn using definitions of optional and mandatory' >> $@.$${PPID}.temp
+	@echo '#   project tools in makefile.project.' >> $@.$${PPID}.temp
+	@echo '# Host-independent changes to tools should be made in makefile.project;' >>$@.$${PPID}.temp
+	@echo '#   tools may be changed for a particular host by editing the following macros' >> $@.$${PPID}.temp
+	@echo '#   in this file.' >> $@.$${PPID}.temp
+	@names="" ;\
+	errs=0 ;\
+	for name_prog in $(PROJECT_TOOLS) NONE ; do \
+		mandatory=0 ;\
+		if test "$${name_prog}" = "NONE" ; then break ; fi ;\
+		name=`echo $${name_prog} | sed -e 's/[,].*//'` ;\
+		if test "$${name}" = "$${name_prog}" ; then mandatory=1 ; name=`echo $${name_prog} | sed -e 's/[!].*//'` ; fi ;\
+		prog=`echo $${name_prog} | sed -e 's/.*[,]//'` ;\
+		if test "$${prog}" = "$${name_prog}" ; then mandatory=1 ; prog=`echo $${name_prog} | sed -e 's/.*[!]//'` ; fi ;\
+		if test -n "$${prog}" ;\
+		then	path=`$(SHELL) -c "whence -v $${prog} 2>/dev/null" | awk '{ print $$NF }'` ;\
+			if test "$${path}" = "found" ; then path="" ; fi ;\
+			if test -z "$${path}" ; then path=`$(SHELL) -c "which -a $${prog} 2>/dev/null" | head -1 | awk '{ print $$NF }'` ; fi ;\
+			if test $${mandatory} -eq 1 ; then \
+				if test -z "$${path}" ; then echo mandatory program $${prog} cannot be found ; errs=1 ; fi ;\
+			else \
+				if test -z "$${path}" ; then echo optional program $${prog} cannot be found ; fi ;\
+			fi ;\
+			line="$${name} = $${path}" ;\
+			grep "^$${line} = $${path}$$" $@.$${PPID}.temp >/dev/null || echo "$${line}" >> $@.$${PPID}.temp ;\
+			names="$${names} $${name}" ;\
+		fi ;\
+	done ;\
+	if test $${errs} -ne 0 ; then rm -f $@.$${PPID}.temp ; exit $${errs} ; fi ;\
+	echo "" >> $@.$${PPID}.temp ;\
+	echo '# Macro names for tools defined above.  Tools defined in makefile.project' >> $@.$${PPID}.temp ;\
+	echo '#   are automatically added to the list below.  If new tools are added to' >> $@.$${PPID}.temp ;\
+	echo '#   this file (inadvisable!) rather than makefile.project, the macro names' >> $@.$${PPID}.temp ;\
+	echo '#   should be appended to the following list.' >> $@.$${PPID}.temp ;\
+	echo "MACROS += $${names}" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Macros for tool options (e.g. EQN_OPTIONS) are defined in makefile.project' >> $@.$${PPID}.temp
+	@echo '#   (q.v.).' >> $@.$${PPID}.temp
+	@echo '# They may be overridden by redefining them in this file.' >> $@.$${PPID}.temp
+	@echo '# Likewise for macros such as PROJECT_LIBS, RES, etc.' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@if test -s $@.$${PPID}.temp ; then mv -f $@.$${PPID}.temp $@ ; fi

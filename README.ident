@@ -1,0 +1,111 @@
+Description: layout of shell scripts for host/system/network/zone identification
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ README.ident $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for identification scripts to %Y% with subject \"ident\".
+#############################################################################
+# maintenance note: master file  %P%
+
+The following shell scripts set and export environment variables which may be
+used to identify a host, information about the operating system and run-time
+infrastructure, network and host addresses, and local time zone offset from UTC.
+
+The scripts are typically sourced (so that the environment variables are visible
+to the calling shell). In particular, ident.sh is sourced from makefile recipes
+to make system information available via environment variables (see
+README.makefiles).
+
+Each script may be given a -d argument (which may be repeated to increase
+debugging level) to turn on debugging.  Each script may be given a -p flag
+followed by another argument which specifies the path to the script.
+
+ident.sh	check for sane shell and source other scripts as needed by a
+			project
+host.sh		sets variables HOSTNAME, HOST, DOMAIN, FQDN
+system.sh	sets variables OS, DISTRIBUTION, OSVERSION, WORDSIZE,
+			ARCHITECTURE, EXECSUBDIR32BIT, EXECSUBDIR64BIT,
+			LIBDIR32BIT, LIBDIR64BIT
+network.sh	requires FQDN and OS; sets variables NETWORKS, ADDRESS,
+			DEFAULT_ROUTE, DNS_MASTER, MAIL_EXCHANGER
+date.sh		sets YESTERDAY TOMORROW YEAR MONTH DAY
+time.sh		sets HOUR MINUTE SECOND
+zone.sh		sets ZONE
+
+If the scripts are relocated, the path to the script (inside each script file)
+may need to be modified, unles the script is invoked with a specified path (via -p).
+
+The variables are used as follows:
+
+${FQDN} provides the fully-qualified domain name of the host.  Some systems will
+provide this as ${HOSTNAME}, while others provide only an unqualified name.  The
+unqualified name is available as ${HOST} and the domain name as ${DOMAIN}.
+
+Different operating systems handle library archives and executable files
+differently.  In some cases, multiple executables may be provided in
+subdirectories for different architectures (notably, 32-bit vs. 64-bit word
+size).  Some systems place 32-bit library archives in a default directory,
+with 64-bit versions in a subdirectory; others do the opposite, and still others
+place 64-bit libraries in a separate directory (not a subdirectory).
+
+Networking parameters may be important for some applications; these parameters
+include the host IPv4 address and network, the default route, the DNS resolver,
+and the mail exchanger host.
+
+Time zone offset from UTC can be used to disambiguate zoneless partial time
+specifications such as produced by compiler interpolation of the __TIME__
+macro.  The current (local) date and/or time may be useful for logging, etc.
+and these are available via ${YEAR}, ${MONTH}, ${DAY}, ${HOUR}, ${MINUTE}, and
+${SECOND}.  When accessing recent data, ${YESTERDAY} may be useful, similarly
+${TOMORROW} may be of use when preparing for future events.
+
+Examples:
+HOSTNAME "z400a.blilly.net"
+HOST "z400a"
+DOMAIN "blilly.net"
+FQDN "z400a.blilly.net"
+OS "netbsd"
+DISTRIBUTION "NetBSD7.0/amd64"
+WORDSIZE "64"
+OSVERSION "7.0"
+ARCHITECTURE "x86_64"
+EXECSUBDIR32BIT "i86"
+EXECSUBDIR64BIT "amd64"
+LIBDIR32BIT "/lib/i386"
+LIBDIR64BIT "/lib"
+NETWORKS "192.168.99.0"
+DEFAULT_ROUTE "192.168.99.254"
+ADDRESS "192.168.99.39"
+HOUR "19"
+MINUTE "30"
+SECOND "50"
+ZONE "-04:00"
+YESTERDAY "2016-03-16"
+YEAR "2016"
+MONTH "03"
+DAY "17"
+TOMORROW "2016-03-18"

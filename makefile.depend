@@ -1,0 +1,921 @@
+#  Description: This is the description file used by the make command; preparation to build dependencies
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.depend $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# This file contains generic recipes for building project dependency lists.
+# It is used for generation of dependency files, for building and installation.
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.depend
+MAKEFILES_READ += makefile.depend
+
+# $(PRE_DEPEND) [defined in makefile.make] contains built dependencies
+
+# dependencies for $(PRE_DEPEND)
+# $(PRE_DEPEND) does not depend on $(DEPEND_DIR),
+#   else it would be re-made every time the directory modification time changes
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+$(PRE_DEPEND) : \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(AWKSCRIPTSDIR)/decomment.awk \
+ $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.include1 \
+  $(MAKEFILES_DIR)/makefile.directories $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2\
+  $(MAKEFILES_DIR)/makefile.$(OS) $(MAKEFILES_DIR)/makefile.project \
+  $(MAKEFILES_DIR)/makefile.fqdn \
+ $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
+  $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+  $(MAKEFILES_DIR)/makefile.ccbase-$(OS)-$(FQDN) \
+  $(MAKEFILES_DIR)/makefile.platform $(MAKEFILES_DIR)/makefile.$(CCBASE) \
+  $(MAKEFILES_DIR)/makefile.suffixes $(MAKEFILES_DIR)/makefile.suffix_rules \
+  $(MAKEFILES_DIR)/makefile.files $(MAKEFILES_DIR)/makefile.licenses \
+  $(MAKEFILES_DIR)/makefile.imports $(MAKEFILES_DIR)/makefile.depend
+
+# makefile dependencies for targets listed in $(PRE_DEPEND)
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+DEPENDENCY_MAKEFILES = $(MAKEFILES_DIR)/makefile \
+ $(MAKEFILES_DIR)/makefile.include1 $(MAKEFILES_DIR)/makefile.directories \
+  $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
+  $(MAKEFILES_DIR)/makefile.$(OS) $(MAKEFILES_DIR)/makefile.project \
+  $(MAKEFILES_DIR)/makefile.fqdn \
+ $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
+  $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+  $(MAKEFILES_DIR)/makefile.ccbase-$(OS)-$(FQDN) \
+  $(MAKEFILES_DIR)/makefile.platform $(MAKEFILES_DIR)/makefile.$(CCBASE) \
+  $(MAKEFILES_DIR)/makefile.suffixes $(MAKEFILES_DIR)/makefile.suffix_rules \
+  $(MAKEFILES_DIR)/makefile.files $(MAKEFILES_DIR)/makefile.depend \
+ $(PRE_DEPEND)
+
+# recipe for building $(PRE_DEPEND)
+# gmake fails to recognize targets in $(DEPEND) and $(PRE_DEPEND) if they contain macros
+# dmake botches $${foo#pattern} and $${foo##pattern} by not evaluating with a proper $(SHELL)
+#   therefore, as a work-around, sed is used to split macros
+# N.B. BSD test doesn't grok ==
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+# NetBSD /usr/bin/make doesn't use $(SHELL), and therefore botches the shell
+#  built-in "print"; workaround is to use the inferior "echo"
+$(PRE_DEPEND) :
+	@if test ! -d $(DEPEND_DIR) ; then $(MKDIR) -p -m $(DIRMODE) $(DEPEND_DIR) ; fi
+	@ > $@.$${PPID}.temp
+	@echo "# $@ generated on host $(FQDN) at $(DATE_TIME) by makefile.depend from $(MAKEFILES_READ)" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# $@ rebuilt when out-of-date with respect to: $?" >> $@.$${PPID}.temp
+	@if test -n "$?" ; then ( gls -lrt --full-time $? 2>/dev/null || ls -lrt --full-time $? 2>/dev/null || ls -lrtT $? 2>/dev/null || ls -lrt $? ) | $(SED) -e 's/^/# /' >> $@.$${PPID}.temp ; fi
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# environment:" >> $@.$${PPID}.temp
+	@env | $(SED) -e 's/^/# /' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend: $$(DEPEND) ' "$(DEPEND) depends on " '$$(PRE_DEPEND) ' "$@ and script $(AWKSCRIPTSDIR)/depend.awk amd makefiles `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo "$(DEPEND) : $(DEPENDENCY_MAKEFILES) $(AWKSCRIPTSDIR)/depend.awk" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 1: output man page dependencies and recipes ' "`date -u +%Y-%m-%dT%TZ`"  >> $@.$${PPID}.temp
+	@if test -n "$(MANS)" ; then \
+		for file in $(MANS) bumble ; do \
+			if test "$${file}" = "bumble" ; then break ; fi ;\
+			base=`$(BASENAME) $${file} | $(SED) -e 's/.[0-9][ ]*$$//'` ;\
+			sect=`$(BASENAME) $${file} | $(SED) -e 's/.*.\\([0-9]\\)[ ]*$$/\\1/'` ;\
+			echo ".PRECIOUS : $(MANDIR)/$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+			echo 'MAN_TEXT += '"$${base}.txt" >> $@.$${PPID}.temp ;\
+			echo "$${base}.txt : $(MANDIR)/$${base}.txt" >> $@.$${PPID}.temp ;\
+			echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp ;\
+			echo "$(MANDIR)/$${base}.txt $(MANDIR)/$${base}.ps $(MANDIR)/$${base}.pdf : $(MANDIR)/$${base}.$${sect} $(DEPENDENCY_MAKEFILES)" >> $@.$${PPID}.temp ;\
+			if test -f "$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" ; then \
+				echo ".PRECIOUS : $(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+				echo "$(MANDIR)/$${base}.$${sect} : $(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+				echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $$@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+				echo '	if test -f '"$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+			fi ;\
+			for inst in $(INSTMAN1) $(INSTMAN2) $(INSTMAN3) $(INSTMAN4) $(INSTMAN5) $(INSTMAN6) $(INSTMAN7) $(INSTMAN8) $(INSTMAN9) fumble ; do \
+				if test "$${inst}" = "fumble" ; then break ; fi ;\
+				if test "$${inst}" = "$${file}" ; then \
+					echo 'INSTALLED_MAN_PAGES : $(PUBLIC_MANDIR)/man'"$${sect}/$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+					echo '$(PUBLIC_MANDIR)/man'"$${sect}/$${base}.$${sect}"' : $(MANDIR)/'"$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+					echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+					echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+					break ;\
+				fi ;\
+			done ;\
+		done ;\
+	fi
+	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
+		case $${lib} in \
+			1)	arch="$(LIB1ARCH)" ; mans="$(LIB1MAN)" ; dir="$(LIBDIR)/$(LIB1DIR)/$(LIB1MANDIR)" ;; \
+			2)	arch="$(LIB2ARCH)" ; mans="$(LIB2MAN)" ; dir="$(LIBDIR)/$(LIB2DIR)/$(LIB2MANDIR)" ;; \
+			3)	arch="$(LIB3ARCH)" ; mans="$(LIB3MAN)" ; dir="$(LIBDIR)/$(LIB3DIR)/$(LIB3MANDIR)" ;; \
+			4)	arch="$(LIB4ARCH)" ; mans="$(LIB4MAN)" ; dir="$(LIBDIR)/$(LIB4DIR)/$(LIB4MANDIR)" ;; \
+			5)	arch="$(LIB5ARCH)" ; mans="$(LIB5MAN)" ; dir="$(LIBDIR)/$(LIB5DIR)/$(LIB5MANDIR)" ;; \
+			6)	arch="$(LIB6ARCH)" ; mans="$(LIB6MAN)" ; dir="$(LIBDIR)/$(LIB6DIR)/$(LIB6MANDIR)" ;; \
+			7)	arch="$(LIB7ARCH)" ; mans="$(LIB7MAN)" ; dir="$(LIBDIR)/$(LIB7DIR)/$(LIB7MANDIR)" ;; \
+			8)	arch="$(LIB8ARCH)" ; mans="$(LIB8MAN)" ; dir="$(LIBDIR)/$(LIB8DIR)/$(LIB8MANDIR)" ;; \
+			9)	arch="$(LIB9ARCH)" ; mans="$(LIB9MAN)" ; dir="$(LIBDIR)/$(LIB9DIR)/$(LIB9MANDIR)" ;; \
+			10)	arch="$(LIB10ARCH)" ; mans="$(LIB10MAN)" ; dir="$(LIBDIR)/$(LIB10DIR)/$(LIB10MANDIR)" ;; \
+			11)	arch="$(LIB11ARCH)" ; mans="$(LIB11MAN)" ; dir="$(LIBDIR)/$(LIB11DIR)/$(LIB11MANDIR)" ;; \
+			12)	arch="$(LIB12ARCH)" ; mans="$(LIB12MAN)" ; dir="$(LIBDIR)/$(LIB12DIR)/$(LIB12MANDIR)" ;; \
+			13)	arch="$(LIB13ARCH)" ; mans="$(LIB13MAN)" ; dir="$(LIBDIR)/$(LIB13DIR)/$(LIB13MANDIR)" ;; \
+			14)	arch="$(LIB14ARCH)" ; mans="$(LIB14MAN)" ; dir="$(LIBDIR)/$(LIB14DIR)/$(LIB14MANDIR)" ;; \
+			15)	arch="$(LIB15ARCH)" ; mans="$(LIB15MAN)" ; dir="$(LIBDIR)/$(LIB15DIR)/$(LIB15MANDIR)" ;; \
+			16)	arch="$(LIB16ARCH)" ; mans="$(LIB16MAN)" ; dir="$(LIBDIR)/$(LIB16DIR)/$(LIB16MANDIR)" ;; \
+			17)	arch="$(LIB17ARCH)" ; mans="$(LIB17MAN)" ; dir="$(LIBDIR)/$(LIB17DIR)/$(LIB17MANDIR)" ;; \
+			18)	arch="$(LIB18ARCH)" ; mans="$(LIB18MAN)" ; dir="$(LIBDIR)/$(LIB18DIR)/$(LIB18MANDIR)" ;; \
+			19)	arch="$(LIB19ARCH)" ; mans="$(LIB19MAN)" ; dir="$(LIBDIR)/$(LIB19DIR)/$(LIB19MANDIR)" ;; \
+			20)	arch="$(LIB20ARCH)" ; mans="$(LIB20MAN)" ; dir="$(LIBDIR)/$(LIB20DIR)/$(LIB20MANDIR)" ;; \
+			21)	arch="$(LIB21ARCH)" ; mans="$(LIB21MAN)" ; dir="$(LIBDIR)/$(LIB21DIR)/$(LIB21MANDIR)" ;; \
+			22)	arch="$(LIB22ARCH)" ; mans="$(LIB22MAN)" ; dir="$(LIBDIR)/$(LIB22DIR)/$(LIB22MANDIR)" ;; \
+			23)	arch="$(LIB23ARCH)" ; mans="$(LIB23MAN)" ; dir="$(LIBDIR)/$(LIB23DIR)/$(LIB23MANDIR)" ;; \
+			24)	arch="$(LIB24ARCH)" ; mans="$(LIB24MAN)" ; dir="$(LIBDIR)/$(LIB24DIR)/$(LIB24MANDIR)" ;; \
+			25)	arch="$(LIB25ARCH)" ; mans="$(LIB25MAN)" ; dir="$(LIBDIR)/$(LIB25DIR)/$(LIB25MANDIR)" ;; \
+			26)	arch="$(LIB26ARCH)" ; mans="$(LIB26MAN)" ; dir="$(LIBDIR)/$(LIB26DIR)/$(LIB26MANDIR)" ;; \
+			27)	arch="$(LIB27ARCH)" ; mans="$(LIB27MAN)" ; dir="$(LIBDIR)/$(LIB27DIR)/$(LIB27MANDIR)" ;; \
+			28)	arch="$(LIB28ARCH)" ; mans="$(LIB28MAN)" ; dir="$(LIBDIR)/$(LIB28DIR)/$(LIB28MANDIR)" ;; \
+			29)	arch="$(LIB29ARCH)" ; mans="$(LIB29MAN)" ; dir="$(LIBDIR)/$(LIB29DIR)/$(LIB29MANDIR)" ;; \
+			30)	arch="$(LIB30ARCH)" ; mans="$(LIB30MAN)" ; dir="$(LIBDIR)/$(LIB30DIR)/$(LIB30MANDIR)" ;; \
+			31)	arch="$(LIB31ARCH)" ; mans="$(LIB31MAN)" ; dir="$(LIBDIR)/$(LIB31DIR)/$(LIB31MANDIR)" ;; \
+			32)	arch="$(LIB32ARCH)" ; mans="$(LIB32MAN)" ; dir="$(LIBDIR)/$(LIB32DIR)/$(LIB32MANDIR)" ;; \
+			33)	arch="$(LIB33ARCH)" ; mans="$(LIB33MAN)" ; dir="$(LIBDIR)/$(LIB33DIR)/$(LIB33MANDIR)" ;; \
+			34)	arch="$(LIB34ARCH)" ; mans="$(LIB34MAN)" ; dir="$(LIBDIR)/$(LIB34DIR)/$(LIB34MANDIR)" ;; \
+			35)	arch="$(LIB35ARCH)" ; mans="$(LIB35MAN)" ; dir="$(LIBDIR)/$(LIB35DIR)/$(LIB35MANDIR)" ;; \
+			36)	arch="$(LIB36ARCH)" ; mans="$(LIB36MAN)" ; dir="$(LIBDIR)/$(LIB36DIR)/$(LIB36MANDIR)" ;; \
+			37)	arch="$(LIB37ARCH)" ; mans="$(LIB37MAN)" ; dir="$(LIBDIR)/$(LIB37DIR)/$(LIB37MANDIR)" ;; \
+			38)	arch="$(LIB38ARCH)" ; mans="$(LIB38MAN)" ; dir="$(LIBDIR)/$(LIB38DIR)/$(LIB38MANDIR)" ;; \
+			39)	arch="$(LIB39ARCH)" ; mans="$(LIB39MAN)" ; dir="$(LIBDIR)/$(LIB39DIR)/$(LIB39MANDIR)" ;; \
+		esac ;\
+		if test -n "$${arch}" -a -n "$${mans}" ; then \
+			for file in $${mans} humble ; do \
+				if test "$${file}" = "humble" ; then break ; fi ;\
+				base=`$(BASENAME) $${file} | $(SED) -e 's/.[0-9][ ]*$$//'` ;\
+				sect=`$(BASENAME) $${file} | $(SED) -e 's/.*.\\([0-9]\\)[ ]*$$/\\1/'` ;\
+				echo ".PRECIOUS : $(MAKEFILES_DIR)/$${dir}/$${file}" >> $@.$${PPID}.temp ;\
+				echo 'MAN_TEXT += '"$${base}.txt" >> $@.$${PPID}.temp ;\
+				echo "$${base}.txt"' : '"$(MAKEFILES_DIR)/$${dir}/$${base}.txt" >> $@.$${PPID}.temp ;\
+				echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp ;\
+				echo "$(MAKEFILES_DIR)/$${dir}/$${base}.txt $(MAKEFILES_DIR)/$${dir}/$${base}.ps $(MAKEFILES_DIR)/$${dir}/$${base}.pdf"' : '"$(MAKEFILES_DIR)/$${dir}/$${base}.$${sect}"' $(DEPENDENCY_MAKEFILES)' >> $@.$${PPID}.temp ;\
+				if test -f "$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" ; then \
+					echo ".PRECIOUS : $(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+					echo "$(MAKEFILES_DIR)/$${dir}/$${base}.$${sect}"' : '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test  ; fi'"-f $(MAKEFILES_DIR)/$${dir}/$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/p.$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/p.$${base}.$${sect} ; then rm"' $$@ ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -f '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+				fi ;\
+				for inst in $(INSTMAN1) $(INSTMAN2) $(INSTMAN3) $(INSTMAN4) $(INSTMAN5) $(INSTMAN6) $(INSTMAN7) $(INSTMAN8) $(INSTMAN9) jumble ; do \
+					if test "$${inst}" = "jumble" ; then break ; fi ;\
+					if test "$${inst}" = "$${file}" ; then \
+						echo 'INSTALLED_MAN_PAGES : $(PUBLIC_MANDIR)/man'"$${sect}/$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+						echo '$(PUBLIC_MANDIR)/man'"$${sect}/$${base}.$${sect}"' : '"$(MAKEFILES_DIR)/$${dir}/$${base}.$${sect}" >> $@.$${PPID}.temp ;\
+						echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+						echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+						break ;\
+					fi ;\
+				done ;\
+			done ;\
+		fi ;\
+	done
+	@nfiles=0 ;\
+	for file in $(INSTMAN1) $(INSTMAN2) $(INSTMAN3) $(INSTMAN4) $(INSTMAN5) $(INSTMAN6) $(INSTMAN7) $(INSTMAN8) $(INSTMAN9) mumble ; do \
+		if test "$${file}" = "mumble" ; then break ; fi ;\
+		nfiles=1 ; break ;\
+	done ;\
+	if test $${nfiles} -eq 0 ; then echo INSTALLED_MAN_PAGES : >> $@.$${PPID}.temp ; fi
+	@echo '# makefile.depend $@ stage 1 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 1 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 2: output header file macros, dependencies, and recipes ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -n "$(HDRS)" ; then \
+		nfiles=0 ;\
+		for file in $(HDRS) humble ; do \
+			if test "$${file}" = "humble" ; then break ; fi ;\
+			echo "ALL_HEADERS += $(HDRDIR)/$${file}" >> $@.$${PPID}.temp ;\
+			built_file=0 ;\
+			if test -n "$(BUILTH)" ; then \
+				for built in $(BUILTH) jumble ; do \
+					if test "$${built}" = "jumble" ; then break ; fi ;\
+					if test "$${file}" = "$${built}" ; then \
+						echo "EXPENDABLES += $(HDRDIR)/$${file}" >> $@.$${PPID}.temp ;\
+						built_file=99 ; break ;\
+					fi ;\
+				done ;\
+			fi ;\
+			if test $${built_file} -eq 0 ; then \
+				echo ".PRECIOUS : $(HDRDIR)/$${file}" >> $@.$${PPID}.temp ;\
+				if test -f "$(HDRDIR)/$(SCCSDIR)/s.$${file}" ; then \
+					echo ".PRECIOUS : $(HDRDIR)/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
+					echo "$(HDRDIR)/$${file} : $(HDRDIR)/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -f '"$(HDRDIR)/$(SCCSDIR)/s.$${file}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(HDRDIR)/$(SCCSDIR)/s.$${file}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			echo "$(DEPEND) : $(HDRDIR)/$${file}" >> $@.$${PPID}.temp ;\
+			echo '$(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cflow_i.out $(ANALYSISDIR)/cppcheck.out $(MAKEFILES_DIR)/cscope.files $(ANALYSISDIR)/cxref $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out : $$(HDRDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			nfiles=1 ;\
+		done ;\
+		if test $${nfiles} -ne 0 ; then echo "INCLUDE += -I $(HDRDIR)" >> $@.$${PPID}.temp ; fi ;\
+	fi
+	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
+		case $${lib} in \
+			1) arch="$(LIB1ARCH)" ; hdrs="$(LIB1HDRS)" ; libdir="$(LIB1DIR)" ; hdrdir="$(LIB1HDRDIR)" ;; \
+			2) arch="$(LIB2ARCH)" ; hdrs="$(LIB2HDRS)" ; libdir="$(LIB2DIR)" ; hdrdir="$(LIB2HDRDIR)" ;; \
+			3) arch="$(LIB3ARCH)" ; hdrs="$(LIB3HDRS)" ; libdir="$(LIB3DIR)" ; hdrdir="$(LIB3HDRDIR)" ;; \
+			4) arch="$(LIB4ARCH)" ; hdrs="$(LIB4HDRS)" ; libdir="$(LIB4DIR)" ; hdrdir="$(LIB4HDRDIR)" ;; \
+			5) arch="$(LIB5ARCH)" ; hdrs="$(LIB5HDRS)" ; libdir="$(LIB5DIR)" ; hdrdir="$(LIB5HDRDIR)" ;; \
+			6) arch="$(LIB6ARCH)" ; hdrs="$(LIB6HDRS)" ; libdir="$(LIB6DIR)" ; hdrdir="$(LIB6HDRDIR)" ;; \
+			7) arch="$(LIB7ARCH)" ; hdrs="$(LIB7HDRS)" ; libdir="$(LIB7DIR)" ; hdrdir="$(LIB7HDRDIR)" ;; \
+			8) arch="$(LIB8ARCH)" ; hdrs="$(LIB8HDRS)" ; libdir="$(LIB8DIR)" ; hdrdir="$(LIB8HDRDIR)" ;; \
+			9) arch="$(LIB9ARCH)" ; hdrs="$(LIB9HDRS)" ; libdir="$(LIB9DIR)" ; hdrdir="$(LIB9HDRDIR)" ;; \
+			10) arch="$(LIB10ARCH)" ; hdrs="$(LIB10HDRS)" ; libdir="$(LIB10DIR)" ; hdrdir="$(LIB10HDRDIR)" ;; \
+			11) arch="$(LIB11ARCH)" ; hdrs="$(LIB11HDRS)" ; libdir="$(LIB11DIR)" ; hdrdir="$(LIB11HDRDIR)" ;; \
+			12) arch="$(LIB12ARCH)" ; hdrs="$(LIB12HDRS)" ; libdir="$(LIB12DIR)" ; hdrdir="$(LIB12HDRDIR)" ;; \
+			13) arch="$(LIB13ARCH)" ; hdrs="$(LIB13HDRS)" ; libdir="$(LIB13DIR)" ; hdrdir="$(LIB13HDRDIR)" ;; \
+			14) arch="$(LIB14ARCH)" ; hdrs="$(LIB14HDRS)" ; libdir="$(LIB14DIR)" ; hdrdir="$(LIB14HDRDIR)" ;; \
+			15) arch="$(LIB15ARCH)" ; hdrs="$(LIB15HDRS)" ; libdir="$(LIB15DIR)" ; hdrdir="$(LIB15HDRDIR)" ;; \
+			16) arch="$(LIB16ARCH)" ; hdrs="$(LIB16HDRS)" ; libdir="$(LIB16DIR)" ; hdrdir="$(LIB16HDRDIR)" ;; \
+			17) arch="$(LIB17ARCH)" ; hdrs="$(LIB17HDRS)" ; libdir="$(LIB17DIR)" ; hdrdir="$(LIB17HDRDIR)" ;; \
+			18) arch="$(LIB18ARCH)" ; hdrs="$(LIB18HDRS)" ; libdir="$(LIB18DIR)" ; hdrdir="$(LIB18HDRDIR)" ;; \
+			19) arch="$(LIB19ARCH)" ; hdrs="$(LIB19HDRS)" ; libdir="$(LIB19DIR)" ; hdrdir="$(LIB19HDRDIR)" ;; \
+			20) arch="$(LIB20ARCH)" ; hdrs="$(LIB20HDRS)" ; libdir="$(LIB20DIR)" ; hdrdir="$(LIB20HDRDIR)" ;; \
+			21) arch="$(LIB21ARCH)" ; hdrs="$(LIB21HDRS)" ; libdir="$(LIB21DIR)" ; hdrdir="$(LIB21HDRDIR)" ;; \
+			22) arch="$(LIB22ARCH)" ; hdrs="$(LIB22HDRS)" ; libdir="$(LIB22DIR)" ; hdrdir="$(LIB22HDRDIR)" ;; \
+			23) arch="$(LIB23ARCH)" ; hdrs="$(LIB23HDRS)" ; libdir="$(LIB23DIR)" ; hdrdir="$(LIB23HDRDIR)" ;; \
+			24) arch="$(LIB24ARCH)" ; hdrs="$(LIB24HDRS)" ; libdir="$(LIB24DIR)" ; hdrdir="$(LIB24HDRDIR)" ;; \
+			25) arch="$(LIB25ARCH)" ; hdrs="$(LIB25HDRS)" ; libdir="$(LIB25DIR)" ; hdrdir="$(LIB25HDRDIR)" ;; \
+			26) arch="$(LIB26ARCH)" ; hdrs="$(LIB26HDRS)" ; libdir="$(LIB26DIR)" ; hdrdir="$(LIB26HDRDIR)" ;; \
+			27) arch="$(LIB27ARCH)" ; hdrs="$(LIB27HDRS)" ; libdir="$(LIB27DIR)" ; hdrdir="$(LIB27HDRDIR)" ;; \
+			28) arch="$(LIB28ARCH)" ; hdrs="$(LIB28HDRS)" ; libdir="$(LIB28DIR)" ; hdrdir="$(LIB28HDRDIR)" ;; \
+			29) arch="$(LIB29ARCH)" ; hdrs="$(LIB29HDRS)" ; libdir="$(LIB29DIR)" ; hdrdir="$(LIB29HDRDIR)" ;; \
+			30) arch="$(LIB30ARCH)" ; hdrs="$(LIB30HDRS)" ; libdir="$(LIB30DIR)" ; hdrdir="$(LIB30HDRDIR)" ;; \
+			31) arch="$(LIB31ARCH)" ; hdrs="$(LIB31HDRS)" ; libdir="$(LIB31DIR)" ; hdrdir="$(LIB31HDRDIR)" ;; \
+			32) arch="$(LIB32ARCH)" ; hdrs="$(LIB32HDRS)" ; libdir="$(LIB32DIR)" ; hdrdir="$(LIB32HDRDIR)" ;; \
+			33) arch="$(LIB33ARCH)" ; hdrs="$(LIB33HDRS)" ; libdir="$(LIB33DIR)" ; hdrdir="$(LIB33HDRDIR)" ;; \
+			34) arch="$(LIB34ARCH)" ; hdrs="$(LIB34HDRS)" ; libdir="$(LIB34DIR)" ; hdrdir="$(LIB34HDRDIR)" ;; \
+			35) arch="$(LIB35ARCH)" ; hdrs="$(LIB35HDRS)" ; libdir="$(LIB35DIR)" ; hdrdir="$(LIB35HDRDIR)" ;; \
+			36) arch="$(LIB36ARCH)" ; hdrs="$(LIB36HDRS)" ; libdir="$(LIB36DIR)" ; hdrdir="$(LIB36HDRDIR)" ;; \
+			37) arch="$(LIB37ARCH)" ; hdrs="$(LIB37HDRS)" ; libdir="$(LIB37DIR)" ; hdrdir="$(LIB37HDRDIR)" ;; \
+			38) arch="$(LIB38ARCH)" ; hdrs="$(LIB38HDRS)" ; libdir="$(LIB38DIR)" ; hdrdir="$(LIB38HDRDIR)" ;; \
+			39) arch="$(LIB39ARCH)" ; hdrs="$(LIB39HDRS)" ; libdir="$(LIB39DIR)" ; hdrdir="$(LIB39HDRDIR)" ;; \
+		esac ;\
+		if test -n "$${arch}" ; then \
+			nfiles=0 ;\
+			for file in $${hdrs} bumble ; do \
+				if test "$${file}" = "bumble" ; then break ; fi ;\
+				echo "ALL_HEADERS += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file}" >> $@.$${PPID}.temp ;\
+				built_file=0 ;\
+				if test -n "$(BUILTH)" ; then \
+					for built in $(BUILTH) fumble ; do \
+						if test "$${built}" = "fumble" ; then break ; fi ;\
+						if test "$${file}" = "$${built}" ; then \
+							echo "EXPENDABLES += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file}" >> $@.$${PPID}.temp ;\
+							built_file=99 ; break ;\
+						fi ;\
+					done ;\
+				fi ;\
+				if test $${built_file} -eq 0 ; then \
+					echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file}" >> $@.$${PPID}.temp ;\
+					if test -f "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" ; then \
+						echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
+						echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+						echo '	if test -f '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+					fi ;\
+				fi ;\
+				echo "$(DEPEND) : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file}" >> $@.$${PPID}.temp ;\
+				echo "$(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cflow_i.out $(ANALYSISDIR)/cppcheck.out $(MAKEFILES_DIR)/cscope.files $(ANALYSISDIR)/cxref $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file}" >> $@.$${PPID}.temp ;\
+				nfiles=1 ;\
+			done ;\
+			if test $${nfiles} -ne 0 ; then echo "INCLUDE += -I $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}" >> $@.$${PPID}.temp ; fi ;\
+		fi ;\
+	done
+	@echo '# makefile.depend $@ stage 2 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 2 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 3: Object file, archive, source file macros, partial dependencies, and recipes ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 3a: Library archives ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo 'OBJECT_FILES32 =' >> $@.$${PPID}.temp
+	@echo 'OBJECT_FILES64 =' >> $@.$${PPID}.temp
+	@echo 'MACROS += OBJECT_FILES32 OBJECT_FILES64' >> $@.$${PPID}.temp
+	> $(DEPEND_DIR)/object_database32
+	> $(DEPEND_DIR)/object_database64
+	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
+		case $${lib} in \
+			1) arch="$(LIB1ARCH)" ; c99objs="$(C99LIB1OBJS)" ; objs="$(LIB1OBJS)" ; libdir="$(LIB1DIR)" ; objdir="$(LIB1OBJDIR)" ; srcdir="$(LIB1SRCDIR)" ;; \
+			2) arch="$(LIB2ARCH)" ; c99objs="$(C99LIB2OBJS)" ; objs="$(LIB2OBJS)" ; libdir="$(LIB2DIR)" ; objdir="$(LIB2OBJDIR)" ; srcdir="$(LIB2SRCDIR)" ;; \
+			3) arch="$(LIB3ARCH)" ; c99objs="$(C99LIB3OBJS)" ; objs="$(LIB3OBJS)" ; libdir="$(LIB3DIR)" ; objdir="$(LIB3OBJDIR)" ; srcdir="$(LIB3SRCDIR)" ;; \
+			4) arch="$(LIB4ARCH)" ; c99objs="$(C99LIB4OBJS)" ; objs="$(LIB4OBJS)" ; libdir="$(LIB4DIR)" ; objdir="$(LIB4OBJDIR)" ; srcdir="$(LIB4SRCDIR)" ;; \
+			5) arch="$(LIB5ARCH)" ; c99objs="$(C99LIB5OBJS)" ; objs="$(LIB5OBJS)" ; libdir="$(LIB5DIR)" ; objdir="$(LIB5OBJDIR)" ; srcdir="$(LIB5SRCDIR)" ;; \
+			6) arch="$(LIB6ARCH)" ; c99objs="$(C99LIB6OBJS)" ; objs="$(LIB6OBJS)" ; libdir="$(LIB6DIR)" ; objdir="$(LIB6OBJDIR)" ; srcdir="$(LIB6SRCDIR)" ;; \
+			7) arch="$(LIB7ARCH)" ; c99objs="$(C99LIB7OBJS)" ; objs="$(LIB7OBJS)" ; libdir="$(LIB7DIR)" ; objdir="$(LIB7OBJDIR)" ; srcdir="$(LIB7SRCDIR)" ;; \
+			8) arch="$(LIB8ARCH)" ; c99objs="$(C99LIB8OBJS)" ; objs="$(LIB8OBJS)" ; libdir="$(LIB8DIR)" ; objdir="$(LIB8OBJDIR)" ; srcdir="$(LIB8SRCDIR)" ;; \
+			9) arch="$(LIB9ARCH)" ; c99objs="$(C99LIB9OBJS)" ; objs="$(LIB9OBJS)" ; libdir="$(LIB9DIR)" ; objdir="$(LIB9OBJDIR)" ; srcdir="$(LIB9SRCDIR)" ;; \
+			10) arch="$(LIB10ARCH)" ; c99objs="$(C99LIB10OBJS)" ; objs="$(LIB10OBJS)" ; libdir="$(LIB10DIR)" ; objdir="$(LIB10OBJDIR)" ; srcdir="$(LIB10SRCDIR)" ;; \
+			11) arch="$(LIB11ARCH)" ; c99objs="$(C99LIB11OBJS)" ; objs="$(LIB11OBJS)" ; libdir="$(LIB11DIR)" ; objdir="$(LIB11OBJDIR)" ; srcdir="$(LIB11SRCDIR)" ;; \
+			12) arch="$(LIB12ARCH)" ; c99objs="$(C99LIB12OBJS)" ; objs="$(LIB12OBJS)" ; libdir="$(LIB12DIR)" ; objdir="$(LIB12OBJDIR)" ; srcdir="$(LIB12SRCDIR)" ;; \
+			13) arch="$(LIB13ARCH)" ; c99objs="$(C99LIB13OBJS)" ; objs="$(LIB13OBJS)" ; libdir="$(LIB13DIR)" ; objdir="$(LIB13OBJDIR)" ; srcdir="$(LIB13SRCDIR)" ;; \
+			14) arch="$(LIB14ARCH)" ; c99objs="$(C99LIB14OBJS)" ; objs="$(LIB14OBJS)" ; libdir="$(LIB14DIR)" ; objdir="$(LIB14OBJDIR)" ; srcdir="$(LIB14SRCDIR)" ;; \
+			15) arch="$(LIB15ARCH)" ; c99objs="$(C99LIB15OBJS)" ; objs="$(LIB15OBJS)" ; libdir="$(LIB15DIR)" ; objdir="$(LIB15OBJDIR)" ; srcdir="$(LIB15SRCDIR)" ;; \
+			16) arch="$(LIB16ARCH)" ; c99objs="$(C99LIB16OBJS)" ; objs="$(LIB16OBJS)" ; libdir="$(LIB16DIR)" ; objdir="$(LIB16OBJDIR)" ; srcdir="$(LIB16SRCDIR)" ;; \
+			17) arch="$(LIB17ARCH)" ; c99objs="$(C99LIB17OBJS)" ; objs="$(LIB17OBJS)" ; libdir="$(LIB17DIR)" ; objdir="$(LIB17OBJDIR)" ; srcdir="$(LIB17SRCDIR)" ;; \
+			18) arch="$(LIB18ARCH)" ; c99objs="$(C99LIB18OBJS)" ; objs="$(LIB18OBJS)" ; libdir="$(LIB18DIR)" ; objdir="$(LIB18OBJDIR)" ; srcdir="$(LIB18SRCDIR)" ;; \
+			19) arch="$(LIB19ARCH)" ; c99objs="$(C99LIB19OBJS)" ; objs="$(LIB19OBJS)" ; libdir="$(LIB19DIR)" ; objdir="$(LIB19OBJDIR)" ; srcdir="$(LIB19SRCDIR)" ;; \
+			20) arch="$(LIB20ARCH)" ; c99objs="$(C99LIB20OBJS)" ; objs="$(LIB20OBJS)" ; libdir="$(LIB20DIR)" ; objdir="$(LIB20OBJDIR)" ; srcdir="$(LIB20SRCDIR)" ;; \
+			21) arch="$(LIB21ARCH)" ; c99objs="$(C99LIB21OBJS)" ; objs="$(LIB21OBJS)" ; libdir="$(LIB21DIR)" ; objdir="$(LIB21OBJDIR)" ; srcdir="$(LIB21SRCDIR)" ;; \
+			22) arch="$(LIB22ARCH)" ; c99objs="$(C99LIB22OBJS)" ; objs="$(LIB22OBJS)" ; libdir="$(LIB22DIR)" ; objdir="$(LIB22OBJDIR)" ; srcdir="$(LIB22SRCDIR)" ;; \
+			23) arch="$(LIB23ARCH)" ; c99objs="$(C99LIB23OBJS)" ; objs="$(LIB23OBJS)" ; libdir="$(LIB23DIR)" ; objdir="$(LIB23OBJDIR)" ; srcdir="$(LIB23SRCDIR)" ;; \
+			24) arch="$(LIB24ARCH)" ; c99objs="$(C99LIB24OBJS)" ; objs="$(LIB24OBJS)" ; libdir="$(LIB24DIR)" ; objdir="$(LIB24OBJDIR)" ; srcdir="$(LIB24SRCDIR)" ;; \
+			25) arch="$(LIB25ARCH)" ; c99objs="$(C99LIB25OBJS)" ; objs="$(LIB25OBJS)" ; libdir="$(LIB25DIR)" ; objdir="$(LIB25OBJDIR)" ; srcdir="$(LIB25SRCDIR)" ;; \
+			26) arch="$(LIB26ARCH)" ; c99objs="$(C99LIB26OBJS)" ; objs="$(LIB26OBJS)" ; libdir="$(LIB26DIR)" ; objdir="$(LIB26OBJDIR)" ; srcdir="$(LIB26SRCDIR)" ;; \
+			27) arch="$(LIB27ARCH)" ; c99objs="$(C99LIB27OBJS)" ; objs="$(LIB27OBJS)" ; libdir="$(LIB27DIR)" ; objdir="$(LIB27OBJDIR)" ; srcdir="$(LIB27SRCDIR)" ;; \
+			28) arch="$(LIB28ARCH)" ; c99objs="$(C99LIB28OBJS)" ; objs="$(LIB28OBJS)" ; libdir="$(LIB28DIR)" ; objdir="$(LIB28OBJDIR)" ; srcdir="$(LIB28SRCDIR)" ;; \
+			29) arch="$(LIB29ARCH)" ; c99objs="$(C99LIB29OBJS)" ; objs="$(LIB29OBJS)" ; libdir="$(LIB29DIR)" ; objdir="$(LIB29OBJDIR)" ; srcdir="$(LIB29SRCDIR)" ;; \
+			30) arch="$(LIB30ARCH)" ; c99objs="$(C99LIB30OBJS)" ; objs="$(LIB30OBJS)" ; libdir="$(LIB30DIR)" ; objdir="$(LIB30OBJDIR)" ; srcdir="$(LIB30SRCDIR)" ;; \
+			31) arch="$(LIB31ARCH)" ; c99objs="$(C99LIB31OBJS)" ; objs="$(LIB31OBJS)" ; libdir="$(LIB31DIR)" ; objdir="$(LIB31OBJDIR)" ; srcdir="$(LIB31SRCDIR)" ;; \
+			32) arch="$(LIB32ARCH)" ; c99objs="$(C99LIB32OBJS)" ; objs="$(LIB32OBJS)" ; libdir="$(LIB32DIR)" ; objdir="$(LIB32OBJDIR)" ; srcdir="$(LIB32SRCDIR)" ;; \
+			33) arch="$(LIB33ARCH)" ; c99objs="$(C99LIB33OBJS)" ; objs="$(LIB33OBJS)" ; libdir="$(LIB33DIR)" ; objdir="$(LIB33OBJDIR)" ; srcdir="$(LIB33SRCDIR)" ;; \
+			34) arch="$(LIB34ARCH)" ; c99objs="$(C99LIB34OBJS)" ; objs="$(LIB34OBJS)" ; libdir="$(LIB34DIR)" ; objdir="$(LIB34OBJDIR)" ; srcdir="$(LIB34SRCDIR)" ;; \
+			35) arch="$(LIB35ARCH)" ; c99objs="$(C99LIB35OBJS)" ; objs="$(LIB35OBJS)" ; libdir="$(LIB35DIR)" ; objdir="$(LIB35OBJDIR)" ; srcdir="$(LIB35SRCDIR)" ;; \
+			36) arch="$(LIB36ARCH)" ; c99objs="$(C99LIB36OBJS)" ; objs="$(LIB36OBJS)" ; libdir="$(LIB36DIR)" ; objdir="$(LIB36OBJDIR)" ; srcdir="$(LIB36SRCDIR)" ;; \
+			37) arch="$(LIB37ARCH)" ; c99objs="$(C99LIB37OBJS)" ; objs="$(LIB37OBJS)" ; libdir="$(LIB37DIR)" ; objdir="$(LIB37OBJDIR)" ; srcdir="$(LIB37SRCDIR)" ;; \
+			38) arch="$(LIB38ARCH)" ; c99objs="$(C99LIB38OBJS)" ; objs="$(LIB38OBJS)" ; libdir="$(LIB38DIR)" ; objdir="$(LIB38OBJDIR)" ; srcdir="$(LIB38SRCDIR)" ;; \
+			39) arch="$(LIB39ARCH)" ; c99objs="$(C99LIB39OBJS)" ; objs="$(LIB39OBJS)" ; libdir="$(LIB39DIR)" ; objdir="$(LIB39OBJDIR)" ; srcdir="$(LIB39SRCDIR)" ;; \
+		esac ;\
+		if test -n "$${arch}" ; then \
+			echo "ARCHES32 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${arch}" >> $@.$${PPID}.temp ;\
+			echo "ARCHES64 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${arch}" >> $@.$${PPID}.temp ;\
+			for type in c99 c ; do \
+				if test "$${type}" = "c99" ; then \
+					files="$${c99objs}" ; flags='$$(C99FLAGS)' ;\
+				else	files="$${objs}" ; flags='$$(CFLAGS)' ;\
+				fi ;\
+				for file in $${files} bumble ; do \
+					if test "$${file}" = "bumble" ; then break ; fi ;\
+					echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file} $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${arch}" >> $(DEPEND_DIR)/object_database32 ;\
+					echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file} $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${arch}" >> $(DEPEND_DIR)/object_database64 ;\
+					echo "OBJECT_FILES32 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					echo "$(DEPEND_DIR)/object_lorder32 : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					echo "OBJECT_FILES64 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					echo "$(DEPEND_DIR)/object_lorder64 : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					echo "OBJECT_FILES += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file} $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					base=`$(BASENAME) $${file} .o` ;\
+					source=$${base}.c ;\
+					echo "ALL_SOURCES += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+					built_file=0 ;\
+					if test -n "$(BUILTC)" ; then \
+						for built in $(BUILTC) fumble ; do \
+							if test "$${built}" = "fumble" ; then break ; fi ;\
+							if test "$${source}" = "$${built}" ; then \
+								echo "EXPENDABLES += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+								built_file=99 ; break ;\
+							fi ;\
+						done ;\
+					fi ;\
+					if test $${built_file} -eq 0 ; then \
+						echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+						if test -f $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source} ; then \
+							echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
+							echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
+							echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+							echo '	if test -f '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/s.$${source}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/s.$${source}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+						fi ;\
+					fi ;\
+					echo "$(DEPEND) : $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d" >> $@.$${PPID}.temp ;\
+					echo "$(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source} $(DEPENDENCY_MAKEFILES)" >> $@.$${PPID}.temp ;\
+					echo "$(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d :" >> $@.$${PPID}.temp ;\
+					echo '	if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+					echo '	@echo "# generated on host $$(FQDN) at $$(DATE_TIME) by '"$@ "'from $$(MAKEFILES_READ) using $$(CC) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(MAKE_DEPEND_ARG) '"$${flags}"' '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}"'" > $$@' >> $@.$${PPID}.temp ;\
+					echo '	$$(CC) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(MAKE_DEPEND_ARG) '"$${flags}"' '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source} "'>> $$@' >> $@.$${PPID}.temp ;\
+					echo "$(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cflow_i.out $(ANALYSISDIR)/cppcheck.out $(MAKEFILES_DIR)/cscope.files $(ANALYSISDIR)/cxref $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+					if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 32 ; then \
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file} :" >> $@.$${PPID}.temp ;\
+						echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+						echo '	$$(CC) '"$${flags}"' -m32 $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -c -o $$@ '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${arch} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					fi ;\
+					if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 64 ; then \
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file} :" >> $@.$${PPID}.temp ;\
+						echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+						echo '	$$(CC) '"$${flags}"' -m64 $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -c -o $$@ '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source}" >> $@.$${PPID}.temp ;\
+						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${arch} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${objdir}/$${file}" >> $@.$${PPID}.temp ;\
+					fi ;\
+					if test -f $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d -a ! -s $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d ; then rm -f $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d ; fi ;\
+				done ;\
+			done ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 32 ; then \
+				echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${arch} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	$$(AR) r $$@ $$?' >> $@.$${PPID}.temp ;\
+			fi ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 64 ; then \
+				echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${arch} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	$$(AR) r $$@ $$?' >> $@.$${PPID}.temp ;\
+			fi ;\
+		fi ;\
+	done
+	@echo "$(DEPEND_DIR)/object_lorder32 :" >> $@.$${PPID}.temp
+	@echo '	$$(LORDER) $$(OBJECT_FILES32) > $$@' >> $@.$${PPID}.temp
+	@echo "$(DEPEND_DIR)/object_lorder64 :" >> $@.$${PPID}.temp
+	@echo '	$$(LORDER) $$(OBJECT_FILES64) > $$@' >> $@.$${PPID}.temp
+	@echo "$(DEPEND_DIR)/archive_lorder32 : $(DEPEND_DIR)/object_lorder32" >> $@.$${PPID}.temp
+	@echo '	$$(AWK) -f $$(AWKSCRIPTSDIR)/object_archive.awk -vdb=$(DEPEND_DIR)/object_database32 $$? > $$@' >> $@.$${PPID}.temp
+	@echo "$(DEPEND_DIR)/archive_lorder64 : $(DEPEND_DIR)/object_lorder64" >> $@.$${PPID}.temp
+	@echo '	$$(AWK) -f $$(AWKSCRIPTSDIR)/object_archive.awk -vdb=$(DEPEND_DIR)/object_database64 $$? > $$@' >> $@.$${PPID}.temp
+	@echo "$(DEPEND_DIR)/archive_tsort32 : $(DEPEND_DIR)/archive_lorder32" >> $@.$${PPID}.temp
+	@echo '	-$$(TSORT) < $$? > $$@' >> $@.$${PPID}.temp
+	@echo "$(DEPEND_DIR)/archive_tsort64 : $(DEPEND_DIR)/archive_lorder64" >> $@.$${PPID}.temp
+	@echo '	-$$(TSORT) < $$? > $$@' >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 3b: main programs ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@for type in c99 c ; do \
+		if test "$${type}" = "c99" ; then \
+			files="$(C99OBJS)" ; flags='$$(C99FLAGS)' ;\
+		else	files="$(OBJS)" ; flags='$$(CFLAGS)' ;\
+		fi ;\
+		for file in $${files} jumble ; do \
+			if test "$${file}" = "jumble" ; then break ; fi ;\
+			if test -n "$(ISAEXEC)" ; then \
+				echo "OBJECT_FILES += $(OBJDIR)/$(EXECSUBDIR32BIT)/$${file} $(OBJDIR)/$(EXECSUBDIR64BIT)/$${file}" >> $@.$${PPID}.temp ;\
+			else	if test $(WORDSIZE) -eq 32 ; then \
+					echo "OBJECT_FILES += $(OBJDIR)/$(EXECSUBDIR32BIT)/$${file}" >> $@.$${PPID}.temp ;\
+				else \
+					echo "OBJECT_FILES += $(OBJDIR)/$(EXECSUBDIR64BIT)/$${file}" >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			base=`$(BASENAME) $${file} .o` ;\
+			echo 'TOP_LEVEL_PROGS += '"$${base}" >> $@.$${PPID}.temp ;\
+			source=$${base}.c ;\
+			echo "ALL_SOURCES += $(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+			built_file=0 ;\
+			if test -n "$(BUILTC)" ; then \
+				for built in $(BUILTC) mumble ; do \
+					if test "$${built}" = "mumble" ; then break ; fi ;\
+					if test "$${source}" = "$${built}" ; then \
+						echo 'EXPENDABLES += '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+						built_file=99 ; break ;\
+					fi ;\
+				done ;\
+			fi ;\
+			if test $${built_file} -eq 0 ; then \
+				echo ".PRECIOUS : $(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+				if test -f $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source} ; then \
+					echo ".PRECIOUS : $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
+					echo "$(MAKEFILES_DIR)/$(SRCDIR)/$${file} : $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -f '"$(MAKEFILES_DIR)/$(SRCDIR)/s.$${source}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(SRCDIR)/s.$${source}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			echo "$(DEPEND) : $(DEPEND_DIR)/$(SRCDIR)/$${base}.d" >> $@.$${PPID}.temp ;\
+			echo "$(DEPEND_DIR)/$(SRCDIR)/$${base}.d : $(MAKEFILES_DIR)/$(SRCDIR)/$${source} $(DEPENDENCY_MAKEFILES)" >> $@.$${PPID}.temp ;\
+			echo "$(DEPEND_DIR)/$(SRCDIR)/$${base}.d :" >> $@.$${PPID}.temp ;\
+			echo '	if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+			echo '	@echo "# generated on host $$(FQDN) at $$(DATE_TIME) by '"$@ "'from $$(MAKEFILES_READ) using $$(CC) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(MAKE_DEPEND_ARG) '"$${flags}"' '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}"'" > $$@' >> $@.$${PPID}.temp ;\
+			echo '	$$(CC) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(MAKE_DEPEND_ARG) '"$${flags}"' '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}"' >> $$@' >> $@.$${PPID}.temp ;\
+			if test -n "$(ISAEXEC)" ; then \
+				echo "LOCAL_PROGRAMS += $(BINDIR)/$${base} $(BINDIR)/$(EXECSUBDIR32BIT)/$${base} $(BINDIR)/$(EXECSUBDIR64BIT)/$${base}" >> $@.$${PPID}.temp ;\
+			else	if test $(WORDSIZE) -eq 32 ; then \
+					echo "LOCAL_PROGRAMS += $(BINDIR)/$${base} $(BINDIR)/$(EXECSUBDIR32BIT)/$${base}" >> $@.$${PPID}.temp ;\
+				else \
+					echo "LOCAL_PROGRAMS += $(BINDIR)/$${base} $(BINDIR)/$(EXECSUBDIR64BIT)/$${base}" >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			echo "$${base} $(MAKEFILES_DIR)/$${base} : $(BINDIR)/$${base}" >> $@.$${PPID}.temp ;\
+			echo "	@if test -f $(MAKEFILES_DIR)/$${base} ; then rm -f $(MAKEFILES_DIR)/$${base} ; fi" >> $@.$${PPID}.temp ;\
+			echo "	ln -s -f $(BINDIR)/$${base} $(MAKEFILES_DIR)/$${base} || cp -f $(BINDIR)/$${base} $(MAKEFILES_DIR)/$${base}" >> $@.$${PPID}.temp ;\
+			if test -n "$(ISAEXEC)" ; then \
+				echo "$(BINDIR)/$${base} : $(BINDIR)/$(EXECSUBDIR32BIT)/$${base} $(BINDIR)/$(EXECSUBDIR64BIT)/$${base}" >> $@.$${PPID}.temp ;\
+			else	if test $(WORDSIZE) -eq 32 ; then \
+					echo "$(BINDIR)/$${base} : $(BINDIR)/$(EXECSUBDIR32BIT)/$${base}" >> $@.$${PPID}.temp ;\
+				else \
+					echo "$(BINDIR)/$${base} : $(BINDIR)/$(EXECSUBDIR64BIT)/$${base}" >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			echo "$(BINDIR)/$${base} :" >> $@.$${PPID}.temp ;\
+			if test -n "$(ISAEXEC)" ; then \
+				echo '	$$(RSYNC) $$(RSYNC_OPTS) -I $$(ISAEXEC) $$@' >> $@.$${PPID}.temp ;\
+			else	if test $(WORDSIZE) -eq 32 ; then \
+					echo '	$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$(@D)/$(EXECSUBDIR32BIT)/$$(@F) $$@' >> $@.$${PPID}.temp ;\
+				else \
+					echo '	$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$(@D)/$(EXECSUBDIR64BIT)/$$(@F) $$@' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 32 ; then \
+				echo "$(BINDIR)/$(EXECSUBDIR32BIT)/$${base} : $(OBJDIR)/$(EXECSUBDIR32BIT)/$${file} $(DEPEND_DIR)/archive_tsort32 "'$$(ARCHES32)' >> $@.$${PPID}.temp ;\
+				echo "$(BINDIR)/$(EXECSUBDIR32BIT)/$${base} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				if test $(WORDSIZE) -ne 32 ; then \
+					echo '	$$(CC) $$(LDFLAGS) $$(OS_LDFLAGS) -m32 -o $$@ $$(OBJDIR)/$(EXECSUBDIR32BIT)/$$(@F).o `$(CAT) $(DEPEND_DIR)/archive_tsort32` $$(OS_LIBDIRS) $$(OS_LIBS) $$(PROJECT_LIBS) || true' >> $@.$${PPID}.temp ;\
+				else \
+					echo '	$$(CC) $$(LDFLAGS) $$(OS_LDFLAGS) -m32 -o $$@ $$(OBJDIR)/$(EXECSUBDIR32BIT)/$$(@F).o `$(CAT) $(DEPEND_DIR)/archive_tsort32` $$(OS_LIBDIRS) $$(OS_LIBS) $$(PROJECT_LIBS)' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 32 ; then \
+				echo "$(OBJDIR)/$(EXECSUBDIR32BIT)/$${file} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	echo "$$(CC) '"$${flags}"' -m32 $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -c -o $$@ '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}"'"' >> $@.$${PPID}.temp ;\
+				echo '	$$(CC) '"$${flags}"' -m32 $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -c -o $$@ '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+			fi ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 64 ; then \
+				echo "$(BINDIR)/$(EXECSUBDIR64BIT)/$${base} : $(OBJDIR)/$(EXECSUBDIR64BIT)/$${file} $(DEPEND_DIR)/archive_tsort64 "'$$(ARCHES64)' >> $@.$${PPID}.temp ;\
+				echo "$(BINDIR)/$(EXECSUBDIR64BIT)/$${base} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				if test $(WORDSIZE) -ne 64 ; then \
+					echo '	$$(CC) $$(LDFLAGS) $$(OS_LDFLAGS) -m64 -o $$@ $$(OBJDIR)/$(EXECSUBDIR64BIT)/$$(@F).o `$(CAT) $(DEPEND_DIR)/archive_tsort64` $$(OS_LIBDIRS) $$(OS_LIBS) $$(PROJECT_LIBS) || true' >> $@.$${PPID}.temp ;\
+				else \
+					echo '	$$(CC) $$(LDFLAGS) $$(OS_LDFLAGS) -m64 -o $$@ $$(OBJDIR)/$(EXECSUBDIR64BIT)/$$(@F).o `$(CAT) $(DEPEND_DIR)/archive_tsort64` $$(OS_LIBDIRS) $$(OS_LIBS) $$(PROJECT_LIBS)' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+			if test -n "$(ISAEXEC)" -o $(WORDSIZE) -eq 64 ; then \
+				echo "$(OBJDIR)/$(EXECSUBDIR64BIT)/$${file} :" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	$$(CC) '"$${flags}"' -m64 $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -c -o $$@ '"$(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+			fi ;\
+			echo "$(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cflow_i.out $(ANALYSISDIR)/cppcheck.out $(MAKEFILES_DIR)/cscope.files $(ANALYSISDIR)/cxref $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out : $(MAKEFILES_DIR)/$(SRCDIR)/$${source}" >> $@.$${PPID}.temp ;\
+		done ;\
+	done
+	@echo '# makefile.depend $@ stage 3 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 3 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 4: output installed program dependencies and recipes ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -n "$(INSTALLED_USER_PROGRAMS)" -o -n "$(INSTALLED_ADMIN_PROGRAMS)" -o -n "$(INSTALLED_DAEMONS)" ; then \
+		for file in $(INSTALLED_USER_PROGRAMS) $(INSTALLED_ADMIN_PROGRAMS) $(INSTALLED_DAEMONS) bumble ; do \
+			if test "$${file}" = "bumble" ; then break ; fi ;\
+			base=`$(BASENAME) $${file}` ;\
+			echo "$${file}"' : $(BINDIR)/'"$${base}" >> $@.$${PPID}.temp ;\
+			echo "$${file}"' :' >> $@.$${PPID}.temp ;\
+			echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+			echo '	$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $(BINDIR)/'"$${base} $${file}" >> $@.$${PPID}.temp ;\
+			echo '	-$(CHMOD) $$(EXMODE) $$@' >> $@.$${PPID}.temp ;\
+			echo '	-$(CHGRP) $$(GROUP) $$@' >> $@.$${PPID}.temp ;\
+			echo '	-$(CHOWN) $$(OWNER) $$@' >> $@.$${PPID}.temp ;\
+			is_script=0 ;\
+			if test -n "$(SHELLSCRIPTS)" ; then \
+				for script in $(SHELLSCRIPTS) ; do \
+					if test "$${script}" = "$${base}.sh" ; then \
+						is_script=1 ; break ;\
+					fi ;\
+				done ;\
+			fi ;\
+			if test $${is_script} -ne 0 ; then \
+				echo '$(BINDIR)/'"$${base}"' : $(SCRIPTSDIR)/'"$${script}" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+				echo '	-$(CHMOD) a+rx $$@' >> $@.$${PPID}.temp ;\
+			else	if test -n "$(ISAEXEC)" ; then \
+					dir=`$(DIRNAME) $${file}` ;\
+					echo "$${file}"' : '"$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR32BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}"' :' >> $@.$${PPID}.temp ;\
+					echo '	@if test -n $$(ISAEXEC) ; then \' >> $@.$${PPID}.temp ;\
+					echo '		if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi ;\' >> $@.$${PPID}.temp ;\
+					echo '		if test -f $$? ; then \' >> $@.$${PPID}.temp ;\
+					echo '			$$(RSYNC) -I $$(RSYNC_OPTS) $$? $$@ ;\' >> $@.$${PPID}.temp ;\
+					echo '			$(CHMOD) $$(EXMODE) $$@ ;\' >> $@.$${PPID}.temp ;\
+					echo '			$(CHGRP) $$(GROUP) $$@ ;\' >> $@.$${PPID}.temp ;\
+					echo '			$(CHOWN) $$(OWNER) $$@ ;\' >> $@.$${PPID}.temp ;\
+					echo '		fi ;\' >> $@.$${PPID}.temp ;\
+					echo '	fi' >> $@.$${PPID}.temp ;\
+				fi ;\
+			fi ;\
+		done ;\
+	fi
+	@echo '# makefile.depend $@ stage 4 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 4 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 5: output indent dependencies and recipe ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo "indent : $(ALL_SOURCES) $(ALL_HEADERS) $(DEPENDENCY_MAKEFILES) $(AWKSCRIPTSDIR)/fix_switch.awk" >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(INDENT)" ; then \' >> $@.$${PPID}.temp
+	@echo '		for file in $$(ALL_SOURCES) $$(ALL_HEADERS) bumble ; do \' >> $@.$${PPID}.temp
+	@echo '			if test "$${file}" = "bumble" ; then break ; fi ;\' >> $@.$${PPID}.temp
+	@echo '			echo "$$$${file}" ;\' >> $@.$${PPID}.temp
+	@echo '			if test -w $$$${file} ; then \' >> $@.$${PPID}.temp
+	@echo '				$$(INDENT) -kr -npro -i4 -ncdb -cli1 -d0 -di1 -eei -l80 -npsl -nsc $$$${file} ; \' >> $@.$${PPID}.temp
+	@echo '				if test -f $$$${file}~ ; then \' >> $@.$${PPID}.temp
+	@echo '					if cmp -s $$$${file} $$$${file}~ ; then \' >> $@.$${PPID}.temp
+	@echo '						mv -f $$$${file}~ $$$${file} ;\' >> $@.$${PPID}.temp
+	@echo '					else	mv -f $$$${file} $$$${file}.old ;\' >> $@.$${PPID}.temp
+	@echo '						$$(AWK) -f $(AWKSCRIPTSDIR)/fix_switch.awk < $$$${file}.old > $$$${file} ;\' >> $@.$${PPID}.temp
+	@echo '						rm -f $$$${file}~ ;\' >> $@.$${PPID}.temp
+	@echo '					fi ;\' >> $@.$${PPID}.temp
+	@echo '				fi ;\' >> $@.$${PPID}.temp
+	@echo '			else	echo "$$$${file} is not writeable" ;\' >> $@.$${PPID}.temp
+	@echo '			fi ;\' >> $@.$${PPID}.temp
+	@echo '		done ;\' >> $@.$${PPID}.temp
+	@echo '	fi' >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 5 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 5 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 6: output analysis and editing tool dependencies and recipes ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo 'cflow.out : $(ANALYSISDIR)/cflow.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/cflow.out :'  >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(CFLOW)" ; then $$(CFLOW) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(ALL_SOURCES) > $$@ || rm -f $$@ ; fi' >> $@.$${PPID}.temp
+	@echo 'cflow_i.out : $(ANALYSISDIR)/cflow_i.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/cflow_i.out :' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(CFLOW)" ; then $$(CFLOW) -r $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(ALL_SOURCES) > $$@ || rm -f $$@ ; fi' >> $@.$${PPID}.temp
+	@echo 'cppcheck.out : $(ANALYSISDIR)/cppcheck.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/cppcheck.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n $$(CPPCHECK)" ; then $$(CPPCHECK) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -DNULL=0 -DEINVAL=22 -D__GNUC__=0 -D__INTEL_COMPILER=0 -D__VERSION__=0 -D__PCC__=0 -D__SUNPRO_C=0 -D__clang__=0 -D__STDPP__=0 $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo '$(MAKEFILES_DIR)/cscope.files :' >> $@.$${PPID}.temp
+	@echo '	echo -- -c $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) | $(SED) -e "s/^ //g" > $$@' >> $@.$${PPID}.temp
+	@echo '	for file in $$(ALL_SOURCES) ; do echo $$$${file} >> $$@ ; done' >> $@.$${PPID}.temp
+	@echo 'cxref : $(ANALYSISDIR)/cxref' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/cxref :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(CXREF)" ; then \' >> $@.$${PPID}.temp
+	@echo '		$$(CXREF) $$(ALL_SOURCES) -delete -O"$(ANALYSISDIR)" -N$$(PROJECT) ;\' >> $@.$${PPID}.temp
+	@echo '		$$(CXREF) $$(ALL_SOURCES) -N$$(PROJECT) -O"$(ANALYSISDIR)" -xref-all -index-all -html -CPP "$$(CC) -E" -- -DCXREF $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) ;\' >> $@.$${PPID}.temp
+	@echo '	fi' >> $@.$${PPID}.temp
+	@echo 'flawfinder.out : $(ANALYSISDIR)/flawfinder.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/flawfinder.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(FLAWFINDER)" ; then $$(FLAWFINDER) $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo 'lint.out : $(ANALYSISDIR)/lint.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/lint.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(LINT)" ; then $$(LINT) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(OS_LINT_FLAGS) $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo 'rats.out : $(ANALYSISDIR)/rats.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/rats.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(RATS)" ; then $$(RATS) $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo 'sparse.out : $(ANALYSISDIR)/sparse.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/sparse.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(SPARSE)" ; then $$(SPARSE) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) -D__STDC_VERSION__=19901231L -D__VERSION__=\"0\" $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo 'splint.out : $(ANALYSISDIR)/splint.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/splint.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(SPLINT)" ; then $$(SPLINT) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(OS_LINT_FLAGS) $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/splint.out : .splintrc' >> $@.$${PPID}.temp
+	@echo '.splintrc :' >> $@.$${PPID}.temp
+	@echo '	> $$@' >> $@.$${PPID}.temp
+	@echo 'uno.out : $(ANALYSISDIR)/uno.out' >> $@.$${PPID}.temp
+	@echo '	@$$(RSYNC) $$(RSYNC_ARCHIVE) $$(RSYNC_OPTS) $$< $$@' >> $@.$${PPID}.temp
+	@echo '$(ANALYSISDIR)/uno.out :' >> $@.$${PPID}.temp
+	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(UNO)" ; then $$(UNO) $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) $$(ALL_SOURCES) > $$@ 2>&1 ; fi' >> $@.$${PPID}.temp
+	@echo '$(MAKEFILES_DIR)/cscope.files $(ANALYSISDIR)/cxref $(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cflow_i.out $(ANALYSISDIR)/cppcheck.out $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out : $(DEPENDENCY_MAKEFILES)' >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 6 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 6 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 7: clean/cleaner/cleanest ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo 'clean : ALWAYS' >> $@.$${PPID}.temp
+	@echo '	rm -f $$(TOP_LEVEL_PROGS) $$(MAN_TEXT) $(MAKEFILES_DIR)/core $(MAKEFILES_DIR)/generic.pdf $(MAKEFILES_DIR)/acyclic.pdf $(MAKEFILES_DIR)/ccomps.pdf $(MAKEFILES_DIR)/scc.pdf $(MAKEFILES_DIR)/tred.pdf $(MAKEFILES_DIR)/scctred.pdf $(MAKEFILES_DIR)/cflow.out $(MAKEFILES_DIR)/cppcheck.out $(MAKEFILES_DIR)/flawfinder.out $(MAKEFILES_DIR)/lint.out $(MAKEFILES_DIR)/rats.out $(MAKEFILES_DIR)/sparse.out $(MAKEFILES_DIR)/splint.out $(MAKEFILES_DIR)/uno.out' >> $@.$${PPID}.temp
+	@echo '	rm -f licenses/*/emitted' >> $@.$${PPID}.temp
+	@echo 'cleaner : clean' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(CXREF)" ; then $$(CXREF) $$(ALL_SOURCES) -delete -O"$(ANALYSISDIR)" -N$$(PROJECT) ; fi' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(EXPENDABLES)" ; then rm -f $$(EXPENDABLES) no-such-file ; fi' >> $@.$${PPID}.temp
+	@echo 'cleanest : cleaner' >> $@.$${PPID}.temp
+	@echo '	rm -f $$(ARCHES32) $$(ARCHES64) $$(OBJECT_FILES) $$(LOCAL_PROGRAMS) no-such-file' >> $@.$${PPID}.temp
+	@echo '	if test -n "$$(DEGET)" ; then $$(DEGET) -s -D $$(SCCSDIR) $$(ALL_HEADERS) $$(ALL_SOURCES) ; fi' >> $@.$${PPID}.temp
+	@echo '	rm -f $(ANALYSISDIR)/cflow.out $(ANALYSISDIR)/cppcheck.out $(ANALYSISDIR)/flawfinder.out $(ANALYSISDIR)/lint.out $(ANALYSISDIR)/rats.out $(ANALYSISDIR)/sparse.out $(ANALYSISDIR)/splint.out $(ANALYSISDIR)/uno.out' >> $@.$${PPID}.temp
+	@echo '	rm -f $(MAKEFILES_DIR)/makefile.$$(OS)-$$(FQDN) $(MAKEFILES_DIR)/makefile.ccbase-$$(OS)-$$(FQDN) $$(PRE_DEPEND)' >> $@.$${PPID}.temp
+	@echo '	rm -f $$(DEPEND)' >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 7 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 7 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 8: output macros, dependencies, and recipes for help files ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -n "$(HELP_FILES)" ; then \
+		for file in $(HELP_FILES) bumble ; do \
+			if test "$${file}" = "bumble" ; then break ; fi ;\
+			echo '.PRECIOUS : $$(HELPDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo 'INSTALLED_HELPFILES : $$(PUBLIC_HELPLIB)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo '$$(PUBLIC_HELPLIB)/'"$${file} : "'$$(HELPDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+			echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+		done ;\
+	else	echo 'INSTALLED_HELPFILES :' >> $@.$${PPID}.temp ;\
+	fi
+	@echo '# makefile.depend $@ stage 8 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 8 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 9: output macros, dependencies, and recipes for configuration files ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -n "$(CONFIGFILES)" ; then \
+		for file in $(CONFIGFILES) bumble ; do \
+			if test "$${file}" = "bumble" ; then break ; fi ;\
+			echo '.PRECIOUS : $(CONFIGDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo "INSTALLED_CONFIGFILES : $(PUBLIC_CONFIGDIR)/$${file}" >> $@.$${PPID}.temp ;\
+			if test "$(PUBLIC_CONFIGDIR)" != "$(CONFIGDIR)" ; then \
+				echo "$(PUBLIC_CONFIGDIR)/$${file} : $(CONFIGDIR)/$${file}" >> $@.$${PPID}.temp ;\
+				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+				echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+			fi ;\
+		done ;\
+	else	echo 'INSTALLED_CONFIGFILES :' >> $@.$${PPID}.temp ;\
+	fi
+	@echo '# makefile.depend $@ stage 9 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 9 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 10: output macros, dependencies, and recipes for resource files ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -n "$(RESOURCEFILES)" ; then \
+		for file in $(RESOURCEFILES) bumble ; do \
+			if test "$${file}" = "bumble" ; then break ; fi ;\
+			echo '.PRECIOUS : $$(RESOURCEDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo 'INSTALLED_RESOURCEFILES : $$(PUBLIC_SHARED_DIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo '$$(PUBLIC_SHARED_DIR)/'"$${file} : "'$$(RESOURCEDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
+			echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
+			echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+		done ;\
+	else	echo 'INSTALLED_RESOURCEFILES :' >> $@.$${PPID}.temp ;\
+	fi
+	@echo '# makefile.depend $@ stage 10 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 10 completed'
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# makefile.depend $@ stage 11: output dependencies and recipes for emitting licenses ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -d $(MAKEFILES_DIR)/licenses ; then \
+		echo '$$(DEPEND) : $(MAKEFILES_DIR)/licenses' >> $@.$${PPID}.temp ;\
+		for dir in $(MAKEFILES_DIR)/licenses/* ; do \
+			if test -f $${dir}/license ; then \
+				echo "$${dir}/emitted : $${dir}/license" >> $@.$${PPID}.temp ;\
+				if test -f $${dir}/header ; then \
+					echo "$${dir}/emitted : $${dir}/header" >> $@.$${PPID}.temp ;\
+				fi ;\
+				if test -f $${dir}/trailer ; then \
+					echo "$${dir}/emitted : $${dir}/trailer" >> $@.$${PPID}.temp ;\
+				fi ;\
+				echo "EMIT_LICENSES : $${dir}/emitted" >> $@.$${PPID}.temp ;\
+				echo "$${dir}/emitted :" >> $@.$${PPID}.temp ;\
+				echo '	if test -n "$$?" ; then \' >> $@.$${PPID}.temp ;\
+				echo '		> $$@ ;\' >> $@.$${PPID}.temp ;\
+				if test -f $${dir}/header ; then \
+					echo "		cat $${dir}/header"' >> $$@ ;\' >> $@.$${PPID}.temp ;\
+				fi ;\
+				echo '		$$(GREP) -h -i -w copyright $$? | $$(GREP) -v license | $$(AWK) -f $(AWKSCRIPTSDIR)/decomment.awk | $$(SORT) -u >> $$@ ;\' >> $@.$${PPID}.temp ;\
+				echo "		cat $${dir}/license"' >> $$@ ;\' >> $@.$${PPID}.temp ;\
+				if test -f $${dir}/trailer ; then \
+					echo "		cat $${dir}/trailer"' >> $$@ ;\' >> $@.$${PPID}.temp ;\
+				fi ;\
+				echo '		$$(GREP) -h -i '"'send bug report'"' $$? | $$(GREP) -v "$$(GREP) -h -i " | $$(AWK) -f $(AWKSCRIPTSDIR)/decomment.awk | $$(SORT) -u >> $$@ ;\' >> $@.$${PPID}.temp ;\
+				echo '	fi' >> $@.$${PPID}.temp ;\
+				echo '	echo "press q to accept" >> $$@' >> $@.$${PPID}.temp ;\
+				echo '	$(LESS) $$@' >> $@.$${PPID}.temp ;\
+				echo '$$(DEPEND) : '"$${dir}" >> $@.$${PPID}.temp ;\
+			fi ;\
+		done ;\
+	else \
+		echo makefile.depend building $@ cannot find directory '"licenses"' from working directory ${PWD} ;\
+	fi
+	@echo '# makefile.depend $@ stage 11 above' >> $@.$${PPID}.temp
+	@echo 'makefile.depend $@ stage 11 completed'
+	@echo '# makefile.depend $@ finished ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -s $@.$${PPID}.temp ; then mv -f $@.$${PPID}.temp $@ ; fi
+
+# $(DEPEND) [defined in makefile.make] contains dependencies generated by the compiler
+# and a recipe to output a list of known macros
+
+# dependencies for $(DEPEND)
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+$(DEPEND) : \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(AWKSCRIPTSDIR)/decomment.awk $(AWKSCRIPTSDIR)/depend.awk \
+ $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.include1 \
+  $(MAKEFILES_DIR)/makefile.directories $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
+  $(MAKEFILES_DIR)/makefile.$(OS) $(MAKEFILES_DIR)/makefile.project \
+  $(MAKEFILES_DIR)/makefile.fqdn \
+ $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
+  $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+  $(MAKEFILES_DIR)/makefile.ccbase-$(OS)-$(FQDN) \
+ $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.include5 \
+  $(MAKEFILES_DIR)/makefile.platform $(MAKEFILES_DIR)/makefile.$(CCBASE) \
+  $(MAKEFILES_DIR)/makefile.suffixes $(MAKEFILES_DIR)/makefile.suffix_rules \
+  $(MAKEFILES_DIR)/makefile.files $(MAKEFILES_DIR)/makefile.licenses \
+  $(MAKEFILES_DIR)/makefile.imports \
+ $(MAKEFILES_DIR)/makefile.stage6 $(MAKEFILES_DIR)/makefile.include6 \
+  $(MAKEFILES_DIR)/makefile.depend $(PRE_DEPEND)
+
+# recipe for building $(DEPEND)
+# N.B. BSD test doesn't grok ==
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+# NetBSD /usr/bin/make doesn't use $(SHELL), and therefore botches the shell
+#  built-in "print"; workaround is to use the inferior "echo"
+$(DEPEND) :
+	@ > $@.$${PPID}.temp
+	@echo "# $@ generated on host $(FQDN) at $(DATE_TIME) by makefile.depend from $(MAKEFILES_READ)" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# $@ rebuilt when out-of-date with respect to: $?" >> $@.$${PPID}.temp
+	@if test -n "$?" ; then ( gls -lrt --full-time $? 2>/dev/null || ls -lrt --full-time $? 2>/dev/null || ls -lrtT $? 2>/dev/null || ls -lrt $? ) | $(SED) -e 's/^/# /' >> $@.$${PPID}.temp ; fi
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# environment:" >> $@.$${PPID}.temp
+	@env | $(SED) -e 's/^/# /' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# makefile.depend: $@ : dependencies for making defined main-program object files `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test ! -d $(DEPEND_DIR)/$(SRCDIR) ; then $(MKDIR) -p -m $(DIRMODE) $(DEPEND_DIR)/$(SRCDIR) ; fi
+	@for file in $(OBJS) $(C99OBJS) crumble ; do \
+		if test "$${file}" = "crumble" ; then break ; fi ;\
+		base=`$(BASENAME) $${file} .o` ;\
+		$(AWK) -f $(AWKSCRIPTSDIR)/depend.awk -v BASE="$(OBJDIR)" -v SUBDIR32BIT="$(EXECSUBDIR32BIT)" -v SUBDIR64BIT="$(EXECSUBDIR64BIT)" -v FQDN=$(FQDN) -v MAKEFILES_READ="$(MAKEFILES_READ)" $(DEPEND_DIR)/$(SRCDIR)/$${base}.d >> $@.$${PPID}.temp ;\
+	done
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# makefile.depend: $@ : dependencies for making defined library object files `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
+		case $${lib} in \
+			1) arch="$(LIB1ARCH)" ; c99objs="$(C99LIB1OBJS)" ; objs="$(LIB1OBJS)" ; libdir="$(LIB1DIR)" ; objdir="$(LIB1OBJDIR)" ; srcdir="$(LIB1SRCDIR)" ;; \
+			2) arch="$(LIB2ARCH)" ; c99objs="$(C99LIB2OBJS)" ; objs="$(LIB2OBJS)" ; libdir="$(LIB2DIR)" ; objdir="$(LIB2OBJDIR)" ; srcdir="$(LIB2SRCDIR)" ;; \
+			3) arch="$(LIB3ARCH)" ; c99objs="$(C99LIB3OBJS)" ; objs="$(LIB3OBJS)" ; libdir="$(LIB3DIR)" ; objdir="$(LIB3OBJDIR)" ; srcdir="$(LIB3SRCDIR)" ;; \
+			4) arch="$(LIB4ARCH)" ; c99objs="$(C99LIB4OBJS)" ; objs="$(LIB4OBJS)" ; libdir="$(LIB4DIR)" ; objdir="$(LIB4OBJDIR)" ; srcdir="$(LIB4SRCDIR)" ;; \
+			5) arch="$(LIB5ARCH)" ; c99objs="$(C99LIB5OBJS)" ; objs="$(LIB5OBJS)" ; libdir="$(LIB5DIR)" ; objdir="$(LIB5OBJDIR)" ; srcdir="$(LIB5SRCDIR)" ;; \
+			6) arch="$(LIB6ARCH)" ; c99objs="$(C99LIB6OBJS)" ; objs="$(LIB6OBJS)" ; libdir="$(LIB6DIR)" ; objdir="$(LIB6OBJDIR)" ; srcdir="$(LIB6SRCDIR)" ;; \
+			7) arch="$(LIB7ARCH)" ; c99objs="$(C99LIB7OBJS)" ; objs="$(LIB7OBJS)" ; libdir="$(LIB7DIR)" ; objdir="$(LIB7OBJDIR)" ; srcdir="$(LIB7SRCDIR)" ;; \
+			8) arch="$(LIB8ARCH)" ; c99objs="$(C99LIB8OBJS)" ; objs="$(LIB8OBJS)" ; libdir="$(LIB8DIR)" ; objdir="$(LIB8OBJDIR)" ; srcdir="$(LIB8SRCDIR)" ;; \
+			9) arch="$(LIB9ARCH)" ; c99objs="$(C99LIB9OBJS)" ; objs="$(LIB9OBJS)" ; libdir="$(LIB9DIR)" ; objdir="$(LIB9OBJDIR)" ; srcdir="$(LIB9SRCDIR)" ;; \
+			10) arch="$(LIB10ARCH)" ; c99objs="$(C99LIB10OBJS)" ; objs="$(LIB10OBJS)" ; libdir="$(LIB10DIR)" ; objdir="$(LIB10OBJDIR)" ; srcdir="$(LIB10SRCDIR)" ;; \
+			11) arch="$(LIB11ARCH)" ; c99objs="$(C99LIB11OBJS)" ; objs="$(LIB11OBJS)" ; libdir="$(LIB11DIR)" ; objdir="$(LIB11OBJDIR)" ; srcdir="$(LIB11SRCDIR)" ;; \
+			12) arch="$(LIB12ARCH)" ; c99objs="$(C99LIB12OBJS)" ; objs="$(LIB12OBJS)" ; libdir="$(LIB12DIR)" ; objdir="$(LIB12OBJDIR)" ; srcdir="$(LIB12SRCDIR)" ;; \
+			13) arch="$(LIB13ARCH)" ; c99objs="$(C99LIB13OBJS)" ; objs="$(LIB13OBJS)" ; libdir="$(LIB13DIR)" ; objdir="$(LIB13OBJDIR)" ; srcdir="$(LIB13SRCDIR)" ;; \
+			14) arch="$(LIB14ARCH)" ; c99objs="$(C99LIB14OBJS)" ; objs="$(LIB14OBJS)" ; libdir="$(LIB14DIR)" ; objdir="$(LIB14OBJDIR)" ; srcdir="$(LIB14SRCDIR)" ;; \
+			15) arch="$(LIB15ARCH)" ; c99objs="$(C99LIB15OBJS)" ; objs="$(LIB15OBJS)" ; libdir="$(LIB15DIR)" ; objdir="$(LIB15OBJDIR)" ; srcdir="$(LIB15SRCDIR)" ;; \
+			16) arch="$(LIB16ARCH)" ; c99objs="$(C99LIB16OBJS)" ; objs="$(LIB16OBJS)" ; libdir="$(LIB16DIR)" ; objdir="$(LIB16OBJDIR)" ; srcdir="$(LIB16SRCDIR)" ;; \
+			17) arch="$(LIB17ARCH)" ; c99objs="$(C99LIB17OBJS)" ; objs="$(LIB17OBJS)" ; libdir="$(LIB17DIR)" ; objdir="$(LIB17OBJDIR)" ; srcdir="$(LIB17SRCDIR)" ;; \
+			18) arch="$(LIB18ARCH)" ; c99objs="$(C99LIB18OBJS)" ; objs="$(LIB18OBJS)" ; libdir="$(LIB18DIR)" ; objdir="$(LIB18OBJDIR)" ; srcdir="$(LIB18SRCDIR)" ;; \
+			19) arch="$(LIB19ARCH)" ; c99objs="$(C99LIB19OBJS)" ; objs="$(LIB19OBJS)" ; libdir="$(LIB19DIR)" ; objdir="$(LIB19OBJDIR)" ; srcdir="$(LIB19SRCDIR)" ;; \
+			20) arch="$(LIB20ARCH)" ; c99objs="$(C99LIB20OBJS)" ; objs="$(LIB20OBJS)" ; libdir="$(LIB20DIR)" ; objdir="$(LIB20OBJDIR)" ; srcdir="$(LIB20SRCDIR)" ;; \
+			21) arch="$(LIB21ARCH)" ; c99objs="$(C99LIB21OBJS)" ; objs="$(LIB21OBJS)" ; libdir="$(LIB21DIR)" ; objdir="$(LIB21OBJDIR)" ; srcdir="$(LIB21SRCDIR)" ;; \
+			22) arch="$(LIB22ARCH)" ; c99objs="$(C99LIB22OBJS)" ; objs="$(LIB22OBJS)" ; libdir="$(LIB22DIR)" ; objdir="$(LIB22OBJDIR)" ; srcdir="$(LIB22SRCDIR)" ;; \
+			23) arch="$(LIB23ARCH)" ; c99objs="$(C99LIB23OBJS)" ; objs="$(LIB23OBJS)" ; libdir="$(LIB23DIR)" ; objdir="$(LIB23OBJDIR)" ; srcdir="$(LIB23SRCDIR)" ;; \
+			24) arch="$(LIB24ARCH)" ; c99objs="$(C99LIB24OBJS)" ; objs="$(LIB24OBJS)" ; libdir="$(LIB24DIR)" ; objdir="$(LIB24OBJDIR)" ; srcdir="$(LIB24SRCDIR)" ;; \
+			25) arch="$(LIB25ARCH)" ; c99objs="$(C99LIB25OBJS)" ; objs="$(LIB25OBJS)" ; libdir="$(LIB25DIR)" ; objdir="$(LIB25OBJDIR)" ; srcdir="$(LIB25SRCDIR)" ;; \
+			26) arch="$(LIB26ARCH)" ; c99objs="$(C99LIB26OBJS)" ; objs="$(LIB26OBJS)" ; libdir="$(LIB26DIR)" ; objdir="$(LIB26OBJDIR)" ; srcdir="$(LIB26SRCDIR)" ;; \
+			27) arch="$(LIB27ARCH)" ; c99objs="$(C99LIB27OBJS)" ; objs="$(LIB27OBJS)" ; libdir="$(LIB27DIR)" ; objdir="$(LIB27OBJDIR)" ; srcdir="$(LIB27SRCDIR)" ;; \
+			28) arch="$(LIB28ARCH)" ; c99objs="$(C99LIB28OBJS)" ; objs="$(LIB28OBJS)" ; libdir="$(LIB28DIR)" ; objdir="$(LIB28OBJDIR)" ; srcdir="$(LIB28SRCDIR)" ;; \
+			29) arch="$(LIB29ARCH)" ; c99objs="$(C99LIB29OBJS)" ; objs="$(LIB29OBJS)" ; libdir="$(LIB29DIR)" ; objdir="$(LIB29OBJDIR)" ; srcdir="$(LIB29SRCDIR)" ;; \
+			30) arch="$(LIB30ARCH)" ; c99objs="$(C99LIB30OBJS)" ; objs="$(LIB30OBJS)" ; libdir="$(LIB30DIR)" ; objdir="$(LIB30OBJDIR)" ; srcdir="$(LIB30SRCDIR)" ;; \
+			31) arch="$(LIB31ARCH)" ; c99objs="$(C99LIB31OBJS)" ; objs="$(LIB31OBJS)" ; libdir="$(LIB31DIR)" ; objdir="$(LIB31OBJDIR)" ; srcdir="$(LIB31SRCDIR)" ;; \
+			32) arch="$(LIB32ARCH)" ; c99objs="$(C99LIB32OBJS)" ; objs="$(LIB32OBJS)" ; libdir="$(LIB32DIR)" ; objdir="$(LIB32OBJDIR)" ; srcdir="$(LIB32SRCDIR)" ;; \
+			33) arch="$(LIB33ARCH)" ; c99objs="$(C99LIB33OBJS)" ; objs="$(LIB33OBJS)" ; libdir="$(LIB33DIR)" ; objdir="$(LIB33OBJDIR)" ; srcdir="$(LIB33SRCDIR)" ;; \
+			34) arch="$(LIB34ARCH)" ; c99objs="$(C99LIB34OBJS)" ; objs="$(LIB34OBJS)" ; libdir="$(LIB34DIR)" ; objdir="$(LIB34OBJDIR)" ; srcdir="$(LIB34SRCDIR)" ;; \
+			35) arch="$(LIB35ARCH)" ; c99objs="$(C99LIB35OBJS)" ; objs="$(LIB35OBJS)" ; libdir="$(LIB35DIR)" ; objdir="$(LIB35OBJDIR)" ; srcdir="$(LIB35SRCDIR)" ;; \
+			36) arch="$(LIB36ARCH)" ; c99objs="$(C99LIB36OBJS)" ; objs="$(LIB36OBJS)" ; libdir="$(LIB36DIR)" ; objdir="$(LIB36OBJDIR)" ; srcdir="$(LIB36SRCDIR)" ;; \
+			37) arch="$(LIB37ARCH)" ; c99objs="$(C99LIB37OBJS)" ; objs="$(LIB37OBJS)" ; libdir="$(LIB37DIR)" ; objdir="$(LIB37OBJDIR)" ; srcdir="$(LIB37SRCDIR)" ;; \
+			38) arch="$(LIB38ARCH)" ; c99objs="$(C99LIB38OBJS)" ; objs="$(LIB38OBJS)" ; libdir="$(LIB38DIR)" ; objdir="$(LIB38OBJDIR)" ; srcdir="$(LIB38SRCDIR)" ;; \
+			39) arch="$(LIB39ARCH)" ; c99objs="$(C99LIB39OBJS)" ; objs="$(LIB39OBJS)" ; libdir="$(LIB39DIR)" ; objdir="$(LIB39OBJDIR)" ; srcdir="$(LIB39SRCDIR)" ;; \
+		esac ;\
+		if test -n "$${arch}" ; then \
+			if test ! -d $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir} ; then $(MKDIR) -p -m $(DIRMODE) $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir} ; fi ;\
+			for file in $${c99objs} $${objs} stumble ; do \
+				if test "$${file}" = "stumble" ; then break ; fi ;\
+				base=`$(BASENAME) $${file} .o` ;\
+				$(AWK) -f $(AWKSCRIPTSDIR)/depend.awk -v BASE="$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)" -v SUBDIR32BIT="$(LIBDIR32BIT)/$${objdir}" -v SUBDIR64BIT="$(LIBDIR64BIT)/$${objdir}" -v FQDN=$(FQDN) -v MAKEFILES_READ="$(MAKEFILES_READ)" $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d >> $@.$${PPID}.temp ;\
+			done ;\
+		fi ;\
+	done
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# makefile.depend: $@ : target to list known macros `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@echo 'macros : ALWAYS' >> $@.$${PPID}.temp
+	@for macro in $(MACROS) foo ; do\
+		if test "$${macro}" = "foo" ; then break ; fi ;\
+		echo '	@macro="'$${macro}'" ;\' >> $@.$${PPID}.temp ;\
+		echo '	value="$$('$${macro}')" ;\' >> $@.$${PPID}.temp ;\
+		echo '	file=`$$(EGREP) -l '"'"'^[ 	]*'"'"'"'$${macro}'"'"'"'[ 	]*[+]*[=]'"'"' $$(MAKEFILES_READ) 2>/dev/null | tr "\\n" " "` ;\' >> $@.$${PPID}.temp ;\
+		echo '	if test -z "$$$${file}" ; then \' >> $@.$${PPID}.temp ;\
+		echo '		file=`$$(EGREP) -l '"'"'export[ 	]+'"'"'"'$${macro}'" $$(SCRIPTSDIR)/*.sh 2>/dev/null | tr "\\n" " "` ;\' >> $@.$${PPID}.temp ;\
+		echo '	fi ;\' >> $@.$${PPID}.temp ;\
+		echo '	if test -z "$$$${file}" ; then file='"'"'?'"'"' ; fi ;\' >> $@.$${PPID}.temp ;\
+		echo '	used=`$$(EGREP) -l -w '"'"'[$$]+[({]'"'"'"'$${macro}'"'"'"'[)}]'"'"' $$(MAKEFILES_READ) $$(SCRIPTSDIR)/*.sh 2>/dev/null | tr "\\n" " "` ;\' >> $@.$${PPID}.temp ;\
+		echo '	if test -z "$$$${used}" ; then used="nowhere?" ; fi ;\' >> $@.$${PPID}.temp ;\
+		echo '	echo "$$$${macro}"'"'"'='"'"'"$$$${value}"'"'"' #'"'"' defined "$$$${file}" used "$$$${used}"' >> $@.$${PPID}.temp ;\
+	done
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# makefile.depend: end of makefile.depend `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
+	@if test -s $@.$${PPID}.temp ; then mv -f $@.$${PPID}.temp $@ ; fi

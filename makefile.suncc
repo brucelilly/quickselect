@@ -1,0 +1,83 @@
+#  This is the description file used by the make command; compiler-specific definitions for suncc
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.suncc $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# this file defines macros specific to a particular compiler toolchain
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.$(CCBASE)
+MAKEFILES_READ += makefile.$(CCBASE)
+
+# C and C99 are essentially two different programming languages...
+# compiling pre-C99 flags
+C = 
+
+# C99 flags
+C99 = -xc99
+
+# flags for making dependency files
+MAKE_DEPEND_ARG = -xM1
+
+# optimization flag
+#OPTIMIZE = -xO0 
+#OPTIMIZE = -xO1
+#OPTIMIZE = -xO2
+#OPTIMIZE = -xO3
+#OPTIMIZE = -xO4
+OPTIMIZE = -xO5
+
+# compiler flags that aren't includes or defines, e.g. -Wxxx 
+#XTRAS += -Wall -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wredundant-decls -Wnested-externs -pedantic 
+XTRAS += 
+
+# debugging symbols
+DEBUG_SYM = -g
+
+# profiling
+#PROFILE = -xpg
+
+# if $(CC) can't handle simultaneous -O and -g, comment out DP_OPTIMIZE
+#	optimize debugging/profiled code?
+DP_OPTIMIZE = $(OPTIMIZE)
+
+# Flags used by C compiler
+# Should include $(DEFS) and $(OS_DEFS).
+# Should NOT include $(INCLUDE), $(SYS_INCLUDE), or $(OS_INCLUDE)
+CFLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C) $(XTRAS)
+C99FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C99) $(XTRAS)
+
+# Floating-point option
+FFLAG =
+
+# Load flags used by C compiler
+LDFLAGS += $(PROFILE) $(DEBUG_SYM) $(STRIP) $(FFLAG)
+

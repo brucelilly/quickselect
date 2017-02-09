@@ -1,0 +1,343 @@
+# Description: makefile for project-specific settings
+
+# Project name
+PROJECT = quickselect
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ makefile.project $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.project 
+MAKEFILES_READ += makefile.project
+
+# Project maintainer and email address
+PROJECT_MAINTAINER = Bruce Lilly
+PROJECT_MAINTAINER_EMAIL_ADDRESS = bruce.lilly@gmail.com
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT_MAINTAINER PROJECT_MAINTAINER_EMAIL_ADDRESS
+
+# $(PROJECT_DIR) may be used in makefile.$(OS) for configuration files
+# it is defined in makefile.directories
+
+# defined (project) preprocessor macros (not OS-specific).
+# ZONE_OFFSET defined for use with __TIME__.
+# HOST_FQDN defined for use in build information strings.
+#DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" 
+#DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)/\"
+#DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)\" -Dstrcopy=stpcpy
+DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)\" -DLEMD_PUBLIC_CONFIGDIR=\"$(LEMD_PUBLIC_CONFIGDIR)\" -DTHERMOSTATD_PUBLIC_CONFIGDIR=\"$(THERMOSTATD_PUBLIC_CONFIGDIR)\" -DOS=\"${OS}\" -DOSVERSION=\"${OSVERSION}\" -DDISTRIBUTION=\"${DISTRIBUTION}\"
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += DEFS
+
+# project version
+PROJECT_RELEASE = 1
+PROJECT_LEVEL = .0
+PROJECT_BRANCH =
+PROJECT_SEQUENCE =
+PROJECT_SID = $(PROJECT_RELEASE)$(PROJECT_LEVEL)$(PROJECT_BRANCH)$(PROJECT_SEQUENCE)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT_RELEASE PROJECT_LEVEL PROJECT_BRANCH PROJECT_SEQUENCE PROJECT_SID
+
+# project-related naming
+#NMEA_PREFIX = nmea
+#NMEA_PREFIX_UNDERSCORE = $(NMEA_PREFIX)_
+NAME_PREFIX = $(PROJECT)_
+MACROS += NAME_PREFIX
+# UC_NAME_PREFIX (all upper-case translation of NAME_PREFIX) is generated
+#   when makefile.$(OS)-$(FQDN) is built
+
+# system libraries needed by this project (not OS-specific).
+# Any format acceptable to the compiler/linker is OK.
+# rw2300 uses pow and log10
+MATHLIB = -lm
+#MATHLIB = 
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += MATHLIB
+#  neither fam nor gamin-1 are available as 64-bit libraries on OpenIndiana
+#  fam is OK on Linux
+#  gamin-1 is OK on NetBSD and Linux (except for gcc-ld bugs), except if fam is used due to GNOME and/or KDE dependencies
+FAMLIB = -lfam
+#FAMLIB = -lgamin-1
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += FAMLIB
+CONFLIB = -lconfuse # for old radioclkd
+# Do not change the following line (but uncomment if CONFLIB is defined), which is used for debugging via `make macros`.
+#MACROS += CONFLIB
+#PROJECT_LIBS =
+#PROJECT_LIBS = $(MATHLIB) 
+#PROJECT_LIBS = $(MATHLIB) -lrt -pthread
+#PROJECT_LIBS = $(MATHLIB) $(FAMLIB) $(CONFLIB) -lrt -pthread
+######### N.B. !!!!!! -pthread causes SunStudio ld to puke !!!!!!!! ##########
+PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -lresolv -lpthread
+#PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -pthread -lresolv -lnsl
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT_LIBS
+#LEMD_LIBS = -lfam -lm -lrt -pthread -lresolv -lnsl 
+THERMOSTATD_LIBS = -lrt -lpthread 
+
+# special (project) system include directories (not OS-specific).
+# Content incorporates -I flag(s) for compiler.
+SYS_INCLUDE = 
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += SYS_INCLUDE
+
+# file ownership and modes for installation.
+#  EXMODE is for executable files, FMMODE for other files (man pages, help files, etc.).
+GROUP = bin
+OWNER = bin
+DIRMODE = 0775
+EXMODE = 0755
+FMODE = 0644
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += GROUP OWNER DIRMODE EXMODE FMODE
+
+# Tools required for this project, format as used in makefile.fqdn (q.v.).
+# separator between macro and program cannot be a shell special character ~#$&*?()={}[]|\"'<>/:;%`
+# separator between macro and program should not be a character commonly used in macro names or program names _+-.
+# separator between macro and program cannot be a character which is mangled by make when passing to a shell @^
+# separator could be !,
+# Use ',' for optional tools (continue with tool defined as an empty string).
+# Use '!' for mandatory tools (stop if tool is not installed).
+# Any of these can be overridden/supplemented in makefile.$(OS)-$(FQDN),
+#   built from the template in makefile.tools via makefile.fqdn (q.v.).
+PROJECT_TOOLS =
+
+#   mandatory tools required for all projects (used in makefiles)
+#      N.B.: NetBSD sed is broken: pkg_add -v gsed
+# AWK: awk, mawk, nawk, gawk, ...
+PROJECT_TOOLS += AWK!gawk
+PROJECT_TOOLS += GREP!grep
+PROJECT_TOOLS += SED!sed
+PROJECT_TOOLS += SORT!sort
+
+# mandatory tools (used in initial scripts)
+PROJECT_TOOLS += CAT!cat
+PROJECT_TOOLS += CUT!cut
+PROJECT_TOOLS += DATE!date
+PROJECT_TOOLS += DIRNAME!dirname
+PROJECT_TOOLS += DOMAINNAME,domainname
+PROJECT_TOOLS += EGREP!egrep
+PROJECT_TOOLS += HEAD!head
+# Beware name clashes with HOST, HOSTNAME
+PROJECT_TOOLS += HOST_PROG!host
+PROJECT_TOOLS += HOSTNAME_PROG!hostname
+PROJECT_TOOLS += REALPATH,realpath
+PROJECT_TOOLS += UNAME!uname
+PROJECT_TOOLS += TR!tr
+# at least one of dig or nslookup is required (if dig fails, nslookup is required by, and tested for in script network.sh)
+PROJECT_TOOLS += DIG,dig
+PROJECT_TOOLS += NSLOOKUP,nslookup
+# solaris-like systems also need isainfo, wc, and pr
+PROJECT_TOOLS += ISAINFO,isainfo
+PROJECT_TOOLS += WC,wc
+PROJECT_TOOLS += PR,pr
+
+# mandatory tools (used in $(PRE_DEPEND))
+PROJECT_TOOLS += BASENAME!basename
+PROJECT_TOOLS += CHGRP!chgrp
+PROJECT_TOOLS += CHMOD!chmod
+PROJECT_TOOLS += CHOWN!chown
+PROJECT_TOOLS += LESS!less
+PROJECT_TOOLS += LORDER!lorder
+PROJECT_TOOLS += MKDIR!mkdir
+PROJECT_TOOLS += TSORT!tsort
+
+# mandatory for SCCS file retrieval; most versions of make pre-define it, a few don't!
+PROJECT_TOOLS += GET,get
+
+# optional, but strongly recommended tool (used in $(PRE_DEPEND) and makefile.imports)
+PROJECT_TOOLS += DEGET,deget
+
+# optional tools used for program development:
+# optional tool needed for `make acyclic.pdf` and `make analyses`
+PROJECT_TOOLS += ACYCLIC,acyclic
+# optional tool needed for `make ccomps.pdf` and `make analyses`
+PROJECT_TOOLS += CCOMPS,ccomps
+# optional tool needed for `make cflow.out` and `make cflow_i.out` and `make analyses`
+PROJECT_TOOLS += CFLOW,cflow
+# optional tool needed for `make cppcheck.out` and `make analyses`
+PROJECT_TOOLS += CPPCHECK,cppcheck
+# optional tool needed for `make cscope.files` and `make analyses`
+PROJECT_TOOLS += CSCOPE,cscope
+# optional tool needed for `make cxref.out` and `make analyses`
+PROJECT_TOOLS += CXREF,cxref
+# optional tool needed for `make flawfinder.out` and `make analyses`
+PROJECT_TOOLS += FLAWFINDER,flawfinder
+# optional tool needed for `make indent`
+PROJECT_TOOLS += INDENT,indent
+# optional tool needed for `make lint.out` and `make analyses`
+PROJECT_TOOLS += LINT,lint
+# optional tool needed for `make rats.out` and `make analyses`
+PROJECT_TOOLS += RATS,rats
+# optional tool needed for `make sccmap.pdf`, `make scctred.pdf`, and `make analyses`
+PROJECT_TOOLS += SCCMAP,sccmap
+# optional tool needed for `make sparse.out` and `make analyses`
+PROJECT_TOOLS += SPARSE,sparse
+# optional tool needed for `make splint.out` for those who enjoy reading random noise...
+PROJECT_TOOLS += SPLINT,splint
+# optional tool needed for `make tred.pdf` and `make analyses`
+PROJECT_TOOLS += TRED,tred
+# optional tool needed for `make uno.out` and `make analyses`
+PROJECT_TOOLS += UNO,uno
+
+#   tools and options needed for some projects (used in makefile.suffix_rules)
+#     reminder: set separator character to '!' for tools required for this project
+
+PROJECT_TOOLS += CHEM,chem
+PROJECT_TOOLS += CTRACE,ctrace
+PROJECT_TOOLS += DFORMAT,dformat
+PROJECT_TOOLS += DOT!dot
+
+PROJECT_TOOLS += EQN!eqn
+# EQN options (used in makefile.suffix_rules)
+EQN_OPTIONS = -T$(POSTSCRIPT)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += EQN_OPTIONS
+
+PROJECT_TOOLS += EPSTOPDF,epstopdf
+PROJECT_TOOLS += GRAP!grap
+PROJECT_TOOLS += GS!gs
+PROJECT_TOOLS += GUNZIP,gunzip
+PROJECT_TOOLS += HP2XX,hp2xx
+
+PROJECT_TOOLS += NEQN,neqn
+# NEQN options (used in makefile.suffix_rules)
+NEQN_OPTIONS = -T$(ASCII)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += NEQN_OPTIONS
+
+PROJECT_TOOLS += NROFF,nroff
+# NROFF options (used in makefile.suffix_rules)
+NROFF_OPTIONS = -c -Tascii
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += NROFF_OPTIONS
+
+PROJECT_TOOLS += OPTIPNG,optipng
+PROJECT_TOOLS += PAMFLIP,pamflip
+PROJECT_TOOLS += PDF2SVG,pdf2svg
+PROJECT_TOOLS += PDFOPT,pdfopt
+
+PROJECT_TOOLS += PIC!pic
+# PIC options used when processing for nroff (used in makefile.suffix_rules)
+NPIC_OPTIONS = -n
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += NPIC_OPTIONS
+
+PROJECT_TOOLS += PNGCRUSH,pngcrush
+PROJECT_TOOLS += PNMCROP!pnmcrop
+PROJECT_TOOLS += PNMTOPNG!pnmtopng
+
+# no current use
+# PROJECT_TOOLS += PROF,gprof
+# PROF_OPTIONS = -b -z
+# Do not change the following line (but uncomment if PROF_OPTIONS is defined), which is used for debugging via `make macros`.
+#MACROS += PROF_OPTIONS
+
+PROJECT_TOOLS += PS2EPSI!ps2epsi
+PROJECT_TOOLS += PS2PDF!ps2pdf
+PROJECT_TOOLS += PSTOEDIT,pstoedit
+
+PROJECT_TOOLS += RAGEL,ragel
+# ragel code options (used in makefile.suffix_rules)
+RAGEL_CODE_OPT = -G1
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RAGEL_CODE_OPT
+
+PROJECT_TOOLS += RSYNC,rsync
+# rsync options
+# beware 'rsync -g' (as included by '-a') vs. different OS group naming
+RSYNC_ARCHIVE = -rplotD
+RSYNC_BWLIM = --bwlimit=2000
+#RSYNC_OPTS = -EH --info=NAME
+RSYNC_OPTS = -EH 
+RSYNC_TIMEOUT = --timeout=30 --contimeout=10
+RSYNC_UPDATE = -u
+RSYNC_VERBOSE = -v
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RSYNC_ARCHIVE RSYNC_BWLIM RSYNC_OPTS RSYNC_TIMEOUT RSYNC_UPDATE RSYNC_VERBOSE
+
+PROJECT_TOOLS += SOELIM,soelim
+PROJECT_TOOLS += TBL!tbl
+
+# troff (pick one of the next two)
+#   traditional troff
+#PROJECT_TOOLS += TROFF,troff
+#   groff
+PROJECT_TOOLS += TROFF,groff
+# troff/nroff options:
+#   specification of page orientations in (PostScript) formatter arguments
+LANDSCAPE = -P-l
+PORTRAIT =
+#   ancillary pipeline to convert troff output to postscript
+#MAKEPS = | eps
+MAKEPS =
+#   specification of page sizes in (PostScript) formatter arguments
+LETTER = -P-pletter
+A4 = -P-pa4
+#   troff output in PostScript format
+POSTSCRIPT = ps
+# troff postprocessor pipeline
+TPOST = 
+# RFC number for formatting internet RFCs
+RFC = 4263
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += LANDSCAPE PORTRAIT MAKEPS LETTER A4 POSTSCRIPT TPOST RFC
+
+# RES resolution for bitmap files
+RES = 100x100
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += RES
+
+#  additional tools for this project (used in makefile.files)
+PROJECT_TOOLS += CAL!cal
+PROJECT_TOOLS += CMP!cmp
+PROJECT_TOOLS += FGREP,fgrep
+PROJECT_TOOLS += GCAL,gcal
+PROJECT_TOOLS += GNUPLOT,gnuplot
+PROJECT_TOOLS += GROFF!groff
+PROJECT_TOOLS += HISTLOG2300,histlog2300
+PROJECT_TOOLS += INTERVAL2300,interval2300
+PROJECT_TOOLS += LINKS!links
+PROJECT_TOOLS += LOG2300,log2300
+PROJECT_TOOLS += MINMAX2300,minmax2300
+PROJECT_TOOLS += PING!ping
+PROJECT_TOOLS += SIMPLE_CONFIG,simple_config
+PROJECT_TOOLS += SYNC2300,sync2300
+PROJECT_TOOLS += TEE!tee
+PROJECT_TOOLS += XMLLINT,xmllint
+
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += PROJECT_TOOLS
+
+# project-specific PRECIOUS files
+

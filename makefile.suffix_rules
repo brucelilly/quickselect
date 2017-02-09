@@ -1,0 +1,399 @@
+#  Description: This is the description file used by the make command; suffix rules
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.suffix_rules $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# this file contains suffix rules
+# it must be included after suffixes are defined
+# it must be included after programs (including compiler) are defined
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.suffix_rules
+MAKEFILES_READ += makefile.suffix_rules
+
+# SUFFIX rules
+.c~.c .cpp~.cpp .h~.h .y~.y .l~.l .gperf~.gperf .rl~.rl .dot~.dot .pic~.pic .in~.in .ms~.ms .mspe~.mspe .mm~.mm .me~.me .0~.0 .1~.1 .2~.2 .3~.3 .4~.4 .5~.5 .6~.6 .7~.7 .8~.8 .9~.9 .file~.file .gz~.gz :
+	if test -n "$(DEGET)" ; then $(DEGET) $@ ; fi
+	if test -n "$(GET)" ; then $(GET) s.$@ ; fi
+
+FAKE_TARGETS += .c~.c .cpp~.cpp .h~.h .y~.y .l~.l .gperf~.gperf .rl~.rl
+FAKE_TARGETS += .dot~.dot .pic~.pic .in~.in .ms~.ms .mspe~.mspe .mm~.mm .me~.me
+FAKE_TARGETS += .0~.0 .1~.1 .2~.2 .3~.3 .4~.4 .5~.5 .6~.6 .7~.7 .8~.8 .9~.9
+FAKE_TARGETS += .file~.file .gz~.gz
+
+.1.txt .2.txt .3.txt .4.txt .5.txt .6.txt .7.txt .8.txt .9.txt :
+	@-rm -f $@
+	$(NROFF) $(NROFF_OPTIONS) -man -t $< | col -bx > $@
+
+FAKE_TARGETS += .1.txt .2.txt .3.txt .4.txt .5.txt .6.txt .7.txt .8.txt .9.txt
+
+.1.ps .2.ps .3.ps .4.ps .5.ps .6.ps .7.ps .8.ps .9.ps :
+	@-rm -f $@
+	$(TROFF) -man -Tps -t $< > $@
+
+FAKE_TARGETS += .1.ps .2.ps .3.ps .4.ps .5.ps .6.ps .7.ps .8.ps .9.ps
+
+.gz :
+	-$(GUNZIP) $<
+
+.ms.ps :
+	$(TROFF) -Tps -ms $< $(MAKEPS) > $@
+
+FAKE_TARGETS += .ms.ps
+
+.mspe.troff :
+	$(TROFF) -mspe -TLatin1 $< > $@
+
+FAKE_TARGETS += .mspe.troff
+
+.rl.c :
+	$(RAGEL) $(RAGEL_CODE_OPT) -o $@ $<
+
+FAKE_TARGETS += .rl.c
+
+.rl.dot :
+	$(RAGEL) -V $< > $@
+
+FAKE_TARGETS += .rl.dot
+
+.c.tc :
+	$(CTRACE) -x $< > $@
+
+FAKE_TARGETS += .c.tc
+
+.tc.to :
+	-ln $< temptc.c
+	$(CC) $(DEFS) -c temptc.c -o $@
+	rm -f temptc.c
+
+FAKE_TARGETS += .tc.to
+
+.c.i :
+	$(CC) -E $(DEFS) -DPREFIX=$(NAME_PREFIX) -DUC_PREFIX=$(UC_NAME_PREFIX) $(INCLUDE) $(SYS_INCLUDE) $(OS_INCLUDE) $< > $@
+
+FAKE_TARGETS += .c.i
+
+.c.cflow :
+	$(CFLOW) -i_ $(DEFS) $(INCLUDE) $(SYS_INCLUDE) $(OS_INCLUDE) $< > $@ || rm -f $@
+
+FAKE_TARGETS += .c.cflow
+
+.cflow.dot :
+	$(AWK) -f cflow_dot.awk < $< > $@
+
+FAKE_TARGETS += .cflow.dot
+
+.ps.pdf :
+	@-rm -f $@
+	$(PS2PDF) -dPDFSETTINGS=/prepress $< $@
+
+FAKE_TARGETS += .ps.pdf
+
+.df.chem :
+	if $(GREP) "^[.][ ]*begin[ ]*dformat" $< >/dev/null 2>&1 ;\
+	then	$(DFORMAT) $< > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .df.chem
+
+.chem.eqn :
+	if $(GREP) "^[.][ ]*cstart" $< >/dev/null 2>&1 ;\
+	then	$(CHEM) $< > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .chem.eqn
+
+#.eqn.grap :
+#	if $(GREP) "^[.][ ]*E[QN]" $< >/dev/null 2>&1 ;\
+#	then	$(EQN) $(EQN_OPTIONS) $< > $@ ;\
+#	else	cp $< $@ ;\
+#	fi
+#
+#FAKE_TARGETS += .eqn.grap
+#
+#.eqn.ngrap :
+#	if $(GREP) "^[.][ ]*E[QN]" $< >/dev/null 2>&1 ;\
+#	then	$(NEQN) $(NEQN_OPTIONS) $< > $@ ;\
+#	else	cp $< $@ ;\
+#	fi
+#
+#FAKE_TARGETS += .eqn.ngrap
+
+.ngrap.npic .grap.pic :
+	if $(GREP) "^[.][ ]*G[12]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(GRAP) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .ngrap.npic .grap.pic
+
+.pic.tbl :
+	if $(GREP) "^[.][ ]*P[SFE]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(PIC) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .pic.tbl
+
+.npic.ntbl :
+	if $(GREP) "^[.][ ]*P[SFE]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(PIC) $(NPIC_OPTIONS) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .npic.ntbl
+
+.tbl.eqn :
+	if $(GREP) "^[.][ ]*T[SH&E]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(TBL) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .tbl.eqn
+
+.ntbl.neqn :
+	if $(GREP) "^[.][ ]*T[SH&E]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(TBL) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .ntbl.neqn
+
+.eqn.ms .eqn.mm .eqn.mspe .eqn.me :
+	if $(GREP) "^[.][ ]*E[QN]" $< >/dev/null 2>&1 ;\
+	then	$(SOELIM) $< | $(EQN) > $@ ;\
+	else	cp $< $@ ;\
+	fi
+
+FAKE_TARGETS += .eqn.ms .eqn.mm .eqn.mspe .eqn.me
+
+.troff.ps :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(TROFF) -T$(POSTSCRIPT) $(LETTER) $(LANDSCAPE) $< $(TPOST) > $@.temp ;\
+		$(SED) -e 's,%%EOF,%!Description: PostScript ANSI A landscape version of $*\n%%EOF,' < $@.temp > $@.temp.temp ;\
+	else	$(TROFF) -T$(POSTSCRIPT) $(LETTER) $(PORTRAIT) $< $(TPOST) > $@.temp ;\
+		$(SED) -e 's,%%EOF,%!Description: PostScript ANSI A version of $*\n%%EOF,' < $@.temp > $@.temp.temp ;\
+	fi
+	mv -f $@.temp.temp $@
+	rm -f $@.temp
+
+FAKE_TARGETS += .troff.ps
+
+.troff.dvi :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(TROFF) -Tdvi $(LETTER) $(LANDSCAPE) $< $(TPOST) > $@.temp ;\
+	else	$(TROFF) -Tdvi $(LETTER) $(PORTRAIT) $< $(TPOST) > $@.temp ;\
+	fi
+	mv -f $@.temp $@
+
+FAKE_TARGETS += .troff.dvi
+
+.dot.pic :
+	$(DOT) -Tpic $< > $@
+
+FAKE_TARGETS += .dot.pic
+
+.dot.ps :
+	@-rm -f $@
+	$(DOT) -Tps -o $@ $<
+
+FAKE_TARGETS += .dot.ps
+
+.dot.pdf :
+	$(DOT) -Tps -Gnslimit=20.0 -Gmclimit=50.0 -o $*.ps $<
+	$(PS2PDF) -dPDFSETTINGS=/prepress -sPAPERSIZE=11x17 $*.ps $@
+	@rm -f $*.ps
+
+FAKE_TARGETS += .dot.pdf
+
+.eps.pdf :
+	cp $< $*.temp.eps
+	$(EPSTOPDF) $*.temp.eps
+	rm -f $*.temp.eps
+	if test -n "$(PDFOPT)" ; then $(PDFOPT) $*.temp.pdf $*.temp2.pdf ; else mv -f $*.temp.pdf $*.temp2.pdf ; fi
+	mv -f $*.temp2.pdf $@
+	rm -f $*.temp.pdf $*.temp2.pdf
+
+FAKE_TARGETS += .eps.pdf
+
+.ps.pnm :
+	@-rm -f $@
+	$(GS) -q -sDEVICE='pnmraw' -sOutputFile='-' -r$(RES) -dBATCH -dNOPAUSE $< > $@.temp.temp
+	if test -n "$(PNMCROP)" ; then $(PNMCROP) < $@.temp.temp > $@.temp ; rm -f $@.temp.temp ; else mv -f $@.temp.temp $@.temp ; fi
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	if test -n "$(PAMFLIP)" ; then $(PAMFLIP) -cw < $@.temp > $@ ; else mv -f $@.temp $@ ; fi ;\
+	else	mv -f $@.temp $@ ;\
+	fi
+	rm -f $@.temp
+
+FAKE_TARGETS += .ps.pnm
+
+.troff.psa4 :
+	$(TROFF) -T$(POSTSCRIPT) $(A4) -rX21c -rZ29.7c -rR2c -rV0.712c $< $(TPOST) > $@.temp
+	$(SED) -e 's,%%EOF,%!Description: PostScript ISO A4 version of $*\n%%EOF,' < $@.temp > $@
+	rm -f $@.temp
+
+FAKE_TARGETS += .troff.psa4
+
+.tms.psa4 :
+	$(TROFF) -T$(POSTSCRIPT) -rN$(RFC) $(A4) -rX21c -rZ29.7c -rR2c -rV0.712c $< $(TPOST) > $@.temp
+	$(SED) -e 's,%%EOF,%!Description: PostScript ANSI A version of $*\n%%EOF,' < $@.temp > $@
+	rm -f $@.temp
+
+FAKE_TARGETS += .tms.psa4
+
+.psa4.pdfa4 :
+	@-rm -f $@
+	$(PS2PDF) -dPDFSETTINGS=/prepress -sPAPERSIZE=a4 $< $@
+	$(SED) -e 's,\(^/Creator\),/Subject(Description: PDF ISO A4 version of $*)\n\1,' < $@ > $@.temp
+	if test -n "$(PDFOPT)" ; then $(PDFOPT) $@.temp $@ ; else mv -f $@.temp $@ ; fi
+	rm -f $@.temp
+
+FAKE_TARGETS += .psa4.pdfa4
+
+.pnm.png :
+	$(PNMTOPNG) $< > $@.temp
+	rm -f $@.bak $@.temp.bak
+	if test -n "$(OPTIPNG)" ; then $(OPTIPNG) -quiet $@.temp ; fi
+	if test -n "$(PNGCRUSH)" ; then $(PNGCRUSH) -fix -q $@.temp $@ ; else mv -f $@.temp $@ ; fi
+	rm -f $@.temp
+
+FAKE_TARGETS += .pnm.png
+
+.ps.eps :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $<.temp ;\
+		$(SED) -e 's/.*FreeType.*-1.//g' < $<.temp > $<.temp.temp ;\
+		mv -f $<.temp.temp $<.temp ;\
+		$(PS2EPSI) $<.temp $@.temp ;\
+		$(SED) -e 's/.*FreeType.*-1.//g' < $@.temp > $@.temp.temp ;\
+		mv -f $@.temp.temp $@.temp ;\
+		rm -f $<.temp core ;\
+	else	$(PS2EPSI) $< $@.temp ;\
+	fi
+	mv -f $@.temp $@
+
+FAKE_TARGETS += .ps.eps
+
+.ps.ai :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $<.temp ;\
+		$(PSTOEDIT) -f ps2ai $<.temp $@.temp ;\
+		rm -f $<.temp core ;\
+	else	$(PSTOEDIT) -f ps2ai $< $@.temp ;\
+	fi
+	mv -f $@.temp $@
+
+FAKE_TARGETS += .ps.ai
+
+.eps.sk :
+	-$(PSTOEDIT) -f sk -usebbfrominput -centered $< $@
+	rm -f core
+
+FAKE_TARGETS += .eps.sk
+
+.ps.dxf :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $*.temp.ps ;\
+		$(PSTOEDIT) -f dxf -yshift 260 -pta $*.temp.ps $*.temp.dxf ;\
+		rm -f $*.temp.ps core ;\
+	else	$(PSTOEDIT) -f dxf -usebbfrominput -centered -pta $< $*.temp.dxf ;\
+		rm -f core ;\
+	fi
+	mv -f $*.temp.dxf $@
+
+FAKE_TARGETS += .ps.dxf
+
+.ps.fig :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $*.temp.ps ;\
+		$(PSTOEDIT) -f fig -xscale 0.8 -yscale 0.8 -yshift 260 -pta $*.temp.ps $*.temp.fig ;\
+		rm -f $*.temp.ps core ;\
+	else	$(PSTOEDIT) -f fig -usebbfrominput -centered -pta $< $*.temp.fig ;\
+		rm -f core ;\
+	fi
+	mv -f $*.temp.fig $@
+
+FAKE_TARGETS += .ps.fig
+
+.ps.emf :
+	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $*.temp.ps ;\
+		$(PSTOEDIT) -f emf -yshift 260 -pta $*.temp.ps $*.temp.emf ;\
+		rm -f $*.temp.ps core ;\
+	else	$(PSTOEDIT) -f emf -usebbfrominput -centered -pta $< $*.temp.emf ;\
+		rm -f core ;\
+	fi
+	mv -f $*.temp.emf $@
+
+FAKE_TARGETS += .ps.emf
+
+.pdf.svg :
+	$(PDF2SVG) $< $*.temp.svg
+	head -1 $*.temp.svg > $@.temp
+	cat svg_doctype_1.1full >> $@.temp
+	tail -n +2 $*.temp.svg | head -n -1 >> $@.temp
+	tail -n -1 $*.temp.svg >> $@.temp
+	mv -f $@.temp $@
+	rm -f $@.temp $*.temp.svg
+
+FAKE_TARGETS += .pdf.svg
+
+# avoid going from ps (from troff) to HPGL as an intermediary to png or svg
+#.ps.hpgl :
+#	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\
+#	then	$(PSTOEDIT) -f ps -rotate 270 -usebbfrominput -centered $< $*.temp.ps ;\
+#		$(PSTOEDIT) -f hpgl -yshift 260 -pta $*.temp.ps $*.temp.hpgl ;\
+#		rm -f $*.temp.ps core ;\
+#	else	$(PSTOEDIT) -f hpgl -usebbfrominput -centered -pta $< $*.temp.hpgl ;\
+#		rm -f core ;\
+#	fi
+#	mv -f $*.temp.hpgl $@
+#FAKE_TARGETS += .ps.hpgl
+
+.hpgl.eps :
+	$(HP2XX) -c 12345671 -f $@ -m eps $<
+
+FAKE_TARGETS += .hpgl.eps
+
+.hpgl.png :
+	$(HP2XX) -c 12345671 -f $@ -m png $<
+
+FAKE_TARGETS += .hpgl.png
+
+.hpgl.svg :
+	$(HP2XX) -c 12345671 -f $@ -m svg $<
+
+FAKE_TARGETS += .hpgl.svg
+

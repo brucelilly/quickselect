@@ -1,0 +1,73 @@
+#  This is the description file used by the make(I) command
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.solaris $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# this file defines macros specific to one OS family
+
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.$(OS)
+
+# (All Macro Definitions are described on line preceding definition)
+
+# Directory where executable user commands are installed
+INSTALL_USER_BINDIR = /usr/gnu/bin
+
+# Directory where executable adminsitrative commands are installed
+INSTALL_ADMIN_BINDIR = /usr/gnu/sbin
+
+# Directory where executable daemons are installed
+INSTALL_DAEMON_BINDIR = /usr/inet
+
+# 32-bit vs. 64-bit run-time executable handling executable
+# empty if run-time support for multi-architecture handling is not supported
+ISAEXEC = /usr/lib/isaexec
+
+# Public directory where help files are stored.
+PUBLIC_HELPLIB = /usr/lib/help
+
+# Public directory where man page files are stored.
+PUBLIC_MANDIR = /usr/man
+
+# where to install non-profiled library code
+PUBLIC_LIBDIR = /usr/lib
+
+# where to install profiled library code
+PUBLIC_PROFILE_LIBDIR = /lib/lipb
+
+# Libraries used during loading
+OS_LIBS = -lnsl -lsocket
+
+# work-around for Solaris non-standard get -G... issue
+GFLAGS =
+SCCS_OUTPUT_OPTION =
+
+# run-time directory for BIND
+NAMED_DIR = /var/named
