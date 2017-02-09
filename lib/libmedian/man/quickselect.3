@@ -1,4 +1,4 @@
-.\" Description: quickselect.3 version 1.0 man page 2017-02-02T19:43:19Z
+.\" Description: quickselect.3 version 1.2 man page 2017-02-09T17:27:04Z
 .\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
 .\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
 .\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
@@ -35,8 +35,8 @@
 .nh	\" no hyphenation
 \fB#include <quickselect.h>\fP
 .PP
-.B void quickselect(void *base, size_t nmemb, const size_t size, int (*compar)(const void *, const void *), const size_t *pk, const size_t nk);
-'\" QUICKSELECT_EXTERN void quickselect(void *, size_t, const size_t, int (*)(const void *, const void *), const size_t *, const size_t);
+.B void quickselect(void *base, size_t nmemb, const size_t size, int (*compar)(const void *, const void *), size_t *pk, const size_t nk);
+'\" QUICKSELECT_EXTERN void quickselect(void *, size_t, const size_t, int (*)(const void *, const void *), size_t *, const size_t);
 '\" QUICKSELECT_EXTERN void QSORT_FUNCTION_NAME(void *, size_t, size_t, int (*)(const void *, const void *));
 .PP
 .B void QSORT_FUNCTION_NAME(void *base, size_t nmemb, const size_t size, int (*compar)(const void , const void *));
@@ -148,6 +148,18 @@ implementation may tend to
 quadratic performance on adverse inputs.
 Few libraries provide a function for selection of order statistics.
 .SH BUGS and CAVEATS
+Array
+.B pk
+may be sorted by
+\*(xx
+and therefore initially unsorted order statistic ranks may be permuted
+by a call to \*(xx.
+It is recommended
+(but not required)
+that the order statistics array
+.B pk
+be supplied in sorted order.
+.PP
 \*(xx 
 has expected and worst\-case linear complexity for finding a single order statistic.
 \*(xx 
@@ -178,7 +190,7 @@ Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 .po
 .lt
 .br
-@(#)quickselect.3 1.0 2017-02-02T19:43:19Z copyright \*(xy Bruce Lilly
+@(#)quickselect.3 1.2 2017-02-09T17:27:04Z copyright \*(xy Bruce Lilly
 .br
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the

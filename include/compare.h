@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.h version 1.2 dated 2016-10-05T15:23:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.h version 1.3 dated 2017-02-09T16:28:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "compare" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.compare.h */
 
 /* version-controlled header file version information */
-#define COMPARE_H_VERSION "compare.h 1.2 2016-10-05T15:23:34Z"
+#define COMPARE_H_VERSION "compare.h 1.3 2017-02-09T16:28:13Z"
 
 #include <sys/types.h>          /* *_t (size_t) */
 #include <stddef.h>             /* NULL */
@@ -45,10 +45,9 @@
 #undef typecmp
 #define typecmp(type) {                                            \
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {              \
-        const type *a1 = (const type *)p1, *b2 = (const type *)p2; \
-        type a, b;                                                 \
+        const type a= *((const type *)p1), b= *((const type *)p2); \
                                                                    \
-    if ((a = *a1) > (b = *b2))                                     \
+    if (a > b)                                                     \
         return 1;                                                  \
     if (a < b)                                                     \
         return -1;                                                 \

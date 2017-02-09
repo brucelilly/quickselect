@@ -30,15 +30,15 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.10 dated 2017-02-06T03:55:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.11 dated 2017-02-09T16:29:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.10 2017-02-06T03:55:38Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.11 2017-02-09T16:29:14Z"
 
-#include <sys/types.h>          /* *_t (size_t) */
+#include <stddef.h>          /* size_t */
 
 #if defined(__cplusplus)
 # define QUICKSELECT_EXTERN extern "C"
@@ -52,7 +52,7 @@
 #endif
 
 /* quickselect.c */
-QUICKSELECT_EXTERN void quickselect(void *, size_t, const size_t, int (*)(const void *, const void *), const size_t *, const size_t);
+QUICKSELECT_EXTERN void quickselect(void *, size_t, const size_t, int (*)(const void *, const void *), size_t *, const size_t);
 QUICKSELECT_EXTERN void QSORT_FUNCTION_NAME(void *, size_t, size_t, int (*)(const void *, const void *));
 
 /* QSORT_FUNCTION_NAME remains defined for use in quickselect.c */

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.55 dated 2017-02-08T09:30:17Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.57 dated 2017-02-09T17:16:25Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -181,6 +181,13 @@
 # define REPIVOT_CUTOFF             27UL
 #endif
 
+/* For selection, the array of desired ranks is searched linearly if the array
+   size is small, but binary search is used on the (sorted) array if it is
+   large.  NK_CUTOFF sets the size at which binary search in a sorted array
+   is first used. Recommended value 16UL.
+*/
+#define NK_CUTOFF                   16UL
+
 /* Nothing to configure below this line. */
 
 /* sanity checks */
@@ -191,6 +198,12 @@
 #endif
 
 /* defaults */
+#if ! NK_CUTOFF
+# ifdef NK_CUTOFF
+#  undef NK_CUTOFF
+# endif
+# define NK_CUTOFF                   16UL
+#endif
 #if ! M3_CUTOFF
 # ifdef M3_CUTOFF
 #  undef M3_CUTOFF
@@ -258,8 +271,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.55"
-#define MODULE_DATE "2017-02-08T09:30:17Z"
+#define MODULE_VERSION "1.57"
+#define MODULE_DATE "2017-02-09T17:16:25Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -319,6 +332,9 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #endif
 #if M3_GRAPH
     ", M3_GRAPH=" xbuildstr(M3_GRAPH)
+#endif
+#if NK_CUTOFF
+    ", NK_CUTOFF=" xbuildstr(NK_CUTOFF)
 #endif
 #if REPIVOT_FACTOR
     ", REPIVOT_FACTOR=" xbuildstr(REPIVOT_FACTOR)
@@ -465,27 +481,20 @@ static inline void swap(char *pa, char *pb, size_t bytes, int swaptype)
 /* region manipulation */
 
 /* Compute the effective size (as count of elements) of a region.  The size is
-   zero if there is only a single element or if the region is not needed to find
-   requested order statistics.
+   zero if the region is not needed to find requested order statistics.
    N.B. argument pu points past the last element in the region.
 */
 /* pk[k] is the 0-based rank of an array element, based on the full array
-   (origin has been saved in pointer po).  The entire pk array is scanned for
+   (origin has been saved in pointer po).  The pk array is scanned for
    each region unless/until an order statistic is found that requires processing
-   the region.  Therefore, neither uniqueness nor order are required of the
-   order statistic values in the pk array.
+   the region.  Therefore, uniqueness is not required of the order statistic
+   values in the pk array.
 */
-/* If the elements of pk were in sorted order, binary search would be possible,
-   but linear search is faster for reasonable numbers of order statistics
-   (<= 100).  A large number of order statistics is not expected.  Also, if the
-   elements of pk were in sorted order, linear search could be conducted over a
-   limited range, and the range of indices into pk could be restricted for
-   processing sub-arrays of the base array.  It is simplest (both for the caller
-   and for the implementation code) not to impose any ordering requirement on
-   the values in array pk.  The linear search terminates early if some rank
-   may reside in a region.
+/* If the elements of pk are in sorted order, binary search is possible,
+   but linear search is faster for small numbers of order statistics
+   (<= NK_CUTOFF).  A large number of order statistics is not expected.
 */
-/* called twice from partition() */
+/* called twice from process_regions() */
 static inline size_t effective_size(char *pl, char *pu, char *po,
     const size_t size, const size_t *pk, const size_t nk)
 {
@@ -494,16 +503,29 @@ static inline size_t effective_size(char *pl, char *pu, char *po,
     if (pu>pl) {
         n=(pu-pl)/size; /* # elements */
         if (NULL!=pk) {/* selection: is region required? */
-            size_t i, bigrank, minrank;
+            size_t k, bigrank, minrank;
 
             /* Smallest ranks in region and just beyond. */
             minrank=(pl-po)/size, bigrank=(pu-po)/size;
-            /* Loop through requested order statistics, break if/when an order
-               statistic in region is requested.
-            */
-            for (i=0UL; (i<nk)&&((pk[i]<minrank)||(pk[i]>=bigrank)); i++)
-                ;
-            if (i>=nk) n=0UL; /* no requested rank in region */
+            if ((NK_CUTOFF) > nk) { /* linear search */
+                /* Loop through requested order statistics, break if/when an order
+                   statistic in region is requested.
+                */
+                for (k=0UL; (k<nk)&&((pk[k]<minrank)||(pk[k]>=bigrank)); k++)
+                    ;
+                if (k>=nk) n=0UL; /* no requested rank in region */
+            } else { /* binary search */
+                size_t lk=0UL, rk=nk-1UL;
+
+                while (lk<=rk) {
+                    k=lk+((rk-lk)>>1); /* avoid overflow */
+                    if (pk[k]<minrank) lk=k+1UL;
+                    else if (pk[k]>=bigrank) {
+                        if (0UL<k) rk=k-1UL; else lk=rk+1UL;
+                    } else break; /* pk[k] is in region */
+                }
+                if (lk>rk) n=0UL; /* no requested rank in region */
+            }
         }
     }
     return n;
@@ -520,7 +542,7 @@ static inline size_t effective_size(char *pl, char *pu, char *po,
    described above).
    N.B. base is not necessarily the first element in the array passed to qsort.
 */
-/* called three times from partition() */
+/* called three times from quickselect_internal() */
 static inline char *medians3(char *base, size_t size,
     int(*compar)(const void *, const void *), size_t row_offset,
     size_t sample_offset, size_t row_samples, int swaptype)
@@ -571,7 +593,7 @@ static inline char *medians3(char *base, size_t size,
    plg and slg are start and size (chars) of the large region; psm, ssm for
    the small region.
 */
-/* called twice from examine_regions() */
+/* called twice from quickselect_internal() */
 static inline int process_regions(char *plg, size_t slg, char *psm,
     size_t ssm, size_t nmemb, const size_t size, char *po, const size_t *pk,
     const size_t nk, char **ppb, size_t *pbig, struct region_struct *pr,
@@ -643,6 +665,9 @@ static inline void quickselect_internal(void *base, size_t nmemb,
     /* Determine size of data chunks to copy for element swapping.  Size is
        determined by element size and alignment. swaptype is an index into an
        array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
     */
     s=typsz[swaptype=0]; /* double */
     if ((size<s)||(!(is_aligned(base,log2s[s])))) {
@@ -671,7 +696,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
         */
         for (nregions=0; 1UL<nmemb;) { /* current region iteration loop */
             int c, d, i, j;              /* general integer variables */
-            char *pa, *pb, *pc, *pd, *pe, *pf, *pivot, *pu;
+            char *pa, *pb, *pc, *pe, *pf, *pivot, *pu;
             size_t n, p, q, r, t;
 
             if ((NULL==pk) /* sorting only */
@@ -782,7 +807,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                     -(t>>1)*s;                           /* minus half samples/row */
             }
 #if ASSERT_CODE
-            A(pl<=pivot);A(pivot<pl+nmemb*size); /* p is in the array */
+            A(pl<=pivot);A(pivot<pl+nmemb*size); /* pivot is in the array */
             /* assertion below asserts that last sample < pu
                i.e. pl+(r<<1)*(t-1UL)*s<pl+nmemb*size
             */
@@ -832,36 +857,36 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                 /* |     =  |      <               |               >    |   =    | */
                 /*  pl     a b                      c=e                  f        u*/
                 /* swap > and upper = regions, set pd to start of > */
-                if (pf<pu) { /* pd= original pe if pf>=pu */
-                    if (pe<pf) { /* pd= original pu if pf>=pe */
+                if (pf<pu) { /* pe unchanged if pf>=pu */
+                    if (pe<pf) { /* pe= original pu if pf>=pe */
                         p=pu-pf, n=pf-pe; if (p<n) n=p;
-                        swap(pe,pu-n,n,swaptype); pd=pe+p;
-                    } else pd=pu;
-                } else pd=pe;
+                        swap(pe,pu-n,n,swaptype); pe+=p;
+                    } else pe=pu;
+                }
                 /* |     =  |      <               |        =      |      >      | */
-                /*  pl     a b                      c=e             d             u*/
+                /*  pl     a b                      c               e             u*/
                 /* swap left = and < regions */
-                if (pb<pe) { /* pb= original pl if pb>=pe */
+                if (pb<pc) { /* pb= original pl if pb>=pc */
                     if (pl<pb) { /* pb= original pc if pb>=pa */
-                        p=pe-pb, n=pb-pl; if (p<n) n=p;
-                        swap(pl,pe-n,n,swaptype); pb=pl+p;
-                    } else pb=pe;
+                        p=pc-pb, n=pb-pl; if (p<n) n=p;
+                        swap(pl,pc-n,n,swaptype); pb=pl+p;
+                    } else pb=pc;
                 } else pb=pl;
                 /* |        <            |            =            |      >      | */
-                /*  pl                    b                         d             u*/
+                /*  pl                    b                         e             u*/
                 /* Examine sizes of < and > regions and determine whether to repivot. */
                 q=pb-pl; /* size of the < region, in chars */
-                r=pu-pd;  /* size of the > region, in chars */
+                r=pu-pe;  /* size of the > region, in chars */
                 if ((q)<(r)) /* > region is larger */
-                    d=process_regions(pd,r,pl,q,nmemb,size,po,pk,nk,&pl,&n,
+                    d=process_regions(pe,r,pl,q,nmemb,size,po,pk,nk,&pl,&n,
                         regions,&nregions, top);
                 else /* < region is larger, or regions are the same size */
-                    d=process_regions(pl,q,pd,r,nmemb,size,po,pk,nk,&pl,&n,
+                    d=process_regions(pl,q,pe,r,nmemb,size,po,pk,nk,&pl,&n,
                         regions,&nregions, top);
                 if (0==d) break; /* repivot not required */
                 /* repivot/repartition large region w/ pl, n from examine_regions */
                 /* |        <            |            =            |      >      | */
-                /*  pl                    b                         d             u*/
+                /*  pl                    b                         e             u*/
                 /* Finding a pivot with guaranteed intermediate rank. Ideally, median
                    (50%).  Blum, Floyd, Pratt, Rivest, Tarjan median-of-medians using
                    sets of 5 elements with recursion guarantees rank in (asymptotically)
@@ -950,9 +975,23 @@ static inline void quickselect_internal(void *base, size_t nmemb,
     /* Done. */
 }
 
+/* comparison function for sorting order statistic ranks */
+static inline int size_t_cmp(const void *p1, const void *p2)
+{
+    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
+        const size_t a = *((const size_t *)p1), b = *((const size_t *)p2);
+
+        if (a > b)
+            return 1;
+        if (a < b)
+            return -1;
+    }
+    return 0;
+}
+
 /* public quickselect definition */
 void quickselect(void *base, size_t nmemb, const size_t size,
-    int (*compar)(const void *,const void *), const size_t *pk, const size_t nk)
+    int (*compar)(const void *,const void *), size_t *pk, const size_t nk)
 {
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
@@ -969,6 +1008,8 @@ void quickselect(void *base, size_t nmemb, const size_t size,
        sorting.
     */
     if (0UL==nk) pk=NULL;
+    else if ((NK_CUTOFF) >= nk) /* binary search requires sorted pk */
+        quickselect_internal((void *)pk,nk,sizeof(size_t),size_t_cmp,NULL,0UL);
     quickselect_internal(base,nmemb,size,compar,pk,nk);
 }
 

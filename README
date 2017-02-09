@@ -1,0 +1,30 @@
+quickselect library source code is located in lib/libmedian/src/quickselect.c
+
+A related header file is located at lib/libmedian/include/quickselect.h
+
+A man page is in lib/libmedian/man/quickselect.3
+
+A test framework program, median_test, (so named for historical reasons)
+has source code in src/median_test.c. (it's not pretty)
+
+Header files are located in include and lib/libmedian/include.
+
+The test framework also uses a number of libraries, located under
+lib, and is built using makefiles and a few shell scripts.  See
+README.makefiles and README.ident.
+
+Building the test framework with quickselect available to it for testing
+should be as simple as
+   make depend
+   make median_test
+
+That ought to work on Solaris, Linux, and UNIX (e.g. NetBSD) systems.
+Median_test also incorporates Bentley & McIlroy's vanilla qsort code,
+modified code from NetBSD, and glibc qsort code; it can also run tests
+on the local qsort on the system on which it is built.
+
+There's no man page for median_test, running it with a -? arg will print
+a usage synopsis.
+
+A pre-peer-reviewed document describing quickselect and its development
+and testing may be found at lib/libmedian/doc/pub/spe/paper.pdf.
