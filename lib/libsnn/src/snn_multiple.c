@@ -33,6 +33,7 @@
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/src/s.snn_multiple.c */
+#error OBSOLETE: code is now in snn.h
 
 /********************** Long description and rationale: ***********************
 * snmultiple returns the nearest multiple of a specified increment to a

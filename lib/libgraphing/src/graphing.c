@@ -8,7 +8,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    graphing.c copyright 2014 - 2016 Bruce Lilly.   \ graphing.c $
+* $Id: ~|^` @(#)    graphing.c copyright 2014-2017 Bruce Lilly.   \ graphing.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -27,7 +27,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is graphing.c version 2.3 2016-09-20T02:09:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is graphing.c version 2.5 2017-02-10T22:43:03Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "graphing" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/projects/automation/940/lib/libgraphing/src/s.graphing.c */
@@ -47,10 +47,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: graphing.c ~|^` @(#)"
 #define SOURCE_MODULE "graphing.c"
-#define MODULE_VERSION "2.3"
-#define MODULE_DATE "2016-09-20T02:09:23Z"
+#define MODULE_VERSION "2.5"
+#define MODULE_DATE "2017-02-10T22:43:03Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2014 - 2016"
+#define COPYRIGHT_DATE "2014-2017"
 
 /* configuration (which might affect feature test macros) */
 /* to include a main entry point for testing, compile with -DTESTING=1 */
@@ -58,15 +58,33 @@
 # define TESTING 0
 #endif
 
-/* feature test macros must appear before any header file inclusion */
+/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MIN_XOPEN_SOURCE_VERSION 600
+#else
+# define MIN_XOPEN_SOURCE_VERSION 500
+#endif
+
+/* feature test macros defined before any header files are included */
+#ifndef _XOPEN_SOURCE
+# define _XOPEN_SOURCE 600  /* code uses C99 'inline', XOPEN 'LONG_BIT' */
+#endif
+#if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+#endif
+#ifndef __EXTENSIONS__
+# define __EXTENSIONS__ 1
+#endif
 
 #include "graphing.h"           /* formatprecision formatwidth mintick maxtick prec rem intvl */
+#include "snn.h"                /* sn1en snmagnitude snmultiple snsf */
 #include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
 
 #include <string.h>             /* strrchr */
-#include <math.h>               /* floor lrint */
 
 /* imports */
+/* XXX should use logger instead of global debug */
 extern volatile int debug;      /* lemd.c */
 
 /* static data and function definitions */
@@ -81,51 +99,31 @@ static void initialize_graphing(void)
 }
 
 /* return fractional part of x * scale mod res
+   scaled to a fraction of res
    round to at most 9 digits precision
 */
 double rem(FILE *f, double x, double scale, double res)
 {
-    double d, n, q, r;
+    double d, e, r;
 
-    d = x * scale;
-    q = d / res;
-    n = floor(q);
-    r = q - n;
-    d = 1.0e-9;
-    if ((r > 1.0 - d) || (r < d))
-        r = 0.0;
-    if (debug > 0) {
-        if ((char)0 == graphing_initialized)
-            initialize_graphing();
-        (void)fprintf(f,
-            "%s %s(x %g, scale %g, res %g) = %g%s",
-            COMMENTSTART, __func__,
-            x, scale, res, r,
-            COMMENTEND);
-    }
+    e=x*scale;
+    d=snmultiple(e,res,NULL,NULL);
+    if (d>e) d-=res;
+    r=e-d;
+    if (0.0!=res) r/=res;
+    if (r<sn1en(-9,NULL,NULL)) r=0.0;
     return r;
 }
 
 /* return number of digits of precision required to represent
       fractional part of d
 */
-/* XXX update using snn tools, e.g. sn1en */
 int prec(FILE *f, double d)
 {
-    int p, q;
-    double r, s, t;
-
-    if ((char)0 == graphing_initialized)
-        initialize_graphing();
-    r = rem(f, d, 1.0, 1.0);
-    for (p=q=0,s=1.0; q < 9; s /= 10.0, q++) {
-        t = rem(f, r, 1.0, s);
-        if (0.0 == t)
-            break;
-    }
-    if (q > p)
-        p = q;
-    return p;
+    int a=snmagnitude(d,NULL,NULL), b=snsf(d,NULL,NULL);
+    if (0>a) a=0;
+    if (d==0.0) b=0;
+    return b-a;
 }
 
 /* return number of digits of precision required to represent
@@ -150,10 +148,9 @@ int formatprecision(FILE *f, double low, double high, double interval)
 /* return total number of characters required to print number
       from low through high with prec digits of precision in fraction
 */
-/* XXX update using snn tools, e.g. sn1en */
 int formatwidth(FILE *f, double low, double high, int precision)
 {
-    int w;
+    int w, x;
     double d;
 
     if ((char)0 == graphing_initialized)
@@ -163,19 +160,21 @@ int formatwidth(FILE *f, double low, double high, int precision)
         w++; /* decimal point */
     if (low < 0.0)
         w++; /* minus sign */
-    for (d=10.0; (high >= d) || (low <= 0.0 - d); d *= 10.0)
-        w++; /* additional digits to the left of the decimal point */
+    d=low;
+    if (0.0>d) d=0.0-d;
+    if (high>d) d=high;
+    x=snmagnitude(d,NULL,NULL);
+    if (1>=x) x=0;
+    w+=x;
     return w;
 }
 
 /* compute minimum tick value for data ranging from low to high with
       inherent resolution res and tick interval interval
 */
-/* XXX update using snn tools, e.g. sn1en */
 double mintick(FILE *f, double low, double high, double res, double interval, double llim, double ulim)
 {
-    int i;
-    double d;
+    double d, e;
 
     if (debug > 0) {
         if ((char)0 == graphing_initialized)
@@ -188,17 +187,19 @@ double mintick(FILE *f, double low, double high, double res, double interval, do
     }
     if (low < llim)
         low = llim; /* ignore data below lower limit */
-    if (low < 0.0)
-        i = lrint(floor((low + res / 100.0 - interval) / interval));
-    else
-        i = lrint(floor((low + res / 100.0) / interval));
-    d = interval * (double)i;
+    d=snmultiple(low-interval,res,NULL,NULL);
+    if (d>low) d-=res;
+    d=snmultiple(e=d,interval,NULL,NULL);
+    if (d>e) d-=interval;
+    if (d+interval<=low) d+=interval;
     if (low < d - res / 100.0)
         low = d - interval;
     else
         low = d;
-    i = lrint(floor((high - res / 100.0 + interval) / interval));
-    d = interval * (double)i;
+    d=snmultiple(high+interval,res,NULL,NULL);
+    if (d>high) d-=res;
+    d=snmultiple(e=d,interval,NULL,NULL);
+    if (d>e) d-=interval;
     if (high > d + res / 100.0)
         high = d + interval;
     else
@@ -213,11 +214,9 @@ double mintick(FILE *f, double low, double high, double res, double interval, do
 /* compute maximum tick value for data ranging from low to high with
       inherent resolution res and tick interval interval
 */
-/* XXX update using snn tools, e.g. sn1en */
 double maxtick(FILE *f, double low, double high, double res, double interval, double llim, double ulim)
 {
-    int i;
-    double d;
+    double d, e;
 
     if (debug > 0) {
         if ((char)0 == graphing_initialized)
@@ -230,8 +229,10 @@ double maxtick(FILE *f, double low, double high, double res, double interval, do
     }
     if (high > ulim)
         high = ulim; /* ignore data above upper limit */
-    i = lrint(floor((high - res / 100.0 + interval) / interval));
-    d = interval * (double)i;
+    d=snmultiple(high+interval,res,NULL,NULL);
+    if (d>high) d-=res;
+    d=snmultiple(e=d,interval,NULL,NULL);
+    if (d>e) d-=interval;
     if (high > d + res / 100.0)
         high = d + interval;
     else
@@ -243,10 +244,14 @@ double maxtick(FILE *f, double low, double high, double res, double interval, do
     return high;
 }
 
+/* test ratios */
+static const double zarray[]=
+    {1.20,1.25,1.5,2.0,2.5,3.0,4.0,5.0,6.0,8.0,9.0,10.0};
+static int nz=sizeof(zarray)/sizeof(zarray[0]);
+
 /* compute optimum tick interval for data ranging from low to high
       with inherent resolution res
 */
-/* XXX update using snn tools, e.g. sn1en */
 double intvl(FILE *f, double low, double high, double res, double llim, double ulim, int nticks, unsigned int subintvl)
 {
     unsigned char done;
@@ -286,7 +291,7 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
     do {
         maxt = maxtick(f, low, high, res, d, llim, ulim);
         mint = mintick(f, low, high, res, d, llim, ulim);
-        i = lrint(floor((maxt - mint) / d + 1.5 - (subintvl!=0U? 2.0: 0.0)));
+        i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
         if (debug > 0)
             (void)fprintf(f,
                 "%s %s: power of 10 %g gives %d tick%s %s %g %s %g%s",
@@ -303,9 +308,9 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
     /* if the tick interval is smaller than the inherent data resolution, increase the tick interval */
     while (d < res) {
         d *= 10.0;
-        maxt = maxtick(f, low, high, res, d, llim, ulim); /* XXX eliminate or move out of loop */
-        mint = mintick(f, low, high, res, d, llim, ulim); /* XXX eliminate or move out of loop */
-        i = lrint(floor((maxt - mint) / d + 1.5 - (subintvl==0U? 2.0: 0.0))); /* XXX eliminate or move out of loop */
+        maxt = maxtick(f, low, high, res, d, llim, ulim);
+        mint = mintick(f, low, high, res, d, llim, ulim);
+        i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
     }
     if (debug > 0)
         (void)fprintf(f,
@@ -318,7 +323,7 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
     d = y;
     maxt = maxtick(f, low, high, res, d, llim, ulim);
     mint = mintick(f, low, high, res, d, llim, ulim);
-    i = lrint(floor((maxt - mint) / d + 1.5 - (subintvl!=0U? 2.0: 0.0)));
+    i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
     if (debug > 0)
         (void)fprintf(f,
             "%s %s: basis power of 10 %g for resolution %g gives %d tick%s %s %g %s %g%s",
@@ -327,56 +332,12 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
             COMMENTEND);
     /* try factors of y until a suitable tick interval is found */
     /* use only values near integral multiples of inherent resolution for nice match to data and to facilitate subdivision */
-    j = 0;
-    z = 1.20; /* = 12 / 10 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 1.25; /* = 10 / 8 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 1.5; /* = 3 / 2 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 2.0; /* also 10 / 5 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 2.5; /* = 5 / 2 also 10 / 4 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 3.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 4.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 5.0; /* also 10 / 2 */
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 6.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    /* z = 7.0 (prime > 6) not suitable for subdivision */
-    z = 8.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 9.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
-    z = 10.0;
-    r = rem(f, z, y, res);
-    if ((r < 0.105) || (r > 0.905))
-        fz[++j] = z;
+    for (i=j=0; i<nz; i++) {
+        z=zarray[i];
+        r=rem(f,z,y,res);
+        if ((r<0.105)||(r>0.905))
+            fz[++j]=z;
+    }
     /* ensure at least one value to test */
     if (j < 1) {
         z = res;
@@ -396,7 +357,7 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
         if ((d >= g * 0.9999) && (res <= fz[j+1] * y)) { /* handle roundoff issues */
             maxt = maxtick(f, low, high, res, d, llim, ulim);
             mint = mintick(f, low, high, res, d, llim, ulim);
-            i = lrint(floor((maxt - mint) / d + 1.5 - (subintvl!=0U? 2.0: 0.0)));
+            i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
             if (debug > 0) {
                 (void)fprintf(f,
                     "%s %s: d = %g next %g, maxt = %g, mint = %g, i = %d%s",
@@ -454,7 +415,7 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
     if (debug > 0) {
         maxt = maxtick(f, low, high, res, d, llim, ulim);
         mint = mintick(f, low, high, res, d, llim, ulim);
-        i = lrint(floor((maxt - mint) / d + 1.5 - (subintvl!=0U? 2.0: 0.0)));
+        i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
         (void)fprintf(f,
             "%s %s: revised interval %g gives %d tick%s %s %g %s %g for data between %g and %g%s",
             COMMENTSTART, __func__,
@@ -501,17 +462,6 @@ int main(int argc, char **argv)
                 COMMENTSTART,
                 subinterval, interval,
                 COMMENTEND);
-#if 0
-            i = lrint(floor((high-low) / subinterval + 1.5);
-            for (j=1; j <= i; j++) {
-                delta = (double)j * subinterval;
-                nd = (delta + (res * 0.04)) / interval;
-                k = lrint(floor(nd));
-                r = nd - (double)k;
-                if (r < subinterval / interval / 3.0)
-                    continue;
-            }
-#endif
         }
     }
     return 0;
