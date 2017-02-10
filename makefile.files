@@ -231,6 +231,7 @@ LIB10HDRS =\
  civil_time.h\
 #
 LIB10MAN =\
+ civil_time.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB10ARCH C99LIB10OBJS LIB10OBJS LIB10HDRS LIB10MAN
@@ -249,6 +250,7 @@ LIB11HDRS =\
  utc_mktime.h\
 #
 LIB11MAN =\
+ utc_mktime.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB11ARCH C99LIB11OBJS LIB11OBJS LIB11HDRS LIB11MAN
