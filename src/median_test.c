@@ -37,9 +37,6 @@
 * starting point for select/median implementation
 ******************************************************************************/
 
-/* XXX TODO:
-*/
-
 /* configuration options */
 /* 64-bit machine: struct size is 32 bytes for string size 13-20
                                   40 for string size 21-28
@@ -1955,6 +1952,7 @@ static unsigned int correctness_test(void *pv, const size_t size, void *alt, con
     }
     if (0U == errs) {
         ptest = sequence_name(testnum);
+#if 0
 /* XXX valid_test here should be redundant; it was checked in caller */
         if (0==valid_test(TEST_TYPE_CORRECTNESS, testnum, n)) {
             logger(LOG_ERR, log_arg,
@@ -1962,6 +1960,7 @@ static unsigned int correctness_test(void *pv, const size_t size, void *alt, con
                 prog, __func__, source_file, __LINE__, ptest, n);
             return ++errs;
         }
+#endif
         u = n - 1UL;
         k = u>>1;
         /* generated test sequences */
@@ -2494,14 +2493,16 @@ static unsigned int timing_test(void *pv, const size_t size, void *alt, const si
         }
     }
     if (0U == errs) {
-/* XXX valid_test here should be redundant; it was checked in timing_tests() */
         ptest = sequence_name(testnum);
+#if 0
+/* XXX valid_test here should be redundant; it was checked in timing_tests() */
         if (0==valid_test(TEST_TYPE_TIMING, testnum, n)) {
             logger(LOG_ERR, log_arg,
                 "%s: %s: %s line %d: test %s is not valid at size %lu",
                 prog, __func__, source_file, __LINE__, ptest, n);
             return ++errs;
         }
+#endif
         u = n - 1UL;
         k = u >>1;
         /* generated test sequences */
@@ -3832,10 +3833,10 @@ int main(int argc, const char * const *argv)
                     logger(LOG_ERR, log_arg,
                         "%s: usage: %s %s",
                         prog, prog, USAGE_STRING);
-                    logger(LOG_ERR, log_arg, "test sequences:");
+                    fprintf(stderr, "test sequences:\n");
                     for (tests=0U; tests<TEST_SEQUENCE_COUNT; tests++) {
                         (void)snul(buf, sizeof(buf), "0x", NULL, 0x01U<<tests, 16, '0', (TEST_SEQUENCE_COUNT+3)/4+1, logger, log_arg);
-                        logger(LOG_ERR, log_arg, "%s %s", buf, sequence_name(tests));
+                        fprintf(stderr, "%s %s\n", buf, sequence_name(tests));
                     }
                 return 1;
             }
@@ -4168,7 +4169,6 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
     for (n=startn; n<=ul; n=(n+incr)*mult) {
 
         /* restore (re-seed) random number generator(s) before each call to test_function() */
-/* XXX test_function() needs args pointing to random number state variables, which are passed to correctness_tests(), timing_tests(), correctness_test(), timing_test(), generate_integer_test_arrays() */
         if (0U == errs) {
             i = save_random64n_state(s, &p);
             if (0 != i) {
