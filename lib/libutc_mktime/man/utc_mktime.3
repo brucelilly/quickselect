@@ -1,0 +1,441 @@
+.\" Description: utc_mktime.3 version 2.3 man page 2016-04-04T05:13:51Z
+.\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
+.\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
+.\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
+.\"			c appears at bottom center of page, n at top center
+.\" .SH text		subhead
+.\" .SS text		sub-subhead
+.\" .B text		make text bold
+.\" .I text		make text italic
+.\" .SM text		make text 1 point smaller than default
+.\" .RI a b		concatenate and alternate Roman, Italic fonts <=6 args
+.\" .IR .RB .BR .IB .BI	similar to .RI
+.\" .PP			new paragraph
+.\" .HP in		hanging paragraph with indent in
+.\" .TP in		indented paragraph with hanging tag (on next line)
+.\" .IP t in		indented paragraph with hanging tag t (arg 1)
+.\" .RS in		increase relative indent by in
+.\" .RE k		return to kth relative indent level (1-based)
+.\" .DT			default tab settings
+.\" .PD v		inter-paragraph spacing v (default 0.4v troff, 1v nroff)
+.\" \*R			registered symbol	(Reg.)
+.\" \*S			change to default type size
+.lg 0	\" avoid groff's butt-ugly ligatures
+.nh	\" no hyphenation
+.ds ]W \" no 7th Edition designation
+.ds xx utc_mktime
+.ds xy "2009 - 2015
+.TH \*(xx 3 ""
+.SH NAME	\" 1 line	name \- explanatory text
+.B \*(xx
+\- normalize struct tm representing UTC and compute POSIX time_t
+.SH SYNOPSIS
+\fB#include <\*(xx.h>\fP
+\fB#include <leap_second.h>\fP
+.PP
+.B time_t \*(xx(struct tm *ptm);
+.PP
+.B void normalize_date_time(struct tm *ptm,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int leap_years_since_epoch(int year, int epoch
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int yday(const struct tm *ptm,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int wday(const struct tm *ptm,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B void inverse_yday(struct tm *ptm,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int is_leap(int year,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int mdays(int tm_mon, int leap,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int ydays(int tm_mon, int leap,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int local_utc_offset(int scale,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.SH DESCRIPTION
+.nh	\" no hyphenation
+.B \*(xx
+normalizes the struct tm
+values and returns the
+POSIX
+time_t
+corresponding to the UTC time represented by the struct tm.
+.I ptm\->tm_isdst
+is forced to zero, as UTC
+sensibly
+has no
+"daylight saving"
+time.
+.PP
+.B normalize_date_time
+normalizes the
+.IR tm_year ,
+.IR tm_mon ,
+.IR tm_mday ,
+.IR tm_hour ,
+.IR tm_min ,
+and
+.I tm_sec
+elements in the
+.I struct tm
+pointed to by
+.I ptm
+and representing UTC time
+to their normal ranges.
+.B normalize_date_time
+does not use or modify
+.IR tm_yday ,
+.IR tm_wday ,
+or
+.IR tm_isdst .
+.B normalize_date_time
+does recognize
+possible
+positive
+leap seconds
+and allows
+.I tm_sec
+to have a value of 60
+at the end of
+(i.e. at 23:59:60 on the last day of)
+the months
+of
+June
+and
+December,
+if and only if
+.I tm_sec
+had that value when
+.B normalize_date_time
+was called.
+.PP
+.B leap_years_since_epoch
+returns the
+number of
+leap years
+since the start of epoch year,
+.I i.e.
+from the start of the epoch year through the end of year\-1 inclusive.
+Both
+.I year
+and
+.I epoch
+are given as conventional year numbers.
+.PP
+.B yday
+uses
+.IR tm_year ,
+.IR tm_mon ,
+and
+.I tm_mday
+(which must be normalized)
+to compute the
+year day,
+which is returned
+(suitable for assignment to
+.IR ptm\->tm_yday ).
+.PP
+.B wday
+uses
+.IR tm_year ,
+and
+.IR tm_yday
+(which must be set and normalized)
+to compute the
+week day,
+which is returned
+(suitable for assignment to
+.IR ptm\->tm_wday ).
+.PP
+.B inverse_yday
+uses
+.I tm_yday
+and
+.I tm_year
+(which must be set and normalized)
+pointed to by
+.IR ptm ,
+and sets
+.I ptm\->tm_mon
+and
+.I ptm\->tm_mday
+accordingly.
+.PP
+.B is_leap
+returns non\-zero if
+the year indicated by
+.I year
+(as the conventional year number)
+is a leap year,
+zero if it is a non\-leap year.
+.PP
+.B mdays
+returns the number of days in the
+month indicated by
+.I tm_mon
+(same values as in struct tm)
+for non\-leap years if
+.I leap
+is zero,
+and for leap years if
+.I leap
+is non\-zero.
+.PP
+.B ydays
+returns the number of days in the
+year through the end of the month
+preceding the
+month indicated by
+.I tm_mon
+(same values as in struct tm)
+for non\-leap years if
+.I leap
+is zero,
+and for leap years if
+.I leap
+is non\-zero.
+As a special case,
+if
+.I tm_mon
+is 12,
+.B ydays
+returns the number of days in the year.
+.PP
+.B local_utc_offset
+computes the current local time
+(based on the execution environment)
+offset from UTC.
+If
+.I scale
+is 1,
+the return value is the offset in seconds,
+with a positive value indicating
+that local time is
+East
+of the Prime Meridian.
+If
+.I scale
+is \-60,
+the return value is the offset in minutes,
+with a positive value indicating
+that local time is
+West
+of the Prime Meridian.
+The sign and magnitude of
+.I scale
+can thus be used to scale
+the return value from
+.BR local_utc_offset .
+.PP
+All functions
+take as the final two arguments
+an optional pointer to a logging function
+and
+a pointer to
+logging configuration data.
+See
+.B logger(3)
+for details.
+.SH EXAMPLES
+.PP
+.B is_leap(1999)
+returns 0.
+.B is_leap(2000)
+returns 1.
+.B is_leap(2100)
+returns 0.
+.PP
+A
+.B struct tm
+with the following components:
+.br
+tm_year = 114 (2014 \- 1900)
+.br
+tm_mon = 9 (October)
+.br
+tm_mday = 12
+.br
+tm_hour = 22
+.br
+tm_min = 42
+.br
+tm_sec = 28
+.br
+is used for the following examples.
+.PP
+Given the above values,
+.B \*(xx
+returns a
+.I time_t
+having a decimal value of
+1413153748.
+.PP
+.B yday
+returns 284.
+.PP
+.B wday
+returns 0 (Sunday).
+.SH RETURN VALUES
+Functions
+other than
+.B local_utc_offset
+returning an integer
+return a negative value on error
+with
+.I errno
+set appropriately.
+.SH BUGS and CAVEATS
+.B \*(xx
+is oblivious to the underlying limitations on the size of
+.IR time_t ,
+and will happily allow the return value to wrap or overflow.
+.PP
+.B normalize_date_time
+is intended to normalize a
+.I struct tm
+representing UTC date\-time.
+If it is desired to normalize a
+.I struct tm
+representing local time,
+.I tm_sec
+should first be normalized to
+0 through 59,
+adjusting
+.I tm_min
+accordingly
+in order to avoid the special handling
+provided for UTC leap seconds.
+Even so,
+.B normalize_date_time
+does not do anything with
+.I tm_isdst
+and will not take
+any local zone changes
+into account.
+If such things are important to you, use
+.I mktime
+instead.
+.PP
+.B local_utc_offset
+computes the offset for the
+execution environment in effect
+at the time that it is called;
+it cannot compute offsets
+for other systems,
+for the same system with a different environment
+(unless it is called under that environment),
+or for times other than the time at which it is called.
+All valid time zones
+have for some time had offsets
+from UTC
+which are an integral
+number of minutes
+(and therefore of seconds).
+There is no provision
+for dealing with
+bogus
+system zone offsets.
+.PP
+Functions use the proleptic Gregorian calendar.
+.PP
+Most of these functions are quite efficient.
+In particular,
+.B \*(xx
+is typically much faster than system
+.BR mktime .
+.SH SEE ALSO
+.IR leap_second ,
+.IR logger ,
+.I mktime
+.PP
+IERS Bulletin C
+.PP
+ftp://hpiers.obspm.fr/iers/bul/bulc/BULLETINC.GUIDE
+.br
+https://www.iers.org/SharedDocs/News/EN/BulletinC.html
+.br
+ftp://hpiers.obspm.fr/iers/bul/bulc/bulletinc.dat
+.PP
+https://hpiers.obspm.fr/eop\-pc/index.php?index=TAI\-UTC_tab&lang=en
+.PP
+https://itunews.itu.int/En/4268\-Leap\-seconds\-BRRole\-of\-the\-
+.br
+International\-Earth\-Rotation\-and\-Reference\-Systems\-Service.note.aspx
+.PP
+https://www.ucolick.org/~sla/leapsecs/amsci.html
+.PP
+https://www.ucolick.org/~sla/leapsecs/timescales.html
+.PP
+https://www.ucolick.org/~sla/leapsecs/dutc.html
+.PP
+https://www.iana.org/time\-zones
+.PP
+https://github.com/eggert/tz/blob/master/README
+.PP
+.SH AUTHOR
+Bruce Lilly <bruce.lilly@gmail.com>
+.SH LICENSE
+.PP
+The following license covers this software, including makefiles and documentation:
+.PP
+This software is covered by the zlib/libpng license.
+.br
+The zlib/libpng license is a recognized open source license by the
+Open Source Initiative: http://opensource.org/licenses/Zlib
+.br
+The zlib/libpng license is a recognized \(dqfree\(dq software license by the
+Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+.br
+.lt +0.6i
+.po 0.7i
+.tl '*************** 'Copyright notice (part of the license)'***************'
+.po
+.lt
+.br
+@(#)utc_mktime.3 2.3 2016-04-04T05:13:51Z copyright \*(xy Bruce Lilly
+.br
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
+.PP
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
+subject to the following restrictions:
+.IP 1. 0.3i
+The origin of this software must not be misrepresented; you must not claim
+that you wrote the original software. If you use this software in a
+product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+.IP 2. 0.3i
+Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+.IP 3. 0.3i
+This notice may not be removed or altered from any source distribution.
+.RS 0
+.lt +0.6i
+.po 0.7i
+.tl '*************************'(end of license)'*************************'
+.po
+.lt
+.PP
+You may send bug reports to bruce.lilly@gmail.com with subject "\*(xx".
+.\" maintenance note: master file /src/relaymail/lib/libutc_mktime/man/s.utc_mktime.3

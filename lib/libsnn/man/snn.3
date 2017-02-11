@@ -1,0 +1,807 @@
+.\" Description: snn.3 version 2.1 man page 2015-10-01T03:25:38Z
+.\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
+.\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
+.\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
+.\"			c appears at bottom center of page, n at top center
+.\" .SH text		subhead
+.\" .SS text		sub-subhead
+.\" .B text		make text bold
+.\" .I text		make text italic
+.\" .SM text		make text 1 point smaller than default
+.\" .RI a b		concatenate and alternate Roman, Italic fonts <=6 args
+.\" .IR .RB .BR .IB .BI	similar to .RI
+.\" .PP			new paragraph
+.\" .HP in		hanging paragraph with indent in
+.\" .TP in		indented paragraph with hanging tag (on next line)
+.\" .IP t in		indented paragraph with hanging tag t (arg 1)
+.\" .RS in		increase relative indent by in
+.\" .RE k		return to kth relative indent level (1-based)
+.\" .DT			default tab settings
+.\" .PD v		inter-paragraph spacing v (default 0.4v troff, 1v nroff)
+.\" \*R			registered symbol	(Reg.)
+.\" \*S			change to default type size
+.lg 0	\" avoid groff's butt-ugly ligatures
+.nh	\" no hyphenation
+.ds ]W \" no 7th Edition designation
+.ds xx snn
+.ds xy 2015
+.TH \*(xx 3 ""
+.SH NAME	\" 1 line	name \- explanatory text
+.B \*(xx
+\- reasonably fast and flexible number to string output
+.SH SYNOPSIS
+.nh	\" no hyphenation
+\fB#include <snn.h>\fP
+.PP
+.B int snl(char *buf, int sz, const char *prefix, const char *suffix, long num, int base, int pad, int min_digits,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int snul(char *buf, int sz, const char *prefix, const char *suffix, unsigned long num, int base, int pad, int min_digits,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int snf(char *buf, int sz, const char *prefix, const char *suffix, double num, int pad, int min_digits, int precision,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int sng(char *buf, int sz, const char *prefix, const char *suffix, double num, int max_figures, int exp_modulus,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B double sn1en(int exponent,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B long int snlround(double num,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B double snround(double num,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B double snmultiple(double num, double increment,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int snmagnitude(double num,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.B int snsf(double num,
+.B void (*)(int, void *, const char *, ...),
+.B void *);
+.PP
+.SH DESCRIPTION
+The
+.B \*(xx
+package provides four number\-formatting functions
+for producing text representation of numbers,
+and six utility functions.
+The formatting capabilities are
+somewhat
+limited
+in comparison to
+.IR snprintf ,
+in exchange for
+more reasonable output,
+greater output flexibility for some specific cases,
+and
+compatibility with
+.IR strntol ,
+.IR strtod ,
+.IR strtol ,
+and
+.IR strtoul ,
+on\-the\-fly
+flexible
+logging
+and
+debugging,
+and
+possibly
+faster execution.
+.B snl,
+.B snul,
+.B snf,
+and
+.B sng
+also
+provide
+formatting capability
+not easily achieved with
+.IR snprintf .
+.PP
+Each number\-formatting function accepts for the first four arguments:
+.IP 1. 0.3i
+a pointer to the character array to hold the generated text
+.IP 2. 0.3i
+an integer specifying the size of the character array
+.IP 3. 0.3i
+an optional prefix string to be printed before the numerical digits
+.IP 4. 0.3i
+an optional suffix string to be printed after the numerical digits.
+.PP
+The fifth argument in each case is the number to be represented:
+a (signed) long integer or unsigned long integer
+for
+.I snl
+or
+.IR snul ,
+respectively,
+and a double\-precision floating point variable for
+.I snf
+and
+.IR sng .
+.PP
+The two integer type number\-formatting functions accept three additional formatting arguments:
+.IP 6. 0.3i
+an integer specifying the output number base, range 2 through 36
+.IP "  *"  0.6i
+Note that snprintf provides support for output bases
+8,
+10,
+and
+16
+only.
+In this respect,
+.I snl
+and
+.I snul
+are more general,
+and this generality
+(for compatibility
+with the broader support for number base in
+.IR strntol ,
+.IR strtol ,
+and
+.IR strtoul )
+may
+make
+.I snl
+and
+.I snul
+slightly slower than
+.I snprintf
+for
+output
+of
+decimal numbers
+(depending on
+choice of compiler and compiler options,
+speed of system
+.IR snprintf ,
+machine architecture and word size).
+.IP 7. 0.3i
+a pad character (passed as integer value) used to pad output on the left
+.IP 8. 0.3i
+an integer specifying the minimum number of
+output characters for the number digits
+(not including prefix or suffix or sign).
+.PP
+For compatibility with
+.IR strntol ,
+.IR strtol ,
+.IR strtoul ,
+and
+.IR strtod ,
+whitespace padding precedes the sign and prefix;
+other pad characters
+(e.g. '0')
+appear after the sign and prefix.
+Note that
+(for the afore\-mentioned compatibility)
+the sign precedes any specified prefix;
+see the examples below.
+All \*(xx functions
+take as the final two arguments
+an optional pointer to a logging function
+and
+a pointer to
+logging configuration data.
+See
+.B logger(3)
+for details.
+.PP
+.B snf
+produces fixed\-point representations
+and allows the caller to specify
+padding character (as above for the integer functions),
+minimum number of numerical output characters to the left of the radix point (not including prefix),
+and desired precision (numerical character positions to the right of the radix point).
+If
+.I precision
+is specified as
+a negative number,
+.I snf
+will use only as many digits of precision as needed to represent
+the supplied number
+limited to the absolute value of the supplied number,
+avoiding trailing zeroes.
+The value
+of the output
+is
+rounded to
+the number
+of
+significant figures
+supported by
+the run\-time environment
+or
+to
+the specified precision,
+whichever is lower.
+.PP
+.B sng
+produces floating\-point numerical output in
+scientific
+and
+engineering
+notation.
+The caller may specify the maximum number of significant figures (digits)
+to be generated, and may specify a modulus to be used for the exponent.
+.I exp_modulus
+allows the caller to restrict the possible values of the exponent used,
+e.g. to a multiple of three for engineering notation.
+The value
+of the output
+is
+rounded to
+the number
+of
+significant figures
+supported by
+the run\-time environment
+or
+to
+the number of
+significant figures
+required to represent the number supplied
+or
+to
+the specified maximum number of significant figures,
+whichever is lower.
+.PP
+Several utility functions are provided:
+.PP
+.B sn1en
+produces a double
+return value
+which represents
+10.0
+raised to the integer power
+given by the supplied
+.B exponent
+argument.
+I.e. sn1en(2)
+produces the equivalent of
+the decimal constant
+1.0e2
+(hence the function name).
+It is useful to produce representations of powers of ten
+without the accumulation of errors
+which would result from repeated multiplication,
+and
+without requiring math library functions
+or
+non\-portable
+or
+proprietary
+"extensions".
+Argument
+range
+is limited to
+-323
+to
+308
+in accordance with the limits of
+representable
+double\-precision
+floating\-point
+numbers
+in
+standard
+IEEE\ Std\ 754
+format.
+.PP
+.B snlround
+returns a
+signed long integer
+which represents the nearest integer to
+the supplied double argument.
+It does so
+without requiring math library functions
+but with no attempt to handle
+out\-of\-range input.
+Caveat emptor.
+.PP
+.B snround
+returns a
+double
+which represents the nearest integer to
+the supplied double argument.
+It does so
+without requiring math library functions
+but with no attempt to handle
+out\-of\-range input.
+Caveat emptor.
+.PP
+.B snmultiple
+returns a
+double
+which represents the nearest integer multiple of
+the supplied
+.B increment
+argument to
+the supplied double
+.B num
+argument.
+It does so
+without requiring math library functions
+but with no attempt to handle
+out\-of\-range input.
+Caveat emptor.
+Specifically,
+.B snmultiple(num, 1.0)
+is equivalent to
+.BR snround(num) ,
+whereas
+.B snmultiple(num, 10.0)
+produces a result to the nearest multiple of
+ten and
+.B snmultiple(num, 0.1)
+produces a result to the nearest multiple of
+one tenth.
+.PP
+.B snmagnitude
+returns
+a
+signed
+integer
+indicating the position of
+the first
+significant
+digit
+in the decimal representation of
+the absolute value of
+the supplied
+double
+argument.
+I.e.
+for an argument of
+zero,
+it returns
+0.
+For an argument of
+1.0
+through
+slightly less than
+10.0
+it returns 1.
+For an argument of
+0.1
+through
+slightly less than
+1.0
+it returns -1.
+In other words,
+the return value
+is
+the
+exponent
+portion of
+the
+base 10 logarithm of
+the supplied
+argument.
+.PP
+.B snsf
+returns
+a
+signed
+integer
+indicating
+the number of
+significant figures
+in
+the decimal
+floating\-point
+representation
+of
+the supplied
+argument.
+This integer is bounded
+at the lower end
+by one
+and
+at the upper end
+by
+the number of significant figures
+supported by
+the run\-time
+environment.
+.SH EXAMPLES
+.PP
+Using the functions to determine the necessary size of a buffer:
+.br
+char *buf = NULL;
+.br
+int n, sz = 0;
+.br
+n = snul(buf, sz, \(dq0x\(dq, \(dqUL\(dq, 0x123abcUL, 16, (int)'0', 0, NULL, NULL);
+.br
+buf = malloc(sz=n);
+.br
+if (NULL != buf) {
+.br
+    n = snul(buf, sz, \(dq0x\(dq, \(dqUL\(dq, 0x123abcUL, 16, (int)'0', 0, NULL, NULL);
+.br
+    /* ... */
+.br
+    free(buf);
+.br
+}
+.PP
+.B snl
+output compatible with
+.IR strtol :
+.br
+.B snl(buf, sizeof(buf), \(dq0x\(dq, \(dqL\(dq, -42L, 16, (int)'0', 5, NULL, NULL);
+.br
+produces in buf (if sufficiently large) the
+.IR strtol \-compatible
+string
+.br
+\(dq-0x002aL\(dq.
+.PP
+Producing floating point output without
+extraneous
+trailing zeroes:
+.br
+.B snf(buf, sizeof(buf), NULL, NULL, 1.0/8.0, (int)'0', 1, -15, NULL, NULL);
+.br
+produces in buf (if sufficiently large) the
+string
+.br
+\(dq0.125\(dq.
+.PP
+Avoiding extraneous nonsense digits:
+.br
+.B snf(buf, sizeof(buf), NULL, NULL, 9.87e35, (int)'0', 1, 0, NULL, NULL);
+.br
+produces in buf (if sufficiently large) the
+string
+.br
+\(dq987000000000000000000000000000000000\(dq
+.br
+whereas
+.br
+.B snprintf(buf, sizeof(buf), \(dq%.0f\(dq, 9.87e35);
+produces
+something like
+.br
+\(dq986999999999999929565391167411978240\(dq.
+.br
+Likewise,
+.br
+.B sng(buf, sizeof(buf), NULL, NULL, 9.87e35, 36, 1, NULL, NULL);
+.br
+produces in buf (if sufficiently large) the
+string
+.br
+\(dq9.87E35\(dq
+.br
+whereas
+.br
+.B snprintf(buf, sizeof(buf), \(dq%.36E\(dq, 9.87e35);
+.br
+produces
+something like
+.br
+\(dq9.869999999999999295653911674119782400E+35\(dq.
+.PP
+Engineering notation
+with label prefix and suffixed SI unit,
+and with specified maximum number of significant figures:
+.br
+.B sng(buf, sizeof(buf), \(dqfrequency = \(dq, \(dq Hz\(dq, 3579545.0, 3, 3, NULL, NULL);
+.br
+produces in buf (if sufficiently large) the
+string
+.br
+\(dqfrequency = 3.58E6 Hz\(dq
+.br
+and returns the character count 21.
+.B (N.B. this use of prefix will not be useful for negative numbers, nor will strtod be able to parse it!)
+.PP
+Converting
+archaic
+\(dqinch\(dq
+values
+to
+the nearest
+micrometer:
+.br
+.B double inches = 1.03125;
+.br
+.B double micrometers = snmultiple(inches, 1.0/25400.0, NULL, NULL);
+.br
+or, equivalently:
+.br
+.BR "double micrometers = snmultiple(25.4*inches, 0.001, NULL, NULL);" .
+.SH RETURN VALUES
+Each number\-formatting function
+returns the number of characters written to buf
+(not counting terminating '\\0')
+if buf was not NULL and sz was large enough;
+size required of buf
+(including space for terminating '\\0')
+if buf is NULL or sz is too small;
+negative on error, with errno set.
+.PP
+Utility function
+return values
+are
+as described above.
+.SH APPLICATION USAGE
+The
+.B \*(xx
+functions
+together with
+.IR strtod ,
+.IR strtol ,
+and
+.IR strtoul ,
+provide a means of
+transferring numerical data
+between machines
+as
+human\-readable
+text streams,
+independent of
+issues such as
+machine word size and byte order.
+.SH RATIONALE
+.I snprintf
+is not readily compatible
+with
+.I strtol
+and
+.I strtoul
+for number bases
+other than 10,
+especially with regard to handling of
+prefix and sign.
+In addition,
+.I snprintf
+lacks engineering notation
+for floating\-point numerical representation.
+.I snprintf
+also produces
+meaningless excess digits in some cases.
+Finally,
+some versions of
+.I snprintf
+have non\-standard
+return values;
+some implementations
+fail to nul\-terminate the string.
+.SH BUGS and CAVEATS
+.B N.B.
+If the supplied buffer is too small,
+the return value
+from the number\-formatting functions
+differs from that returned by
+.I snprintf
+under similar circumstances.
+.PP
+Due to
+rounding issues,
+the output produced by
+.I snf
+and
+.I sng
+may differ
+in the last digit
+from output produced by
+.I snprintf
+in cases where the
+output precision
+is limited
+to or
+below
+the
+environment
+run\-time
+capability.
+E.g. the number
+1.65
+may produce
+either
+\(dq1.6\(dq
+or
+\(dq1.7\(dq
+if limited to
+2 significant figures
+(i.e. 1 digit for the fraction).
+Because floating\-point numbers
+are represented in
+binary (i.e. base 2),
+the closest representable
+floating\-point
+number
+to
+1.65
+might actually be something like
+(the binary representation corresponding approximately to decimal value)
+1.6499999999999999
+or
+1.650000000000001
+(because 1.65 is not representable exactly in the available resolution of the binary floating-point formats)
+and these two numbers
+are rounded
+differently
+to
+2
+significant
+decimal
+figures.
+That is
+an inherent limitation
+of
+representing
+floating\-point
+numbers
+with limited resolution
+in
+a different
+number base
+from the desired
+input/output
+base.
+.PP
+.B snprintf
+.I %E
+format
+always produces
+at least
+two
+digits
+and
+a sign
+for the exponent;
+.I sng
+uses
+a sign
+only for a negative exponent
+and
+only as many
+digits
+in the exponent
+as are required.
+Moreover,
+.I sng
+will not produce
+an exponent
+if it is not required
+(i.e. if the exponent would be zero).
+.B snprintf
+.I %G
+format
+switches representation
+between
+.I %E
+and
+.I %F
+equivalent
+formats
+depending on
+the value of
+the number
+being
+converted
+and
+the specified
+precision.
+.B snf
+and
+.B sng
+produce
+fixed\-point
+and
+exponential
+notation
+respectively,
+and do not switch representation
+(but as noted above,
+sng will not emit a
+defeasible
+zero exponent).
+.PP
+As noted above,
+many
+of
+the utility functions
+have
+no provision for
+error
+handling.
+.PP
+Although
+.I strtod
+has
+some
+sort of
+provision for parsing
+floating\-point
+numbers
+with
+hexadecimal
+mantissa
+digits
+and
+\(dqbinary\(dq
+exponents,
+.I snf
+and
+.I sng
+have no provision
+for generating
+such representations
+(nor does
+.IR snprintf ).
+.SH SEE ALSO
+.IR logger ,
+.IR strntol ,
+.IR strtod ,
+.IR strtol ,
+.IR strtoul .
+.SH AUTHOR
+Bruce Lilly <bruce.lilly@gmail.com>
+.SH LICENSE
+.PP
+The following license covers this software, including makefiles and documentation:
+.PP
+This software is covered by the zlib/libpng license.
+.br
+The zlib/libpng license is a recognized open source license by the
+Open Source Initiative: http://opensource.org/licenses/Zlib
+.br
+The zlib/libpng license is a recognized \(dqfree\(dq software license by the
+Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+.br
+.lt +0.6i
+.po 0.7i
+.tl '*************** 'Copyright notice (part of the license)'***************'
+.po
+.lt
+.br
+@(#)snn.3 2.1 2015-10-01T03:25:38Z copyright \*(xy Bruce Lilly
+.br
+This software is provided 'as-is', without any express or implied warranty.
+In no event will the authors be held liable for any damages arising from the
+use of this software.
+.PP
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
+subject to the following restrictions:
+.IP 1. 0.3i
+The origin of this software must not be misrepresented; you must not claim
+that you wrote the original software. If you use this software in a
+product, an acknowledgment in the product documentation would be
+appreciated but is not required.
+.IP 2. 0.3i
+Altered source versions must be plainly marked as such, and must not be
+misrepresented as being the original software.
+.IP 3. 0.3i
+This notice may not be removed or altered from any source distribution.
+.RS 0
+.lt +0.6i
+.po 0.7i
+.tl '*************************'(end of license)'*************************'
+.po
+.lt
+.PP
+You may send bug reports to bruce.lilly@gmail.com with subject "\*(xx".
+.\" maintenance note: master file  /src/relaymail/lib/libsnn/man/s.snn.3
