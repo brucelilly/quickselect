@@ -7,7 +7,7 @@ Description: makefile structure for fast, portable project builds
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ README.makefiles $
+#$Id: ~\|^` @(#)%M% copyright 2015 - 2017 %Q%\ README.makefiles $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -249,7 +249,7 @@ makefile.files defines project-specific files (e.g. LIB1ARCH).  It needs to be
 	customized for each project to list project-specific object files, etc.
 makefile.targets is modified by a project to list the targets defined in
 	makefile.files, so they are accessible to makefile.
-makefile.licenses determine which (if any) license files need to be displayed.
+makefile.licenses determines which (if any) license files need to be displayed.
 	It should be customized for a project to reflect which licenses apply to
 	the various project files.
 makefile.imports uses macros defined in makefile.directories and makefile.files

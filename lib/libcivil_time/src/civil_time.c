@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    civil_time.c copyright 2009 - 2016 Bruce Lilly.   \ civil_time.c $
+* $Id: ~|^` @(#)    civil_time.c copyright 2009-2017 Bruce Lilly.   \ civil_time.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is civil_time.c version 2.9 dated 2016-06-29T03:15:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is civil_time.c version 2.10 dated 2017-02-11T04:39:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "civil_time" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libcivil_time/src/s.civil_time.c */
@@ -261,10 +261,10 @@ double civil_time_difference(const struct civil_time_struct *pcts1, const struct
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: civil_time.c ~|^` @(#)"
 #define SOURCE_MODULE "civil_time.c"
-#define MODULE_VERSION "2.9"
-#define MODULE_DATE "2016-06-29T03:15:44Z"
+#define MODULE_VERSION "2.10"
+#define MODULE_DATE "2017-02-11T04:39:36Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2009 - 2016"
+#define COPYRIGHT_DATE "2009-2017"
 
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -334,8 +334,10 @@ static void initialize_civil_time_almost_one(void (*f)(int, void *,
         /* reduce civil_time_epsilon until civil_time_almost_one = 1.0 - civil_time_epsilon is indistinguishable from 1.0:
            resulting civil_time_epsilon will be too small
         */
-        for (civil_time_almost_one=1.0-civil_time_epsilon; 1.0 > civil_time_almost_one; civil_time_epsilon *= 0.5)
+        for (civil_time_almost_one=1.0-civil_time_epsilon; 1.0 > civil_time_almost_one; civil_time_epsilon *= 0.5) {
             civil_time_almost_one = 1.0 - civil_time_epsilon;
+            if (1.0e-18 > civil_time_epsilon) break; /* gcc 6.2.0 issue */
+        }
         if (NULL != f) {
             f(LOG_DEBUG, log_arg,
                 "%s: %s line %d: civil_time_almost_one=%.36g, civil_time_epsilon=%.36g (too small)",

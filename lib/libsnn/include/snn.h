@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    snn.h copyright 2011 - 2017 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    snn.h copyright 2011-2017 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is snn.h version 2.10 2017-02-10T19:00:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is snn.h version 2.11 2017-02-11T04:38:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/include/s.snn.h */
 
 /* version-controlled header file version information */
-#define SNN_H_VERSION "snn.h 2.10 2017-02-10T19:00:44Z"
+#define SNN_H_VERSION "snn.h 2.11 2017-02-11T04:38:10Z"
 
 /*INDENT ON*/
 /* *INDENT-ON* */
@@ -101,10 +101,10 @@ double snround(double d,
         int mag;
         double g;
 
-        mag = snmagnitude(e, NULL, NULL);
+        mag = snmagnitude(e, unused, also_unused);
         while (0 < mag) {
             --mag;
-            g = sn1en(mag, NULL, NULL);
+            g = sn1en(mag, unused, also_unused);
             while (e >= g) {
                 i += g;
                 e -= g;
@@ -124,15 +124,9 @@ static /* prevent multiple definition conflicts */
 double snmultiple(double f, double incr,
     void (*unused)(int, void *, const char *, ...), void *also_unused)
 {
-    double d, i;
-
-    if (0.0 > incr) incr = 0.0 - incr;
     if (0.0 == incr) return f;
-    d = f / incr;
-    i = snround(d,NULL,NULL);
-    i *= incr;
-    if (-0.5 >= d) return 0.0 - i;
-    return i;
+    if (0.0 > incr) incr = 0.0 - incr;
+    return incr * snround(f/incr,unused,also_unused);
 }
 
 #define	SNN_H_INCLUDED

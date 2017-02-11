@@ -709,19 +709,9 @@ MACROS += HELP_FILES
 #   Dependencies should be specified for these.
 #   If default rules are not used, recipes should also be provided.
 BUILTC =\
- functions.c\
- $(NMEA_PREFIX_UNDERSCORE)ragel_lex.c\
- $(NMEA_PREFIX_UNDERSCORE)lemon_parse.c\
- ports.c\
- sentences.c\
- serial_pins.c\
- transition.c\
- version.c\
 #
 # Some header files are built.
 BUILTH =\
- nmea.h\
- $(NMEA_PREFIX_UNDERSCORE)lemon_parse.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += BUILTC BUILTH
@@ -743,7 +733,6 @@ AWKSCRIPTS =\
  decomment.awk\
  depend.awk\
  fix_switch.awk\
- lems-summary.awk\
 #
 
 # Shorthand for all scripts (for .PRECIOUS).
@@ -797,30 +786,6 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 # Targets (including fake ones) should be added to makefile.targets.
 
 # dependencies which could not be specified in makefile.targets
-
-# XXX rules to make built files need to go here; they need to be translated from old-makefiles/makefile.files
-
-# windows/linux sync
-DATADIR = /data
-PROJECTSDIR = $(DATADIR)/projects
-AUTOMATIONDIR = $(PROJECTSDIR)/automation
-DIR940 = $(AUTOMATIONDIR)/940
-WINDOWS940 = /windows/D/misc/940
-# Do not change the following line, which is used for debugging via `make macros`.
-MACROS += DATADIR PROJECTSDIR AUTOMATIONDIR DIR940 WINDOWS940
-
-windows : $(WINDOWS940) $(DIR940) 
-	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(DIR940)/ $(WINDOWS940)/
-	rm -f $(WINDOWS940)/lemd $(WINDOWS940)/queuetest $(WINDOWS940)/rmtest $(WINDOWS940)/sort $(WINDOWS940)/zctest $(WINDOWS940)/*.o $(WINDOWS940)/thermostatd 
-	rm -f $(WINDOWS940)/core $(WINDOWS940)/junk* 
-	rm -f $(WINDOWS940)/[lpz].*
-	rm -f $(WINDOWS940)/.~lock.*.ods*
-
-linux : $(DIR940) $(WINDOWS940) 
-	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(WINDOWS940)/ $(DIR940)/
-	chown bruce:users $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940) $(DIR940)/*.ods
-	chmod u+rws,g+rws $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940)
-	chmod a+rw $(DIR940)/*.ods
 
 # hints
 # admin -i$$base -r$(SID) -fq"$(MAINTAINER)" -ft$(ADDRESS) $$file
