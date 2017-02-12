@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.57 dated 2017-02-09T17:16:25Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.60 dated 2017-02-12T07:02:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -271,8 +271,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.57"
-#define MODULE_DATE "2017-02-09T17:16:25Z"
+#define MODULE_VERSION "1.60"
+#define MODULE_DATE "2017-02-12T07:02:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -443,34 +443,34 @@ static inline void initialize_quickselect(V)
 
 /* array element swaps */
 /* called many times from quickslect_internal, medians3 */
-static inline void swap(char *pa, char *pb, size_t bytes, int swaptype)
+static inline void swap(char *pa, char *pb, size_t count, int swaptype)
 {
     if (pa!=pb) { /* else nothing to do */
         if (5==swaptype) { /* char */
-            for (;0UL<bytes; pa++,pb++,bytes--) {
-                char t = *pa;
-                *pa=*pb, *pb=t;
-            }
+            char t;
+            for (;0UL<count; pa++,pb++,count--)
+                t=*pa, *pa=*pb, *pb=t;
         } else {
             size_t s=typsz[swaptype]; /* chars */
-            A(bytes>=s);A(0==bytes%s);
+            A(count>=s);A(0==count%s);
+            count >>= log2s[s];
             switch (swaptype) {
                 case 0 : /* double */
-                    for (;0UL<bytes; pa+=s,pb+=s,bytes-=s) {
-                        double t = *((double *)pa);
-                        *((double *)pa)=*((double *)pb), *((double *)pb)=t;
+                    {   double *px=(double *)pa, *py=(double *)pb, t;
+                        for (;0UL<count; px++,py++,count--)
+                            t=*px, *px=*py, *py=t;
                     }
                 break;
                 case 3 : /* int */
-                    for (;0UL<bytes; pa+=s,pb+=s,bytes-=s) {
-                        int t = *((int *)pa);
-                        *((int *)pa)=*((int *)pb), *((int *)pb)=t;
+                    {   int *px=(int *)pa, *py=(int *)pb, t;
+                        for (;0UL<count; px++,py++,count--)
+                            t=*px, *px=*py, *py=t;
                     }
                 break;
                 case 4 : /* short */
-                    for (;0UL<bytes; pa+=s,pb+=s,bytes-=s) {
-                        short t = *((short *)pa);
-                        *((short *)pa)=*((short *)pb), *((short *)pb)=t;
+                    {   short *px=(short *)pa, *py=(short *)pb, t;
+                        for (;0UL<count; px++,py++,count--)
+                            t=*px, *px=*py, *py=t;
                     }
                 break;
             }
@@ -650,6 +650,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
     char *po;  /* origin of array (maintained so that ranks can be computed) */
     int top=0; /* stack: regions[0..top-1], partition regions above stack */
     int swaptype; /* index into array of type sizes for swapping size */
+    int i;     /* general integer variable */
     size_t s;  /* general size_t variable */
 
     if (2UL>nmemb) return; /* Return early if there's nothing to do. */
@@ -670,13 +671,13 @@ static inline void quickselect_internal(void *base, size_t nmemb,
        by architecture.
     */
     s=typsz[swaptype=0]; /* double */
-    if ((size<s)||(!(is_aligned(base,log2s[s])))) {
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
         s=typsz[swaptype=3]; /* int */
-        if ((size<s)||(!(is_aligned(base,log2s[s])))) {
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
             s=typsz[swaptype=4]; /* short */
-            if ((size<s)||(!(is_aligned(base,log2s[s])))) {
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(po,i))))
                 swaptype=5; /* char */
-            }
         }
     }
 
@@ -695,7 +696,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
            already sorted).
         */
         for (nregions=0; 1UL<nmemb;) { /* current region iteration loop */
-            int c, d, i, j;              /* general integer variables */
+            int c, d, j;              /* general integer variables */
             char *pa, *pb, *pc, *pe, *pf, *pivot, *pu;
             size_t n, p, q, r, t;
 

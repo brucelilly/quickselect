@@ -3336,30 +3336,30 @@ static inline int nocmp(void *unused1, void *unused2)
 
 /* time basic operations and print summary table */
 static
-void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int, void *, const char *,...), void *log_arg)
+void op_tests(const char *prefix, const char *prog, void (*f)(int, void *, const char *,...), void *log_arg)
 {
 #define NTYPES 18
-#define NOPS   34
+#define NOPS   33
     char buf[256], numbuf[64];
     char testmatrix[NTYPES][NOPS] = {      /* applicability matrix */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynnn", /* _Bool */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* char */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned char */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* short */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned short */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* int */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* long */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* unsigned long */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* long long */
-        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned long long */
-        "yyyyyyyyyyyyyynyyyyyyynnnnnnnnnnny", /* float */
-        "yyyyyyyyyyyyyynyyyyyyynnnnnnnnnyyy", /* double */
-        "yyyyyyyyyyyyyynyyyyyyynnnnnnnnnnny", /* long double */
-        "yyyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* float _Complex */
-        "yyyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* double _Complex */
-        "yyyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* long double _Complex */
-        "yynnnnnnyyyyyyyyynnnnnnnnnnnnnnnny", /* pointer */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynnn", /* _Bool */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* char */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned char */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* short */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned short */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* int */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* long */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* unsigned long */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* long long */
+        "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynny", /* unsigned long long */
+        "yyyyyyyyyyyyynyyyyyyynnnnnnnnnnny", /* float */
+        "yyyyyyyyyyyyynyyyyyyynnnnnnnnnyyy", /* double */
+        "yyyyyyyyyyyyynyyyyyyynnnnnnnnnnny", /* long double */
+        "yyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* float _Complex */
+        "yyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* double _Complex */
+        "yyynnnnnyyyynnnnyyyyynnnnnnnnnnnn", /* long double _Complex */
+        "ynnnnnnyyyyyyyyynnnnnnnnnnnnnnnny", /* pointer */
     };
     const char *pcc, *pcc2;
     const char *typename[NTYPES][2] = {
@@ -3372,7 +3372,7 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
        { "", "pointer" }
     };
     unsigned int testnum, typenum;
-    size_t j, k, l, n;
+    size_t i, j, k, l;
     double timing[NTYPES][NOPS];
     FILE *fp;
     auto struct rusage rusage_start, rusage_end;
@@ -3385,35 +3385,57 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
     pcc = "Running tests, please be patient.  ";
     k = 1UL;
     pcc2="\b-\b\\\b|\b/"; /* "spinner" */
-    l = 2UL;
+    l = 1UL;
 
     /* run tests, collect timing data */
 
 /* macro to run one operation timing test */
-#define M(op) timing[typenum][testnum]=0.0;               \
-    if ('y' == testmatrix[typenum][testnum]) {            \
-        if (NULL != fp) {                                 \
-            for (j=0UL; j<k; j++) {                       \
-                fputc(*pcc, fp); fflush(fp);              \
-                if (pcc[1] != '\0') {                     \
-                    pcc++;                                \
-                } else {                                  \
-                    pcc = pcc2;                           \
-                    k = l;                                \
-                }                                         \
-            }                                             \
-        }                                                 \
-        (void)getrusage(RUSAGE_SELF,&rusage_start);       \
-        for (n=0UL; n<count; n++) {                       \
-            op ;                                          \
-        }                                                 \
-        (void)getrusage(RUSAGE_SELF,&rusage_end);         \
-        timing[typenum][testnum] =                        \
-            ((double)(rusage_end.ru_utime.tv_sec -        \
-            rusage_start.ru_utime.tv_sec) + 1.0e-6 *      \
-            (double)(rusage_end.ru_utime.tv_usec -        \
-            rusage_start.ru_utime.tv_usec)) /             \
-            (double)count;                                \
+/* Run (if possible) long enough to get sufficient accuracy with resolution of
+   one microsecond (from struct rusage).
+*/
+#define MIN_OPS_TIME     0.02 /* 2*0.000001*10000 */
+#define DESIRED_OPS_TIME 2.0*(MIN_OPS_TIME)
+#define M(op) timing[typenum][testnum]=0.0;                               \
+    if ('y' == testmatrix[typenum][testnum]) {                            \
+        double t;                                                         \
+        register size_t count, n;                                         \
+        for (count=65536UL; 1;) {  /* 2^^16 */                            \
+            if (NULL != fp) {                                             \
+                for (j=0UL; j<k; j++) {                                   \
+                    fputc(*pcc, fp); fflush(fp);                          \
+                    if (pcc[1] != '\0') {                                 \
+                        pcc++;                                            \
+                    } else {                                              \
+                        pcc = pcc2;                                       \
+                        k = l;                                            \
+                    }                                                     \
+                }                                                         \
+            }                                                             \
+            (void)getrusage(RUSAGE_SELF,&rusage_start);                   \
+            for (n=0UL; n<count; n++) {                                   \
+                op ;                                                      \
+            }                                                             \
+            (void)getrusage(RUSAGE_SELF,&rusage_end);                     \
+            t = ((double)(rusage_end.ru_utime.tv_sec -                    \
+            rusage_start.ru_utime.tv_sec) + 1.0e-6 *                      \
+            (double)(rusage_end.ru_utime.tv_usec -                        \
+            rusage_start.ru_utime.tv_usec));                              \
+            if (((MIN_OPS_TIME)<=t)||((SIZE_T_MAX)==count)) {             \
+                timing[typenum][testnum]=t/(double)count;                 \
+                break;                                                    \
+            } else {                                                      \
+                if (0.0>t) t=0.0;                                         \
+                if (0.0==t) {                                             \
+                    if ((SIZE_T_MAX)/256UL>count) count *= 256UL;         \
+                    else count=(SIZE_T_MAX);                              \
+                } else {                                                  \
+                    n=snlround((DESIRED_OPS_TIME)/t,f,log_arg);           \
+                    if (2UL>n) n=2UL; /* *1 is NG */                      \
+                    if ((SIZE_T_MAX)/n>count) count *= n;                 \
+                    else count=(SIZE_T_MAX);                              \
+                }                                                         \
+            }                                                             \
+        }                                                                 \
     }
 
     /* Integer types: */
@@ -3421,41 +3443,41 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
 /* macro to run tests applicable to integer types */
 #define I(type,v1,v2,v3,fcmp) { volatile type x=v1;       \
         volatile type y=v2; volatile type z=v3;           \
+        size_t sz=sizeof(type);                           \
         if (0 == z) z++; /* z must not be zero! */        \
-        testnum=0U;  M({})                                \
-        testnum=1U;  M(x=y)                               \
-        testnum=2U;  M(x=(y==z))                          \
-        testnum=3U;  M(x=(y!=z))                          \
-        testnum=4U;  M(x=(y<z))                           \
-        testnum=5U;  M(x=(y>=z))                          \
-        testnum=6U;  M(x=(y<=z))                          \
-        testnum=7U;  M(x=(y>z))                           \
-        testnum=8U;  M(x=(y==z)?y:z)                      \
-        testnum=9U;  M(x=(y!=z)?y:z)                      \
-        testnum=10U; M(x=(y<z)?y:z)                       \
-        testnum=11U; M(x=(y>=z)?y:z)                      \
-        testnum=12U; M(x=(y<=z)?y:z)                      \
-        testnum=13U; M(x=(y>z)?y:z)                       \
-        testnum=14U; M(x++)                               \
-        testnum=15U; M(x+=1)                              \
-        testnum=16U; M(x=x+1)                             \
-        testnum=17U; M(x+=y)                              \
-        testnum=18U; M(x=y+z)                             \
-        testnum=19U; M(x=y-z)                             \
-        testnum=20U; M(x=y*z)                             \
-        testnum=21U; M(x=y/z)                             \
-        testnum=22U; M(x=y%z)                             \
-        testnum=23U; M(x=!y)                              \
-        testnum=24U; M(x=~y)                              \
-        testnum=25U; M(x=y&z)                             \
-        testnum=26U; M(x=y|z)                             \
-        testnum=27U; M(x=y^z)                             \
-        testnum=28U; M(x=y<<z)                            \
-        testnum=29U; M(x=y>>z)                            \
-        testnum=30U; M(x=&y-&z)                           \
-        testnum=31U; M((x=(type)fcmp(&y,&z)))             \
-        testnum=32U; M((swap2(&y,&z,sizeof(type))))       \
-        testnum=33U; M(z=x;x=y;y=z)                       \
+        testnum=0U;  M(x=y)                               \
+        testnum=1U;  M(x=(y==z))                          \
+        testnum=2U;  M(x=(y!=z))                          \
+        testnum=3U;  M(x=(y<z))                           \
+        testnum=4U;  M(x=(y>=z))                          \
+        testnum=5U;  M(x=(y<=z))                          \
+        testnum=6U;  M(x=(y>z))                           \
+        testnum=7U;  M(x=(y==z)?y:z)                      \
+        testnum=8U;  M(x=(y!=z)?y:z)                      \
+        testnum=9U;  M(x=(y<z)?y:z)                       \
+        testnum=10U; M(x=(y>=z)?y:z)                      \
+        testnum=11U; M(x=(y<=z)?y:z)                      \
+        testnum=12U; M(x=(y>z)?y:z)                       \
+        testnum=13U; M(x++)                               \
+        testnum=14U; M(x+=1)                              \
+        testnum=15U; M(x=x+1)                             \
+        testnum=16U; M(x+=y)                              \
+        testnum=17U; M(x=y+z)                             \
+        testnum=18U; M(x=y-z)                             \
+        testnum=19U; M(x=y*z)                             \
+        testnum=20U; M(x=y/z)                             \
+        testnum=21U; M(x=y%z)                             \
+        testnum=22U; M(x=!y)                              \
+        testnum=23U; M(x=~y)                              \
+        testnum=24U; M(x=y&z)                             \
+        testnum=25U; M(x=y|z)                             \
+        testnum=26U; M(x=y^z)                             \
+        testnum=27U; M(x=y<<z)                            \
+        testnum=28U; M(x=y>>z)                            \
+        testnum=29U; M(x=&y-&z)                           \
+        testnum=30U; M((x=(type)fcmp(&y,&z)))             \
+        testnum=31U; M((swap2(&y,&z,sz)))                 \
+        testnum=32U; M(x=y;y=z;z=x)                       \
     }
 
     typenum=0U;
@@ -3475,31 +3497,31 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
 /* macro to run tests applicable to floating-point types */
 #define F(type,v1,v2,v3,fcmp) { volatile type x=v1;   \
         volatile type y=v2; volatile type z=v3;       \
+        size_t sz=sizeof(type);                       \
         if (0.0 == z) z = 1.0; /* z non-zero! */      \
-        testnum=0U;  M({})                            \
-        testnum=1U;  M(x=y)                           \
-        testnum=2U;  M(x=(y==z))                      \
-        testnum=3U;  M(x=(y!=z))                      \
-        testnum=4U;  M(x=(y<z))                       \
-        testnum=5U;  M(x=(y>=z))                      \
-        testnum=6U;  M(x=(y<=z))                      \
-        testnum=7U;  M(x=(y>z))                       \
-        testnum=8U;  M(x=(y==z)?y:z)                  \
-        testnum=9U;  M(x=(y!=z)?y:z)                  \
-        testnum=10U; M(x=(y<z)?y:z)                   \
-        testnum=11U; M(x=(y>=z)?y:z)                  \
-        testnum=12U; M(x=(y<=z)?y:z)                  \
-        testnum=13U; M(x=(y>z)?y:z)                   \
-        testnum=15U; M(x+=1)                          \
-        testnum=16U; M(x=x+1)                         \
-        testnum=17U; M(x+=y)                          \
-        testnum=18U; M(x=y+z)                         \
-        testnum=19U; M(x=y-z)                         \
-        testnum=20U; M(x=y*z)                         \
-        testnum=21U; M(x=y/z)                         \
-        testnum=31U; M((x=(type)fcmp(&y,&z)))         \
-        testnum=32U; M((swap2(&y,&z,sizeof(type))))   \
-        testnum=33U; M(z=x;x=y;y=z)                   \
+        testnum=0U;  M(x=y)                           \
+        testnum=1U;  M(x=(y==z))                      \
+        testnum=2U;  M(x=(y!=z))                      \
+        testnum=3U;  M(x=(y<z))                       \
+        testnum=4U;  M(x=(y>=z))                      \
+        testnum=5U;  M(x=(y<=z))                      \
+        testnum=6U;  M(x=(y>z))                       \
+        testnum=7U;  M(x=(y==z)?y:z)                  \
+        testnum=8U;  M(x=(y!=z)?y:z)                  \
+        testnum=9U;  M(x=(y<z)?y:z)                   \
+        testnum=10U; M(x=(y>=z)?y:z)                  \
+        testnum=11U; M(x=(y<=z)?y:z)                  \
+        testnum=12U; M(x=(y>z)?y:z)                   \
+        testnum=14U; M(x+=1)                          \
+        testnum=15U; M(x=x+1)                         \
+        testnum=16U; M(x+=y)                          \
+        testnum=17U; M(x=y+z)                         \
+        testnum=18U; M(x=y-z)                         \
+        testnum=19U; M(x=y*z)                         \
+        testnum=20U; M(x=y/z)                         \
+        testnum=30U; M((x=(type)fcmp(&y,&z)))         \
+        testnum=31U; M((swap2(&y,&z,sz)))             \
+        testnum=32U; M(x=y;y=z;z=x)                   \
     }
 
     /* Floating-point types: */
@@ -3511,19 +3533,18 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
 #define C(type,v1,v2,v3) { volatile type x=v1;        \
         volatile type y=v2; volatile type z=v3;       \
         if (0.0 == z) z = 1.0; /* z non-zero! */      \
-        testnum=0U;  M({})                            \
-        testnum=1U;  M(x=y)                           \
-        testnum=2U;  M(x=(y==z)?y:z)                  \
-        testnum=3U;  M(x=(y!=z)?y:z)                  \
-        testnum=9U;  M(x+=1)                          \
-        testnum=10U; M(x=x+1)                         \
-        testnum=11U; M(x=(y==z))                      \
-        testnum=12U; M(x=(y!=z))                      \
-        testnum=17U; M(x=y+z)                         \
-        testnum=18U; M(x=y-z)                         \
-        testnum=19U; M(x=y*z)                         \
-        testnum=20U; M(x+=y)                          \
-        testnum=21U; M(x=y/z)                         \
+        testnum=0U;  M(x=y)                           \
+        testnum=1U;  M(x=(y==z)?y:z)                  \
+        testnum=2U;  M(x=(y!=z)?y:z)                  \
+        testnum=8U;  M(x+=1)                          \
+        testnum=9U;  M(x=x+1)                         \
+        testnum=10U; M(x=(y==z))                      \
+        testnum=11U; M(x=(y!=z))                      \
+        testnum=16U; M(x=y+z)                         \
+        testnum=17U; M(x=y-z)                         \
+        testnum=18U; M(x=y*z)                         \
+        testnum=19U; M(x+=y)                          \
+        testnum=20U; M(x=y/z)                         \
     }
 
     /* Complex types: */
@@ -3533,25 +3554,25 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
 
     /* Last, but not least: pointer */
     {
-        volatile char *x=NULL, *y=NULL, *z=NULL;
+        volatile char array[3];
+        volatile char volatile *x=array, *y=array+1, *z=array+2;
 
         /* Last test, clean up. */
         pcc = " \b\b \b\b \b\b \b\b \b\b \b\b \b\b \b\b";
         k = 12UL;
         pcc2 = pcc;
         l = k;
-        testnum=0U;  M({})
-        testnum=1U;  M(x=y)
-        testnum=8U;  M(x=(y==z)?y:z)
-        testnum=9U;  M(x=(y!=z)?y:z)
-        testnum=10U; M(x=(y<z)?y:z)
-        testnum=11U; M(x=(y>=z)?y:z)
-        testnum=12U; M(x=(y<=z)?y:z)
-        testnum=13U; M(x=(y>z)?y:z)
-        testnum=14U; M(x++)
-        testnum=15U; M(x+=1)
-        testnum=16U; M(x=x+1)
-        testnum=33U; M(z=x;x=y;y=z)
+        testnum=0U;  M(x=y)
+        testnum=7U;  M(x=(y==z)?y:z)
+        testnum=8U;  M(x=(y!=z)?y:z)
+        testnum=9U;  M(x=(y<z)?y:z)
+        testnum=10U; M(x=(y>=z)?y:z)
+        testnum=11U; M(x=(y<=z)?y:z)
+        testnum=12U; M(x=(y>z)?y:z)
+        testnum=13U; M(x++)
+        testnum=14U; M(x+=1)
+        testnum=15U; M(x=x+1)
+        testnum=32U; M(x=y;y=z;z=x)
     }
 
     /* Finished with /dev/tty */
@@ -3559,19 +3580,19 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
 
     /* print headings for results table */
     (void)fprintf(stdout, "%s%s: %s (%s %s %s) COMPILER_USED=\"%s\"\n", prefix, prog, HOST_FQDN, OS, OSVERSION, DISTRIBUTION, COMPILER_USED);
-    (void)fprintf(stdout, "%sOperations: %lu: mean time per operation\n", prefix, count);
+    (void)fprintf(stdout, "%sOperations: mean time per operation\n", prefix);
 #define OPWIDTH  14
 #define NUMWIDTH 11
-    for (n=0UL; 2UL>n; n++) {
+    for (i=0UL; 2UL>i; i++) {
         memset(buf, ' ', sizeof(buf));
-        if (1UL == n) {
+        if (1UL == i) {
             pcc = "operation";
             k = strlen(pcc);
             j = (OPWIDTH - k) / 2UL;
             while ('\0' != *pcc) { buf[j++] = *pcc++; }
         }
         for (typenum=0U; typenum<NTYPES; typenum++) {
-            pcc = typename[typenum][n];
+            pcc = typename[typenum][i];
             k = strlen(pcc);
             j = OPWIDTH + NUMWIDTH * typenum + (NUMWIDTH - k) / 2UL;
             while ('\0' != *pcc) { buf[j++] = *pcc++; }
@@ -3604,40 +3625,39 @@ void op_tests(const char *prefix, const char *prog, size_t count, void (*f)(int,
     while (' ' == buf[--j]) { buf[j] = '\0'; }                    \
     (void)fprintf(stdout, "%s%s\n", prefix, buf);
 
-    testnum=0U;  P({})
-    testnum=1U;  P(x=y)
-    testnum=2U;  P(x=(y==z))
-    testnum=3U;  P(x=(y!=z))
-    testnum=4U;  P(x=(y<z))
-    testnum=5U;  P(x=(y>=z))
-    testnum=6U;  P(x=(y<=z))
-    testnum=7U;  P(x=(y>z))
-    testnum=8U;  P(x=(y==z)?y:z)
-    testnum=9U;  P(x=(y!=z)?y:z)
-    testnum=10U; P(x=(y<z)?y:z)
-    testnum=11U; P(x=(y>=z)?y:z)
-    testnum=12U; P(x=(y<=z)?y:z)
-    testnum=13U; P(x=(y>z)?y:z)
-    testnum=14U; P(x++)
-    testnum=15U; P(x+=1)
-    testnum=16U; P(x=x+1)
-    testnum=17U; P(x+=y)
-    testnum=18U; P(x=y+z)
-    testnum=19U; P(x=y-z)
-    testnum=20U; P(x=y*z)
-    testnum=21U; P(x=y/z)
-    testnum=22U; P(x=y%z)
-    testnum=23U; P(x=!y)
-    testnum=24U; P(x=~y)
-    testnum=25U; P(x=y&z)
-    testnum=26U; P(x=y|z)
-    testnum=27U; P(x=y^z)
-    testnum=28U; P(x=y<<z)
-    testnum=29U; P(x=y>>z)
-    testnum=30U; P(x=&y-&z)
-    testnum=31U; P(compar)
-    testnum=32U; P(swap2)
-    testnum=33U; P(z=x;x=y;y=z)
+    testnum=0U;  P(x=y)
+    testnum=1U;  P(x=(y==z))
+    testnum=2U;  P(x=(y!=z))
+    testnum=3U;  P(x=(y<z))
+    testnum=4U;  P(x=(y>=z))
+    testnum=5U;  P(x=(y<=z))
+    testnum=6U;  P(x=(y>z))
+    testnum=7U;  P(x=(y==z)?y:z)
+    testnum=8U;  P(x=(y!=z)?y:z)
+    testnum=9U;  P(x=(y<z)?y:z)
+    testnum=10U; P(x=(y>=z)?y:z)
+    testnum=11U; P(x=(y<=z)?y:z)
+    testnum=12U; P(x=(y>z)?y:z)
+    testnum=13U; P(x++)
+    testnum=14U; P(x+=1)
+    testnum=15U; P(x=x+1)
+    testnum=16U; P(x+=y)
+    testnum=17U; P(x=y+z)
+    testnum=18U; P(x=y-z)
+    testnum=29U; P(x=y*z)
+    testnum=10U; P(x=y/z)
+    testnum=21U; P(x=y%z)
+    testnum=22U; P(x=!y)
+    testnum=23U; P(x=~y)
+    testnum=24U; P(x=y&z)
+    testnum=25U; P(x=y|z)
+    testnum=26U; P(x=y^z)
+    testnum=27U; P(x=y<<z)
+    testnum=28U; P(x=y>>z)
+    testnum=39U; P(x=&y-&z)
+    testnum=20U; P(compar)
+    testnum=31U; P(swap2)
+    testnum=32U; P(z=x;x=y;y=z)
 }
 
 extern const char *quickselect_build_options;
@@ -3878,11 +3898,7 @@ int main(int argc, const char * const *argv)
     }
 
     if (0U < flags['o']) { /* operation timing tests requested */
-#if ULONG_MAX > 0xffffffffUL
-        op_tests(comment, prog, 100000000UL, logger, log_arg); /* 64-bit machines */
-#else
-        op_tests(comment, prog, 10000000UL, logger, log_arg); /* 32-bit machines */
-#endif
+        op_tests(comment, prog, logger, log_arg); /* 64-bit machines */
     }
 
     if (0U < flags['n']) /* do-nothing flag */

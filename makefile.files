@@ -428,10 +428,10 @@ MACROS += LIB22ARCH C99LIB22OBJS LIB22OBJS LIB22HDRS LIB22MAN
 
 LIB23ARCH = libgraphing.a
 C99LIB23OBJS =\
+ graphing.o\
  trim.o\
 #
 LIB23OBJS =\
- graphing.o\
 #
 LIB23HDRS =\
  graphing.h\
