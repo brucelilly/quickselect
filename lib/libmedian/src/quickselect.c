@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.60 dated 2017-02-12T07:02:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.61 dated 2017-02-13T04:04:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -83,23 +83,23 @@
 ******************************************************************************/
 
 /* compile-time configuration options */
-#define ASSERT_CODE                 0    /* adds size and cost to aid debugging. 0 for tested production code. */
+#define ASSERT_CODE         0 /* Adds size and cost to aid debugging.
+                                 0 for tested production code. */
 
 /* quick settings to approximate Bentley&McIlroy qsort */
-#define SIMULATE_BM                 0
+#define SIMULATE_BM         0
 #if SIMULATE_BM
 # undef ASSERT_CODE
-# define ASSERT_CODE                0
-# define INSERTION_CUTOFF           6UL /* equivalent to B&M 7 */
-# define BUILD_NOTES                "simulation of B&M"
-# define NINTHER_CUTOFF             40UL /* B&M */
-// # define M3_CUTOFF                  8 /* ONLY for poor performance! (like B&M) */
+# define ASSERT_CODE        0
+# define INSERTION_CUTOFF   6UL /* equivalent to B&M 7 */
+# define BUILD_NOTES        "simulation of B&M"
+# define NINTHER_CUTOFF     40UL /* B&M */
+// # define M3_CUTOFF         8 /* ONLY for poor performance! (like B&M) */
 #endif
 
-/* analysis at small N indicates an INSERTION_CUTOFF of 6 or perhaps a little higher is optimal */
+/* analysis at small N indicates an INSERTION_CUTOFF of 6 is optimal */
 #ifndef INSERTION_CUTOFF
-# define INSERTION_CUTOFF           6UL /* use insertion sort for sorting arrays of this size or smaller */ /* best */ /* like B&M 7 */
-// # define INSERTION_CUTOFF            7UL /* use insertion sort for sorting arrays of this size or smaller */ /* good */
+# define INSERTION_CUTOFF   6UL /* insertion sort arrays this size or smaller */
 #endif
 
 /* SAMPLE_BASE (specific to remedian of samples pivot selection) */
@@ -231,7 +231,7 @@
 
 /* graph generation for paper */
 #ifndef M3_GRAPH
-# define M3_GRAPH                    0    /* non-zero to plot effect of M3_CUTOFF */
+# define M3_GRAPH                    0    /* non-zero to plot M3_CUTOFF */
 #endif
 #if M3_GRAPH
 # undef M3_CUTOFF
@@ -243,7 +243,7 @@
 # define NDEBUG 1
 #endif
 
-/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+/* Minimum _XOPEN_SOURCE version for C99 (else illumos compilation fails) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600
 #else
@@ -262,7 +262,9 @@
 # define __EXTENSIONS__ 1
 #endif
 
-/* ID_STRING_PREFIX file name and COPYRIGHT_DATE are constant, other components are version control fields */
+/* ID_STRING_PREFIX file name and COPYRIGHT_DATE are constant, other components
+   are version control fields.
+*/
 #undef ID_STRING_PREFIX
 #undef SOURCE_MODULE
 #undef MODULE_VERSION
@@ -271,8 +273,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.60"
-#define MODULE_DATE "2017-02-12T07:02:38Z"
+#define MODULE_VERSION "1.61"
+#define MODULE_DATE "2017-02-13T04:04:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -283,7 +285,8 @@
 
 /* local header files needed */
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-#include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
+#include "zz_build_str.h"       /* build_id build_strings_registered
+                                   copyright_id register_build_strings */
 
 #include <sys/types.h>          /* *_t */
 #include <assert.h>             /* assert */
@@ -376,7 +379,6 @@ struct sampling_table_struct {
 /* 24 entries is sufficient for SAMPLE_BASE>=7, 64-bit size_t */
 #define SAMPLING_TABLE_SIZE 24
 static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE];
-static unsigned char sampling_table_initialized=0U;
 /* first entry will be 1,1
    second entry will be (M3_CUTOFF),3
    third entry will be SAMPLE_BASE^2,9
@@ -393,19 +395,23 @@ static unsigned char sampling_table_initialized=0U;
 */
 
 /* assume sizeof(foo) etc. are powers of 2 */
+#define NTYPES 6 /* double, pointer, long, int, short, char */
 /* logarithms of two for index as sizeof */
 /* table in lieu of calculation for speed */
 /* valid up to sizeof(foo) = 32 */
 static const
 int log2s[]={0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5};
 /* Type sizes. It is assumed that sizeof(double)>=sizeof(char *)... */
-static const size_t typsz[6] = {
+static const size_t typsz[NTYPES] = {
     sizeof(double),sizeof(char *),sizeof(long),sizeof(int),sizeof(short),1UL
 };
-/* mask off low-order bits */
-static const unsigned long bitmask[6] = {
+/* mask off low-order bits, indexed by log of type size  */
+static const unsigned long bitmask[NTYPES] = {
     0x0UL, 0x01UL, 0x03UL, 0x07UL, 0x0fUL, 0x01fUL
 };
+/* log of type size, indexed by type index */
+/* initialized at first run */
+static int log2t[NTYPES];
 
 #define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
 
@@ -423,18 +429,19 @@ static inline void initialize_quickselect(V)
     size_t q;
     const char *s;
 
-    /* Initialize sampling_table if necessary */
-    if (0U==sampling_table_initialized) {
-        for (q=3UL; q<SAMPLING_TABLE_SIZE; q++)
-            sampling_table[q].min_nmemb=0UL;
-        sampling_table[0].min_nmemb=1UL;
-        sampling_table[0].samples=1UL; /* 1,1 */
-        sampling_table[1].min_nmemb=(M3_CUTOFF);
-        sampling_table[1].samples=3UL; /* M3_CUTOFF,3 */
-        sampling_table[2].min_nmemb=SAMPLE_BASE*SAMPLE_BASE;
-        sampling_table[2].samples=9UL; /* SAMPLE_BASE^2,9 */
-        sampling_table_initialized=1U;
-    }
+    /* Initialize sampling_table */
+    for (q=3UL; q<SAMPLING_TABLE_SIZE; q++)
+        sampling_table[q].min_nmemb=0UL;
+    sampling_table[0].min_nmemb=1UL;
+    sampling_table[0].samples=1UL; /* 1,1 */
+    sampling_table[1].min_nmemb=(M3_CUTOFF);
+    sampling_table[1].samples=3UL; /* M3_CUTOFF,3 */
+    sampling_table[2].min_nmemb=SAMPLE_BASE*SAMPLE_BASE;
+    sampling_table[2].samples=9UL; /* SAMPLE_BASE^2,9 */
+    /* Initialize log2t table */
+    for (q=0UL; (NTYPES)>q; q++)
+        log2t[q]=log2s[typsz[q]];
+    /* Initialize strings */
     s=strrchr(filenamebuf,'/');
     if (NULL==s) s=filenamebuf; else s++;
     quickselect_initialized=register_build_strings(quickselect_build_options,
@@ -443,34 +450,41 @@ static inline void initialize_quickselect(V)
 
 /* array element swaps */
 /* called many times from quickslect_internal, medians3 */
+/* count is in chars */
 static inline void swap(char *pa, char *pb, size_t count, int swaptype)
 {
-    if (pa!=pb) { /* else nothing to do */
+# define CHAR_SWAP \
+    while (1) {                   \
+        t=*pa, *pa=*pb, *pb=t;    \
+        if (0UL==--count) break;  \
+        pa++, pb++;               \
+    }
+# define GENERIC_SWAP \
+    while (1) {                   \
+        t=*px, *px=*py, *py=t;    \
+        if (0UL==--count) break;  \
+        px++, py++;               \
+    }
+    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
         if (5==swaptype) { /* char */
             char t;
-            for (;0UL<count; pa++,pb++,count--)
-                t=*pa, *pa=*pb, *pb=t;
+            CHAR_SWAP
         } else {
-            size_t s=typsz[swaptype]; /* chars */
-            A(count>=s);A(0==count%s);
-            count >>= log2s[s];
+            count >>= (log2t[swaptype]);
             switch (swaptype) {
                 case 0 : /* double */
                     {   double *px=(double *)pa, *py=(double *)pb, t;
-                        for (;0UL<count; px++,py++,count--)
-                            t=*px, *px=*py, *py=t;
+                        GENERIC_SWAP
                     }
                 break;
                 case 3 : /* int */
                     {   int *px=(int *)pa, *py=(int *)pb, t;
-                        for (;0UL<count; px++,py++,count--)
-                            t=*px, *px=*py, *py=t;
+                        GENERIC_SWAP
                     }
                 break;
                 case 4 : /* short */
                     {   short *px=(short *)pa, *py=(short *)pb, t;
-                        for (;0UL<count; px++,py++,count--)
-                            t=*px, *px=*py, *py=t;
+                        GENERIC_SWAP
                     }
                 break;
             }
@@ -508,8 +522,8 @@ static inline size_t effective_size(char *pl, char *pu, char *po,
             /* Smallest ranks in region and just beyond. */
             minrank=(pl-po)/size, bigrank=(pu-po)/size;
             if ((NK_CUTOFF) > nk) { /* linear search */
-                /* Loop through requested order statistics, break if/when an order
-                   statistic in region is requested.
+                /* Loop through requested order statistics, break if/when an
+                   order statistic in region is requested.
                 */
                 for (k=0UL; (k<nk)&&((pk[k]<minrank)||(pk[k]>=bigrank)); k++)
                     ;
@@ -716,12 +730,12 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                final blockmoves) Bentley&McIlroy "split end" partition.
             */
             /* Initially: */
-            /* +-------------------------------------------------------------+ */
-            /* |                              ?                              | */
-            /* +-------------------------------------------------------------+ */
-            /*  a                                                             e*/
-            /*  b                                                             f*/
-            /*  c                                                             u*/
+            /* +------------------------------------------------------------+ */
+            /* |                             ?                              | */
+            /* +------------------------------------------------------------+ */
+            /*  a                                                            e*/
+            /*  b                                                            f*/
+            /*  c                                                            u*/
             /* Invariant pointer pl -> first [sub-]array element.    */
             /* = elements (by comparison to pivot) are in a region on the left,
                   delimited by pl (first element) and pb (past last element.
@@ -744,21 +758,24 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                to the start of the > region rather than the end of the unknown
                region; this is to facilitate calls to blockmove
             */
-            /* +-------------------------------------------------------------+ */
-            /* |     =  |      <      | = |    ?      | = |    >    |   =    | */
-            /* +-------------------------------------------------------------+ */
-            /*  pl     a b             c   d   or    d   E e         f        u*/
+            /* +------------------------------------------------------------+ */
+            /* |     =  |      <     | = |    ?      | = |    >    |   =    | */
+            /* +------------------------------------------------------------+ */
+            /*  pl     a b            c   d   or    d   E e         f        u*/
             /* Upper and lower diagram lines henceforth omitted for brevity. */
-            /* select a pivot element using a fast method w/ only poor rank guarantee */
-            /* adaptive pivot selection: remedian of samples, ninther, median-of-3,
-               singleton.  The number of samples depends on array size and sampling base
-               for remedian of samples.
+            /* Select a pivot element using a fast method w/ only poor rank
+               guarantee.  Adaptive pivot selection: remedian of samples,
+               ninther, median-of-3, singleton.  The number of samples depends
+               on array size and sampling base for remedian of samples.
             */
-            /* Determine how many samples to take from the array for pivot selection. */
-            /* Find sampling_table entry appropriate for array size. Lazy table update.
+            /* Determine how many samples to take from the array for pivot
+               selection.  Find sampling_table entry appropriate for array size.
+               Lazy table update.
             */
             for (r=sampling_table[q=0UL].samples; q<SAMPLING_TABLE_SIZE; q++) {
-            /* simulation stuff is for generating data for graphs for companion paper */
+            /* Simulation stuff is for generating data for graphs for companion
+               paper.
+            */
 #if SIMULATE_BM
                 p=r;
 #endif /* SIMULATE_BM */
@@ -777,7 +794,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                 if (nmemb<n) { /* stop looking in table */
 #if SIMULATE_BM
                     /* nmemb < n ; use p samples */
-                    /* special-cases for BL_ADAPTIVE: ninther above NINTHER_CUTOFF
+                    /* ninther above NINTHER_CUTOFF
                     */
                     if ((9UL!=p)&&((NINTHER_CUTOFF)<nmemb)) q=3UL,p=9UL;
 #endif /* SIMULATE_BM */
@@ -786,26 +803,26 @@ static inline void quickselect_internal(void *base, size_t nmemb,
             }
             if (0UL<q) q--; /* sampling table index */
             n=sampling_table[q].samples; /* total samples (a power of 3) */
-            /* Samples uniformly spaced in rows (which are also uniformly spaced), but
-               N.B. sample spacing from the end of one row to the first sample on the
-               next row is NOT necessarily the same as sample spacing within a row.
-               Always 3 rows. Set s to chars sample spacing within rows. Set r to row
-               spacing in chars.
+            /* Samples uniformly spaced in rows (which are also uniformly
+               spaced), but N.B. sample spacing from the end of one row to the
+               first sample on the next row is NOT necessarily the same as
+               sample spacing within a row.  Always 3 rows. Set s to chars
+               sample spacing within rows. Set r to row spacing in chars.
             */
             if (1UL==n) {
-                pivot=pl+(nmemb>>2)*size; /* best for organ-pipe, reasonable for others */
+                pivot=pl+(nmemb>>2)*size; /* best for organ-pipe, OK others */
                 s=r=0UL;
 #if ASSERT_CODE
                 t=n;
 #endif /* ASSERT_CODE */
             } else {
-                t = n/3UL;                               /* samples per row */
-                if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL; /* sample spacing (elements) */
-                if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s; /* row spacing (elements) */
-                s*=size, r*=size;                        /* spacing in chars */
-                pivot=pl+size*(nmemb>>1)                 /* middle element */
-                    -r                                   /* now middle of first row */
-                    -(t>>1)*s;                           /* minus half samples/row */
+                t = n/3UL;                                 /* samples per row */
+                if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL;    /* sample spacing */
+                if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s;    /* row spacing */
+                s*=size, r*=size;                         /* spacing in chars */
+                pivot=pl+size*(nmemb>>1)                    /* middle element */
+                    -r                                 /* -> middle first row */
+                    -(t>>1)*s;                          /* - half row samples */
             }
 #if ASSERT_CODE
             A(pl<=pivot);A(pivot<pl+nmemb*size); /* pivot is in the array */
@@ -823,16 +840,16 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                 /* loop control using sampling_table sample sizes */
                 while (0UL<q) {
                     n=sampling_table[--q].samples;
-                    /* For each set of 3 samples, set one element to the median of
-                       the set. medians3 returns a pointer to the first element of
-                       the resulting set of medians, which are uniformly offset by
-                       the sample spacing s.
+                    /* For each set of 3 samples, set one element to the median
+                       of the set. medians3 returns a pointer to the first
+                       element of the resulting set of medians, which are
+                       uniformly offset by the sample spacing s.
                     */
                     pivot=medians3(pivot,size,compar,n*s,s,n,swaptype);
-                    /* Repeat for the samples in the medians row (i.e. the medians
-                       of this group of sets) until only a single median remains
-                       (i.e. row spacing < sample spacing). That final median (the
-                       pivot element) is located at pivot.
+                    /* Repeat for the samples in the medians row (i.e. the
+                       medians of this group of sets) until only a single median
+                       remains (i.e. row spacing < sample spacing). That final
+                       median (the pivot element) is located at pivot.
                     */
                 }
             }
@@ -842,11 +859,11 @@ static inline void quickselect_internal(void *base, size_t nmemb,
             while (1) { /* outer loop: repivot/repartition until satisfactory */
                 while (1) { /* middle loop - partitioning */
                     /* pivot updated when swapped */
-                    while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan up from pc */
+                    while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
                         if (c==0) { swap(pivot=pb,pc,size,swaptype); pb+=size; }
                         pc+=size;
                     }
-                    while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- from pe */
+                    while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- */
                         if (d==0) { pf-=size; swap(pe,pivot=pf,size,swaptype); }
                         pe-=size;
                     }
@@ -855,8 +872,8 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                     pc+=size; pe-=size;
                 }
                 pe+=size; /* now start of > region */
-                /* |     =  |      <               |               >    |   =    | */
-                /*  pl     a b                      c=e                  f        u*/
+                /* |    =  |      <             |             >    |   =    | */
+                /*  pl    a b                    c=e                f        u*/
                 /* swap > and upper = regions, set pd to start of > */
                 if (pf<pu) { /* pe unchanged if pf>=pu */
                     if (pe<pf) { /* pe= original pu if pf>=pe */
@@ -864,8 +881,8 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                         swap(pe,pu-n,n,swaptype); pe+=p;
                     } else pe=pu;
                 }
-                /* |     =  |      <               |        =      |      >      | */
-                /*  pl     a b                      c               e             u*/
+                /* |    =  |      <           |        =      |      >      | */
+                /*  pl    a b                  c               e             u*/
                 /* swap left = and < regions */
                 if (pb<pc) { /* pb= original pl if pb>=pc */
                     if (pl<pb) { /* pb= original pc if pb>=pa */
@@ -873,9 +890,9 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                         swap(pl,pc-n,n,swaptype); pb=pl+p;
                     } else pb=pc;
                 } else pb=pl;
-                /* |        <            |            =            |      >      | */
-                /*  pl                    b                         e             u*/
-                /* Examine sizes of < and > regions and determine whether to repivot. */
+                /* |       <            |         =           |      >      | */
+                /*  pl                   b                     e             u*/
+                /* Examine <, > region sizes, determine whether to repivot. */
                 q=pb-pl; /* size of the < region, in chars */
                 r=pu-pe;  /* size of the > region, in chars */
                 if ((q)<(r)) /* > region is larger */
@@ -885,18 +902,20 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                     d=process_regions(pl,q,pe,r,nmemb,size,po,pk,nk,&pl,&n,
                         regions,&nregions, top);
                 if (0==d) break; /* repivot not required */
-                /* repivot/repartition large region w/ pl, n from examine_regions */
-                /* |        <            |            =            |      >      | */
-                /*  pl                    b                         e             u*/
-                /* Finding a pivot with guaranteed intermediate rank. Ideally, median
-                   (50%).  Blum, Floyd, Pratt, Rivest, Tarjan median-of-medians using
-                   sets of 5 elements with recursion guarantees rank in (asymptotically)
-                   30-70% range, often better; can guarantee linear median-finding,
-                   N log(N) sorting. Simplification ignores "leftover" elements with a
-                   slight increase in rank range.  Non-recursive method (using separate
-                   linear median finding) can use sets of 3 elements to provide a
-                   tighter 33.33% to 66.67% range (again, slightly wider if "leftover"
-                   elements are ignored) at lower computational cost.
+                /* repivot/partition big region w/ pl,n from process_regions */
+                /* |        <           |         =           |      >      | */
+                /*  pl                   b                     e             u*/
+                /* Finding a pivot with guaranteed intermediate rank. Ideally,
+                   median (50%).  Blum, Floyd, Pratt, Rivest, Tarjan
+                   median-of-medians using sets of 5 elements with recursion
+                   guarantees rank in (asymptotically) 30-70% range, often
+                   better; can guarantee linear median-finding, N log(N)
+                   sorting. Simplification ignores "leftover" elements with a
+                   slight increase in rank range.  Non-recursive method (using
+                   separate linear median finding) can use sets of 3 elements to
+                   provide a tighter 33.33% to 66.67% range (again, slightly
+                   wider if "leftover" elements are ignored) at lower
+                   computational cost.
                 */
                 nmemb=n; pivot=pl;
                 n/=3UL;    /* number of complete sets */

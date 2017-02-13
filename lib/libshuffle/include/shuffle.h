@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    shuffle.h copyright 2016 Bruce Lilly. \ $
+* $Id: ~|^` @(#)    shuffle.h copyright 2016-2017 Bruce Lilly. \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,20 +30,20 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is shuffle.h version 1.0 dated 2016-03-11T06:09:00Z. \ $ */
+/* $Id: ~|^` @(#)   This is shuffle.h version 1.1 dated 2017-02-12T15:21:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "shuffle" */
 /*****************************************************************************/
 /* maintenance note: master file /data/weather/lib/libshuffle/include/s.shuffle.h */
 
 /* version-controlled header file version information */
-#define SHUFFLE_H_VERSION "shuffle.h 1.0 2016-03-11T06:09:00Z"
+#define SHUFFLE_H_VERSION "shuffle.h 1.1 2017-02-12T15:21:47Z"
 
 /*INDENT ON*/
 /* *INDENT-ON* */
 
 /* local and system header files needed for declarations */
+#include <stddef.h>             /* size_t */
 #include <stdint.h>             /* uint64_t */
-#include <sys/types.h>          /* *_t */
 
 /* function prototypes and data symbol declarations */
 #if defined(__cplusplus)

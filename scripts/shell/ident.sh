@@ -183,12 +183,6 @@ then
 	do=echo
 fi
 
-# if the user has a .profile file, source it (it might set PATH, etc.)
-if test -f ~/.profile
-then
-	. ~/.profile
-fi
-
 # network.sh and time.sh do all the work (also sourcing host.sh, system.sh, date.sh, and zone.sh)
 if test ${debug} -gt 0
 then
