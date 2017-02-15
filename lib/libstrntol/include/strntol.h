@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    strntol.h copyright 2013 - 2015 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    strntol.h copyright 2013-2017 Bruce Lilly. \ strntol.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,15 +28,15 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is strntol.h version 2.5 2015-10-09T02:58:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is strntol.h version 2.6 2017-02-15T00:22:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "strntol" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/lib/libstrntol/include/s.strntol.h */
 
 /* version-controlled header file version information */
-#define STRNTOL_H_VERSION "strntol.h 2.5 2015-10-09T02:58:26Z"
+#define STRNTOL_H_VERSION "strntol.h 2.6 2017-02-15T00:22:04Z"
 
-#include <sys/types.h>          /* POSIX standard types */
+#include <stddef.h>             /* size_t */
 
 /* function prototypes and data symbol declarations */
 #if defined(__cplusplus)
@@ -49,7 +49,16 @@
 /*INDENT OFF*/
 
 /* the function should really be called strntol, but that's reserved... */
-STRNTOL_EXTERN long nstrtol(const char *, size_t, char **, int, void (*)(int, void *, const char *, ...), void *);
+STRNTOL_EXTERN long nstrtol(const char *
+#if defined(__STDC__)&&( __STDC_VERSION__ >= 199901L) /* restrict restricted */
+                                        restrict
+#endif
+                                                , size_t, char **
+#if defined(__STDC__)&&( __STDC_VERSION__ >= 199901L) /* restrict restricted */
+                                                                  restrict
+#endif
+                                                                          , int,
+    void (*)(int, void *, const char *, ...), void *);
 
 #define	STRNTOL_H_INCLUDED
 #endif

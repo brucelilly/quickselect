@@ -8,7 +8,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    strntol.c copyright 2013 - 2016 Bruce Lilly.   \ strntol.c $
+* $Id: ~|^` @(#)    strntol.c copyright 2013-2017 Bruce Lilly.   \ strntol.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -27,7 +27,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is strntol.c version 2.6 2016-04-03T12:59:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is strntol.c version 2.8 2017-02-15T00:26:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "strntol" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/lib/libstrntol/src/s.strntol.c */
@@ -55,28 +55,38 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: strntol.c ~|^` @(#)"
 #define SOURCE_MODULE "strntol.c"
-#define MODULE_VERSION "2.6"
-#define MODULE_DATE "2016-04-03T12:59:37Z"
+#define MODULE_VERSION "2.8"
+#define MODULE_DATE "2017-02-15T00:26:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2013 - 2016"
+#define COPYRIGHT_DATE "2013-2017"
 
+/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MIN_XOPEN_SOURCE_VERSION 600
+#else
+# define MIN_XOPEN_SOURCE_VERSION 500
+#endif
+
+/* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+# define _XOPEN_SOURCE 600  /* code uses C99 'restrict' */
+#endif
+#if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #ifndef __EXTENSIONS__
 # define __EXTENSIONS__ 1
 #endif
 
+
 /* local header files */
-#include "strntol.h"            /* includes sys/types */
+#include "strntol.h"            /* includes stddef.h */
 #include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
 
 #include <ctype.h>              /* isspace, isalnum */
 #include <errno.h>              /* errno EINVAL ERANGE */
 #include <limits.h>             /* LONG_MIN LONG_MAX */
-#ifndef NULL
-# include <stddef.h>            /* NULL */
-#endif
 #include <string.h>             /* strrchr */
 #include <syslog.h>             /* LOG_* */
 
@@ -273,7 +283,16 @@ static void nstrtol_initialize(void)
     nstrtol_initialized = register_build_strings(NULL, &source_file, s);
 }
 
-long nstrtol(const char *s, size_t n, char **endptr, int base,
+/* convert up to n characters to a long integer, save reject */
+long nstrtol(const char *
+#if defined(__STDC__)&&( __STDC_VERSION__ >= 199901L) /* restrict restricted */
+                         restrict
+#endif
+                         s, size_t n, char **
+#if defined(__STDC__)&&( __STDC_VERSION__ >= 199901L) /* restrict restricted */
+                                              restrict
+#endif
+                                              endptr, int base,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     long ret = 0L;
@@ -288,7 +307,7 @@ long nstrtol(const char *s, size_t n, char **endptr, int base,
 
         if ((1 == base) || (STRNTOL_MAX_BASE < base) || (0 > base)) {/*0 is OK*/
             if (NULL != endptr)
-                *endptr = (char *)s;
+                *endptr = s;
             if (NULL != f) {
                 f(LOG_ERR, log_arg,
                     "%s: %s line %d: invalid base %d",
@@ -366,6 +385,6 @@ long nstrtol(const char *s, size_t n, char **endptr, int base,
             ret = 0L - ret;
     }
     if (NULL != endptr)
-        *endptr = (char *)s;
+        *endptr = s;
     return ret;
 }

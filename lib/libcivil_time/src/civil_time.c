@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is civil_time.c version 2.10 dated 2017-02-11T04:39:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is civil_time.c version 2.11 dated 2017-02-14T22:14:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "civil_time" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libcivil_time/src/s.civil_time.c */
@@ -261,8 +261,8 @@ double civil_time_difference(const struct civil_time_struct *pcts1, const struct
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: civil_time.c ~|^` @(#)"
 #define SOURCE_MODULE "civil_time.c"
-#define MODULE_VERSION "2.10"
-#define MODULE_DATE "2017-02-11T04:39:36Z"
+#define MODULE_VERSION "2.11"
+#define MODULE_DATE "2017-02-14T22:14:21Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2009-2017"
 
@@ -942,13 +942,13 @@ int parse_civil_time_text(const char *s, struct civil_time_struct *pcts_result,
             /* skip over any non-digit separators between MM and DD */
             for (; ('\0' != *p) && (0 == isdigit((int)*p)); )
                 p++;
-                if (NULL != f) {
-                    f(LOG_DEBUG, log_arg,
-                        "%s: %s line %d: %s tm_mon %d, remainder %s",
-                        __func__, source_file, __LINE__,
-                        s, cts.tm.tm_mon, p
-                        );
-                }
+            if (NULL != f) {
+                f(LOG_DEBUG, log_arg,
+                    "%s: %s line %d: %s tm_mon %d, remainder %s",
+                    __func__, source_file, __LINE__,
+                    s, cts.tm.tm_mon, p
+                    );
+            }
             if ('\0' == *p) { /* no mday */
                 deferred |= CIVIL_TIME_MDAY;
                 s = p;
