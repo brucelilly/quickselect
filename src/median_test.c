@@ -78,6 +78,8 @@
 #define BM_PVINIT           1    /* 0 preferred because PVINIT screws up pointer differences */
 #define BM_RECURSE          1    /* 0 preferred because recursion on both regions causes the stack to grow too much */
 #define GL_SWAP_CODE        1    /* 0 uses exchange.h swap */
+#define MBM_M3_CUTOFF       14UL /* median-of-3 above */
+#define MBM_N_CUTOFF        83UL /* ninther above */
 
 /* nothing (much) to configure below this line */
 
@@ -170,8 +172,8 @@
 #undef buildstr
 #define buildstr(s) #s
 
-#define OPTSTRING "aAbBC:dFghHiIk:KlLmnNoqQ:RsStT:wz"
-#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-C sequences] [-d] [-F] [-g] [-h] [-H] [-i] [-I] [-k col] [-l] [-L] [-m] [-n] [-N] [-o] [-q] [-Q timeout] [-R] [-s] [-S] [-t] [-T sequences] [-w] [-z] [[start incr]] [size [count]]\n\
+#define OPTSTRING "aAbBC:dFghHiIk:KlLmM:nNoqQ:RsStT:wz"
+#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-C sequences] [-d] [-F] [-g] [-h] [-H] [-i] [-I] [-k col] [-l] [-L] [-m] [-M [m3,n]] [-n] [-N] [-o] [-q] [-Q timeout] [-R] [-s] [-S] [-t] [-T sequences] [-w] [-z] [[start incr]] [size [count]]\n\
 -a\ttest with McIlroy quicksort adversary\n\
 -A\talphabetic (string) data tests\n\
 -b\ttest Bentley&McIlroy qsort\n\
@@ -189,6 +191,7 @@
 -l\ttest library qsort\n\
 -L\tlong integer data tests\n\
 -m\ttest quickselect median\n\
+-M [m3,n]\ttest modified Bentley&McIlroy qsort with optional cutoff values for median-of-3 and ninther\n\
 -n\tdo nothing except as specified by option flags\n\
 -N\ttest NetBSD qsort code\n\
 -o\tprint execution costs of operations on basic types\n\
@@ -298,6 +301,8 @@ static const char *build_options = "@(#)median_test.c: " "built with configurati
                   ", BM_PVINIT=" xbuildstr(BM_PVINIT)
                   ", BM_RECURSE=" xbuildstr(BM_RECURSE)
                   ", GL_SWAP_CODE=" xbuildstr(GL_SWAP_CODE)
+                  ", MBM_M3_CUTOFF=" xbuildstr(MBM_M3_CUTOFF)
+                  ", MBM_N_CUTOFF=" xbuildstr(MBM_N_CUTOFF)
                   ", TEST_TIMEOUT=" xbuildstr(TEST_TIMEOUT)
                   ;
 static struct big_struct *input_data=NULL;
@@ -974,7 +979,7 @@ static char *med3(char *a, char *b, char *c, int (*compar)())
 #endif
 }
 
-void bmqsort(char *a, size_t n, size_t es, int (*compar)(), unsigned int debug)
+void bmqsort(char *a, size_t n, size_t es, int (*compar)())
 {
         char *pa, *pb, *pc, *pd, *pl, *pm, *pn, *pv;
         int r, swaptype;
@@ -1029,9 +1034,9 @@ loop:   SWAPINIT(a, es);
         /* pd-pc is the number of chars in the > block */
         s = bmmin(pd-pc, pn-pd-es); vecswap(pb, pn-s, s);
 
-        if ((s = pb-pa) > es) bmqsort(a,    s/es, es, compar, debug);
+        if ((s = pb-pa) > es) bmqsort(a,    s/es, es, compar);
 #if BM_RECURSE
-        if ((s = pd-pc) > es) bmqsort(pn-s, s/es, es, compar, debug);
+        if ((s = pd-pc) > es) bmqsort(pn-s, s/es, es, compar);
 #else
         if ((s = pd-pc) > es) {
                 /* Iterate rather than recurse to save stack space */
@@ -1049,7 +1054,7 @@ loop:   SWAPINIT(a, es);
 
 /* NetBSD qsort code (derived from Bentley&McIlroy code) */
 /* _DIAGASSERT -> assert */
-void nbqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *), unsigned int debug)
+void nbqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
 {
         char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
         size_t d, r;
@@ -1117,16 +1122,137 @@ loop:        SWAPINIT((char *)a, es);
         vecswap(pb, pn - r, r);
 
         if ((r = pb - pa) > es)
-                nbqsort(a, r / es, es, compar, debug);
+                nbqsort(a, r / es, es, compar);
         if ((r = pd - pc) > es) { 
                 /* Iterate rather than recurse to save stack space */
                 a = pn - r;
                 n = r / es;
                 goto loop;
         }
-/*                nbqsort(pn - r, r / es, es, compar, debug);*/
+/*                nbqsort(pn - r, r / es, es, compar);*/
 }
 /* ************************************************************************** */
+
+/* Modified Bentley&McIlroy qsort:
+      ternary median-of-3
+      type-independent deferred pivot swap
+      improved sampling for singleton, median-of-3, ninther
+      recurse on small region, iterate large region
+      don't repeat SWAPINIT when iterating
+      avoid self-swapping
+   No remedian of samples
+   No break-glass mechanism
+*/
+static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
+{
+    int c=compar(pa,pb);
+    if (0!=c) {
+        int d=compar(pb,pc);
+        if (0!=d) {
+            if ((0<d)&&(0>c)) {
+                if (0>compar(pa,pc)) return pc;
+                else return pa;
+            } else if ((0>d)&&(0<c)) {
+                if (0<compar(pa,pc)) return pc;
+                else return pa;
+            }
+        }
+    }
+    return pb;
+}
+
+static size_t mbm_m3_cutoff = MBM_M3_CUTOFF;
+static size_t mbm_n_cutoff = MBM_N_CUTOFF;
+
+void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
+{
+        char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
+        size_t d, r;
+        int swaptype, cmp_result;
+
+        assert(a != NULL || n == 0 || es == 0);
+        assert(compar != NULL);
+
+	SWAPINIT((char *)a, es);
+loop:   if (n < 7UL) {
+                for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
+                        for (pl = pm; pl > (char *) a && compar(pl - es, pl) > 0;
+                             pl -= es)
+                                bmswap(pl, pl - es);
+                return;
+        }
+        d = es * (n / 4UL);
+        pm = (char *) a + d; /* 1/4 */
+        if (n > mbm_m3_cutoff) {
+                pl = (char *)a + es * (n / 2UL); /* 1/2 */
+                pn = (char *) a + (n - 1UL) * es - d; /* 3/4 */
+                if (n > mbm_n_cutoff) {
+                        d = (n / 12UL) * es;
+                        r = 2UL*d;
+                        pm = fmed3(pm-r, pm-d, pm, compar); /* 1,2,3 */
+                        pl = fmed3(pl-d, pl, pl+d, compar); /* 5,6,7 */
+                        pn = fmed3(pn, pn+d, pn+r, compar); /* 9,10,11 */
+                }
+                pm = med3(pl, pm, pn, compar);
+        }
+        pa = pb = (char *) a;
+        pc = pd = (char *) a + (n - 1) * es;
+        for (;;) {
+                while (pb <= pc && (cmp_result = compar(pb, pm)) <= 0) {
+                        if (cmp_result == 0) {
+                                if (pa!=pb) bmswap(pa, pb);
+                                pm=pa;
+                                pa += es;
+                        }
+                        pb += es;
+                }
+                while (pb <= pc && (cmp_result = compar(pc, pm)) >= 0) {
+                        if (cmp_result == 0) {
+                                if (pc!=pd) bmswap(pc, pd);
+                                pm=pd;
+                                pd -= es;
+                        }
+                        pc -= es;
+                }
+                if (pb > pc)
+                        break;
+                if (pb!=pc) bmswap(pb, pc);
+                pb += es;
+                pc -= es;
+        }
+
+        pn = (char *) a + n * es;
+        /* | = |  <  |  >  | = | */
+        /*    a     b     d     n
+        /* compute the size of the block of chars that needs to be moved to put the < region before the lower == region */
+        /* pb-pa is the number of chars in the < block */
+        r = bmmin(pa - (char *) a, pb - pa);
+        vecswap(a, pb - r, r);
+        /* after the swap (above), the start of the == section is at pb-r */
+        /* compute the size of the block of chars that needs to be moved to put the > region after the upper == region */
+        /* pn-pd-es (a.k.a. pu-pd) is the number of chars in the upper == block */
+        /* pd-pc is the number of chars in the > block */
+        r = bmmin((size_t)(pd - pc), pn - pd - es);
+        vecswap(pb, pn - r, r);
+
+        r = pb - pa; /* size (only) of < region */
+        d = pd - pc; /* size (only) of > region */
+        if (r<=d) {
+                /* recurse on small pa..pb, iterate large */
+                if (r>es) mbmqsort(a, r/es, es, compar);
+                if (d>es) {
+                    a = pn-d;
+                    n = d/es;
+                    goto loop;
+                }
+        } else {
+                if (d>es) mbmqsort(pn-d, d/es, es, compar);
+                if (r>es) {
+                    n = r/es;
+                    goto loop;
+                }
+        }
+}
 
 /* ********************** glibc qsort code ********************************** */
 /* Copyright (C) 1991-2016 Free Software Foundation, Inc.
@@ -1695,12 +1821,14 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
 }
 
 /* macros to unify function calls */
-#define BMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) bmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mdbg)
+#define BMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) bmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define MBMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) mbmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define GLQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) glibc_quicksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
-#define NBQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) nbqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mdbg)
+#define NBQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) nbqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl+1UL)
 
+#define FUNCTION_MBMQSORT       4U
 #define FUNCTION_BMQSORT        5U
 #define FUNCTION_NBQSORT        6U
 #define FUNCTION_GLQSORT        7U
@@ -1788,6 +1916,8 @@ static const char *function_name(unsigned int func, size_t n)
         break;
         case FUNCTION_NBQSORT :       ret = "NetBSD qsort";
         break;
+        case FUNCTION_MBMQSORT :      ret = "modified Bentley&McIlroy qsort";
+        break;
         case FUNCTION_GLQSORT :       ret = "glibc qsort";
         break;
         case FUNCTION_QSORT_WRAPPER : ret = "qsort_wrapper";
@@ -1812,6 +1942,7 @@ static const char *function_type(unsigned int func, unsigned int *ptests)
             if (TEST_TYPE_SORT == (TEST_TYPE_SORT & *ptests))  ret = "sort"; else ret = "median";
         break;
         case FUNCTION_BMQSORT :       /*FALLTHROUGH*/
+        case FUNCTION_MBMQSORT :      /*FALLTHROUGH*/
         case FUNCTION_NBQSORT :       /*FALLTHROUGH*/
         case FUNCTION_GLQSORT :       /*FALLTHROUGH*/
         case FUNCTION_QSORT :         ret = "sort";
@@ -2228,6 +2359,9 @@ do_test:
                     break;
                     case FUNCTION_BMQSORT :
                         BMQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_MBMQSORT :
+                        MBMQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                     case FUNCTION_NBQSORT :
                         NBQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
@@ -2683,6 +2817,9 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     break;
                     case FUNCTION_BMQSORT :
                         BMQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_MBMQSORT :
+                        MBMQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                     case FUNCTION_NBQSORT :
                         NBQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
@@ -3736,7 +3873,6 @@ int main(int argc, const char * const *argv)
                 case 'l' : /*FALLTHROUGH*/
                 case 'L' : /*FALLTHROUGH*/
                 case 'm' : /*FALLTHROUGH*/
-                case 'M' : /*FALLTHROUGH*/
                 case 'n' : /*FALLTHROUGH*/
                 case 'N' : /*FALLTHROUGH*/
                 case 'o' : /*FALLTHROUGH*/
@@ -3767,6 +3903,25 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                     flags[c] = 1U;
+                break;
+                case 'M' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no cutoffs) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* cutoff value(s) */
+                    }
+                    mbm_m3_cutoff = strtoul(pcc, &endptr, 10);
+                    pcc=endptr;
+                    if ('\0' != *pcc) {
+                        mbm_n_cutoff = strtoul(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
                 break;
                 case 'Q' :
                     if ('\0' == *(++pcc))
@@ -3807,6 +3962,11 @@ int main(int argc, const char * const *argv)
                 switch (n) {
                     case 'k' :
                         (void)fprintf(stdout, "%stiming column = %d\n", comment, col);
+                    break;
+                    case 'M' :
+                        (void)fprintf(stdout,
+                            "%smodified Bentley&McIlroy qsort median-of-3-cutoff = %lu, ninther_cutoff = %lu\n",
+                            comment, mbm_m3_cutoff, mbm_n_cutoff);
                     break;
                     case 'Q' :
                         (void)fprintf(stdout, "%stest timeout = %0.2f\n", comment, timeout);
@@ -4188,6 +4348,21 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
             } else {
                 tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
                 errs += test_function(prog, array, big_array, darray, larray, FUNCTION_BMQSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['M'])) { /* test modified Bentley&McIlroy qsort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_MBMQSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
             }
         }
 

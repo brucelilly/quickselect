@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.61 dated 2017-02-13T04:04:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.62 dated 2017-02-15T07:40:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -85,17 +85,6 @@
 /* compile-time configuration options */
 #define ASSERT_CODE         0 /* Adds size and cost to aid debugging.
                                  0 for tested production code. */
-
-/* quick settings to approximate Bentley&McIlroy qsort */
-#define SIMULATE_BM         0
-#if SIMULATE_BM
-# undef ASSERT_CODE
-# define ASSERT_CODE        0
-# define INSERTION_CUTOFF   6UL /* equivalent to B&M 7 */
-# define BUILD_NOTES        "simulation of B&M"
-# define NINTHER_CUTOFF     40UL /* B&M */
-// # define M3_CUTOFF         8 /* ONLY for poor performance! (like B&M) */
-#endif
 
 /* analysis at small N indicates an INSERTION_CUTOFF of 6 is optimal */
 #ifndef INSERTION_CUTOFF
@@ -273,8 +262,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.61"
-#define MODULE_DATE "2017-02-13T04:04:58Z"
+#define MODULE_VERSION "1.62"
+#define MODULE_DATE "2017-02-15T07:40:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -776,9 +765,6 @@ static inline void quickselect_internal(void *base, size_t nmemb,
             /* Simulation stuff is for generating data for graphs for companion
                paper.
             */
-#if SIMULATE_BM
-                p=r;
-#endif /* SIMULATE_BM */
                 n=sampling_table[q].min_nmemb;
                 if (0UL==n) { /* lazy update */
                     n=sampling_table[q-1U].min_nmemb;
@@ -791,15 +777,7 @@ static inline void quickselect_internal(void *base, size_t nmemb,
                     r*=3UL;
                     sampling_table[q].samples=r;
                 } else r=sampling_table[q].samples;
-                if (nmemb<n) { /* stop looking in table */
-#if SIMULATE_BM
-                    /* nmemb < n ; use p samples */
-                    /* ninther above NINTHER_CUTOFF
-                    */
-                    if ((9UL!=p)&&((NINTHER_CUTOFF)<nmemb)) q=3UL,p=9UL;
-#endif /* SIMULATE_BM */
-                    break;
-                }
+                if (nmemb<n) break; /* stop looking in table */
             }
             if (0UL<q) q--; /* sampling table index */
             n=sampling_table[q].samples; /* total samples (a power of 3) */
