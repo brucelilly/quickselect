@@ -78,8 +78,8 @@
 #define BM_PVINIT           1    /* 0 preferred because PVINIT screws up pointer differences */
 #define BM_RECURSE          1    /* 0 preferred because recursion on both regions causes the stack to grow too much */
 #define GL_SWAP_CODE        1    /* 0 uses exchange.h swap */
-#define MBM_M3_CUTOFF       14UL /* median-of-3 above */
-#define MBM_N_CUTOFF        83UL /* ninther above */
+#define MBM_M3_CUTOFF       12UL /* median-of-3 above */
+#define MBM_N_CUTOFF        87UL /* ninther above */
 
 /* nothing (much) to configure below this line */
 
@@ -1139,9 +1139,11 @@ loop:        SWAPINIT((char *)a, es);
       improved sampling for singleton, median-of-3, ninther
       recurse on small region, iterate large region
       don't repeat SWAPINIT when iterating
-      avoid self-swapping
+      avoid self-swapping pb,pc
    No remedian of samples
    No break-glass mechanism
+   No internal stack
+   No order statistic selection
 */
 static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
 {
@@ -1193,14 +1195,14 @@ loop:   if (n < 7UL) {
                         pl = fmed3(pl-d, pl, pl+d, compar); /* 5,6,7 */
                         pn = fmed3(pn, pn+d, pn+r, compar); /* 9,10,11 */
                 }
-                pm = med3(pl, pm, pn, compar);
+                pm = fmed3(pl, pm, pn, compar);
         }
         pa = pb = (char *) a;
         pc = pd = (char *) a + (n - 1) * es;
         for (;;) {
                 while (pb <= pc && (cmp_result = compar(pb, pm)) <= 0) {
                         if (cmp_result == 0) {
-                                if (pa!=pb) bmswap(pa, pb);
+                                bmswap(pa, pb);
                                 pm=pa;
                                 pa += es;
                         }
@@ -1208,22 +1210,22 @@ loop:   if (n < 7UL) {
                 }
                 while (pb <= pc && (cmp_result = compar(pc, pm)) >= 0) {
                         if (cmp_result == 0) {
-                                if (pc!=pd) bmswap(pc, pd);
+                                bmswap(pc, pd);
                                 pm=pd;
                                 pd -= es;
                         }
                         pc -= es;
                 }
-                if (pb > pc)
+                if (pb >= pc)
                         break;
-                if (pb!=pc) bmswap(pb, pc);
+                bmswap(pb, pc);
                 pb += es;
                 pc -= es;
         }
 
         pn = (char *) a + n * es;
         /* | = |  <  |  >  | = | */
-        /*    a     b     d     n
+        /*    a     b     d     n*/
         /* compute the size of the block of chars that needs to be moved to put the < region before the lower == region */
         /* pb-pa is the number of chars in the < block */
         r = bmmin(pa - (char *) a, pb - pa);
