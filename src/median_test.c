@@ -79,7 +79,7 @@
 #define BM_RECURSE          1    /* 0 preferred because recursion on both regions causes the stack to grow too much */
 #define GL_SWAP_CODE        1    /* 0 uses exchange.h swap */
 #define MBM_M3_CUTOFF       12UL /* median-of-3 above */
-#define MBM_N_CUTOFF        87UL /* ninther above */
+#define MBM_N_CUTOFF        88UL /* ninther above */
 
 /* nothing (much) to configure below this line */
 
