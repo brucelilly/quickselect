@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.62 dated 2017-02-15T07:40:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.63 dated 2017-02-16T02:34:08Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -91,33 +91,6 @@
 # define INSERTION_CUTOFF   6UL /* insertion sort arrays this size or smaller */
 #endif
 
-/* SAMPLE_BASE (specific to remedian of samples pivot selection) */
-/* suggested values: 7, 8, 9; 8 is optimum */
-#define SAMPLE_BASE                 8UL
-
-/* cutoff for transition from singleton to median-of-3 pivot selection */
-/* Switch from organ-pipe-preferred (1/4 sample)
-   to median-of-3 (1/4,1/2,3/4) for nmemb>=M3_CUTOFF.
-     11 128Ki integers 1.00499 random, 2.01765@34 pk adversary
-     12 128Ki integers 1.00501 random, 1.98841@33 pk adversary
-     13 128Ki integers 1.00474 random, 1.98841@33 pk adversary
-     14 128Ki integers 1.00479 random, 1.97038@33 pk adversary
-     15 128Ki integers 1.00469 random, 1.97038@33 pk adversary
-     16 128Ki integers 1.00471 random, 1.95236@33 pk adversary
-     17 128Ki integers 1.00489 random, 1.95236@33 pk adversary
-     18 128Ki integers 1.00499 random, 1.93434@33 pk adversary
-   11 gives better performance for sorted input than Bentley & McIlroy qsort,
-      but other input sequences (especially randomized ones) fare poorly due
-      to the increased number of comparisons for median-of-3 for every small
-      subarray resulting from partitions.
-   13-16 gives reasonable performance for randomized input sequences, though
-      performance for already-sorted input is a bit slower than Bentley &
-      McIroy's qsort.
-*/
-#ifndef M3_CUTOFF
-# define M3_CUTOFF                  15UL /* optimum 13-16 */
-#endif /* M3_CUTOFF */
-
 /* Repivoting parameters REPIVOT_FACTOR and REPIVOT_CUTOFF:
    Subarrays with more than REPIVOT_CUTOFF elements are checked for a large
    region which is more than (REPIVOT_FACTOR-1)/REPIVOT_FACTOR times the
@@ -128,8 +101,8 @@
    Median-of-3 pivot selection guarantees at least 1 element in the small
    region.  That plus the pivot guarantees that the large region has at most
    nmemb-2 elements.
-   Therefore, as long as REPIVOT_CUTOFF is greater than M3_CUTOFF (and it
-   should be), REPIVOT_CUTOFF should be at least REPIVOT_FACTOR+2 to avoid
+   Therefore, as long as REPIVOT_CUTOFF is greater than median-of-3 cutoff (and
+   it should be), REPIVOT_CUTOFF should be at least REPIVOT_FACTOR+2 to avoid
    unnecessary division and comparison.
    Small REPIVOT_FACTOR (e.g. 13UL) keeps adverse inputs from requiring
    excessive comparisons due to poor partition splits, but causes extra
@@ -138,30 +111,9 @@
    comparisons to resolve marginally poor (not bad enough to repivot)
    partition splits, but has negligible effect on random sequences which
    rarely have extremely lopsided partitions.
-   Examples for REPIVOT_FACTOR,REPIVOT_CUTOFF at M3_CUTOFF=15, SAMPLE_BASE=8:
-       13,27 128Ki integers 1.0069 random, 1.72743@91 pk adversary
-       14,18 128Ki integers 1.0075 random, 1.67508@91 pk adversary
-       14,19 128Ki integers 1.0073 random, 1.66495@91 pk adversary
-       14,20 128Ki integers 1.0072 random, 1.66495@91 pk adversary
-       14,21 128Ki integers 1.0070 random, 1.66495@91 pk adversary
-       14,24 128Ki integers 1.0068 random, 1.66495@91 pk adversary
-       14,27 128Ki integers 1.0061 random, 1.66495@91 pk adversary
-       15,27 128Ki integers 1.0059 random, 1.66495@91 pk adversary
-       16,18 128Ki integers 1.0067 random, 1.67508@19 pk adversary
-       16,19 128Ki integers 1.0068 random, 1.66495@91 pk adversary
-       16,24 128Ki integers 1.0062 random, 1.66495@91 pk adversary
-       16,25 128Ki integers 1.0062 random, 1.66495@91 pk adversary
-       16,26 128Ki integers 1.0059 random, 1.66495@91 pk adversary
-       16,27 128Ki integers 1.0059 random, 1.66495@91 pk adversary
-       16,28 128Ki integers 1.0058 random, 1.737@27 pk adversary
-       17,34 128Ki integers 1.0052 random, 1.97038@33 pk adversary
-       21,32 128Ki integers 1.0048 random, 1.89478@31 pk adversary
-       21,34 128Ki integers 1.0047 random, 1.97038@33 pk adversary
-       32,34 128Ki integers 1.0044 random, 1.97038@33 pk adversary
-       32,35 128Ki integers 1.0041 random, 1.98296@34 pk adversary
-       32,36 128Ki integers 1.0041 random, 2.04428@35 pk adversary
-       32,39 128Ki integers 1.0042 random, 2.13117@38 pk adversary
-       huge  128Ki integers 1.0037 random
+   Examples for REPIVOT_FACTOR,REPIVOT_CUTOFF:
+       16,27 32Ki integers 1.0214 peak random, 1.6988@79 peak adversary
+       huge  16Ki integers 1.01899 peak random
 */
 #ifndef REPIVOT_FACTOR
 # define REPIVOT_FACTOR             16UL
@@ -179,31 +131,12 @@
 
 /* Nothing to configure below this line. */
 
-/* sanity checks */
-#if SAMPLE_BASE
-# if SAMPLE_BASE < 7UL
-#  error SAMPLING_TABLE_SIZE will be too small
-# endif
-#endif
-
 /* defaults */
 #if ! NK_CUTOFF
 # ifdef NK_CUTOFF
 #  undef NK_CUTOFF
 # endif
 # define NK_CUTOFF                   16UL
-#endif
-#if ! M3_CUTOFF
-# ifdef M3_CUTOFF
-#  undef M3_CUTOFF
-# endif
-# define M3_CUTOFF                   15UL
-#endif
-#if ! SAMPLE_BASE
-# ifdef SAMPLE_BASE
-#  undef SAMPLE_BASE
-# endif
-# define SAMPLE_BASE                 8UL
 #endif
 #if ! REPIVOT_FACTOR
 # ifdef REPIVOT_FACTOR
@@ -216,15 +149,6 @@
 #  undef REPIVOT_CUTOFF
 #  define REPIVOT_CUTOFF             27UL
 # endif
-#endif
-
-/* graph generation for paper */
-#ifndef M3_GRAPH
-# define M3_GRAPH                    0    /* non-zero to plot M3_CUTOFF */
-#endif
-#if M3_GRAPH
-# undef M3_CUTOFF
-# define M3_CUTOFF                   M3_GRAPH
 #endif
 
 /* for assert.h */
@@ -262,8 +186,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.62"
-#define MODULE_DATE "2017-02-15T07:40:40Z"
+#define MODULE_VERSION "1.63"
+#define MODULE_DATE "2017-02-16T02:34:08Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -319,12 +243,6 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #ifdef INSERTION_CUTOFF
     ", INSERTION_CUTOFF=" xbuildstr(INSERTION_CUTOFF)
 #endif
-#if M3_CUTOFF
-    ", M3_CUTOFF=" xbuildstr(M3_CUTOFF)
-#endif
-#if M3_GRAPH
-    ", M3_GRAPH=" xbuildstr(M3_GRAPH)
-#endif
 #if NK_CUTOFF
     ", NK_CUTOFF=" xbuildstr(NK_CUTOFF)
 #endif
@@ -334,10 +252,11 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #if REPIVOT_CUTOFF
     ", REPIVOT_CUTOFF=" xbuildstr(REPIVOT_CUTOFF)
 #endif
-#ifdef SAMPLE_BASE
-    ", SAMPLE_BASE=" xbuildstr(SAMPLE_BASE)
-#endif
     ;
+
+#ifndef SIZE_T_MAX /* not defined on Solaris */
+# define SIZE_T_MAX ULONG_MAX
+#endif
 
 /* data structures */
 
@@ -357,31 +276,29 @@ struct region_struct {
     /* n may be set to 0UL to indicate no processing */
 };
 
-/* To avoid repeatedly calculating the number of samples required vs. nmemb,
-   which is expensive, a table is generated (lazily); then determining the
-   number of samples simply requires a search of the (small) table.
+/* To avoid repeatedly calculating the number of samples required for pivot
+   element selection vs. nmemb, which is expensive, a table is used; then
+   determining the number of samples simply requires a search of the (small)
+   table.  As the number of samples in each table entry is a power of 3, the
+   table may also be used to avoid multiplication and/or division by 3.
 */
 struct sampling_table_struct {
     size_t min_nmemb;
     size_t samples;
 };
-/* 24 entries is sufficient for SAMPLE_BASE>=7, 64-bit size_t */
-#define SAMPLING_TABLE_SIZE 24
-static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE];
-/* first entry will be 1,1
-   second entry will be (M3_CUTOFF),3
-   third entry will be SAMPLE_BASE^2,9
-   subsequent entries have min_nmemb SAMPLE_BASE * previous entry,
-       samples 3* previous entry
-   E.g. for M3_CUTOFF=15, SAMPLE_BASE=8
-     1      1
-     15     3
-     64     9
-     512   27
-     4096  81 etc.
-   The static table is shared; once set, entries never change (sampling
-   base and median-of-3 cutoff are compile-time settings).
-*/
+#define SAMPLING_TABLE_SIZE 10
+static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
+   {          1UL,      1UL }, /* single sample, 1/4 position */
+   {         13UL,      3UL }, /* median-of-3 1/4,1/2,3/4 */
+   {         64UL,      9UL }, /* ninther */
+   {        525UL,     27UL }, /* remedian of samples */
+   {       4120UL,     81UL },
+   {      34000UL,    243UL },
+   {     230000UL,    729UL },
+   {    5000000UL,   2187UL },
+   {    8000000UL,   6561UL }, /* tiny additional benefit */
+   { (SIZE_T_MAX),  19683UL } /* no need for > 6561 samples */
+};
 
 /* assume sizeof(foo) etc. are powers of 2 */
 #define NTYPES 6 /* double, pointer, long, int, short, char */
@@ -402,31 +319,17 @@ static const unsigned long bitmask[NTYPES] = {
 /* initialized at first run */
 static int log2t[NTYPES];
 
+/* alignment; no fiddly bits */
 #define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
-
-/* forward declarations */
-static inline void quickselect_internal(void *base, size_t nmemb,
-    const size_t size, int (*compar)(const void *,const void *),
-    const size_t *pk, const size_t nk
-    );
 
 /* static functions */
 
-/* initialization of static strings at run-time */
+/* initialization of static strings and log2t table at run-time */
 static inline void initialize_quickselect(V)
 {
     size_t q;
     const char *s;
 
-    /* Initialize sampling_table */
-    for (q=3UL; q<SAMPLING_TABLE_SIZE; q++)
-        sampling_table[q].min_nmemb=0UL;
-    sampling_table[0].min_nmemb=1UL;
-    sampling_table[0].samples=1UL; /* 1,1 */
-    sampling_table[1].min_nmemb=(M3_CUTOFF);
-    sampling_table[1].samples=3UL; /* M3_CUTOFF,3 */
-    sampling_table[2].min_nmemb=SAMPLE_BASE*SAMPLE_BASE;
-    sampling_table[2].samples=9UL; /* SAMPLE_BASE^2,9 */
     /* Initialize log2t table */
     for (q=0UL; (NTYPES)>q; q++)
         log2t[q]=log2s[typsz[q]];
@@ -759,26 +662,10 @@ static inline void quickselect_internal(void *base, size_t nmemb,
             */
             /* Determine how many samples to take from the array for pivot
                selection.  Find sampling_table entry appropriate for array size.
-               Lazy table update.
             */
-            for (r=sampling_table[q=0UL].samples; q<SAMPLING_TABLE_SIZE; q++) {
-            /* Simulation stuff is for generating data for graphs for companion
-               paper.
-            */
-                n=sampling_table[q].min_nmemb;
-                if (0UL==n) { /* lazy update */
-                    n=sampling_table[q-1U].min_nmemb;
-                    if ((ULONG_MAX)/SAMPLE_BASE<n) /* avoid overflow */
-                        n=sampling_table[q].min_nmemb=(ULONG_MAX);
-                    else {
-                        n*=SAMPLE_BASE;
-                        sampling_table[q].min_nmemb=n;
-                    }
-                    r*=3UL;
-                    sampling_table[q].samples=r;
-                } else r=sampling_table[q].samples;
-                if (nmemb<n) break; /* stop looking in table */
-            }
+            for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
+                if (nmemb<sampling_table[q].min_nmemb)
+                    break; /* stop looking */
             if (0UL<q) q--; /* sampling table index */
             n=sampling_table[q].samples; /* total samples (a power of 3) */
             /* Samples uniformly spaced in rows (which are also uniformly
@@ -979,10 +866,8 @@ static inline int size_t_cmp(const void *p1, const void *p2)
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const size_t a = *((const size_t *)p1), b = *((const size_t *)p2);
 
-        if (a > b)
-            return 1;
-        if (a < b)
-            return -1;
+        if (a > b) return 1;
+        if (a < b) return -1;
     }
     return 0;
 }
