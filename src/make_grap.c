@@ -54,7 +54,7 @@
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600
 #else
-# define MIN_XOPEN_SOURCE_VERSION 500
+# define MIN_XOPEN_SOURCE_VERSION MIN_XOPEN_SOURCE_VERSION
 #endif
 
 /* feature test macros defined before any header files are included */

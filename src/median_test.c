@@ -98,7 +98,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -322,7 +322,11 @@ static void initialize_median_test(void)
     median_test_initialized = register_build_strings(build_options, &source_file, s);
 }
 
-static inline int big_struct_intcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int big_struct_intcmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct big_struct *pa = (const struct big_struct *)p1,
@@ -332,7 +336,11 @@ static inline int big_struct_intcmp(const void *p1, const void *p2)
     return 0;
 }
 
-static inline int ibig_struct_intcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int ibig_struct_intcmp(const void *p1, const void *p2)
 {
     int r=big_struct_intcmp(p1,p2);
     if (0<r) ngt++;
@@ -341,7 +349,11 @@ static inline int ibig_struct_intcmp(const void *p1, const void *p2)
     return r;
 }
 
-static inline int big_struct_strcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int big_struct_strcmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct big_struct *pa = (const struct big_struct *)p1,
@@ -352,7 +364,11 @@ static inline int big_struct_strcmp(const void *p1, const void *p2)
     return 0;
 }
 
-static inline int ibig_struct_strcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int ibig_struct_strcmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct big_struct *pa = (const struct big_struct *)p1,
@@ -368,7 +384,11 @@ static inline int ibig_struct_strcmp(const void *p1, const void *p2)
     return 0;
 }
 
-static inline int ilongcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int ilongcmp(const void *p1, const void *p2)
 {
     int r = longcmp(p1,p2);
     if (0<r) ngt++;
@@ -377,7 +397,11 @@ static inline int ilongcmp(const void *p1, const void *p2)
     return r;
 }
 
-static inline int iintcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int iintcmp(const void *p1, const void *p2)
 {
     int r = intcmp(p1,p2);
     if (0<r) ngt++;
@@ -386,7 +410,11 @@ static inline int iintcmp(const void *p1, const void *p2)
     return r;
 }
 
-static inline int idoublecmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int idoublecmp(const void *p1, const void *p2)
 {
     int r = doublecmp(p1,p2);
     if (0<r) ngt++;
@@ -446,7 +474,9 @@ static void print_double_array(double *target, size_t l, size_t u)
 
 /* optimized for & less expensive than % (esp. for unsigned long) */
 static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
+#endif /* C99 */
 int is_even(size_t n)
 {
     if (0UL == (n & 1UL)) return 1;
@@ -691,7 +721,11 @@ static size_t antiqsort_typsz, qsort_typsz;
 static size_t antiqsort_type, qsort_type;
 
 /* freeze implemented as a function */
-static inline size_t freeze(long z)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+size_t freeze(long z)
 {
     switch (antiqsort_type) {
         case DATA_TYPE_LONG :
@@ -722,7 +756,11 @@ static inline size_t freeze(long z)
 /* comparison function called by qsort; values corresponding to pointers are
    used as indices into the antiqsort array
 */
-static inline int cmp(const void *px, const void *py) /* per C standard */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int cmp(const void *px, const void *py) /* per C standard */
 {
     long a, b, x, y;
     const struct big_struct *pbs;
@@ -3413,7 +3451,11 @@ void print_sizes(const char *prefix, const char *prog)
     (void)fprintf(stdout, "%ssizeof(struct big_struct) = %lu\n", prefix, sizeof(struct big_struct));
 }
 
-static inline int nocmp(void *unused1, void *unused2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int nocmp(void *unused1, void *unused2)
 {
     return 0;
 }

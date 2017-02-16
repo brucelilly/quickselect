@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.63 dated 2017-02-16T02:34:08Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.64 dated 2017-02-16T14:20:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -165,7 +165,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600  /* code uses C99 'inline', XOPEN 'LONG_BIT' */
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -186,8 +186,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.63"
-#define MODULE_DATE "2017-02-16T02:34:08Z"
+#define MODULE_VERSION "1.64"
+#define MODULE_DATE "2017-02-16T14:20:17Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -325,7 +325,11 @@ static int log2t[NTYPES];
 /* static functions */
 
 /* initialization of static strings and log2t table at run-time */
-static inline void initialize_quickselect(V)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void initialize_quickselect(V)
 {
     size_t q;
     const char *s;
@@ -343,7 +347,11 @@ static inline void initialize_quickselect(V)
 /* array element swaps */
 /* called many times from quickslect_internal, medians3 */
 /* count is in chars */
-static inline void swap(char *pa, char *pb, size_t count, int swaptype)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void swap(char *pa, char *pb, size_t count, int swaptype)
 {
 # define CHAR_SWAP \
     while (1) {                   \
@@ -401,7 +409,11 @@ static inline void swap(char *pa, char *pb, size_t count, int swaptype)
    (<= NK_CUTOFF).  A large number of order statistics is not expected.
 */
 /* called twice from process_regions() */
-static inline size_t effective_size(char *pl, char *pu, char *po,
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+size_t effective_size(char *pl, char *pu, char *po,
     const size_t size, const size_t *pk, const size_t nk)
 {
     size_t n=0UL;
@@ -449,7 +461,11 @@ static inline size_t effective_size(char *pl, char *pu, char *po,
    N.B. base is not necessarily the first element in the array passed to qsort.
 */
 /* called three times from quickselect_internal() */
-static inline char *medians3(char *base, size_t size,
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+char *medians3(char *base, size_t size,
     int(*compar)(const void *, const void *), size_t row_offset,
     size_t sample_offset, size_t row_samples, int swaptype)
 {
@@ -500,7 +516,11 @@ static inline char *medians3(char *base, size_t size,
    the small region.
 */
 /* called twice from quickselect_internal() */
-static inline int process_regions(char *plg, size_t slg, char *psm,
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int process_regions(char *plg, size_t slg, char *psm,
     size_t ssm, size_t nmemb, const size_t size, char *po, const size_t *pk,
     const size_t nk, char **ppb, size_t *pbig, struct region_struct *pr,
     int *pnr, int ns)
@@ -547,7 +567,11 @@ static inline int process_regions(char *plg, size_t slg, char *psm,
 }
 
 /* quickselect definition (internal interface) */
-static inline void quickselect_internal(void *base, size_t nmemb,
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void quickselect_internal(void *base, size_t nmemb,
     const size_t size, int (*compar)(const void *,const void *),
     const size_t *pk, const size_t nk
    )
@@ -861,7 +885,11 @@ static inline void quickselect_internal(void *base, size_t nmemb,
 }
 
 /* comparison function for sorting order statistic ranks */
-static inline int size_t_cmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int size_t_cmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const size_t a = *((const size_t *)p1), b = *((const size_t *)p2);
