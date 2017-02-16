@@ -27,7 +27,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is strntol.c version 2.8 2017-02-15T00:26:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is strntol.c version 2.9 2017-02-16T13:14:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "strntol" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/lib/libstrntol/src/s.strntol.c */
@@ -55,8 +55,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: strntol.c ~|^` @(#)"
 #define SOURCE_MODULE "strntol.c"
-#define MODULE_VERSION "2.8"
-#define MODULE_DATE "2017-02-15T00:26:04Z"
+#define MODULE_VERSION "2.9"
+#define MODULE_DATE "2017-02-16T13:14:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2013-2017"
 
@@ -69,7 +69,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600  /* code uses C99 'restrict' */
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE

@@ -1141,9 +1141,10 @@ loop:        SWAPINIT((char *)a, es);
       don't repeat SWAPINIT when iterating
       avoid self-swapping pb,pc
    No remedian of samples
-   No break-glass mechanism
+   No break-glass mechanism to prevent quadratic behavior
    No internal stack
    No order statistic selection
+   No swapping by sizes other than char and long
 */
 static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
 {

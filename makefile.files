@@ -290,9 +290,9 @@ MACROS += LIB13ARCH C99LIB13OBJS LIB13OBJS LIB13HDRS LIB13MAN
 
 LIB14ARCH = libstrntol.a
 C99LIB14OBJS =\
- strntol.o\
 #
 LIB14OBJS =\
+ strntol.o\
 #
 LIB14HDRS =\
  strntol.h\

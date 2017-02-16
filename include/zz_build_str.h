@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.13 2016-09-06T11:56:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.14 2017-02-16T13:16:09Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "zz_build_str" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/include/s.zz_build_str.h */
 
 /* version-controlled header file version information */
-#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.13 2016-09-06T11:56:21Z"
+#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.14 2017-02-16T13:16:09Z"
 
 /* Some preprocessors and/or compilers generate strings for __func__ or __FUNCTION__ */
 /* ANSI/ISO C99 defines __func__ as a pre-defined identifier which
@@ -188,6 +188,52 @@
 #else
 # define WHERE_COMPILED ""
 #endif
+/* feature test and similar compilation conditions */
+#undef COMPILATION_FEATURES
+#ifdef __STDC__
+# ifdef __STDC_VERSION__
+#  ifdef _XOPEN_SOURCE
+#   ifdef POSIX_C_SOURCE
+#    define COMPILATION_FEATURES " with __STDC__, __STDC_VERSION__=" xbuildstr(__STDC_VERSION__) ", _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE) ", POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#   else /* POSIX_C_SOURCE */
+#    define COMPILATION_FEATURES " with __STDC__, __STDC_VERSION__=" xbuildstr(__STDC_VERSION__) ", _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE)
+#   endif /* POSIX_C_SOURCE */
+#  else /* _XOPEN_SOURCE */
+#   ifdef POSIX_C_SOURCE
+#    define COMPILATION_FEATURES " with __STDC__, __STDC_VERSION__=" xbuildstr(__STDC_VERSION__) ", POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#   else /* POSIX_C_SOURCE */
+#    define COMPILATION_FEATURES " with __STDC__, __STDC_VERSION__=" xbuildstr(__STDC_VERSION__)
+#   endif /* POSIX_C_SOURCE */
+#  endif /* _XOPEN_SOURCE */
+# else /* __STDC_VERSION__ */
+#  ifdef _XOPEN_SOURCE
+#   ifdef POSIX_C_SOURCE
+#    define COMPILATION_FEATURES " with __STDC__, _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE) ", POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#   else /* POSIX_C_SOURCE */
+#    define COMPILATION_FEATURES " with __STDC__, _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE)
+#   endif /* POSIX_C_SOURCE */
+#  else /* _XOPEN_SOURCE */
+#   ifdef POSIX_C_SOURCE
+#    define COMPILATION_FEATURES " with __STDC__, POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#   endif /* POSIX_C_SOURCE */
+#  endif /* _XOPEN_SOURCE */
+# endif /* __STDC_VERSION__ */
+#else /* __STDC__ */
+# ifdef _XOPEN_SOURCE
+#  ifdef POSIX_C_SOURCE
+#   define COMPILATION_FEATURES " with _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE) ", POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#  else /* POSIX_C_SOURCE */
+#   define COMPILATION_FEATURES " with _XOPEN_SOURCE=" xbuildstr(_XOPEN_SOURCE)
+#  endif /* POSIX_C_SOURCE */
+# else /* _XOPEN_SOURCE */
+#  ifdef POSIX_C_SOURCE
+#   define COMPILATION_FEATURES " with POSIX_C_SOURCE=" xbuildstr(POSIX_C_SOURCE)
+#  endif /* POSIX_C_SOURCE */
+# endif /* _XOPEN_SOURCE */
+#endif /* __STDC__ */
+#ifndef COMPILATION_FEATURES
+# define COMPILATION_FEATURES ""
+#endif
 #ifndef ID_STRING_PREFIX
 # define ID_STRING_PREFIX "$Id: ~|^` @(#)"
 #endif
@@ -213,7 +259,7 @@ static const char *copyright_id = ID_STRING_PREFIX
  "dated " MODULE_DATE " "
 # endif
 #endif
-"compiled " DATE_TIME_COMPILED WHERE_COMPILED " by " COMPILER_USED ID_STRING_SUFFIX ;
+"compiled " DATE_TIME_COMPILED WHERE_COMPILED " by " COMPILER_USED COMPILATION_FEATURES ID_STRING_SUFFIX ;
 
 /* remove stringification macros before executable code and other file inclusion
    (to avoid clashes with header file macros, function and variable names)
