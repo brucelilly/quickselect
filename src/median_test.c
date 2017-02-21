@@ -64,7 +64,7 @@
 
 #define RESULTS_COLUMN              72
 
-#define MAX_ARRAY_PRINT             90UL
+#define MAX_ARRAY_PRINT             290UL
 
 #define QUICKSELECT_ARG_CHECKS      DEBUG_CODE
 
@@ -80,6 +80,7 @@
 #define GL_SWAP_CODE        1    /* 0 uses exchange.h swap */
 #define MBM_M3_CUTOFF       12UL /* median-of-3 above */
 #define MBM_N_CUTOFF        88UL /* ninther above */
+#define INSERTION_CUTOFF    6UL /* insertion sort arrays this size or smaller (like B&M) */
 
 /* nothing (much) to configure below this line */
 
@@ -172,12 +173,13 @@
 #undef buildstr
 #define buildstr(s) #s
 
-#define OPTSTRING "aAbBC:dFghHiIk:KlLmM:nNoqQ:RsStT:wz"
-#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-C sequences] [-d] [-F] [-g] [-h] [-H] [-i] [-I] [-k col] [-l] [-L] [-m] [-M [m3,n]] [-n] [-N] [-o] [-q] [-Q timeout] [-R] [-s] [-S] [-t] [-T sequences] [-w] [-z] [[start incr]] [size [count]]\n\
+#define OPTSTRING "aAbBc:C:dFghHiIk:KlLmM:nNoOqQ:RsStT:wW:y:z"
+#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d] [-F] [-g] [-h] [-H] [-i] [-I] [-k col] [-l] [-L] [-m] [-M [m3,n]] [-n] [-N] [-o] [-O] [-q] [-Q timeout] [-R] [-s] [-S] [-t] [-T sequences] [-w] [-W [f,c]] [-y [n]] [-z] -- [[start incr]] [size [count]]\n\
 -a\ttest with McIlroy quicksort adversary\n\
 -A\talphabetic (string) data tests\n\
 -b\ttest Bentley&McIlroy qsort\n\
 -B\toutput data for drawing box plots\n\
+-c [c1[,c2[,...]]]\ttest simplified sort-only quickselect with optional cutoff values\n\
 -C sequences\tinclude correctness tests for specified sequences\n\
 -d\tturn on debugging output\n\
 -F\tfloating-point (double) tests\n\
@@ -195,6 +197,7 @@
 -n\tdo nothing except as specified by option flags\n\
 -N\ttest NetBSD qsort code\n\
 -o\tprint execution costs of operations on basic types\n\
+-O\toptimize sampling table for quickselect\n\
 -q\ttest quickselect sort\n\
 -Q timeout\ttime out tests after timeout seconds\n\
 -R\traw timing output (median time (and comparison counts if requested) only)\n\
@@ -203,6 +206,8 @@
 -t\tthorough tests\n\
 -T sequences\tinclude timing tests for specified sequences\n\
 -w\ttest qsort_wrapper\n\
+-w [f,c]\ttest lopsided partitions in quickselect with optional repivot_factor and repivot_cutoff\n\
+-y [n]\tYaroslavskiy's dual-pivot sort with optional insertion sort cutoff\n\
 -z\tset repeatable random number generator state\n\
 start\tbegin testing with array size\n\
 incr\tincrement array size (prefix with * for geometric sequence)\n\
@@ -223,27 +228,28 @@ count\tnumber of times to run each test (default 10)"
 #define DATA_TYPE_STRING 5
 
 /* test sequence macros (could be an enum) */
-#define TEST_SEQUENCE_STDIN                 0U
-#define TEST_SEQUENCE_SORTED                1U
-#define TEST_SEQUENCE_REVERSE               2U
-#define TEST_SEQUENCE_RANDOM_DISTINCT       3U
-#define TEST_SEQUENCE_ORGAN_PIPE            4U
-#define TEST_SEQUENCE_INVERTED_ORGAN_PIPE   5U
-#define TEST_SEQUENCE_SAWTOOTH              6U
-#define TEST_SEQUENCE_BINARY                7U
-#define TEST_SEQUENCE_CONSTANT              8U
-#define TEST_SEQUENCE_MEDIAN3KILLER         9U
-#define TEST_SEQUENCE_MANY_EQUAL_LEFT       10U
-#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE     11U
-#define TEST_SEQUENCE_MANY_EQUAL_RIGHT      12U
-#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED   13U
-#define TEST_SEQUENCE_RANDOM_VALUES         14U
-#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED 15U
-#define TEST_SEQUENCE_PERMUTATIONS          16U  /* via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_COMBINATIONS          17U  /* via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_ADVERSARY             18U  /* via TEST_TYPE_ADVERSARY */ /* must be last (comparison function) */
+#define TEST_SEQUENCE_STDIN                 0U  /* 0x000001 */
+#define TEST_SEQUENCE_SORTED                1U  /* 0x000002 */
+#define TEST_SEQUENCE_REVERSE               2U  /* 0x000004 */
+#define TEST_SEQUENCE_RANDOM_DISTINCT       3U  /* 0x000008 */
+#define TEST_SEQUENCE_ORGAN_PIPE            4U  /* 0x000010 */
+#define TEST_SEQUENCE_INVERTED_ORGAN_PIPE   5U  /* 0x000020 */
+#define TEST_SEQUENCE_SAWTOOTH              6U  /* 0x000040 */
+#define TEST_SEQUENCE_BINARY                7U  /* 0x000080 */
+#define TEST_SEQUENCE_CONSTANT              8U  /* 0x000100 */
+#define TEST_SEQUENCE_MEDIAN3KILLER         9U  /* 0x000200 */
+#define TEST_SEQUENCE_MANY_EQUAL_LEFT       10U /* 0x000400 */
+#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE     11U /* 0x000800 */
+#define TEST_SEQUENCE_MANY_EQUAL_RIGHT      12U /* 0x001000 */
+#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED   13U /* 0x002000 */
+#define TEST_SEQUENCE_RANDOM_VALUES         14U /* 0x004000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED 15U /* 0x008000 */
+#define TEST_SEQUENCE_DUAL_PIVOT_KILLER     16U /* 0x010000 */
+#define TEST_SEQUENCE_PERMUTATIONS          17U  /* via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_COMBINATIONS          18U  /* via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_ADVERSARY             19U  /* via TEST_TYPE_ADVERSARY */ /* must be last (comparison function) */
 
-#define TEST_SEQUENCE_COUNT                 19U
+#define TEST_SEQUENCE_COUNT                 20U
 
 
 #define EXPECTED_RANDOM_MIN           (0)
@@ -421,6 +427,16 @@ int idoublecmp(const void *p1, const void *p2)
     else if (0>r) nlt++;
     else neq++;
     return r;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void iswap(char *pa, char *pb, size_t count)
+{
+    nsw++;
+    swap2(pa,pb,count);
 }
 
 /* Print elements of integer array with indices l through u inclusive. */
@@ -730,13 +746,13 @@ size_t freeze(long z)
     switch (antiqsort_type) {
         case DATA_TYPE_LONG :
             {
-                long *plong=(const long *)(antiqsort_base + z*antiqsort_typsz);
+                long *plong=(long *)(antiqsort_base + z*antiqsort_typsz);
                 *plong = antiqsort_nsolid++;
             }
         break;
         case DATA_TYPE_INT :
             {
-                int *pint=(const int *)(antiqsort_base + z*antiqsort_typsz);
+                int *pint=(int *)(antiqsort_base + z*antiqsort_typsz);
                 *pint = antiqsort_nsolid++;
             }
         break;
@@ -745,7 +761,7 @@ size_t freeze(long z)
         case DATA_TYPE_STRING :
             {
                 struct big_struct *pbs;
-                pbs = (const struct big_struct *)(antiqsort_base + z*antiqsort_typsz);
+                pbs = (struct big_struct *)(antiqsort_base + z*antiqsort_typsz);
                 pbs->l = antiqsort_nsolid++;
             }
         break;
@@ -964,20 +980,22 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
 static void swapfunc(char *a, char *b, size_t n, int swaptype)
 {   if (swaptype <= 1) swapcode(long, a, b, n)
     else swapcode(char, a, b, n)
+    nsw++;
 }
 #define bmswap(a, b)                       \
     if (swaptype == 0) {                   \
-        long t = *(long*)(a);                   \
+        long t = *(long*)(a);              \
         *(long*)(a) = *(long*)(b);         \
         *(long*)(b) = t;                   \
+        nsw++;                             \
     } else                                 \
         swapfunc(a, b, es, swaptype)
 
 #define vecswap(a, b, n) if (n > 0) swapfunc(a, b, n, swaptype)
 #else
 #define SWAPINIT(a,b)      swaptype=1
-#define bmswap(a,b) swap(a,b,1UL,es)
-#define vecswap(a,b,n) swap(a,b,n,1UL)
+#define bmswap(a,b) iswap(a,b,1UL,es)
+#define vecswap(a,b,n) iswap(a,b,n,1UL)
 #endif
 
 #if BM_PVINIT
@@ -1214,7 +1232,7 @@ void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const vo
         assert(a != NULL || n == 0 || es == 0);
         assert(compar != NULL);
 
-	SWAPINIT((char *)a, es);
+        SWAPINIT((char *)a, es);
 loop:   if (n < 7UL) {
                 for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
                         for (pl = pm; pl > (char *) a && compar(pl - es, pl) > 0;
@@ -1330,9 +1348,10 @@ do { \
         *__a++ = *__b; \
         *__b++ = __tmp; \
     } while (--__size > 0); \
+    nsw++; \
 } while (0)
 #else
-# define SWAP(a,b,size)   swap(a,b,1UL,size)
+# define SWAP(a,b,size)   iswap(a,b,1UL,size)
 #endif /* GL_SWAP_CODE */
 
 /* Discontinue quicksort algorithm when partition gets below this size.
@@ -1561,6 +1580,448 @@ and the operation speeds up insertion sort's inner loop. */
 }
 /* ************************************************************************** */
 
+/* simplified quickselect-based qsort:
+   Like modified B&M qsort, except:
+      add sampling and remedian of samples, with sampling table
+      pivot selection moves elements
+      swapping via swap2 from exchange.h
+*/
+/* To avoid repeatedly calculating the number of samples required for pivot
+   element selection vs. nmemb, which is expensive, a table is used; then
+   determining the number of samples simply requires a search of the (small)
+   table.  As the number of samples in each table entry is a power of 3, the
+   table may also be used to avoid multiplication and/or division by 3.
+*/
+struct sampling_table_struct {
+    size_t min_nmemb;
+    size_t samples;
+};
+#if (SIZE_T_MAX) > 4294967295
+# define SAMPLING_TABLE_SIZE 22
+#else
+# define SAMPLING_TABLE_SIZE 12
+#endif
+static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
+   {                    1UL,           1UL }, /* single sample, 1/4 position */
+   {                   13UL,           3UL }, /* median-of-3, 1/4,1/2,3/4 */
+   {                   81UL,           9UL }, /* remedian of samples */
+   {                  729UL,          27UL },
+   {                 6486UL,          81UL },
+   {                55388UL,         243UL },
+   {               531441UL,         729UL },
+   {              4185683UL,        2187UL },
+   {             43046721UL,        6561UL },
+   {            387420489UL,       19683UL },
+   {           3486784401UL,       59049UL },
+#if (SIZE_T_MAX) > 4294967295
+   {          31381059609UL,      177147UL }, /* silly to include large sizes?
+                                              check again in a decade or two */
+   {         282429536481UL,      531441UL },
+   {        2541865828329UL,     1594323UL },
+   {       22876792454961UL,     4782969UL },
+   {      205891132094649UL,    14348907UL },
+   {     1853020188851841UL,    43046721UL },
+   {    16677181699666569UL,   129140163UL },
+   {   150094635296999121UL,   387420489UL },
+   {  1350851717672992089UL,  1162261467UL },
+   { 12157665459056928801UL,  3486784401UL },
+   {   (SIZE_T_MAX),         10460353203UL }
+#else
+   {   (SIZE_T_MAX),              177147UL }
+#endif
+};
+
+/* medians of sets of 3 elements */
+/* Given base, size, and compar as for qsort, plus a row offset and sample
+   offset, both in chars, find medians of sets of 3 elements where the three
+   elements for each median are taken from three rows starting with base, and
+   each subsequent set of three elements is offset from the previous set by
+   sample_offset. As each median is determined, it is placed in the position of
+   the middle element of the set.
+   The return value is a pointer to the first median (which has been moved as
+   described above).
+   N.B. base is not necessarily the first element in the array passed to qsort.
+*/
+/* called three times from quickselect_internal() */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+char *medians3(char *base, size_t size,
+    int(*compar)(const void *, const void *), size_t row_offset,
+    size_t sample_offset, size_t row_samples)
+{
+    int c;
+    char *pa, *pb;
+    size_t n, o;
+
+    for (n=o=0UL; n<row_samples; n++,o+=sample_offset) {
+        pa=base+o;
+        pb=pa+row_offset; /* middle element */
+        /* Optimized ternary median-of-3: 1-3 comparisons.
+           Minimum number of comparisons (because in the qsort model (external
+           function for comparison), comparisons are expensive).  If any two
+           elements (of the 3) compare equal, either can be chosen for the
+           median (the value is the median of the 3, regardless of the value of
+           the third element).  Likewise, the median may be determined by the
+           first two comparisons, e.g. a < b and b < c.  In the worst case, 3
+           comparisons are required. The median element is swapped to the middle
+           position.
+        */
+        c=compar(pa,pb);
+        if (0!=c) {
+            char *pc=pb+row_offset;
+            int d=compar(pb,pc);
+            if (0!=d) {
+                if ((0<d)&&(0>c)) {
+                    if (0>compar(pa,pc)) iswap(pb,pc,size);
+                    else iswap(pa,pb,size);
+                } else if ((0>d)&&(0<c)) {
+                    if (0<compar(pa,pc)) iswap(pb,pc,size);
+                    else iswap(pa,pb,size);
+                }
+            }
+        }
+    }
+    return base+row_offset; /* middle row */
+}
+
+void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    char *pl;  /* left (or lowest) end of array being processed */
+    size_t s;  /* general size_t variable */
+    int c, d;              /* general integer variables */
+    char *pa, *pb, *pc, *pe, *pf, *pivot, *pu;
+    size_t n, p, q, r, t;
+
+    pl=(char *)base;
+loop: ;
+    if (nmemb<=(INSERTION_CUTOFF)) {
+        for (pa=pl,pu=pl+(nmemb-1UL)*size; pa<pu; pa+=size)
+            for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
+                iswap(pb,pc,size);
+/* <- */return; /* Done; */
+    }
+    for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
+        if (nmemb<sampling_table[q].min_nmemb)
+            break; /* stop looking */
+    if (0UL<q) q--; /* sampling table index */
+    n=sampling_table[q].samples; /* total samples (a power of 3) */
+    if (1UL==n) {
+        pivot=pl+(nmemb>>2)*size; /* best for organ-pipe, OK others */
+        s=r=0UL;
+#if ASSERT_CODE
+        t=n;
+#endif /* ASSERT_CODE */
+    } else {
+        t = n/3UL;                                 /* samples per row */
+        if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL;    /* sample spacing */
+        if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s;    /* row spacing */
+        s*=size, r*=size;                         /* spacing in chars */
+        pivot=pl+size*(nmemb>>1)                    /* middle element */
+            -r                                 /* -> middle first row */
+            -(t>>1)*s;                          /* - half row samples */
+    }
+#if ASSERT_CODE
+    A(pl<=pivot);A(pivot<pl+nmemb*size); /* pivot is in the array */
+    if (0UL!=t); A((r<<1)+(t-1UL)*s<nmemb*size);
+#endif /* ASSERT_CODE */
+    if (1UL<n) { /* median or remedian of (at least 3) samples */
+        n=sampling_table[--q].samples;
+        pivot=medians3(pivot,size,compar,r,s,n);
+        while (0UL<q) {
+            n=sampling_table[--q].samples;
+            pivot=medians3(pivot,size,compar,n*s,s,n);
+        }
+    }
+    pe=(pf=pu=(pa=pb=pc=pl)+nmemb*size)-size;
+    while (1) { /* loop - partitioning */
+        while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
+            if (c==0) { iswap(pivot=pb,pc,size); pb+=size; }
+            pc+=size;
+        }
+        while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- */
+            if (d==0) { pf-=size; iswap(pe,pivot=pf,size); }
+            pe-=size;
+        }
+/* XXX should probably be >= here and in quickselect.c */
+        if (pc>pe) break;
+        iswap(pc,pe,size); /* <, > */
+        pc+=size; pe-=size;
+    }
+    pe+=size; /* now start of > region */
+    if (pf<pu) { /* pe unchanged if pf>=pu */
+        if (pe<pf) { /* pe= original pu if pf>=pe */
+            p=pu-pf, n=pf-pe; if (p<n) n=p;
+            iswap(pe,pu-n,n); pe+=p;
+        } else pe=pu;
+    }
+    if (pb<pc) { /* pb= original pl if pb>=pc */
+        if (pl<pb) { /* pb= original pc if pb>=pa */
+            p=pc-pb, n=pb-pl; if (p<n) n=p;
+            iswap(pl,pc-n,n); pb=pl+p;
+        } else pb=pc;
+    } else pb=pl;
+    /* |       <            |         =           |      >      | */
+    /*  pl                   b                     e             u*/
+    q=pb-pl; /* size of the < region, in chars */
+    r=pu-pe;  /* size of the > region, in chars */
+    if (q<r) { /* > region is larger */
+        if (q>size) sqsort(pl, q/size, size, compar);
+        if (r>size) {
+            pl=pe;
+            nmemb=r/size;
+            goto loop;
+        }
+    } else { /* < region is larger, or regions are the same size */
+        if (r>size) sqsort(pe, r/size, size, compar);
+        if (q>size) {
+            nmemb=q/size;
+            goto loop;
+        }
+    }
+}
+
+/* modified quickselect sort; always get worst-case pivot for given
+   repivot_factor and repivot_cutoff that would just avoid repivoting
+*/
+static size_t repivot_factor = 16UL;
+static size_t repivot_cutoff = 27UL;
+
+void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    char *pl;  /* left (or lowest) end of array being processed */
+    size_t s;  /* general size_t variable */
+    int c, d;              /* general integer variables */
+    char *pa, *pb, *pc, *pe, *pf, *pivot, *pu;
+    size_t n, p, q, r, t, karray[1];
+
+    pl=(char *)base;
+loop: ;
+    if (nmemb<=(INSERTION_CUTOFF)) {
+        for (pa=pl,pu=pl+(nmemb-1UL)*size; pa<pu; pa+=size)
+            for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
+                iswap(pb,pc,size);
+/* <- */return; /* Done; */
+    }
+    /* normal pivot selection (for comparison count) */
+    for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
+        if (nmemb<sampling_table[q].min_nmemb)
+            break; /* stop looking */
+    if (0UL<q) q--; /* sampling table index */
+    karray[0]=q; /* save it */
+    n=sampling_table[q].samples; /* total samples (a power of 3) */
+    if (1UL==n) {
+        pivot=pl+(nmemb>>2)*size; /* best for organ-pipe, OK others */
+        s=r=0UL;
+#if ASSERT_CODE
+        t=n;
+#endif /* ASSERT_CODE */
+    } else {
+        t = n/3UL;                                 /* samples per row */
+        if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL;    /* sample spacing */
+        if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s;    /* row spacing */
+        s*=size, r*=size;                         /* spacing in chars */
+        pivot=pl+size*(nmemb>>1)                    /* middle element */
+            -r                                 /* -> middle first row */
+            -(t>>1)*s;                          /* - half row samples */
+    }
+#if ASSERT_CODE
+    A(pl<=pivot);A(pivot<pl+nmemb*size); /* pivot is in the array */
+    if (0UL!=t); A((r<<1)+(t-1UL)*s<nmemb*size);
+#endif /* ASSERT_CODE */
+    if (1UL<n) { /* median or remedian of (at least 3) samples */
+        n=sampling_table[--q].samples;
+        pivot=medians3(pivot,size,compar,r,s,n);
+        while (0UL<q) {
+            n=sampling_table[--q].samples;
+            pivot=medians3(pivot,size,compar,n*s,s,n);
+        }
+    }
+    /* get pivot at rank that just avoids repivoting (minimum possible) */
+    /* minimum possible rank is determined by number of samples used for pivot selection */
+    /* 3^^p samples -> minimum rank is 2^^p-1 */
+    for (n=1UL,p=karray[0],q=0UL; q<p; q++,n<<=1) ;
+    if (nmemb<repivot_cutoff) {
+        karray[0]=n-1UL;
+    } else {
+        karray[0]=(nmemb-1UL)/(repivot_factor+1UL)+1UL;
+        if (karray[0]<n-1UL) karray[0]=n-1UL;
+    }
+    /* don't count comparisons or swaps for pivot selection here */
+    n=neq, p=nlt, q=ngt, r=nsw;
+    quickselect(pl, nmemb, size, compar, karray, 1UL);
+    pivot=pl+size*karray[0];
+    /* restore comparison and swap counts */
+    neq=n, nlt=p, ngt=q, nsw=r;
+    pe=(pf=pu=(pa=pb=pc=pl)+nmemb*size)-size;
+    while (1) { /* loop - partitioning */
+        while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
+            if (c==0) { iswap(pivot=pb,pc,size); pb+=size; }
+            pc+=size;
+        }
+        while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- */
+            if (d==0) { pf-=size; iswap(pe,pivot=pf,size); }
+            pe-=size;
+        }
+/* XXX should probably be >= here and in quickselect.c */
+        if (pc>pe) break;
+        iswap(pc,pe,size); /* <, > */
+        pc+=size; pe-=size;
+    }
+    pe+=size; /* now start of > region */
+    if (pf<pu) { /* pe unchanged if pf>=pu */
+        if (pe<pf) { /* pe= original pu if pf>=pe */
+            p=pu-pf, n=pf-pe; if (p<n) n=p;
+            iswap(pe,pu-n,n); pe+=p;
+        } else pe=pu;
+    }
+    if (pb<pc) { /* pb= original pl if pb>=pc */
+        if (pl<pb) { /* pb= original pc if pb>=pa */
+            p=pc-pb, n=pb-pl; if (p<n) n=p;
+            iswap(pl,pc-n,n); pb=pl+p;
+        } else pb=pc;
+    } else pb=pl;
+    /* |       <            |         =           |      >      | */
+    /*  pl                   b                     e             u*/
+    q=pb-pl; /* size of the < region, in chars */
+    r=pu-pe;  /* size of the > region, in chars */
+    if (q<r) { /* > region is larger */
+        if (q>size) sqsort(pl, q/size, size, compar);
+        if (r>size) {
+            pl=pe;
+            nmemb=r/size;
+            goto loop;
+        }
+    } else { /* < region is larger, or regions are the same size */
+        if (r>size) sqsort(pe, r/size, size, compar);
+        if (q>size) {
+            nmemb=q/size;
+            goto loop;
+        }
+    }
+}
+
+/* Yaroslavskiy's dual-pivot sort (included because some find it difficult to believe how bad it really is) */
+/* Ref.: Yaroslavskiy, V. "Dual-pivot Quicksort algorithm" September 11, 2009 */
+static size_t y_cutoff = 27UL; /* 11 seems to be optimal */
+#if 0
+/* Yaroslavskiy apparently keeps changing his mind about the magic number 13... */
+static size_t y_cutoff2 = 13UL; /* infinite is best */
+#endif
+
+/* qsort-like interface, translated from Java-nese,
+   magic numbers scaled to tunable y_cutoff (11 works best),
+   assertions and protection tests added,
+   optimized (initial pivots, cached pivot comparison, busy-work avoidance)
+*/
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void yqsort_internal(char *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *), size_t y_div)
+{
+    int pcmp;
+    char *pg, *pivot1, *pivot2, *pk, *pl, *pr;
+    size_t dist, t;
+
+#define YQSORT_DEBUG 0
+#if YQSORT_DEBUG
+fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
+#endif
+    pr=base+(nmemb-1UL)*size;
+    if (nmemb<y_cutoff) { /* insertion sort */
+        for (pg=base; pg<pr; pg+=size)
+            for (pk=pg; (pk>=base)&&(0<compar(pk,pl=pk+size)); pk-=size)
+                iswap(pk,pl,size);
+/* <- */return; /* Done; */
+    }
+    /* ideally, pivots should split array into 3 equal-sized regions */
+    /* indices should be (nmemb-2UL)/3 and nmemb-1-((nmemb-2UL)/3) */
+    A(nmemb>=2UL); A(0UL!=y_div); A(0UL!=size);
+#if 0 /* original, unequal spacing */
+    t = (nmemb / y_div) * size;
+#else /* improved, more equal spacing */
+    t = ((nmemb-2UL)/y_div) * size;
+#endif
+    if (0UL==t) t++;
+    /* "medians", actually pivot elements */
+    pivot1=base+t;
+    pivot2=pr-t;
+    pcmp=compar(pivot1,pivot2); /* cached comparison */
+    if (0<pcmp) {
+        iswap(base,pivot2,size);
+        iswap(pivot1,pr,size);
+    } else {
+        iswap(base,pivot1,size);
+        iswap(pivot2,pr,size);
+    }
+    /* pivot elements (moved) */
+    pivot1=base, pivot2=pr;
+    /* pointers */
+    pl=base+size, pg=pr-size;
+    /* sorting */
+    for (pk=pl; pk<=pg; pk+=size) {
+        if (0>compar(pk,pivot1)) iswap(pk,pl,size), pl+=size;
+        else if (0<compar(pk,pivot2)) {
+            while ((pk<pg)&&(0<compar(pg,pivot2))) pg-=size;
+            iswap(pk,pg,size), pg-=size;
+            if (0>compar(pk,pivot1)) iswap(pk,pl,size), pl+=size;
+        }
+    }
+    /* swaps */
+    if (pg>pl) dist=(pg-pl)/size; else dist=0UL; /* avoid underflow */
+#if 0 /* avoid changing y_div (performance improves w/o change) */
+    /* magic number 13 replaced by y_cutoff2 */
+    /* dist is the size of the center region (only; ignores other sizes) */
+    if (dist < y_cutoff2) y_div++;
+#endif
+    pivot1=pl-size; /* new location for pivot1 */
+    iswap(pivot1,base,size);
+    pivot2=pg+size; /* new location for pivot2 */
+    iswap(pivot2,pr,size);
+    /* subarrays */
+    t=(pivot1-base)/size; /* save size for protection comparison and recursion */
+    A((2UL>t)||(base+(t-1UL)*size<=pr));
+    if (1UL<t) yqsort_internal(base,t,size,compar,y_div);
+    t=(pr-pivot2)/size; /* save size for protection comparison and recursion */
+    A((2UL>t)||(pivot2+t*size<=pr));
+    if (1UL<t) yqsort_internal(pivot2+size,t,size,compar,y_div);
+    /* equal elements */
+    /* cheap (cached) condition first */
+    if ((0!=pcmp)
+#if 0 /* always separate equals if pivots differ */
+    /* magic number 13 replaced by y_cutoff2 */
+    &&(y_cutoff2>nmemb-dist) /* avoid overflow/underflow */
+#endif
+    ) { /* avoid overflow/underflow */
+        for (pk=pl; pk<=pg; pk+=size) {
+            if (0==compar(pk,pivot1)) iswap(pk,pl,size), pl+=size;
+            else if (0==compar(pk,pivot2)) {
+                iswap(pk,pg,size), pg-=size;
+                if (0==compar(pk,pivot1)) iswap(pk,pl,size), pl+=size;
+            }
+        }
+        /* revised "dist" */
+        if (pg>pl) dist=(pg-pl)/size; else dist=0UL; /* avoid underflow */
+    }
+    /* subarray */
+    A(pl+dist*size<=pr);
+    /* avoid unnecessary work for all-equal region; cached condition first */
+    if ((0!=pcmp)&&(0UL<dist)) yqsort_internal(pl,dist+1UL,size,compar,y_div);
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void yqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *))
+{
+    if (4UL>y_cutoff) y_cutoff=4UL; /* require po<pivot1<pivot2<pr */
+    yqsort_internal(base, nmemb, size, compar, 3UL);
+}
+/* ************************************************************** */
+
 /* test pattern sequences */
 /* reasonable modulus for sawtooth pattern for array of size n */
 static size_t sawtooth_modulus(size_t n, void(*f)(int, void *, const char *, ...), void *log_arg)
@@ -1622,6 +2083,8 @@ static const char *sequence_name(unsigned int testnum)
         return "many equal (right)";
         case TEST_SEQUENCE_MANY_EQUAL_SHUFFLED :
         return "many equal (shuffled)";
+        case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
+        return "dual-pivot killer";
         case TEST_SEQUENCE_PERMUTATIONS :
         return "distinct permutations";
         case TEST_SEQUENCE_COMBINATIONS :
@@ -1680,7 +2143,7 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
     int ret = -1;
 
     if (NULL != p) {
-        size_t h, j, k, o, r, u;
+        size_t h, j, k, o, r, u, x, y, z;
         size_t permutation_limit;
         long i;
 
@@ -1734,6 +2197,28 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                             if (2UL > h)  /* don't allow h to iterate below 2 */
                                 break;
                         }
+                    }
+                break;
+                case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
+                    /* start with increasing sorted sequence */
+                    increment(&p[o],0UL,u,0);
+                    /* swap extreme elements to 1/3 and 2/3 positions */
+                    for (x=((n-4UL)>>1); ; x--) { /*x=1st index @ yqsort*/
+                        A(n>(x<<1));
+                        h=n-(x<<1); /* elements when yqsort sees subarray */
+                        A(2UL<=h); A(h<=n);
+                        j = (h-2UL)/3UL; /* yqsort pivot offset from x */
+                        if (0UL==j) j++;
+                        k = x+j; /* swap x,k */
+                        A(k<u); A(k>x);
+                        A(u==n-1UL);
+                        z = u-x; /* index of last element seen by yqsort */
+                        A(z<=u);
+                        y = z-j; /* swap y,z */
+                        A(y<z); A(y>k);
+                        exchange(p, o+x, o+k, 1UL, sizeof(long));
+                        exchange(p, o+y, o+z, 1UL, sizeof(long));
+                        if (0UL==x) break;
                     }
                 break;
                 case TEST_SEQUENCE_RANDOM_DISTINCT :
@@ -1866,9 +2351,15 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
 #define MBMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) mbmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define GLQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) glibc_quicksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define NBQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) nbqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define SQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) sqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define WQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) wqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl+1UL)
+#define YQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) yqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 
+#define FUNCTION_WQSORT         1U
+#define FUNCTION_YQSORT         2U
+#define FUNCTION_SQSORT         3U
 #define FUNCTION_MBMQSORT       4U
 #define FUNCTION_BMQSORT        5U
 #define FUNCTION_NBQSORT        6U
@@ -1949,6 +2440,10 @@ static const char *function_name(unsigned int func, size_t n)
     const char *ret=NULL;
 
     switch (func) {
+        case FUNCTION_WQSORT :        ret = "lopsided quickselect";
+        break;
+        case FUNCTION_SQSORT :        ret = "simplified quickselect";
+        break;
         case FUNCTION_QSELECT :       ret = "quickselect";
         break;
         case FUNCTION_QSORT :         ret = "library qsort";
@@ -1962,6 +2457,8 @@ static const char *function_name(unsigned int func, size_t n)
         case FUNCTION_GLQSORT :       ret = "glibc qsort";
         break;
         case FUNCTION_QSORT_WRAPPER : ret = "qsort_wrapper";
+        break;
+        case FUNCTION_YQSORT :        ret = "Yaroslavskiy's dual-pivot sort";
         break;
         default :
             errno = EINVAL;
@@ -1982,10 +2479,13 @@ static const char *function_type(unsigned int func, unsigned int *ptests)
             *ptests |= ( TEST_TYPE_PARTITION | TEST_TYPE_MEDIAN );
             if (TEST_TYPE_SORT == (TEST_TYPE_SORT & *ptests))  ret = "sort"; else ret = "median";
         break;
+        case FUNCTION_WQSORT :        /*FALLTHROUGH*/
+        case FUNCTION_SQSORT :        /*FALLTHROUGH*/
         case FUNCTION_BMQSORT :       /*FALLTHROUGH*/
         case FUNCTION_MBMQSORT :      /*FALLTHROUGH*/
         case FUNCTION_NBQSORT :       /*FALLTHROUGH*/
         case FUNCTION_GLQSORT :       /*FALLTHROUGH*/
+        case FUNCTION_YQSORT :        /*FALLTHROUGH*/
         case FUNCTION_QSORT :         ret = "sort";
             *ptests |= ( TEST_TYPE_PARTITION | TEST_TYPE_MEDIAN | TEST_TYPE_SORT );
         break;
@@ -2010,6 +2510,7 @@ static int valid_test(unsigned int test_type, unsigned int testnum, size_t n)
         case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
             if (3UL > n) return 0;
         break;
+        case TEST_SEQUENCE_DUAL_PIVOT_KILLER :     /*FALLTHROUGH*/
         case TEST_SEQUENCE_MANY_EQUAL_LEFT :       /*FALLTHROUGH*/
         case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :     /*FALLTHROUGH*/
         case TEST_SEQUENCE_MANY_EQUAL_RIGHT :      /*FALLTHROUGH*/
@@ -2120,10 +2621,6 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
 #endif
         ;
     double d;
-    long *plong;
-    int *pint;
-    struct big_struct *pbs;
-    double *pd;
     void *pv;
     uint64_t max_val;
 
@@ -2215,6 +2712,7 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
             case TEST_SEQUENCE_CONSTANT :
                 emin = 0; emax = n;
             break;
+            case TEST_SEQUENCE_DUAL_PIVOT_KILLER :   /*FALLTHROUGH*/
             case TEST_SEQUENCE_MEDIAN3KILLER :
                 count = 1UL;
                 emin--; emin--; emax++; emax++;
@@ -2316,6 +2814,8 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                     case TEST_SEQUENCE_REVERSE :              /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_DISTINCT :      /*FALLTHROUGH*/
                     case TEST_SEQUENCE_PERMUTATIONS :         /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_DUAL_PIVOT_KILLER :    /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_MEDIAN3KILLER :        /*FALLTHROUGH*/
                         distinct=1U;
 #if GENERATOR_TEST
                         if (1000UL > u) {
@@ -2336,7 +2836,6 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                     case TEST_SEQUENCE_SAWTOOTH :             /*FALLTHROUGH*/
                     case TEST_SEQUENCE_BINARY :               /*FALLTHROUGH*/
                     case TEST_SEQUENCE_CONSTANT :             /*FALLTHROUGH*/
-                    case TEST_SEQUENCE_MEDIAN3KILLER :        /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES :        /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :/*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_LEFT :      /*FALLTHROUGH*/
@@ -2410,11 +2909,20 @@ do_test:
                     case FUNCTION_GLQSORT :
                         GLQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
+                    case FUNCTION_WQSORT :
+                        WQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_SQSORT :
+                        SQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
                     case FUNCTION_QSORT :
                         QSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                     case FUNCTION_QSORT_WRAPPER :
                         qsort_wrapper((char *)pv+size*o,u+1UL,size,comparison_function);
+                    break;
+                    case FUNCTION_YQSORT :
+                        YQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                 }
                 if ((1UL==count)&&(0U != flags['i'])) {
@@ -2428,13 +2936,18 @@ do_test:
                     if (0U != flags['K']) comment="#";
                     if (0U!=flags['R']) {
                         c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
-                        (void)printf("%s%s%*.*s%.6G %s\n", comment, buf, col-c, col-c, " ", d, psize);
+                        (void)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf, col-c, col-c, " ", d, psize);
                     } else {
                         c = 1 + snprintf(buf, sizeof(buf), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
                         (void)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
                             comment, buf, col-c, col-c, " ", nlt, 100.0*(double)nlt/(double)t, neq,
                             100.0*(double)neq/(double)t, ngt, 100.0*(double)ngt/(double)t,
                             t, d, psize);
+                    }
+                    if (0UL<nsw) {
+                        c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
+                        d = (double)nsw / (double)count / factor;
+                        (void)printf("%s%s%*.*s%.6G %s swaps\n", comment, buf, col-c, col-c, " ", d, psize);
                     }
                 }
                 if (j > o+u) { errs++; }
@@ -2520,20 +3033,24 @@ do_test:
                     switch (type) {
                         case DATA_TYPE_LONG :
                             if (0UL != errt) print_long_array(pv, errt-1UL, errt+1UL);
+                            else print_long_array(pv, 0UL, 2UL);
                             print_long_array(pv, 0UL<eql?eql-1UL:eql, equ+1UL);
                         break;
                         case DATA_TYPE_INT :
                             if (0UL != errt) print_int_array(pv, errt-1UL, errt+1UL);
+                            else print_int_array(pv, 0UL, 2UL);
                             print_int_array(pv, 0UL<eql?eql-1UL:eql, equ+1UL);
                         break;
                         case DATA_TYPE_DOUBLE :
                             if (0UL != errt) print_double_array(pv, errt-1UL, errt+1UL);
+                            else print_double_array(pv, 0UL, 2UL);
                             print_double_array(pv, 0UL<eql?eql-1UL:eql, equ+1UL);
                         break;
                         case DATA_TYPE_STRUCT :
                         /*FALLTHROUGH*/
                         case DATA_TYPE_STRING :
                             if (0UL != errt) print_big_array_keys(pv, errt-1UL, errt+1UL);
+                            else print_big_array_keys(pv, 0UL, 2UL);
                             print_big_array_keys(pv, 0UL<eql?eql-1UL:eql, equ+1UL);
                         break;
                     }
@@ -2701,6 +3218,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
             case TEST_SEQUENCE_CONSTANT :
                 emin = CONSTANT_VALUE; emax = CONSTANT_VALUE;
             break;
+            case TEST_SEQUENCE_DUAL_PIVOT_KILLER :   /*FALLTHROUGH*/
             case TEST_SEQUENCE_MEDIAN3KILLER :
                 emin--; emin--; emax++; emax++;
             break;
@@ -2768,7 +3286,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                 break;
             }
             /* preparation */
-            if (0U != flags['i']) ngt = nlt = neq = 0UL;
+            if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
             sarray=malloc(sizeof(double)*count);
             if (NULL==sarray) errs++;
             if (0U<errs) {
@@ -2868,11 +3386,20 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     case FUNCTION_GLQSORT :
                         GLQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
+                    case FUNCTION_WQSORT :
+                        WQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_SQSORT :
+                        SQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
                     case FUNCTION_QSORT :
                         QSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                     case FUNCTION_QSORT_WRAPPER :
                         qsort_wrapper((char *)pv+size*o,u+1UL,size,comparison_function);
+                    break;
+                    case FUNCTION_YQSORT :
+                        YQSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                 }
                 (void)getrusage(RUSAGE_SELF,&rusage_end);
@@ -2923,7 +3450,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     ocount=count; /* avoid "terminated early" warning */
                 break;
             }
-            if (0U == errs) {
+            if ((0U == errs)&&(0U==flags['O'])) {
                 /* summarize test results */
                 if (count == ocount) {
                     factor = test_factor(~(TEST_TYPE_ADVERSARY) & *ptests, n);
@@ -3061,9 +3588,9 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                 }
                 if (0U!=flags['R']) {
                     c = 1 + snprintf(buf2, sizeof(buf2), "%lu", n);
-                    (void)printf("%s%s%*.*s%s user\n", comment, buf2, col-c, col-c, " ", 0.0!=test_u?buf5:buf6);
-                    (void)printf("%s%s%*.*s%s system\n", comment, buf2, col-c, col-c, " ", 0.0!=test_s?buf11:buf8);
-                    (void)printf("%s%s%*.*s%s wall\n", comment, buf2, col-c, col-c, " ", 0.0!=test_w?buf13:buf10);
+                    (void)printf("%s%s%*.*s%s user seconds\n", comment, buf2, col-c, col-c, " ", 0.0!=test_u?buf5:buf6);
+                    (void)printf("%s%s%*.*s%s system seconds\n", comment, buf2, col-c, col-c, " ", 0.0!=test_s?buf11:buf8);
+                    (void)printf("%s%s%*.*s%s wall-clock seconds\n", comment, buf2, col-c, col-c, " ", 0.0!=test_w?buf13:buf10);
                 } else {
                     (void)printf("%s%s%*.*snormalized unit user times: %s (mean), %s (median), per %s, total user time %s%s, mean %s, median %s\n", comment, buf3, col-c, col-c, " ", buf, buf2, psize, buf4, (count!=ocount)?" (terminated early)":"", buf6, buf5);
                     if (0UL<dn) {
@@ -3104,13 +3631,18 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                     d = (double)t / (double)count / factor;
                     if (0U!=flags['R']) {
                         c = 1 + snprintf(buf2, sizeof(buf2), "%lu", n);
-                        (void)printf("%s%s%*.*s%.6G %s\n", comment, buf2, col-c, col-c, " ", d, psize);
+                        (void)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf2, col-c, col-c, " ", d, psize);
                     } else {
                         c = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
                         (void)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
                             comment, buf3, col-c, col-c, " ", nlt, 100.0*(double)nlt/(double)t, neq,
                             100.0*(double)neq/(double)t, ngt, 100.0*(double)ngt/(double)t,
                             t, d, psize);
+                    }
+                    if (0UL<nsw) {
+                        c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
+                        d = (double)nsw / (double)count / factor;
+                        (void)printf("%s%s%*.*s%.6G %s swaps\n", comment, buf, col-c, col-c, " ", d, psize);
                     }
                 }
                 if (0U != flags['K']) {
@@ -3135,7 +3667,37 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                                         /* antiqsort uses only integer data */
                                     break;
                                 }
-                                (void)printf("%ld\n", c);
+                                (void)printf("%ld\n", l);
+                            }
+                        break;
+                        case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
+                            (void)printf("#Dual-pivot killer sequence:\n");
+                            for(j=0UL; j<n; j++) {
+                                /* take copied data from unsorted data set */
+                                switch (type) {
+                                    case DATA_TYPE_LONG :
+                                        l = big_array[j].l;
+                                    break;
+                                    default :
+                                        l = larray[j];
+                                    break;
+                                }
+                                (void)printf("%ld\n", l);
+                            }
+                        break;
+                        case TEST_SEQUENCE_MEDIAN3KILLER :
+                            (void)printf("#Median-of-3 killer sequence:\n");
+                            for(j=0UL; j<n; j++) {
+                                /* take copied data from unsorted data set */
+                                switch (type) {
+                                    case DATA_TYPE_LONG :
+                                        l = big_array[j].l;
+                                    break;
+                                    default :
+                                        l = larray[j];
+                                    break;
+                                }
+                                (void)printf("%ld\n", l);
                             }
                         break;
                     }
@@ -3271,7 +3833,7 @@ static unsigned int timing_tests(int type, size_t size, long *larray, int *array
                 break;
             }
         }
-        if (NULL!=f) {
+        if ((NULL!=f)&&(0U==flags['O'])) {
             if (0U!=flags['K']) fprintf(stderr, "// ");
             f(LOG_INFO, log_arg, "%s: %s %s %s %s timing test: %lu %lu", prog, fname, ftype, typename, sequence_name(testnum), n, count);
         }
@@ -3808,7 +4370,7 @@ int main(int argc, const char * const *argv)
     unsigned char flags[256];
     volatile unsigned long count, incr=1UL, n, mult=1UL, startn=0UL, ul;
     pid_t pid;
-    size_t size_limit, sz, q;
+    size_t size_limit, sz, q, x, y;
     void (*f)(int, void *, const char *, ...) = logger;
     void *log_arg;
     struct logger_struct ls;
@@ -3921,6 +4483,7 @@ int main(int argc, const char * const *argv)
                 case 'n' : /*FALLTHROUGH*/
                 case 'N' : /*FALLTHROUGH*/
                 case 'o' : /*FALLTHROUGH*/
+                case 'O' : /*FALLTHROUGH*/
                 case 'p' : /*FALLTHROUGH*/
                 case 'P' : /*FALLTHROUGH*/
                 case 'q' : /*FALLTHROUGH*/
@@ -3932,6 +4495,26 @@ int main(int argc, const char * const *argv)
                 case 'z' : /*FALLTHROUGH*/
                     flags[c] = 1U;
                     if (0U!=flags['K']) comment="#";
+                break;
+                case 'c' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no cutoffs) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* cutoff value(s) */
+                    }
+                    for (x=1UL; x<SAMPLING_TABLE_SIZE; x++) {
+                        y = strtoul(pcc, &endptr, 10);
+                        if (4UL>y) x=0UL; /* in case user gives cutoff for 1 sample */
+                        sampling_table[x].min_nmemb=y;
+                        if ('\0' != *endptr) pcc=endptr+1;
+                        else break;
+                    }
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
                 break;
                 case 'C' :
                     flags[c] = 1U;
@@ -3984,6 +4567,46 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
+                case 'W' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no cutoffs) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* cutoff value(s) */
+                    }
+                    repivot_factor = strtoul(pcc, &endptr, 10);
+                    pcc=endptr;
+                    if ('\0' != *pcc) {
+                        repivot_cutoff = strtoul(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
+                case 'y' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no cutoff) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* cutoff value */
+                    }
+                    y_cutoff = strtoul(pcc, &endptr, 10);
+                    pcc=endptr;
+#if 0
+                    if ('\0' != *pcc) {
+                        y_cutoff2 = strtoul(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
+#endif
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
                 default:
                     logger(LOG_ERR, log_arg,
                         "%s: %s: %s line %d: unrecognized option %s",
@@ -4001,10 +4624,18 @@ int main(int argc, const char * const *argv)
         }
     }
     if (0U==flags['h']) {
+        /* command line */
+        (void)fprintf(stdout, "%s%s", comment, prog);
+        for (i = 1; i < argc; i++) { (void)fprintf(stdout, " %s", argv[i]); }
+        (void)fprintf(stdout, ":\n");
         /* now output settings made by options */
         for (n=0U,ul=sizeof(flags); n<ul; n++) {
             if (0U!=flags[n]) {
                 switch (n) {
+                    case 'c' :
+                        for (x=0UL; x<SAMPLING_TABLE_SIZE; x++)
+                            (void)fprintf(stdout, "%snmemb>=%lu, %lu sample%s\n", comment, sampling_table[x].min_nmemb, sampling_table[x].samples, sampling_table[x].samples==1?"":"s");
+                    break;
                     case 'k' :
                         (void)fprintf(stdout, "%stiming column = %d\n", comment, col);
                     break;
@@ -4016,12 +4647,17 @@ int main(int argc, const char * const *argv)
                     case 'Q' :
                         (void)fprintf(stdout, "%stest timeout = %0.2f\n", comment, timeout);
                     break;
+                    case 'W' :
+                        (void)fprintf(stdout,
+                            "%slopsided quickselect repivot_factor = %lu, repivot_cutoff = %lu\n",
+                            comment, repivot_factor, repivot_cutoff);
+                    break;
+                    case 'y' :
+                        (void)fprintf(stdout, "%sdual-pivot insertion sort cutoff = %lu\n", comment, y_cutoff);
+                    break;
                 }
             }
         }
-        (void)fprintf(stdout, "%s%s", comment, prog);
-        for (i = 1; i < argc; i++) { (void)fprintf(stdout, " %s", argv[i]); }
-        (void)fprintf(stdout, ":\n");
         if (0U!=flags['H']) {
             (void)fprintf(stdout, "%s%s ips %s\n", comment, host, iplist);
         }
@@ -4178,7 +4814,7 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
        when testing with permutations or combinations.
     */
     sz = 0UL;
-    q = sizeof(int) + sizeof(struct big_struct) + sizeof(double);
+    q = sizeof(int) + sizeof(struct big_struct) + sizeof(double) + sizeof(long);
     p = (0x01U << TEST_SEQUENCE_COMBINATIONS);
     if ((0U!=(csequences&p))||(0U!=(tsequences&p))) {
         /* big: ul*2^ul */
@@ -4230,6 +4866,9 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
     if ((0UL==sz)||((0U==(csequences&p)&&(0U==(tsequences&p))))) {
         /* not testing with permutations or combinations */
         sz=ul;
+    }
+    if (0U!=flags['O']) {
+        if (sz<100000000UL) sz=100000000UL;
     }
     if (SIZE_T_MAX/q <= sz) {
         logger(LOG_ERR, log_arg,
@@ -4325,10 +4964,10 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
             return errs;
         }
         /* save input data for reuse */
-        for (sz=0UL; sz<(size_t)i; sz++)
-            input_data[sz]=big_array[sz];
         /* reset counts to correspond to number of data read */
-        startn=ul=sz;
+        for (ul=0UL; ul<(size_t)i; ul++)
+            input_data[ul]=big_array[ul];
+        startn=ul;
         /* emit revised counts if header is not suppressed */
         if (0U==flags['h']) (void)fprintf(stdout, "%s: %s line %d: startn = %lu, incr = %lu, mult = %lu, ul = %lu, count = %lu, ul*count = %lu, q = %lu\n", __func__, source_file, __LINE__, startn, incr, mult, ul, count, ul*count, q);
     }
@@ -4351,7 +4990,7 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
 #endif
         }
 
-        if ((0U == errs) && (0U != flags['m'])) { /* test quickselect median */
+        if ((0U == errs) && (0U != flags['O'])) { /* optimize quickselect sampling table */
             i = seed_random64n(s, p);
             if (0 != i) {
                 logger(LOG_ERR, log_arg, 
@@ -4360,25 +4999,122 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
                     (unsigned long)s, p, i
                 );
                 errs++;
-            } else {
-                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION ;
-                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSELECT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
-            }
-        }
+            } else if (n==startn) {
+                unsigned char oldi=flags['i'];
+                unsigned int cs=0U,
+#if 0
+                    ts=0x01U<<TEST_SEQUENCE_RANDOM_DISTINCT
+                    ts=0x01U<<TEST_SEQUENCE_MEDIAN3KILLER
+                    ts=0x01U<<TEST_SEQUENCE_DUAL_PIVOT_KILLER
+#else
+                    ts=0x01U<<TEST_SEQUENCE_RANDOM_VALUES
+#endif
+                ;
+                size_t m, step, value[3], result[3];
+                int dir;
+                double d;
 
-        if ((0U == errs) && (0U != flags['q'])) { /* test quickselect sort */
-            i = seed_random64n(s, p);
-            if (0 != i) {
-                logger(LOG_ERR, log_arg, 
-                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
-                    prog, __func__, source_file, __LINE__,
-                    (unsigned long)s, p, i
-                );
-                errs++;
-            } else {
                 tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
-                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSELECT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+                flags['i']=1U;
+                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++)
+                    sampling_table[x].min_nmemb=(SIZE_T_MAX);
+                for (x=1UL; x<SAMPLING_TABLE_SIZE-1UL; x++) {
+                    value[0] = sampling_table[x-1UL].min_nmemb + 1UL;
+                    value[1] = sampling_table[x].samples * sampling_table[x].samples; /* start at samples^^2 (McGeock&Tygar, Martinez&Roura) */
+                    value[2] = value[1] * 2UL;
+                    if (value[1]>sz) break;
+                    m = value[2]*2UL;
+                    if (32768UL>m) m=32768UL;
+                    if (m>sz) m=sz;
+#if 1
+                    /* many runs for randomized data */
+                    d=test_factor(TEST_TYPE_SORT,m);
+                    if (d!= 0.0) y=snlround(1.0e8/d,logger,log_arg); else y=499UL;
+                    if (y>sz/m) y=sz/m;
+                    if (499UL<y) y=499UL;
+                    if (9UL>y) y=9UL;
+#else
+                    /* single run for fixed sequence data */
+                    y=1UL;
+#endif
+                    sampling_table[x].min_nmemb = value[1];
+fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
+                    (void)test_function(prog, array, big_array, darray, larray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
+                    result[1] = neq+nlt+ngt;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1], nsw);
+                    step=(value[1]>>4);
+                    if (1UL>step) step=1UL;
+fprintf(stderr, "step=%lu\n",step);
+                    for (dir=-1; 0!=dir;) {
+fprintf(stderr, "testing %lu <= nmemb for %lu samples <= %lu\n",value[0], sampling_table[x].samples, value[2]);
+                        switch (dir) {
+                            case -1 :
+                                value[0] = value[1]-step;
+                                if (value[0]<=sampling_table[x-1UL].min_nmemb)
+                                    value[0]=sampling_table[x-1UL].min_nmemb+1UL, step=1UL;
+                                sampling_table[x].min_nmemb = value[0];
+                                (void)seed_random64n(s, p);
+fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
+                                (void)test_function(prog, array, big_array, darray, larray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
+                                result[0] = neq+nlt+ngt;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu), %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[0], result[1], value[1], nsw);
+                                if ((result[2]==result[1])&&(result[0]==result[1])) {
+                                    value[1] = value[2];
+                                    dir=0;
+                                } else if (result[0]<result[1]) {
+                                    value[1] = value[0];
+                                    result[1] = result[0];
+#if 0
+                                    step += step>>1;
+#endif
+                                } else if ((result[0]>=result[1])&&(value[2]==value[1]+1UL)) {
+                                    dir=0;
+                                } else {
+                                    dir=1;
+                                    step -= step>>1;
+                                    if (1UL>step) step=1UL;
+                                }
+                            break;
+#if 0
+#endif
+                            case 1 :
+                                value[2] = value[1]+step;
+                                sampling_table[x].min_nmemb = value[2];
+                                (void)seed_random64n(s, p);
+fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
+                                (void)test_function(prog, array, big_array, darray, larray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
+                                result[2] = neq+nlt+ngt;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu), %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[2], result[1], value[1], nsw);
+                                if ((result[2]==result[1])&&(result[0]==result[1])) {
+                                    value[1] = value[2];
+                                    dir=0;
+                                } else if (result[2]<result[1]) {
+                                    value[1] = value[2];
+                                    result[1] = result[2];
+#if 0
+                                    step += step>>1;
+#endif
+                                } else if ((result[2]>=result[1])&&(value[0]==value[1]-1UL)) {
+                                    if (result[2]==result[1]) value[1]=value[2];
+                                    dir=0;
+                                } else {
+                                    dir=-1;
+                                    step -= step>>1;
+                                    if (1UL>step) step=1UL;
+                                }
+                            break;
+                        }
+fprintf(stderr, "step=%lu\n",step);
+                    }
+                    sampling_table[x].min_nmemb = value[1];
+fprintf(stderr, "%lu samples for nmemb >= %lu (%lu comparisons)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
+sleep(5);
+                }
+                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++)
+                    printf("nmemb>=%lu, %lu samples\n", sampling_table[x].min_nmemb, sampling_table[x].samples);
+                flags['i']=oldi;
             }
+            flags['O']=0U; /* reset to re-enable output from timing tests */
         }
 
         if ((0U == errs) && (0U != flags['b'])) { /* test Bentley&McIlroy qsort */
@@ -4426,6 +5162,81 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
             }
         }
 
+        if ((0U == errs) && (0U != flags['w'])) { /* test qsort_wrapper */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSORT_WRAPPER, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['m'])) { /* test quickselect median */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSELECT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['q'])) { /* test quickselect sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSELECT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['c'])) { /* test simplified quickselect sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_SQSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['W'])) { /* test lopsided quickselect sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_WQSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
         if ((0U == errs) && (0U != flags['g'])) { /* test glibc qsort */
             i = seed_random64n(s, p);
             if (0 != i) {
@@ -4456,7 +5267,7 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
             }
         }
 
-        if ((0U == errs) && (0U != flags['w'])) { /* test qsort_wrapper */
+        if ((0U == errs) && (0U != flags['y'])) { /* test dual-pivot qsort */
             i = seed_random64n(s, p);
             if (0 != i) {
                 logger(LOG_ERR, log_arg, 
@@ -4467,9 +5278,10 @@ if (0==i) (void)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",_
                 errs++;
             } else {
                 tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
-                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_QSORT_WRAPPER, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+                errs += test_function(prog, array, big_array, darray, larray, FUNCTION_YQSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
             }
         }
+
     }
 
 #if DEBUG_CODE

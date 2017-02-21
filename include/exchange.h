@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is exchange.h version 1.12 dated 2017-02-08T09:01:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is exchange.h version 1.13 dated 2017-02-18T23:11:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "exchange" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.exchange.h */
@@ -43,7 +43,7 @@
 */
 
 /* version-controlled header file version information */
-#define EXCHANGE_H_VERSION "exchange.h 1.12 2017-02-08T09:01:03Z"
+#define EXCHANGE_H_VERSION "exchange.h 1.13 2017-02-18T23:11:04Z"
 
 #include <sys/types.h>          /* *_t (size_t) */
 #include <stddef.h>
@@ -206,7 +206,7 @@ void exchange(char *array, size_t i, size_t j, size_t count, size_t size)
 #endif /* DEBUG_EXCHANGE */
     pa=array + i * size;
     pb=array + j * size;
-    swap2(pa,pb,count);
+    swap2(pa,pb,count*size);
 #if DEBUG_EXCHANGE
     printf("\n");
 #endif /* DEBUG_EXCHANGE */

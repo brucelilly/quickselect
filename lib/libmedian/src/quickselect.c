@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.64 dated 2017-02-16T14:20:17Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.65 dated 2017-02-21T04:09:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -186,8 +186,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.64"
-#define MODULE_DATE "2017-02-16T14:20:17Z"
+#define MODULE_VERSION "1.65"
+#define MODULE_DATE "2017-02-21T04:09:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -286,18 +286,39 @@ struct sampling_table_struct {
     size_t min_nmemb;
     size_t samples;
 };
-#define SAMPLING_TABLE_SIZE 10
+#if (SIZE_T_MAX) > 4294967295
+# define SAMPLING_TABLE_SIZE 22
+#else
+# define SAMPLING_TABLE_SIZE 12
+#endif
 static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
-   {          1UL,      1UL }, /* single sample, 1/4 position */
-   {         13UL,      3UL }, /* median-of-3 1/4,1/2,3/4 */
-   {         64UL,      9UL }, /* ninther */
-   {        525UL,     27UL }, /* remedian of samples */
-   {       4120UL,     81UL },
-   {      34000UL,    243UL },
-   {     230000UL,    729UL },
-   {    5000000UL,   2187UL },
-   {    8000000UL,   6561UL }, /* tiny additional benefit */
-   { (SIZE_T_MAX),  19683UL } /* no need for > 6561 samples */
+   {                    1UL,           1UL }, /* single sample, 1/4 position */
+   {                   13UL,           3UL }, /* median-of-3, 1/4,1/2,3/4 */
+   {                   81UL,           9UL }, /* remedian of samples */
+   {                  729UL,          27UL },
+   {                 6486UL,          81UL },
+   {                55388UL,         243UL },
+   {               531441UL,         729UL },
+   {              4185683UL,        2187UL },
+   {             43046721UL,        6561UL },
+   {            387420489UL,       19683UL },
+   {           3486784401UL,       59049UL },
+#if (SIZE_T_MAX) > 4294967295
+   {          31381059609UL,      177147UL }, /* silly to include large sizes?
+                                              check again in a decade or two */
+   {         282429536481UL,      531441UL },
+   {        2541865828329UL,     1594323UL },
+   {       22876792454961UL,     4782969UL },
+   {      205891132094649UL,    14348907UL },
+   {     1853020188851841UL,    43046721UL },
+   {    16677181699666569UL,   129140163UL },
+   {   150094635296999121UL,   387420489UL },
+   {  1350851717672992089UL,  1162261467UL },
+   { 12157665459056928801UL,  3486784401UL },
+   {   (SIZE_T_MAX),         10460353203UL }
+#else
+   {   (SIZE_T_MAX),              177147UL }
+#endif
 };
 
 /* assume sizeof(foo) etc. are powers of 2 */

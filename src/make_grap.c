@@ -188,7 +188,7 @@ struct symbol_struct {
 
 int main(int argc, const char * const *argv)
 {
-    char buf[80], buf2[80];     /* RATS: ignore (big enough) */
+    char buf[4096], buf2[4096];     /* RATS: ignore (big enough) */
     char prog[PATH_MAX];
     char host[MAXHOSTNAMELEN];  /* RATS: ignore (big enough) */
     char iplist[1024];          /* RATS: ignore (size is checked) */
@@ -197,8 +197,12 @@ int main(int argc, const char * const *argv)
     char procid[32];            /* RATS: ignore (used with sizeof()) */
     char graph_height[16], graph_width[16];
     const char *page_offset="0.4i";
-    const char *xlabel=NULL, *ylabel=NULL, *path, *pcc,
-        *title=NULL;
+    const char *dq, *xlabel=NULL, *ylabel=NULL, *path, *pcc, *sp, *title=NULL;
+    const char *commentstart = ".\\\"";
+    const char *commentend = "\n";
+    const char *grapcommentstart = "#";
+    const char *grapcommentend = "\n";
+    char *endptr=NULL;
     struct symbol_struct symbols[] = {
         { "bullet", "\\(bu",                 NULL } ,
         { "times",  "\\(mu",                 NULL } ,
@@ -212,34 +216,27 @@ int main(int argc, const char * const *argv)
         { "dot",    "\\(v~-0.2m~.\\v~0.2m~", NULL } , /* almost invisible */
     };
     size_t nmarks = sizeof(symbols)/sizeof(symbols[0]);
-    size_t legend_number = 0UL;
-    const char *commentstart = ".\\\"";
-    const char *commentend = "\n";
-    const char *grapcommentstart = "#";
-    const char *grapcommentend = "\n";
-    char *endptr=NULL;
+    size_t dim, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
     int bufsz, c, i, ingrap=0, optind;
     int maxlen = 1024;
     int sockfd = -1;
+    int htp, maxxticks, maxyticks, widp, xp, xw, yp, yw;
+    unsigned char flags[256];
+    unsigned char **pp=NULL;
     unsigned int seqid = 1U;
     unsigned int tzknown = 1U;
     unsigned int errs=0U;
-    unsigned char flags[256];
     volatile unsigned long count, ul;
     pid_t pid;
-    size_t q;
     void (*f)(int, void *, const char *, ...) = logger;
     void *log_arg;
     struct logger_struct ls;
     FILE *fp;
-    size_t dim, maxdim;
     double d, dx,dy, hline, lim = 0.70, lx,ly, ox=-1.0e300, oy=-1.0e300, vline;
     double maxx, maxlx, maxly, maxy, maxyx=0.0, minx, minlx, minly, miny;
     double *x=NULL, *plx=NULL, **py=NULL, **ply=NULL;
     double minytick, maxytick, ytickintvl, minxtick, maxxtick, xtickintvl;
     double deltax, deltay, xres, yres;
-    unsigned char **pp=NULL;
-    int htp, maxxticks, maxyticks, widp, xp, xw, yp, yw;
 #if ! defined(PP__FUNCTION__)
     static const char __func__[] = "main";
 #endif
@@ -610,7 +607,7 @@ int main(int argc, const char * const *argv)
         }
         xp=formatprecision(stderr,minx,maxx,deltax);
         xw=formatwidth(stderr,minx,maxx,xp);
-        maxxticks=widp*3/4/(xw+xp+1)/4; /* assumes digit width 4 pt, ticks 75% of graph width */
+        maxxticks=widp*4/5/(xw+xp+1-(0U!=flags['X']?2:0))/4; /* assumes digit width 4 pt, ticks 80% of graph width */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, maxx=%G, xp=%d, xw=%d, maxxticks=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,maxx,xp,xw,maxxticks,ingrap?grapcommentend:commentend);
         if (0U!=flags['X']) {
             xtickintvl=intvl(stderr, minlx, maxlx, 1.0, minlx, maxlx, maxxticks, 0U);
@@ -637,47 +634,83 @@ int main(int argc, const char * const *argv)
             xp=formatprecision(stderr,minxtick,maxxtick,xtickintvl);
             xw=formatwidth(stderr, minxtick,maxxtick,xp);
         }
-        if (NULL!=title)
+        if (NULL!=title) {
+#if 0
+            printf("label top \"");
+            len=0UL;
+            dq=strchr(title,'"');
+            if (NULL==dq) pcc=title; else pcc=dq+1;
+            do {
+                sp=strchr(pcc,' ');
+                dq=strchr(pcc,'"');
+                if ((NULL==sp)&&(NULL!=dq)) sp=dq;
+                else if ((NULL!=sp)&&(NULL!=dq)&&(dq<sp)) sp=dq;
+                if (NULL==sp) wordlen=strlen(pcc); else wordlen=(sp-pcc);
+                if (widp*3UL/5UL<=len+wordlen) { printf("\" \""); len=0UL; }
+                printf("%*.*s", (int)wordlen, (int)wordlen, pcc);
+                len+=wordlen;
+                if (NULL!=sp) { printf(" "); len++; pcc=sp+1; }
+                else pcc=sp;
+            } while (NULL!=pcc);
+            printf("\"\n");
+#else
             printf("label top %s\n", title);
+#endif
+        }
         (void)sng(buf,sizeof(buf),NULL,NULL,minytick,0-(yw+yp),3,logger,log_arg);
         (void)sng(buf2,sizeof(buf2),NULL,NULL,maxytick,0-(yw+yp),3,logger,log_arg);
+        /* tick numbers look better if width is left unspecified */
         if (0U!=flags['Y'])
-            printf("ticks left out from %s to %s by *%.6f \"%%%d.%df\"\n", buf, buf2, ytickintvl, yw, yp);
+            printf("ticks left out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
         else
-            printf("ticks left out from %s to %s by %.6f \"%%%d.%df\"\n", buf, buf2, ytickintvl, yw, yp);
+            printf("ticks left out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
         if (NULL!=ylabel)
             printf("label left %s\n",ylabel);
         (void)sng(buf,sizeof(buf),NULL,NULL,minxtick,0-(xw+xp),3,logger,log_arg);
         (void)sng(buf2,sizeof(buf2),NULL,NULL,maxxtick,0-(xw+xp),3,logger,log_arg);
         if (0U!=flags['X'])
-            printf("ticks bot out from %s to %s by *%.6f \"%%%d.%df\"\n", buf, buf2, xtickintvl, xw, xp);
+            printf("ticks bot out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
         else
-            printf("ticks bot out from %s to %s by %.6f \"%%%d.%df\"\n", buf, buf2, xtickintvl, xw, xp);
+            printf("ticks bot out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
         /* legend */
         buf[0]='\0';
+        xlines=0UL;
         if (0UL<legend_number) {
             q = nmarks;
             if (dim<q) q=dim;
-            if (0UL<q)
-                strlcat(buf,"Legend:",sizeof(buf));
+            if (0UL<q) {
+                len=strlcat(buf,"Legend:",sizeof(buf));
+                xlines++;
+            }
             for (ul=0UL; ul<q; ul++) {
-                snprintf(buf2,sizeof(buf2),"\\0%s%s\\0%s",
-                    0UL<q?"\\0\\0":"",
-                    symbols[ul].mchar,
+                wordlen=strlen(symbols[ul].legend_text);
+                if (widp*1UL/3UL<=len+wordlen+(0UL<ul?6UL:4UL)) {
+                    strlcat(buf,"\" \"",sizeof(buf));
+                    len=0UL;
+                    xlines++;
+                } else {
+                    snprintf(buf2,sizeof(buf2),"\\0%s",0UL<ul?"\\0\\0":"");
+                    len+=(0UL<ul?4UL:2UL);
+                    strlcat(buf,buf2,sizeof(buf));
+                }
+                snprintf(buf2,sizeof(buf2),"%s\\0%s", symbols[ul].mchar,
                     NULL!=symbols[ul].legend_text?symbols[ul].legend_text:"?"
                 );
+                len+=wordlen+2UL;
                 strlcat(buf,buf2,sizeof(buf));
             }
         }
         /* X-axis label and/or legend */
         if (NULL!=xlabel) {
+            xlines++;
             if ('\0'!=buf[0]) {
-                printf("label bot %s \"%s\"\n",xlabel,buf);
+                printf("label bot %s \"%s\" down %.6f\n",xlabel,buf,
+                    (double)(xlines-1UL)*0.1);
             } else {
                 printf("label bot %s\n",xlabel);
             }
         } else if ('\0'!=buf[0]) {
-            printf("label bot %s\n",buf);
+            printf("label bot %s down %.6f\n",buf,(double)(xlines-1UL)*0.1);
         }
 
         for (ul=0UL; ul<dim; ul++) {
