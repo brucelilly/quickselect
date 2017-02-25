@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is trim.c version 1.4 dated 2017-02-07T14:29:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is trim.c version 1.5 dated 2017-02-25T03:52:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "trim" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libgraphing/src/s.trim.c */
@@ -56,7 +56,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600  /* code uses C99 'inline', XOPEN 'LONG_BIT' */
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -75,8 +75,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: trim.c ~|^` @(#)"
 #define SOURCE_MODULE "trim.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-02-07T14:29:03Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-02-25T03:52:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -165,7 +165,11 @@ static void initialize_trim(V)
 
 /* Add a segment to the list of segments, return updated number of segments. */
 /* If segment has 2 points or fewer, it is ignored. */
-static inline int add_segment(size_t l, size_t r, struct segment_struct *ps,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int add_segment(size_t l, size_t r, struct segment_struct *ps,
     int ns)
 {
 
@@ -184,7 +188,11 @@ static inline int add_segment(size_t l, size_t r, struct segment_struct *ps,
    comparisons are cheap).
 */
 /* selection sort of segments, largest first */
-static inline void sort_segments(struct segment_struct *ps, int ns)
+static 
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void sort_segments(struct segment_struct *ps, int ns)
 {
     int c, d, i, j;
 

@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is leap_second.c version 2.12 2017-02-14T22:12:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is leap_second.c version 2.13 2017-02-25T03:53:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "leap_second" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/lib/libleap_second/src/s.leap_second.c */
@@ -58,8 +58,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: leap_second.c ~|^` @(#)"
 #define SOURCE_MODULE "leap_second.c"
-#define MODULE_VERSION "2.12"
-#define MODULE_DATE "2017-02-14T22:12:37Z"
+#define MODULE_VERSION "2.13"
+#define MODULE_DATE "2017-02-25T03:53:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2015-2017"
 
@@ -72,7 +72,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -174,7 +174,11 @@ static void initialize_leap_second(void)
    N.B. indices are such that earlier date-times have larger indices.
    Return value is zero except in the event of invalid arguments.
 */
-static inline int leap_straddle(const struct tm *ptm, int *pbefore,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int leap_straddle(const struct tm *ptm, int *pbefore,
     int *pduring, int *pafter, void (*f)(int, void *, const char *, ...),
     void *log_arg)
 {

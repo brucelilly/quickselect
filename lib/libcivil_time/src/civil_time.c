@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is civil_time.c version 2.11 dated 2017-02-14T22:14:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is civil_time.c version 2.12 dated 2017-02-25T03:52:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "civil_time" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libcivil_time/src/s.civil_time.c */
@@ -261,8 +261,8 @@ double civil_time_difference(const struct civil_time_struct *pcts1, const struct
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: civil_time.c ~|^` @(#)"
 #define SOURCE_MODULE "civil_time.c"
-#define MODULE_VERSION "2.11"
-#define MODULE_DATE "2017-02-14T22:14:21Z"
+#define MODULE_VERSION "2.12"
+#define MODULE_DATE "2017-02-25T03:52:30Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2009-2017"
 
@@ -274,7 +274,7 @@ double civil_time_difference(const struct civil_time_struct *pcts1, const struct
 #endif
 
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -369,7 +369,11 @@ static void initialize_civil_time_almost_one(void (*f)(int, void *,
 }
 
 /* civil_time_bit_name: called from civil_time_bits_check and parse_civil_time_text */
-static inline const char *civil_time_bit_name(char *buf, int sz, unsigned int bit,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+const char *civil_time_bit_name(char *buf, int sz, unsigned int bit,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     switch (bit) {
@@ -403,7 +407,11 @@ static inline const char *civil_time_bit_name(char *buf, int sz, unsigned int bi
 
 /* debug: check that bits are clear/set */
 /* civil_time_bits_check: called from parse_civil_time_text */
-static inline void civil_time_bits_check(const char *s, unsigned int desired,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void civil_time_bits_check(const char *s, unsigned int desired,
     unsigned int actual, unsigned int min, unsigned int max,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
@@ -439,7 +447,11 @@ static inline void civil_time_bits_check(const char *s, unsigned int desired,
 /* copy specified struct tm values from source to destination */
 /* civil_time_fillin: called from parse_civil_time_text */
 /* ARGSUSED3 */
-static inline void civil_time_fillin(struct tm *destination, const struct tm *source,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void civil_time_fillin(struct tm *destination, const struct tm *source,
     unsigned int bits, void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     unsigned int bit;
@@ -489,7 +501,11 @@ static inline void civil_time_fillin(struct tm *destination, const struct tm *so
    return 0 if all's well
 */
 /* civil_time_struct_check: called from parse_civil_time_text */
-static inline int civil_time_struct_check(struct civil_time_struct *pcts,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int civil_time_struct_check(struct civil_time_struct *pcts,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int leap, maxdays, year;

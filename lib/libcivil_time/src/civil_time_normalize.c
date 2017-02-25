@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is civil_time_normalize.c version 2.7 dated 2016-06-29T03:15:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is civil_time_normalize.c version 2.8 dated 2017-02-25T03:52:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "civil_time" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libcivil_time/src/s.civil_time_normalize.c */
@@ -232,8 +232,8 @@ void civil_time_zone_change(struct civil_time_struct *pcts, double new_offset);
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: civil_time_normalize.c ~|^` @(#)"
 #define SOURCE_MODULE "civil_time_normalize.c"
-#define MODULE_VERSION "2.7"
-#define MODULE_DATE "2016-06-29T03:15:44Z"
+#define MODULE_VERSION "2.8"
+#define MODULE_DATE "2017-02-25T03:52:30Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2009 - 2016"
 
@@ -245,7 +245,7 @@ void civil_time_zone_change(struct civil_time_struct *pcts, double new_offset);
 #endif
 
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -291,7 +291,11 @@ static void initialize_civil_time_normalize(void)
 /* adjust_month: called from adjust_mday */
 /* return year adjustment */
 /* ARGSUSED2 */
-static inline int adjust_month(struct tm *ptm, int adjustment,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int adjust_month(struct tm *ptm, int adjustment,
    void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int new_value, next_adjustment = 0;
@@ -315,7 +319,11 @@ static inline int adjust_month(struct tm *ptm, int adjustment,
 }
 
 /* adjust_mday: called from adjust_hour */
-static inline void adjust_mday(struct tm *ptm, int adjustment,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void adjust_mday(struct tm *ptm, int adjustment,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int ld, leap, x;
@@ -340,7 +348,11 @@ static inline void adjust_mday(struct tm *ptm, int adjustment,
 }
 
 /* adjust_hour: called from adjust_minute and civil_time_zone_change */
-static inline void adjust_hour(struct tm *ptm, int adjustment,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void adjust_hour(struct tm *ptm, int adjustment,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int new_value, next_adjustment = 0;
@@ -361,7 +373,11 @@ static inline void adjust_hour(struct tm *ptm, int adjustment,
 }
 
 /* adjust_minute: called from civil_time_zone_change */
-static inline void adjust_minute(struct tm *ptm, int adjustment,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+void adjust_minute(struct tm *ptm, int adjustment,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int new_value, next_adjustment = 0;

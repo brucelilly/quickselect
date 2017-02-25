@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is snn_double.c version 2.14 2017-02-05T17:40:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is snn_double.c version 2.15 2017-02-25T03:54:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/src/s.snn_double.c */
@@ -116,8 +116,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: snn_double.c ~|^` @(#)"
 #define SOURCE_MODULE "snn_double.c"
-#define MODULE_VERSION "2.14"
-#define MODULE_DATE "2017-02-05T17:40:36Z"
+#define MODULE_VERSION "2.15"
+#define MODULE_DATE "2017-02-25T03:54:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2011 - 2017"
 
@@ -129,7 +129,7 @@
 #endif
 
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -236,7 +236,11 @@ static void initialize_snn_double(void (*f)(int, void *, const char *, ...),
 */
 /* calls: initialize_snn */
 /* called by: snsf, snf, sng */
-static inline double snn_sf_double(double d,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+double snn_sf_double(double d,
     unsigned char *pdigits, unsigned int ndigits,
     int mag, int max_sig_figs, int max_precision,
     int *psf, int *pmag, int *pprec,
@@ -502,7 +506,11 @@ int snsf(double d,
 */
 /* calls: initialize_snn, isspace, snn_sf_double */
 /* called by: snf, sng */
-static inline int snn_double(char *buf, int sz,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int snn_double(char *buf, int sz,
     const char *prefix, const char *suffix,
     unsigned char *pdigits, unsigned int ndigits,
     double d, int mag, int offs, int pad, int min_dig, int precision,

@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is snn_int.c version 2.9 2017-01-24T17:44:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is snn_int.c version 2.10 2017-02-25T03:54:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/src/s.snn_int.c */
@@ -112,8 +112,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: snn_int.c ~|^` @(#)"
 #define SOURCE_MODULE "snn_int.c"
-#define MODULE_VERSION "2.9"
-#define MODULE_DATE "2017-01-24T17:44:14Z"
+#define MODULE_VERSION "2.10"
+#define MODULE_DATE "2017-02-25T03:54:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2011 - 2017"
 
@@ -126,7 +126,7 @@
 
 /* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
 #if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
@@ -196,7 +196,11 @@ static void initialize_snn_int(void)
 /* forward declarations */
 static unsigned long int snn_base_power(unsigned int, unsigned int,
     void (*)(int, void *, const char *, ...), void *);
-static inline unsigned int snn_max_power(unsigned int,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+unsigned int snn_max_power(unsigned int,
     void (*)(int, void *, const char *, ...), void *);
 
 /* lazy evaluation and return of base raised to power pow */
@@ -250,7 +254,11 @@ static unsigned long int snn_base_power(unsigned int base, unsigned int pow,
 /* lazy evaluation of maximum power to which a base can be raised with result <= ULONG_MAX */
 /* calls: initialize_snn, snn_base_power */
 /* called by: snn_base_power, snn_uint */
-static inline unsigned int snn_max_power(unsigned int base,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+unsigned int snn_max_power(unsigned int base,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     unsigned int u;
@@ -270,7 +278,11 @@ static inline unsigned int snn_max_power(unsigned int base,
 */
 /* calls: snmagnitude, snn_base_power */
 /* called by: snlround */
-static inline long int int_d(double d,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+long int int_d(double d,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     double e;
@@ -351,7 +363,11 @@ long int snlround(double d,
 */
 /* calls: initialize_snn, snn_max_power, snn_base_power, isspace */
 /* called by: snul,  snl */
-static inline int snn_uint(char *buf, int sz,
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int snn_uint(char *buf, int sz,
     const char *prefix, const char *suffix,
     unsigned long int ul, int base, int pad, int sign, int min_dig,
     void (*f)(int, void *, const char *, ...), void *log_arg)

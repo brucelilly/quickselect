@@ -30,16 +30,15 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.h version 1.3 dated 2017-02-09T16:28:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.h version 1.4 dated 2017-02-25T04:11:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "compare" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.compare.h */
 
 /* version-controlled header file version information */
-#define COMPARE_H_VERSION "compare.h 1.3 2017-02-09T16:28:13Z"
+#define COMPARE_H_VERSION "compare.h 1.4 2017-02-25T04:11:40Z"
 
-#include <sys/types.h>          /* *_t (size_t) */
-#include <stddef.h>             /* NULL */
+#include <stddef.h>             /* size_t NULL */
 
 /* Generic macro. Implementation avoids overflow. */
 #undef typecmp
@@ -55,22 +54,46 @@
     return 0;                                                      \
 }
 
-static inline int charcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int charcmp(const void *p1, const void *p2)
 typecmp(char)
 
-static inline int doublecmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int doublecmp(const void *p1, const void *p2)
 typecmp(double)
 
-static inline int intcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int intcmp(const void *p1, const void *p2)
 typecmp(int)
 
-static inline int shortcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int shortcmp(const void *p1, const void *p2)
 typecmp(short)
 
-static inline int longcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int longcmp(const void *p1, const void *p2)
 typecmp(long)
 
-static inline int ulcmp(const void *p1, const void *p2)
+static
+#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
+inline
+#endif
+int ulcmp(const void *p1, const void *p2)
 typecmp(unsigned long)
 
 #define	COMPARE_H_INCLUDED

@@ -20,11 +20,13 @@ should be as simple as
 
 That ought to work on Solaris, Linux, and UNIX (e.g. NetBSD) systems.
 Median_test also incorporates Bentley & McIlroy's vanilla qsort code,
-modified code from NetBSD, and glibc qsort code; it can also run tests
-on the local qsort on the system on which it is built.
+modified code from NetBSD, further modifications that improve performance,
+and glibc qsort code; it can also run tests on the local qsort on the system
+on which it is built.
 
 There's no man page for median_test, running it with a -? arg will print
-a usage synopsis.
+a usage synopsis.  It is advisable to build w/o optimization to run the
+operations cost tests; otherwise optimization is recommended.
 
 A pre-peer-reviewed document describing quickselect and its development
 and testing may be found at lib/libmedian/doc/pub/spe/paper.pdf.
