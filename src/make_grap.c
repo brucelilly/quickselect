@@ -607,7 +607,7 @@ int main(int argc, const char * const *argv)
         }
         xp=formatprecision(stderr,minx,maxx,deltax);
         xw=formatwidth(stderr,minx,maxx,xp);
-        maxxticks=widp*4/5/(xw+xp+1-(0U!=flags['X']?2:0))/4; /* assumes digit width 4 pt, ticks 80% of graph width */
+        maxxticks=widp*4/5/(xw+xp+1-(0U!=flags['X']?1:0))/4; /* assumes digit width 4 pt, ticks 80% of graph width */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, maxx=%G, xp=%d, xw=%d, maxxticks=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,maxx,xp,xw,maxxticks,ingrap?grapcommentend:commentend);
         if (0U!=flags['X']) {
             xtickintvl=intvl(stderr, minlx, maxlx, 1.0, minlx, maxlx, maxxticks, 0U);

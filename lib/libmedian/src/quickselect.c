@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.68 dated 2017-02-25T00:15:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.69 dated 2017-02-26T18:48:49Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -201,8 +201,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.68"
-#define MODULE_DATE "2017-02-25T00:15:19Z"
+#define MODULE_VERSION "1.69"
+#define MODULE_DATE "2017-02-26T18:48:49Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -901,10 +901,9 @@ partitioned:; /* array is partitioned with equal elements at the ends */
                 n/=3UL;    /* number of complete sets */
                 if (1UL<=n)
                     pa=medians3(pl,size,compar,n*size,size,n,swaptype);
-                if (1UL<n) { /* median */
+                if (1UL<n) { /* median of medians */
                     size_t karray[1];
                     karray[0]=n>>1; /* upper-median for even size arrays */
-                    /* Median of medians or of entire array */
                     quickselect_internal(pa,n,size,compar,karray,1UL
 #if SAVE_PARTIAL
                         ,&pd,&pe
@@ -1064,7 +1063,7 @@ partitioned:; /* array is partitioned with equal elements at the ends */
     } /* stack not empty loop */
     /* Done. */
 #if SAVE_PARTIAL
-    if (NULL!=pk) { /* selection only */
+    if (1UL==nk) { /* median selection only */
         /* Preserve partition region boundary information. */
         if (NULL!=ppeq) *ppeq = pa; /* < region [pl,pa) */
         if (NULL!=ppgt) *ppgt = pg; /* = region [pa,pg), > region [pg,pu) */
