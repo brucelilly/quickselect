@@ -204,16 +204,16 @@ int main(int argc, const char * const *argv)
     const char *grapcommentend = "\n";
     char *endptr=NULL;
     struct symbol_struct symbols[] = {
-        { "bullet", "\\(bu",                 NULL } ,
-        { "times",  "\\(mu",                 NULL } ,
-        { "plus",   "\\(pl",                 NULL } ,
-        { "delta",  "\\(*D",                 NULL } ,
-        { "square", "\\(sq",                 NULL } ,
-        { "box",    "\\f(ZD\\N~110~\fP",     NULL } , /* can obscure others */
-        { "star",   "\\(**",                 NULL } , /* can be confused for overlayed x and + */
-        { "htick",  "\\(em",                 NULL } , /* poor for nearly horizontal plots */
-        { "vtick",  "|",                     NULL } , /* poor for nearly vertical plots */
-        { "dot",    "\\(v~-0.2m~.\\v~0.2m~", NULL } , /* almost invisible */
+        { "bullet", "\\(bu",                NULL } ,
+        { "times",  "\\(mu",                NULL } ,
+        { "plus",   "\\(pl",                NULL } ,
+        { "delta",  "\\(*D",                NULL } ,
+        { "square", "\\(sq",                NULL } ,
+        { "dot",    "\\v~-0.2m~.\\v~0.2m~", NULL } , /* almost invisible */
+        { "box",    "\\f(ZD\\N~110~\\fP",   NULL } , /* can obscure others */
+        { "star",   "\\(**",                NULL } , /* can be confused for overlayed x and + */
+        { "htick",  "\\(em",                NULL } , /* poor for nearly horizontal plots */
+        { "vtick",  "|",                    NULL } , /* poor for nearly vertical plots */
     };
     size_t nmarks = sizeof(symbols)/sizeof(symbols[0]);
     size_t dim, legend_number = 0UL, len, maxdim, q, wordlen, xlines;

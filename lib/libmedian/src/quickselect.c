@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.69 dated 2017-02-26T18:48:49Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.72 dated 2017-03-07T05:57:07Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -47,22 +47,22 @@
  (which could alternatively be implemented as a macro) is provided for that
  purpose.
  In order to be able to compute the rank of array elements for selection, the
- initial array base is maintained, and an internal stack is used to handle
- processing of subarrays resulting from partitioning.
+ initial array base is maintained, and a pair of indices brackets the subarray
+ being processed.  The indices correspond to the ranks of elements.  A similar
+ scheme is used by Musser's introsort, described in "Introspective Sorting and
+ Selection Algorithms".  The same method is used for the array of desired order
+ statistic ranks, similar to that described by Lent & Mahmoud.
  Pivot selection uses Rousseeuw & Basset's remedian, described in "The Remedian:
  A Robust Averaging Method for Large Data Sets", on a sample of a size which is
- a power of 3 taken from the array elements, with sample size limited to the
- logarithm of the array size with a configurable base of 7 or greater. The
- cumulative number of comparisons (assuming the ideal case of perfectly balanced
- partitioning) is then lower than for use of Tukey's "ninther" as used in
- Bentley & McIlroy's qsort ("Engineering a Sort Function").
- Moreover, the comparisons are better distributed among the various
- subarray sizes, with the sample size increasing for larger arrays, and an
- improved (and O (log(N)) rather than O(1)) guarantee of pivot rank.
+ a power of 3 taken from the array elements, with sample size approximately the
+ square root of the array size as described in "Optimal Sampling Strategies for
+ Quicksort" by McGeoch and Tygar, and in "Optimal Sampling Strategies in
+ Quicksort and Quickselect" by Martinez and Roura.
  Elements sampled from the array for use by the pivot selection methods are
  chosen to provide good overall performance, avoiding choices that would fare
- poorly for commonly-seen input sequences (e.g. organ-pipe).
- Partitioning uses a method described by Bentley & McIlroy.
+ poorly for commonly-seen input sequences (e.g. organ-pipe, already-sorted).
+ Partitioning uses a method described by Bentley & McIlroy, with a modification
+ to reduce disorder induced in arrays.
  Comparisons are made between array elements; there is no special-case code nor
  initialization macro.  
  Partitioning can still result in an unfavorable split of the initial subarray;
@@ -75,11 +75,11 @@
  medians, rather than recursion.  Aside from those details, it is similar to the
  method described by Blum, Floyd, Pratt, Rivest, & Tarjan in "Time Bounds for
  Selection".
- Swapping of elements is handled by an efficient inline general-purpose swap
- function.  No attempt is made to optimize for particular array element types.
- The swap function avoids useless work (e.g. when given two pointers to the
- same element).  No specialized macros are required; the swap function requires
- no initialization.
+ Swapping of elements is handled by efficient inline swap functions.  No attempt
+ is made to optimize for specific array element types, but swapping can be
+ performed in units of basic language types.  The swap functions avoid useless
+ work (e.g. when given two pointers to the same element).  No specialized macros
+ are required.
 ******************************************************************************/
 
 /* compile-time configuration options */
@@ -91,78 +91,71 @@
 # define INSERTION_CUTOFF   6UL /* insertion sort arrays this size or smaller */
 #endif
 
-/* Repivoting parameters REPIVOT_FACTOR and REPIVOT_CUTOFF:
-   Subarrays with more than REPIVOT_CUTOFF elements are checked for a large
-   region which is more than (REPIVOT_FACTOR-1)/REPIVOT_FACTOR times the
+/* Repivoting parameters LOPSIDED_LIMIT, REPIVOT_FACTOR, and REPIVOT_CUTOFF:
+   Subarrays with at least REPIVOT_CUTOFF elements are checked for a large
+   region which is at least (REPIVOT_FACTOR-1)/REPIVOT_FACTOR times the
    total number of elements in the subarray.
    To avoid integer overflow, the number of elements in the large region is
    divided by REPIVOT_FACTOR for comparison (bit shifts are used for
    REPIVOT_FACTOR at powers of 2).
+   To avoid unnecessary repivoting on an occasional lopsided partition,
+   repivoting only occurs if the number of lopsided partitions is at least
+   LOPSIDED_LIMIT since the last repivot.
    Median-of-3 pivot selection guarantees at least 1 element in the small
    region.  That plus the pivot guarantees that the large region has at most
    nmemb-2 elements.
-   Therefore, as long as REPIVOT_CUTOFF is greater than median-of-3 cutoff (and
-   it should be), REPIVOT_CUTOFF should be at least REPIVOT_FACTOR+2 to avoid
-   unnecessary division and comparison.
-   Small REPIVOT_FACTOR (e.g. 13UL) keeps adverse inputs from requiring
+   Therefore, as long as REPIVOT_CUTOFF is at least median-of-3 cutoff
+   REPIVOT_CUTOFF should be at least REPIVOT_FACTOR+2 to avoid unnecessary
+   division and comparison.
+   Small REPIVOT_FACTOR (e.g. 6UL) keeps adverse inputs from requiring
    excessive comparisons due to poor partition splits, but causes extra
    comparisons for random inputs due to an occasional lopsided partition.
    Large REPIVOT_FACTOR (e.g. 64UL) allows adverse inputs to require many
    comparisons to resolve marginally poor (not bad enough to repivot)
    partition splits, but has negligible effect on random sequences which
    rarely have extremely lopsided partitions.
-   Examples for REPIVOT_FACTOR,REPIVOT_CUTOFF:
-       14,19 128Ki integers 1.02258 peak random, 1.70173@103 peak adversary
-       16,27 128Ki integers 1.0211 peak random, 1.74917@115 peak adversary
-       huge  128Ki integers 1.01798 peak random
 */
+#ifndef LOPSIDED_LIMIT
+# define LOPSIDED_LIMIT             3
+#endif
 #ifndef REPIVOT_FACTOR
-# define REPIVOT_FACTOR             16UL
+# define REPIVOT_FACTOR             6UL
 #endif
 #ifndef REPIVOT_CUTOFF
-# define REPIVOT_CUTOFF             27UL
+# define REPIVOT_CUTOFF             12UL
 #endif
-
-/* For selection, the array of desired ranks is searched linearly if the array
-   size is small, but binary search is used on the (sorted) array if it is
-   large.  NK_CUTOFF sets the size at which binary search in a sorted array
-   is first used. Recommended value 16UL.
-*/
-#define NK_CUTOFF                   16UL
 
 /* When repivoting is necessary using median-of-medians, the middle third of
    the array is partitioned as a result of finding the median of the medians.
    This partial partitioning may be preserved to avoid some recomparisons
    when repartitioning. Careful coding does not affect regular partitioning,
    but object file size increases due to the additional code required to
-   preserve and use the partial partitoning information to avoid some
+   preserve and use the partial partitioning information to avoid some
    comparisons.
 */
-#define SAVE_PARTIAL  1
+#define SAVE_PARTIAL                1
 
 /* Nothing to configure below this line. */
 
 /* defaults */
-#if ! NK_CUTOFF
-# ifdef NK_CUTOFF
-#  undef NK_CUTOFF
-# endif
-# define NK_CUTOFF                   16UL
+#if ! LOPSIDED_LIMIT
+# undef LOPSIDED_LIMIT
+# define LOPSIDED_LIMIT             3
 #endif
-#if REPIVOT_FACTOR < 12UL
+#if REPIVOT_FACTOR < 5UL
 # undef REPIVOT_FACTOR
-# define REPIVOT_FACTOR              16UL
+# define REPIVOT_FACTOR             6UL
 #endif
 #if ! REPIVOT_FACTOR
 # ifdef REPIVOT_FACTOR
 #  undef REPIVOT_FACTOR
-#  define REPIVOT_FACTOR             16UL
+#  define REPIVOT_FACTOR            6UL
 # endif
 #endif
 #if ! REPIVOT_CUTOFF
 # ifdef REPIVOT_CUTOFF
 #  undef REPIVOT_CUTOFF
-#  define REPIVOT_CUTOFF             27UL
+#  define REPIVOT_CUTOFF            12UL
 # endif
 #endif
 
@@ -201,8 +194,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.69"
-#define MODULE_DATE "2017-02-26T18:48:49Z"
+#define MODULE_VERSION "1.72"
+#define MODULE_DATE "2017-03-07T05:57:07Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -227,11 +220,6 @@
 #include <string.h>             /* strrchr */
 
 /* macros */
-/* Shared stack and array LONG_BIT is enough for the stack, 3 is sufficient for
-   the array, 8 is generous.
-*/
-#undef NREGIONS
-#define NREGIONS (LONG_BIT)+8
 
 /* space-saving */
 #undef V
@@ -258,8 +246,8 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #ifdef INSERTION_CUTOFF
     ", INSERTION_CUTOFF=" xbuildstr(INSERTION_CUTOFF)
 #endif
-#if NK_CUTOFF
-    ", NK_CUTOFF=" xbuildstr(NK_CUTOFF)
+#if LOPSIDED_LIMIT
+    ", LOPSIDED_LIMIT=" xbuildstr(LOPSIDED_LIMIT)
 #endif
 #if REPIVOT_FACTOR
     ", REPIVOT_FACTOR=" xbuildstr(REPIVOT_FACTOR)
@@ -277,22 +265,6 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #endif
 
 /* data structures */
-
-/* Region (resulting from partitioning) information is stored in an array of
-   structures.  This might seem like overkill (it does increase object code size
-   somewhat), but it makes for simpler, more compact, more easily understood and
-   maintained source code, and is easily extensible (e.g. for handling the
-   additional regions resulting from multiple pivots).
-   The same structure is used in the implementation of a program stack, without
-   which an additional function parameter would be required so that order
-   statistic ranks could be correlated with array item positions.
-   The partitioning regions and the program stack share a common array.
-*/
-struct region_struct {
-    char   *p;  /* pointer to the start of the (sub)array */
-    size_t n;   /* number of (sub)array elements */
-    /* n may be set to 0UL to indicate no processing */
-};
 
 /* To avoid repeatedly calculating the number of samples required for pivot
    element selection vs. nmemb, which is expensive, a table is used; then
@@ -360,28 +332,21 @@ static const size_t typsz[NTYPES] = {
 static const unsigned long bitmask[NTYPES] = {
     0x0UL, 0x01UL, 0x03UL, 0x07UL, 0x0fUL, 0x01fUL
 };
-/* Log of type size, indexed by type index. */
-/* initialized at first run */
-static int log2t[NTYPES];
 
 /* alignment; no fiddly bits */
 #define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
 
 /* static functions */
 
-/* initialization of static strings and log2t table at run-time */
+/* initialization of static strings at run-time */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 void initialize_quickselect(V)
 {
-    size_t q;
     const char *s;
 
-    /* Initialize log2t table */
-    for (q=0UL; (NTYPES)>q; q++)
-        log2t[q]=log2s[typsz[q]];
     /* Initialize strings */
     s=strrchr(filenamebuf,'/');
     if (NULL==s) s=filenamebuf; else s++;
@@ -392,108 +357,63 @@ void initialize_quickselect(V)
 /* Array element swaps: */
 /* Called many times from quickselect_internal, medians3. */
 /* count is in chars */
+/* versions to swap by char, short, int, double */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void swap(char *pa, char *pb, size_t count, int swaptype)
+void charswap(char *pa, char *pb, size_t count)
 {
-/* Swap by chars uses supplied pointers */
-# define CHAR_SWAP \
-    while (1) {                   \
-        t=*pa, *pa=*pb, *pb=t;    \
-        if (0UL==--count) break;  \
-        pa++, pb++;               \
-    }
-/* Swap by other types uses typecast pointers */
-# define GENERIC_SWAP \
-    while (1) {                   \
-        t=*px, *px=*py, *py=t;    \
-        if (0UL==--count) break;  \
-        px++, py++;               \
-    }
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        if (5==swaptype) { /* char */
-            char t;
-            CHAR_SWAP
-        } else {
-            count >>= (log2t[swaptype]);
-            switch (swaptype) {
-                case 0 : /* double */
-                    {   double *px=(double *)pa, *py=(double *)pb, t;
-                        GENERIC_SWAP
-                    }
-                break;
-                case 3 : /* int */
-                    {   int *px=(int *)pa, *py=(int *)pb, t;
-                        GENERIC_SWAP
-                    }
-                break;
-                case 4 : /* short */
-                    {   short *px=(short *)pa, *py=(short *)pb, t;
-                        GENERIC_SWAP
-                    }
-                break;
-            }
-        }
+        char t;
+        do {
+            t=*pa, *pa=*pb, *pb=t;
+            if (0UL==--count) break;
+            pa++, pb++;
+        } while (1);
     }
 }
 
-/* region manipulation */
+# define GENERIC_SWAP(type)                 \
+    type *px=(type *)pa, *py=(type *)pb, t; \
+    count /= sizeof(type);                  \
+    do {                                    \
+        t=*px, *px=*py, *py=t;              \
+        if (0UL==--count) break;            \
+        px++, py++;                         \
+    } while (1)
 
-/* Compute the effective size (as count of elements) of a region.  The size is
-   zero if the region is not needed to find requested order statistics.
-   N.B. argument pu points past the last element in the region.
-*/
-/* pk[k] is the 0-based rank of an array element, based on the full array
-   (origin has been saved in pointer po).  The pk array is scanned for
-   each region unless/until an order statistic is found that requires processing
-   the region.  Therefore, uniqueness is not required of the order statistic
-   values in the pk array.
-*/
-/* If the elements of pk are in sorted order, binary search is possible,
-   but linear search is faster for small numbers of order statistics
-   (<= NK_CUTOFF).  A large number of order statistics is not expected.
-*/
-/* called twice from process_regions() */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-size_t effective_size(char *pl, char *pu, char *po,
-    const size_t size, const size_t *pk, const size_t nk)
+void shortswap(char *pa, char *pb, size_t count)
 {
-    size_t n=0UL;
-
-    if (pu>pl) {
-        n=(pu-pl)/size; /* # elements */
-        if (NULL!=pk) {/* selection: is region required? */
-            size_t k, bigrank, minrank;
-
-            /* Smallest ranks in region and just beyond. */
-            minrank=(pl-po)/size, bigrank=(pu-po)/size;
-            if ((NK_CUTOFF) > nk) { /* linear search */
-                /* Loop through requested order statistics, break if/when an
-                   order statistic in region is requested.
-                */
-                for (k=0UL; (k<nk)&&((pk[k]<minrank)||(pk[k]>=bigrank)); k++)
-                    ;
-                if (k>=nk) n=0UL; /* no requested rank in region */
-            } else { /* binary search */
-                size_t lk=0UL, rk=nk-1UL;
-
-                while (lk<=rk) {
-                    k=lk+((rk-lk)>>1); /* avoid overflow */
-                    if (pk[k]<minrank) lk=k+1UL;
-                    else if (pk[k]>=bigrank) {
-                        if (0UL<k) rk=k-1UL; else lk=rk+1UL;
-                    } else break; /* pk[k] is in region */
-                }
-                if (lk>rk) n=0UL; /* no requested rank in region */
-            }
-        }
+    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
+        GENERIC_SWAP(short);
     }
-    return n;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void intswap(char *pa, char *pb, size_t count)
+{
+    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
+        GENERIC_SWAP(int);
+    }
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void doubleswap(char *pa, char *pb, size_t count)
+{
+    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
+        GENERIC_SWAP(double);
+    }
 }
 
 /* medians of sets of 3 elements */
@@ -506,14 +426,15 @@ size_t effective_size(char *pl, char *pu, char *po,
    middle row, to which a pointer is returned.
    N.B. base is not necessarily the first element in the array passed to qsort.
 */
-/* called three times from quickselect_internal() */
+/* called from select_pivot() and repivot() */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 char *medians3(char *base, size_t size,
     int(*compar)(const void *, const void *), size_t row_offset,
-    size_t sample_offset, size_t row_samples, int swaptype)
+    size_t sample_offset, size_t row_samples,
+    void(*swapfunc)(char *,char *,size_t))
 {
     int c;
     char *pa, *pb;
@@ -538,11 +459,11 @@ char *medians3(char *base, size_t size,
             int d=compar(pb,pc);
             if (0!=d) {
                 if ((0<d)&&(0>c)) {
-                    if (0>compar(pa,pc)) swap(pb,pc,size,swaptype);
-                    else swap(pa,pb,size,swaptype);
+                    if (0>compar(pa,pc)) swapfunc(pb,pc,size);
+                    else swapfunc(pa,pb,size);
                 } else if ((0>d)&&(0<c)) {
-                    if (0<compar(pa,pc)) swap(pb,pc,size,swaptype);
-                    else swap(pa,pb,size,swaptype);
+                    if (0<compar(pa,pc)) swapfunc(pb,pc,size);
+                    else swapfunc(pa,pb,size);
                 }
             }
         }
@@ -550,40 +471,170 @@ char *medians3(char *base, size_t size,
     return base+row_offset; /* middle row */
 }
 
-/* array partitioning */
-
-/* Set *pbig to the size of the larger region (in elements).  If the
-   (N.B.) effective size of the smaller region is more than one, add it to the
-   list of regions.  If the larger region does not need to be repivoted, also
-   add it to the list of regions and return 0.  But if the larger region does
-   need to be repivoted, set pointer pointed to be ppb to the start of the
-   larger region and return 1.
-   plg and slg are start and size (in chars) of the large region; psm, ssm for
-   the small region.
-*/
-/* called twice from quickselect_internal() */
+/* quickselect definition (internal interface) */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-int process_regions(char *plg, size_t slg, char *psm,
-    size_t ssm, size_t nmemb, const size_t size, char *po, const size_t *pk,
-    const size_t nk, char **ppb, size_t *pbig, struct region_struct *pr,
-    int *pnr, int ns)
+void quickselect_loop(char *base, size_t first, size_t beyond,
+    const size_t size, int(*compar)(const void *,const void *),
+    const size_t *pk, size_t firstk, size_t beyondk,
+    void(*swapfunc)(char *,char *,size_t)
+#if SAVE_PARTIAL
+    , char **ppeq, char **ppgt
+#endif
+   )
 {
-    int t;
-    size_t n;
+    size_t nmemb=beyond-first;
+    int c, nlopsided=0;
+    char *pd, *pe, *pivot, *pl, *pu;
 
-    *pbig=slg/size; /* large region elements */
-    /* maybe add small region to regions list */
-    n=effective_size(psm,psm+ssm,po,size,pk,nk);
-    if (1UL<n) {
-        t=ns+*pnr; pr[t].p=psm, pr[t].n=n; ++*pnr;
-    }
-    /* process large region */
-    n=effective_size(plg,plg+slg,po,size,pk,nk);
-    if (1UL<n) {
-        /* Determine whether or not to repivot/repartition region of size n
+    while ((NULL!=pk)||(nmemb>(INSERTION_CUTOFF))) {
+        size_t lk, n, p, q, r, rk, s, t;
+        char *pa, *pc, *pf, *pg;
+
+        A((NULL==pk)||(firstk<beyondk));
+        A(first<beyond);
+        /* sample array elements */
+        for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
+            if (nmemb<sampling_table[q].min_nmemb)
+                break; /* stop looking */
+        if (0UL<q) q--; /* sampling table index */
+        n=sampling_table[q].samples; /* total samples (a power of 3) */
+
+        /* select pivot from samples using a fast method */
+        switch (n) {
+            case 1UL :
+                /* best for organ-pipe, OK others */
+                pivot=base+(first+(nmemb>>2))*size;
+                s=r=0UL;
+            break;
+            case 3UL :
+                s=r=(nmemb>>2)*size;                        /* 1/4 spacing */
+                pivot=base+size*(first+(nmemb>>1))-r;      /* first sample */
+            break;
+            default : /* > 3, power of 3 */
+                t = n/3UL;                              /* samples per row */
+                if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL; /* sample spacing */
+                if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s; /* row spacing */
+                s*=size, r*=size;                      /* spacing in chars */
+                pivot=base+size*(first+(nmemb>>1))       /* middle element */
+                    -r                              /* -> middle first row */
+                    -(t>>1)*s;                       /* - half row samples */
+            break;
+        }
+        if (1UL<n) { /* median or remedian of (at least 3) samples */
+            n=sampling_table[--q].samples;
+            pivot=medians3(pivot,size,compar,r,s,n,swapfunc);
+            while (0UL<q) {
+                n=sampling_table[--q].samples;
+                pivot=medians3(pivot,size,compar,n*s,s,n,swapfunc);
+            }
+        }
+
+        /* partition the array around the pivot element */
+#if ! SAVE_PARTIAL
+partition_array: ;
+#endif
+        pl=base+size*first;
+        pa=pc=pl;
+        pg=(pf=pu=base+beyond*size)-size;
+        while (1) { /* loop - partitioning */
+            while ((pc<=pg)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
+                if (c==0) { swapfunc(pivot=pa,pc,size); pa+=size; }
+                pc+=size;
+            }
+            while ((pc<=pg)&&(0>=(c=compar(pivot,pg)))) { /* scan <- */
+                if (c==0) { pf-=size; swapfunc(pg,pivot=pf,size); }
+                pg-=size;
+            }
+            if (pc>pg) break;
+            swapfunc(pc,pg,size); /* <, > */
+            pc+=size; pg-=size;
+        }
+        pg+=size; /* now start of > region */
+        /* canonicalize */
+        if (pf<pu) { /* pg unchanged if pf>=pu */
+            if (pg<pf) { /* pg= original pu if pf>=pg */
+                p=pu-pf, n=pf-pg; if (p<n) n=p;
+                swapfunc(pg,pu-n,n); pg+=p;
+            } else pg=pu;
+        }
+        if (pa<pc) { /* pa= original pl if pa>=pc */
+            if (pl<pa) { /* pa= original pc if pa>=pl */
+                p=pc-pa, n=pa-pl; if (p<n) n=p;
+                swapfunc(pl,pc-n,n); pa=pl+p;
+            } else pa=pc;
+        } else pa=pl;
+        /* |       <            |         =           |      >      | */
+        /*  pl                   a                     g             u*/
+
+check_sizes: ; /* compare partitioned region (effective) sizes */
+#if SAVE_PARTIAL
+        /* update = region pointers (only applicable for median-of-medians) */
+        if ((0UL==firstk)&&(1UL==beyondk)&&(NULL!=ppeq)&&(NULL!=ppgt))
+            *ppeq=pa, *ppgt=pg;
+#endif
+        /* ranks of first element and element beyond = region */
+        p=(pa-base)/size, q=(pg-base)/size;
+        /* sizes of < and > regions (elements) */
+        s=p-first, t=beyond-q;
+        /* revised range of order statistic ranks */
+        /* < region indices [first,p), order statistics [firstk,lk) */
+        /* > region indices [q,beyond), order statistics [rk,beyondk) */
+        if (NULL==pk) { /* sorting */
+            lk=beyondk, rk=firstk;
+        } else {
+            size_t ll, lr, rl, rr;
+
+            /* binary search through pk to find limits for each region */
+            ll=rl=firstk, lr=rr=beyondk;
+            lk=rk=ll+((lr+1UL-ll)>>1);
+            while (ll<lr) {
+                if (pk[lk]>=p) { if (0UL<lk) lr=lk-1UL; else lr=lk; }
+                else ll=lk;
+                lk=ll+((lr+1UL-ll)>>1);
+                if (lk==beyondk) break;
+                A(lk>=firstk);
+            }
+            if ((lk<beyondk)&&(pk[lk]<p)) lk++;
+            A(lk>=firstk);
+            while (rl<rr) {
+                if (pk[rk]<q) { if (rk<beyondk) rl=rk+1UL; else rl=rk; }
+                else rr=rk;
+                rk=rl+((rr-rl)>>1);
+                if (rk==beyondk) break;
+                A(rk<=beyondk);
+            }
+        }
+        A(lk>=firstk);A(rk<=beyondk);A(lk<=rk);
+
+        /* process smaller region (unless no processing required) first */
+        if (s<t) { /* > region is larger */
+            /* recurse on small region, if effective size > 1 */
+            if ((1UL<s)&&((NULL==pk)||(lk>firstk)))
+                quickselect_loop(base,first,p,size,compar,pk,firstk,lk,swapfunc
+#if SAVE_PARTIAL
+                ,ppeq,ppgt
+#endif
+            );
+            /* large region [q,beyond) size t, order statistics [rk,beyondk) */
+            first=q, r=t, firstk=rk;
+        } else { /* < region is larger, or regions are same size */
+            /* recurse on small region, if effective size > 1 */
+            if ((1UL<t)&&((NULL==pk)||(beyondk>rk)))
+               quickselect_loop(base,q,beyond,size,compar,pk,rk,beyondk,swapfunc
+#if SAVE_PARTIAL
+                ,ppeq,ppgt
+#endif
+            );
+            /* large region [first,p) size s, order statistics [firstk,lk) */
+            beyond=p, r=s, beyondk=lk;
+        }
+        /* iterate on large region (size r), if effective size > 1 */
+        if ((2UL>r)||((NULL!=pk)&&(firstk>=beyondk))) return;
+        /* should large region be repivoted? */
+        /* Determine whether or not to repivot/repartition region of size r
            elements (large region) resulting from a partition of nmemb elements.
            Assumed that continued processing of the region w/o repivoting will
            yield a similar split.  Repivot if the cost of repivoting plus
@@ -593,259 +644,155 @@ int process_regions(char *plg, size_t slg, char *psm,
         */
         if ( ((REPIVOT_CUTOFF)<=nmemb)
           && (
-#if REPIVOT_FACTOR == 16UL
-              (n>>4)
-#elif REPIVOT_FACTOR == 32UL
-              (n>>5)
-#elif REPIVOT_FACTOR == 64UL
-              (n>>6)
+#if REPIVOT_FACTOR == 8UL
+              (r>>3)
+#elif REPIVOT_FACTOR == 16UL
+              (r>>4)
 #else
-              (n/(REPIVOT_FACTOR))
+              (r/(REPIVOT_FACTOR))
 #endif
-                              >=nmemb-n-1UL)
-        ) { /* repivot large region */
-            *ppb=plg; return 1;
-        } else {
-            t=ns+*pnr; pr[t].p=plg, pr[t].n=n; ++*pnr;
-        }
-    }
-    return 0;
-}
-
-/* quickselect definition (internal interface) */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void quickselect_internal(void *base, size_t nmemb,
-    const size_t size, int (*compar)(const void *,const void *),
-    const size_t *pk, const size_t nk
+                              >=nmemb-r-1UL)
+        ) /* repivot large region */
+            nlopsided++; /* (tentatively) repivot */
+        if ((LOPSIDED_LIMIT)<=nlopsided) {
 #if SAVE_PARTIAL
-    , char **ppeq, char **ppgt
+            char *pb, *ph;
 #endif
-   )
-{
-    char *pl;  /* left (or lowest) end of array being processed */
-    char *po;  /* origin of array (maintained so that ranks can be computed) */
-    int top=0; /* stack: regions[0..top-1], partition regions above stack */
-    int swaptype; /* index into array of type sizes for swapping size */
-    int i;     /* general integer variable */
-    size_t s;  /* general size_t variable */
-    char *pa, *pg; /* for start of == and > regions */
+            /* yes: do it and check resulting sizes */
+            nlopsided=0; /* clean slate */
 
-    if (2UL>nmemb) return; /* Return early if there's nothing to do. */
-
-    /* Save the original pointer to the start of the (entire) array, so that
-       element ranks can be determined for selection.  Also initialize the
-       character pointer pl to the start (left side) of the array.  And save
-       the original number of elements so that the original end of the array
-       can be recomputed.
-    */
-    pl=po=(char *)base;
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. swaptype is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[swaptype=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
-        s=typsz[swaptype=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
-            s=typsz[swaptype=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(po,i))))
-                swaptype=5; /* char */
-        }
-    }
-
-    /* Outer processing loop: process regions on the stack */
-    /* When there is nothing left to do in the inner loop, the outer processing
-       loop pops a pointer and size from the stack of regions to be processed
-       unless the stack is empty, in which case the sort or selection is
-       complete.
-    */
-    while (1) { /* stack-not-empty loop: break out when stack is empty */
-        struct region_struct regions[(NREGIONS)], *pr;
-        int nregions;       /* number of partition regions above stack */
-
-        /* The inner processing loop iterates while there is a region of size
-           2 or greater to be processed (regions of size 1 are by definition
-           already sorted).
-        */
-        for (nregions=0; 1UL<nmemb;) { /* current region iteration loop */
-            int c, d, j;              /* general integer variables */
-            char *pb, *ph, *pivot, *pu;
+            /* Find pivot by median-of-medians, sets of 3 elements. */
+            p=first+(nmemb>>1); /* middle */
+            pl=base+first*size;
+            /* Finding a pivot with guaranteed intermediate rank. Ideally,
+               median (50%).  Blum, Floyd, Pratt, Rivest, Tarjan
+               median-of-medians using sets of 5 elements with recursion
+               guarantees rank in (asymptotically) 30-70% range, often
+               better; can guarantee linear median-finding, N log(N)
+               sorting. Simplification ignores "leftover" elements with a
+               slight increase in rank range.  Non-recursive method (using
+               separate linear median finding) can use sets of 3 elements to
+               provide a tighter 33.33% to 66.67% range (again, slightly
+               wider if "leftover" elements are ignored) at lower
+               computational cost.
+            */
+            n=nmemb, pb=pl;
+            /* Medians of sets of 3 elements. */
+            n/=3UL;    /* number of complete sets */
+            if (1UL<=n)
+                pb=medians3(pl,size,compar,n*size,size,n,swapfunc);
+            pc=pb;
+            if (1UL<n) { /* median of medians */
+                size_t karray[1];
+                karray[0]=p; /* upper-median for even size arrays */
+                q=(pb-base)/size; /* first */
+                s=first+n; /* beyond */
+                pf=base+s*size;
+                quickselect_loop(base,q,s,size,compar,karray,0UL,1UL,swapfunc
 #if SAVE_PARTIAL
-            char *pc, *pd, *pe, *pf;
+                    ,&pd,&pe
 #endif
-            size_t n, p, q, r, t;
-
-            if ((NULL==pk) /* sorting only */
-            && (nmemb<=(INSERTION_CUTOFF))) {
-                /* Handle small regions with insertion sort. */
-                /* At the end of insertion sort, break out of the inner loop. */
-                for (pa=pl,pu=pl+(nmemb-1UL)*size; pa<pu; pa+=size)
-                    for (pb=pa; (pb>=pl)&&(0<compar(pb,pg=pb+size)); pb-=size)
-                        swap(pb,pg,size,swaptype);
-        /* <- */break; /* Done; break out of inner loop, check stack. */
+                );
+#if SAVE_PARTIAL
+                /* Middle third of array (medians) is partitioned. */
+                pivot=pd;
+#else
+                pe=pd=pivot=base+karray[0]*size; /* median of medians */
+#endif
+            } else {
+                pf=pb+n*size;
             }
 
-            /* Partition the array into <, =, and > regions. */
-            /* Modified (for fast_pivot initialization, deferred pivot swap,
-               cache-friendly comparison, good_pivot break-glass, swap2,
-               final blockmoves) Bentley&McIlroy "split end" partition.
+#if SAVE_PARTIAL
+            /* Partition, avoiding recomparison of already partitioned (by
+               median-of-medians) elements.  Similar to, but a bit more
+               involved than regular partitioning.
             */
-            /* Initially: */
-            /* +------------------------------------------------------------+ */
-            /* |                             ?                              | */
-            /* +------------------------------------------------------------+ */
-            /*  l                                                            g*/
-            /*  a                                                            h*/
-            /*  b                                                            u*/
-            /* Invariant pointer pl -> first [sub-]array element.    */
-            /* = elements (by comparison to pivot) are in a region on the left,
-                  delimited by pl (first element) and pa (past last element.
+            pa=pb=pl;
+            ph=pu=base+beyond*size;
+            pg=ph-size;
+            /* |   ?   : < :=p=: > :   ?   | */
+            /*          c   d   e   f       u*/
+            /* reinitialize for repartitioning */
+            /* |   ?   : < :=p=: > :   ?   | */
+            /*  pl      c   d   e   f       u*/
+            /*  a=b                       g h*/
+            /* McGeoch & Tygar suggest that partial partition information
+               from median-of-medians might be used to avoid recomparisons
+               during repartitioning.
             */
-            /* Elements comparing small vs. pivot are in region delimited by pa
-                  (first element) and pb (past last element).
+            /* Skip over some already-partitioned sections. */
+            /* Separate partitioning loop here to avoid overhead when not
+               preserving partial partition. Subtleties involved: empty
+               regions (pc-pd, pe-pf, pg-ph, pl-pa, pa-pb), whether pb or pg
+               reaches the partially partitioned region first.
             */
-            /* Unknown region delimited by pb (first element) and pg (past last
-                  element.  pa<=pb (always; they are equal if there are no <
-                  elements)
-            */
-            /* Elements comparing large vs. pivot are in region [pg,ph).
-                  Pointer pu points past the last element.
-            */
-            /* A second = region is [ph,pu).                                  */
-            /* After the optimized inner loops, pointer pg is a pointer
-               to the start of the > region rather than the end of the unknown
-               region; this is to facilitate calls block moves
-            */
-            /* Region [pc,pf) is already partitioned; pb and pg skip over parts
-               of this range.
-            */
-            /* +------------------------------------------------------------+ */
-            /* |    =    |    <    |    ? : < :=: > :   ?   |   >   |   =   | */
-            /* +------------------------------------------------------------+ */
-            /*  pl        a         b      c   d e   f     G g       h       u*/
-            /* Upper and lower diagram lines henceforth omitted for brevity. */
-            /* Select a pivot element using a fast method w/ only poor rank
-               guarantee.  Adaptive pivot selection: remedian of samples,
-               ninther, median-of-3, singleton.  The number of samples depends
-               on array size and sampling base for remedian of samples.
-            */
-            /* Determine how many samples to take from the array for pivot
-               selection.  Find sampling_table entry appropriate for array size.
-            */
-            for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
-                if (nmemb<sampling_table[q].min_nmemb)
-                    break; /* stop looking */
-            if (0UL<q) q--; /* sampling table index */
-            n=sampling_table[q].samples; /* total samples (a power of 3) */
-            /* Samples uniformly spaced in rows (which are also uniformly
-               spaced), but N.B. sample spacing from the end of one row to the
-               first sample on the next row is NOT necessarily the same as
-               sample spacing within a row.  Always 3 rows. Set s to chars
-               sample spacing within rows. Set r to row spacing in chars.
-            */
-            switch (n) {
-                case 1UL :
-                    pivot=pl+(nmemb>>2)*size; /*best for organ-pipe, others OK*/
-                    s=r=0UL;
-#if ASSERT_CODE
-                    t=1UL; /* for assertion */
-#endif /* ASSERT_CODE */
-                break;
-                case 3UL :
-#if ASSERT_CODE
-                    t=1UL;                    /* 1 sample/row (for assertion) */
-#endif /* ASSERT_CODE */
-                    s=r=(nmemb>>2)*size;                       /* 1/4 spacing */
-                    pivot=pl+size*(nmemb>>1)-r;               /* first sample */
-                break;
-                default : /* > 3, power of 3 */
-                    t=n/3UL;                               /* samples per row */
-                    r=p=nmemb/3UL;   /* row spacing (elements) = elements/row */
-                    /* uniform spacing in row, avoiding samples at each end */
-                    s=p/(t+1UL);                 /* sample spacing (elements) */
-                    s*=size, r*=size;                     /* spacing in chars */
-                    /* temporarily point pivot to first sample in first row */
-                    pivot=pl+size*(nmemb>>1)                /* middle element */
-                        -r                             /* -> middle first row */
-                        -(t>>1)*s;                      /* - half row samples */
-                break;
-            }
-#if ASSERT_CODE
-            A(pl<=pivot);A(pivot<pl+nmemb*size); /* pivot is in the array */
-            /* assertion below asserts that last sample < pu
-               i.e. pl+(r<<1)*(t-1UL)*s<pl+nmemb*size
-            */
-            if (0UL!=t); A((r<<1)+(t-1UL)*s<nmemb*size);
-#endif /* ASSERT_CODE */
-            /* Select a pivot element from the array samples */
-            if (1UL<n) { /* median or remedian of (at least 3) samples */
-                /* First stage may have r!=3*s */
-                n=sampling_table[--q].samples;
-                pivot=medians3(pivot,size,compar,r,s,n,swaptype);
-                /* remaining stages start with r=s*n, then r/=3 */
-                /* loop control using sampling_table sample sizes */
-                while (0UL<q) {
-                    n=sampling_table[--q].samples;
-                    /* For each set of 3 samples, set one element to the median
-                       of the set. medians3 returns a pointer to the first
-                       element of the resulting set of medians, which are
-                       uniformly offset by the sample spacing s.
+            while (1) { /* partitioning loop */
+                /* +-----------------------------------------------------+ */
+                /* |   =   |   <   |  ?  : < :=: > :  ?  |   >   |   =   | */
+                /* +-----------------------------------------------------+ */
+                /*  pl      a       b     c   d e   f   G g       h       u*/
+                A(pl<=pa);A(pa<=pb);A(pg<=ph);A(ph<=pu);
+                A(pc<=pd);A(pd<pe);A(pe<=pf);
+                while (pb<=pg) { /* scan -> */
+                    /* 1. Like regular partitioning except when within
+                          partial partition from selection.
                     */
-                    pivot=medians3(pivot,size,compar,n*s,s,n,swaptype);
-                    /* Repeat for the samples in the medians row (i.e. the
-                       medians of this group of sets) until only a single median
-                       remains (i.e. row spacing < sample spacing). That final
-                       median (the pivot element) is located at pivot.
+                    while (((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
+                        if (0==c) { swapfunc(pivot=pa,pb,size); pa+=size; }
+                        pb+=size;
+                    }
+                    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+                    /* 2. Within partial partition; no recomparisons. */
+                    if ((pc<=pb)&&(pb<pf)) { /* partitioned */
+                        /* First skip over < elements, possibly past pg. */
+                        if (pd<=pg) { /* If pg didn't, move = block. */
+                            if (pb<pe) { /* move = elements as a block */
+                                if (pa<pd) { /* pa=pe if pd<=pa */
+                                    p=pe-pd, n=pd-pa; if (p<n) n=p;
+                                    swapfunc(pa,pe-n,n); pa+=p;
+                                } else pa=pe;
+                                pivot=pa-size;
+                                pb=pe;
+                            }
+                        } else pb=pg+size; /* < elements */
+                        if ((pb>=pe)&&(pb<pf)) break; /* at > element */
+                    } else break; /* not partitioned region; break loop */
+                }
+                A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+                while (pb<=pg) { /* scan <- */
+                    /* 3. Like regular partitioning except when within partial
+                          partition from selection.
                     */
+                    while (((pf<=pg)||(pg<pc))&&(0>=(c=compar(pivot,pg)))) {
+                        if (0==c) { ph-=size; swapfunc(pg,pivot=ph,size); }
+                        pg-=size;
+                    }
+                    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+                    /* 4. Within partial partition; no recomparisons. */
+                    if ((pc<=pg)&&(pg<pf)) { /* partitioned */
+                        /* First skip over > elements, possibly past pb. */
+                        if (pb<pe) { /* If pb didn't, move = block. */
+                            if (pd<=pg) { /* move = elements as a block */
+                                if (pe<ph) { /* ph= original pd if pe>=ph */
+                                    p=ph-pe, n=pe-pd; if (p<n) n=p;
+                                    swapfunc(pd,ph-n,n); ph-=n;
+                                } else ph=pd;
+                                pivot=ph;
+                                pg=pd-size;
+                            }
+                        } else pg=pb-size; /* > elements */
+                        if ((pg<pd)&&(pc<=pg)) break; /* at < element */
+                    } else break; /* not partitioned region; break loop */
                 }
+                A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+                if (pb>pg) break;
+                A(pb!=pg); /* no self-swapping */
+                swapfunc(pb,pg,size);
+                pb+=size, pg-=size;
             }
-#if SAVE_PARTIAL
-            pd=pc=
-#endif
-            pg=(ph=pu=(pa
-#if SAVE_PARTIAL
-            =pe=pf
-#endif
-            =pb=pl)+nmemb*size)-size;
-            /* Partitioning per se. */
-            /* NO disorder-causing pivot swap initially; pivot swap deferred. */
-#if ! SAVE_PARTIAL
-partition:  ; /* Explicit loop (w/ goto) avoids overhead for normal inputs. */
-#endif
-            /* A separate partitioning loop is used after repivoting, if partial
-               partition information is preserved and used to avoid
-               recomparisons.
-            */
-            while (1) { /* partitioning loop after fast_pivot */
-                /* no partial partition to preserve */
-                /* pivot updated when swapped */
-                while ((pb<=pg)&&(0<=(c=compar(pivot,pb)))) { /* scan -> */
-                    if (0==c) { swap(pivot=pa,pb,size,swaptype); pa+=size; }
-                    pb+=size;
-                }
-                while ((pb<=pg)&&(0>=(d=compar(pivot,pg)))) { /* scan <- */
-                    if (0==d) { ph-=size; swap(pg,pivot=ph,size,swaptype); }
-                    pg-=size;
-                }
-#define DUAL_SWAP(unused_arg)              \
-    if (pb>pg) break;                      \
-    A(pb!=pg); /* no self-swapping */      \
-    swap(pb,pg,size,swaptype); /* <, > */  \
-    pb+=size, pg-=size
-                DUAL_SWAP();
-            }
-#if SAVE_PARTIAL
-partitioned:; /* array is partitioned with equal elements at the ends */
-#endif
             pg+=size; /* now start of > region */
+            /* canonicalize */
             /* |    =  |      <             |             >    |   =    | */
             /*  pl      a                    g                  h        u*/
             /* swap > and upper = regions, set pg to start of > */
@@ -854,7 +801,7 @@ partitioned:; /* array is partitioned with equal elements at the ends */
             if (ph<pu) { /* pg unchanged if ph>=pu */
                 if (pg<ph) { /* pg= pu if ph<=pg */
                     p=pu-ph, n=ph-pg; if (p<n) n=p;
-                    swap(pg,pu-n,n,swaptype); pg+=p;
+                    swapfunc(pg,pu-n,n); pg+=p;
                 } else pg=pu;
             }
             /* |    =  |      <           |        =      |      >      | */
@@ -864,211 +811,26 @@ partitioned:; /* array is partitioned with equal elements at the ends */
             if (pa<pb) { /* pa= original pl if pa>=pb */
                 if (pl<pa) { /* pa= original pb if pa<=pl */
                     p=pb-pa, n=pa-pl; if (p<n) n=p;
-                    swap(pl,pb-n,n,swaptype); pa=pl+p;
+                    swapfunc(pl,pb-n,n); pa=pl+p;
                 } else pa=pb;
             } else pa=pl;
-            A(pl<=pa); A(pa<=pb); A(pg<=pu);
+            A(pl<=pa); A(pa<=pg); A(pg<=pu);
             /* |       <            |         =           |      >      | */
             /*  pl                   a                     g             u*/
-            A(pl<=pa); A(pa<=pg); A(pg<=pu);
-            /* Examine <, > region sizes, determine whether to repivot. */
-            q=pa-pl; /* size of the < region, in chars */
-            r=pu-pg;  /* size of the > region, in chars */
-            if ((q)<(r)) /* > region is larger */
-                d=process_regions(pg,r,pl,q,nmemb,size,po,pk,nk,&pl,&n,
-                    regions,&nregions, top);
-            else /* < region is larger, or regions are the same size */
-                d=process_regions(pl,q,pg,r,nmemb,size,po,pk,nk,&pl,&n,
-                    regions,&nregions, top);
-            if (0!=d) { /* repivot required */
-                /* repivot/partition big region w/ pl,n from process_regions */
-                /* |        <           |         =           |      >      | */
-                /*  pl                   a                     g             u*/
-                /* Finding a pivot with guaranteed intermediate rank. Ideally,
-                   median (50%).  Blum, Floyd, Pratt, Rivest, Tarjan
-                   median-of-medians using sets of 5 elements with recursion
-                   guarantees rank in (asymptotically) 30-70% range, often
-                   better; can guarantee linear median-finding, N log(N)
-                   sorting. Simplification ignores "leftover" elements with a
-                   slight increase in rank range.  Non-recursive method (using
-                   separate linear median finding) can use sets of 3 elements to
-                   provide a tighter 33.33% to 66.67% range (again, slightly
-                   wider if "leftover" elements are ignored) at lower
-                   computational cost.
-                */
-                nmemb=n, pa=pl;
-                /* Medians of sets of 3 elements. */
-                n/=3UL;    /* number of complete sets */
-                if (1UL<=n)
-                    pa=medians3(pl,size,compar,n*size,size,n,swaptype);
-                if (1UL<n) { /* median of medians */
-                    size_t karray[1];
-                    karray[0]=n>>1; /* upper-median for even size arrays */
-                    quickselect_internal(pa,n,size,compar,karray,1UL
-#if SAVE_PARTIAL
-                        ,&pd,&pe
-#endif
-                    );
-                    /* Middle third of array (medians) is partitioned. */
-#if SAVE_PARTIAL
-                    pivot=pd;
+            goto check_sizes;
 #else
-                    pivot=pa+karray[0]*size; /* pointer to median of medians */
+            /* regular partition, repeating some comparisons */
+            goto partition_array;
 #endif
-                }
-#if SAVE_PARTIAL
-                pf=pa+n*size;
-                pc=pa;
-#endif
-                /* |   ?   : < :=p=: > :   ?   | */
-                /*          c   d   e   f       u*/
-                /* reinitialize for repartitioning */
-                /* |   ?   : < :=p=: > :   ?   | */
-                /*  pl      c   d   e   f       u*/
-                /*  a=b                       g h*/
-                pg=(ph=pu=(pa=pb=pl)+nmemb*size)-size;
-                /* McGeoch & Tygar suggest that partial partition information
-                   from median-of-medians might be used to avoid recomparisons
-                   during repartitioning.
-                */
-#if SAVE_PARTIAL
-                /* Skip over some already-partitioned sections. */
-                /* Separate partitioning loop here to avoid overhead when not
-                   preserving partial partition. Subtleties involved: empty
-                   regions (pc-pd, pe-pf, pg-ph, pl-pa, pa-pb), whether pb or pg
-                   reaches the partially partitioned region first.
-                */
-                while (1) { /* partitioning loop after median-of-medians */
-            /* +------------------------------------------------------------+ */
-            /* |    =    |    <    |    ? : < :=: > :   ?   |   >   |   =   | */
-            /* +------------------------------------------------------------+ */
-            /*  pl        a         b      c   d e   f     G g       h       u*/
-                    A(pl<=pa);A(pa<=pb);A(pg<=ph);A(ph<=pu);
-                    A(pc<=pd);A(pd<pe);A(pe<=pf);
-                    while (pb<=pg) { /* scan -> */
-                        /* 1. Like regular partitioning except when within
-                              partial partition from selection.
-                        */
-                        while (((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
-                            if (0==c) { swap(pivot=pa,pb,size,swaptype); pa+=size; }
-                            pb+=size;
-                        }
-                        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-                        /* 2. Within partial partition; no recomparisons. */
-                        if ((pc<=pb)&&(pb<pf)) { /* partitioned */
-                            /* First skip over < elements, possibly past pg. */
-                            if (pd<=pg) { /* If pg didn't, move = block. */
-                                if (pb<pe) { /* move = elements as a block */
-                                    if (pa<pd) { /* pa=pe if pd<=pa */
-                                        p=pe-pd, n=pd-pa; if (p<n) n=p;
-                                        swap(pa,pe-n,n,swaptype); pa+=p;
-                                    } else pa=pe;
-                                    pivot=pa-size;
-                                    pb=pe;
-                                }
-                            } else pb=pg+size; /* < elements */
-                            if ((pb>=pe)&&(pb<pf)) break; /* at > element */
-                        } else break; /* not partitioned region; break loop */
-                    }
-                    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-                    while (pb<=pg) { /* scan <- */
-                        /* 3. Like regular partitioning except when within partial
-                              partition from selection.
-                        */
-                        while (((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
-                            if (0==d) { ph-=size; swap(pg,pivot=ph,size,swaptype); }
-                            pg-=size;
-                        }
-                        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-                        /* 4. Within partial partition; no recomparisons. */
-                        if ((pc<=pg)&&(pg<pf)) { /* partitioned */
-                            /* First skip over > elements, possibly past pb. */
-                            if (pb<pe) { /* If pb didn't, move = block. */
-                                if (pd<=pg) { /* move = elements as a block */
-                                    if (pe<ph) { /* ph= original pd if pe>=ph */
-                                        p=ph-pe, n=pe-pd; if (p<n) n=p;
-                                        swap(pd,ph-n,n,swaptype); ph-=n;
-                                    } else ph=pd;
-                                    pivot=ph;
-                                    pg=pd-size;
-                                }
-                            } else pg=pb-size; /* > elements */
-                            if ((pg<pd)&&(pc<=pg)) break; /* at < element */
-                        } else break; /* not partitioned region; break loop */
-                    }
-                    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-                    DUAL_SWAP();
-                }
-                goto partitioned; /* Canonicalize and process regions. */
-#else
-                /* Partial partition not preserved; repartition all. */
-                goto partition;
-#endif
-            }
-
-            /* Array is partitioned into 3 or more regions around pivot element;
-               some regions may require processing.  Sort regions by effective
-               size.
-            */
-            /* Sorting the regions by size (with regions not requiring
-               processing counted as zero size) provides for processing the
-               regions in an appropriate order, i.e. the largest region to be
-               processed will be at regions[top], and regions[top+nregions-1]
-               either requires no processing or is the smallest region.
-               Et cetera.
-               An in-line selection sort is used as the number of regions is
-               expected to be small, and the region size is compared directly
-               (selection sort uses minimum swaps, which dominate the cost when
-               comparisons are cheap, as in this case).
-            */
-            for (c=top,j=top+nregions; c<j; c++) {
-                for (i=d=c; d<j; d++)
-                    if (regions[d].n>regions[i].n) i=d;
-                if (i!=c) {
-                    /* dedicated swap */
-                    struct region_struct temp;
-                    temp=regions[i], regions[i]=regions[c], regions[c]=temp;
-                }
-            }
-
-            /* Process partitioned regions.
-               Push the largest region(s) on a stack for later processing, and
-               process the smallest region first, iteratively.  The smallest
-               region (which is expected to use less stack depth to process) is
-               disposed of first; after it has been processed, the stack
-               resources used in processing it have been released, the problem
-               size has been reduced, and the large region(s) can be processed.
-               If processing only one region, do so iteratively.
-               If no region needs to be processed, the sort (or selection) is
-               complete.
-            */
-            /* Regions have been sorted: largest first.  */
-            /* process smallest size >1 region iteratively, defer other(s) */
-            for (i=top+nregions-1; top<=i; i--)
-                if (1UL<regions[i].n) break;
-            if (top<=i) {
-                pl=regions[i].p, nmemb=regions[i].n; /* process iteratively */
-                if (i>top) top=i;  /* others become part of the stack */
-            } else break;
-            nregions=0;
-
-            /* The inner loop handles iterative processing, while nmemb > 1 */
-        } /* 1UL<nmemb loop */
-        /* Check stack for more work; if the stack is empty, quickselect is
-           finished.  Otherwise, pop a region from the stack and process it.
-        */
-        if (0>=top) break; /* Done; function returns to caller. */
-        /* Pop a set of parameters for a sub-array to be processed */
-        pr=&(regions[--top]); pl=pr->p, nmemb=pr->n;
-    } /* stack not empty loop */
-    /* Done. */
-#if SAVE_PARTIAL
-    if (1UL==nk) { /* median selection only */
-        /* Preserve partition region boundary information. */
-        if (NULL!=ppeq) *ppeq = pa; /* < region [pl,pa) */
-        if (NULL!=ppgt) *ppgt = pg; /* = region [pa,pg), > region [pg,pu) */
+        }
+        /* no repivot: just process large region as usual */
+        nmemb=r;
     }
-#endif
+    if (2UL>nmemb) return;
+    /* insertion sort */
+    for (pd=pl=base+first*size,pu=base+(beyond-1UL)*size; pd<pu; pd+=size)
+        for (pe=pd; (pe>=pl)&&(0<compar(pe,pivot=pe+size)); pe-=size)
+            swapfunc(pe,pivot,size);
 }
 
 /* comparison function for sorting order statistic ranks */
@@ -1091,6 +853,10 @@ int size_t_cmp(const void *p1, const void *p2)
 void quickselect(void *base, size_t nmemb, const size_t size,
     int (*compar)(const void *,const void *), size_t *pk, size_t nk)
 {
+    int i, t;  /* general integer variables */
+    size_t s;  /* general size_t variable */
+    void (*swapfunc)(char *,char *,size_t);
+
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
     */
@@ -1098,22 +864,51 @@ void quickselect(void *base, size_t nmemb, const size_t size,
         errno=EINVAL;
         return;
     }
+
+    if (2UL>nmemb) return; /* Return early if there's nothing to do. */
+
     /* Initialization of strings is performed here (rather than in
        quickselect_internal) so that quickselect_internal can be made inline.
     */
     if ((char)0==quickselect_initialized) initialize_quickselect();
+
     /* Simplify tests for selection vs. sorting by ensuring a NULL pointer when
        sorting. Ensure consistency between pk and nk.
     */
-    if (NULL==pk) nk=0UL;
-    else if (0UL==nk) pk=NULL;
-    else if ((NK_CUTOFF)<=nk) /* binary search requires sorted pk */
-        quickselect_internal((void *)pk,nk,sizeof(size_t),size_t_cmp,NULL,0UL
-#if SAVE_PARTIAL
-            ,NULL,NULL
-#endif
-        );
-    quickselect_internal(base,nmemb,size,compar,pk,nk
+    if (0UL==nk) pk=NULL;
+    else if (NULL==pk) nk=0UL;
+    else if (1UL<nk) /* binary search requires sorted pk */
+        quickselect((void *)pk,nk,sizeof(size_t),size_t_cmp,NULL,0UL);
+
+    /* Determine size of data chunks to copy for element swapping.  Size is
+       determined by element size and alignment. typsz is an
+       array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
+    */
+    s=typsz[t=0]; /* double */
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+        s=typsz[t=3]; /* int */
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+            s=typsz[t=4]; /* short */
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(base,i))))
+                s=typsz[t=5]; /* char */
+        }
+    }
+    switch (t) {
+        case 0 :  swapfunc=doubleswap;
+        break;
+        case 3 :  swapfunc=intswap;
+        break;
+        case 4 :  swapfunc=shortswap;
+        break;
+        default : swapfunc=charswap;
+        break;
+    }
+
+    quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapfunc
 #if SAVE_PARTIAL
         ,NULL,NULL
 #endif
@@ -1124,6 +919,10 @@ void quickselect(void *base, size_t nmemb, const size_t size,
 void QSORT_FUNCTION_NAME (void *base, size_t nmemb, size_t size,
     int (*compar)(const void *,const void *))
 {
+    int i, t;  /* general integer variables */
+    size_t s;  /* general size_t variable */
+    void (*swapfunc)(char *,char *,size_t);
+
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
     */
@@ -1131,11 +930,43 @@ void QSORT_FUNCTION_NAME (void *base, size_t nmemb, size_t size,
         errno=EINVAL;
         return;
     }
+
+    if (2UL>nmemb) return; /* Return early if there's nothing to do. */
+
     /* Initialization of strings is performed here (rather than in
        quickselect_internal) so that quickselect_internal can be made inline.
     */
     if ((char)0==quickselect_initialized) initialize_quickselect();
-    quickselect_internal(base,nmemb,size,compar,NULL,0UL
+
+    /* Determine size of data chunks to copy for element swapping.  Size is
+       determined by element size and alignment. typsz is an
+       array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
+    */
+    s=typsz[t=0]; /* double */
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+        s=typsz[t=3]; /* int */
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+            s=typsz[t=4]; /* short */
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(base,i))))
+                s=typsz[t=5]; /* char */
+        }
+    }
+    switch (t) {
+        case 0 :  swapfunc=doubleswap;
+        break;
+        case 3 :  swapfunc=intswap;
+        break;
+        case 4 :  swapfunc=shortswap;
+        break;
+        default : swapfunc=charswap;
+        break;
+    }
+
+    quickselect_loop(base,0UL,nmemb,size,compar,NULL,0UL,0UL,swapfunc
 #if SAVE_PARTIAL
         ,NULL,NULL
 #endif
