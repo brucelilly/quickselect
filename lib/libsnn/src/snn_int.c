@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    snn_int.c copyright 2011 - 2017 Bruce Lilly.   \ snn_int.c $
+* $Id: ~|^` @(#)    snn_int.c copyright 2011-2017 Bruce Lilly.   \ snn_int.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is snn_int.c version 2.10 2017-02-25T03:54:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is snn_int.c version 2.11 2017-03-08T20:38:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/src/s.snn_int.c */
@@ -112,10 +112,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: snn_int.c ~|^` @(#)"
 #define SOURCE_MODULE "snn_int.c"
-#define MODULE_VERSION "2.10"
-#define MODULE_DATE "2017-02-25T03:54:13Z"
+#define MODULE_VERSION "2.11"
+#define MODULE_DATE "2017-03-08T20:38:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2011 - 2017"
+#define COPYRIGHT_DATE "2011-2017"
 
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -165,7 +165,7 @@ static const char *source_file = NULL;
 
 #define SNN_BASE_OFFSET SNN_MIN_BASE
 #define SNN_MIN_POWER 0
-#define SNN_MAX_POWER LONG_BIT
+#define SNN_MAX_POWER (LONG_BIT)
 /* lazy evaluation to deal with ULONG_MAX on various machines */
 static unsigned long int snn_base_pow[SNN_MAX_BASE+1-SNN_BASE_OFFSET][SNN_MAX_POWER+1-SNN_MIN_POWER];
 static unsigned int snn_max_pow[SNN_MAX_BASE+1-SNN_BASE_OFFSET];
@@ -173,87 +173,43 @@ static unsigned int snn_max_pow[SNN_MAX_BASE+1-SNN_BASE_OFFSET];
 /* initialize snn_almost_one, etc. at run-time */
 static void initialize_snn_int(void)
 {
-    unsigned long int base, pow;
+    unsigned long int base, pow, ul;
     const char *s;
 
     s = strrchr(filenamebuf, '/');
     if (NULL == s)
         s = filenamebuf;
     snn_int_initialized = register_build_strings(NULL, &source_file, s);
-    /* initialize snn_base_pow to all 0UL values for lazy evaluation
-       (except power 0 -> 1UL and power 1 -> base for all bases)
-    */
     for (base=SNN_MIN_BASE; SNN_MAX_BASE >= base; base++) {
         snn_base_pow[base-SNN_BASE_OFFSET][0] = 1UL;
-        snn_base_pow[base-SNN_BASE_OFFSET][1] = base;
+        ul = snn_base_pow[base-SNN_BASE_OFFSET][1] = base;
         for (pow=2UL; SNN_MAX_POWER >= pow; pow++) {
-            snn_base_pow[base-SNN_BASE_OFFSET][pow] = 0UL;
+            if ((ULONG_MAX) / base <= ul) {
+                snn_base_pow[base-SNN_BASE_OFFSET][pow] = ULONG_MAX;
+            } else {
+                ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = ul * base;
+                snn_max_pow[base-SNN_BASE_OFFSET] = pow;
+            }
         }
-        snn_max_pow[base-SNN_BASE_OFFSET] = SNN_MAX_POWER;
     }
 }
 
-/* forward declarations */
-static unsigned long int snn_base_power(unsigned int, unsigned int,
-    void (*)(int, void *, const char *, ...), void *);
+/* return of base raised to power pow */
+/* N.B. initialize_snn must be called before first use */
+/* called by: int_d, snn_uint */
 static
 #if defined(__STDC__) && __STDC_VERSION__ > 199900UL
 inline
 #endif
-unsigned int snn_max_power(unsigned int,
-    void (*)(int, void *, const char *, ...), void *);
-
-/* lazy evaluation and return of base raised to power pow */
-/* calls: self, snn_max_power */
-/* called by: snn_max_power, snn_uint */
-static unsigned long int snn_base_power(unsigned int base, unsigned int pow,
+unsigned long int snn_base_power(unsigned int base, unsigned int pow,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
-    unsigned long int ul;
-
-    ul = snn_base_pow[base-SNN_BASE_OFFSET][pow];
-    if (0UL == ul) { /* uninitialized */
-        switch (pow) {
-            unsigned int pow2, pow3;
-            unsigned long int ul2, ul3;
-
-            case 0U: /* shouldn't happen if initialized */
-                ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = 1UL;
-            break;
-            case 1U: /* shouldn't happen if initialized */
-                ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = base;
-            break;
-            default:
-                pow2 = pow / 2U;
-                pow3 = pow - pow2;
-                ul2 = snn_base_power(base, pow2, f, log_arg);
-                if (pow2 == pow3) { /* pow % 2 == 0 */
-                    if (ULONG_MAX / ul2 < ul2) { /* ul2^2 > ULONG_MAX */
-                        ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = ULONG_MAX;
-                        if (snn_max_power(base, f, log_arg) >= pow)
-                            snn_max_pow[base-SNN_BASE_OFFSET] = pow - 1U;
-                    } else {
-                        ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = ul2 * ul2;
-                    }
-                } else {
-                    ul3 = snn_base_power(base, pow3, f, log_arg);
-                    if (ULONG_MAX / ul3 < ul2) { /* ul2 * ul3 > ULONG_MAX */
-                        ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = ULONG_MAX;
-                        if (snn_max_power(base, f, log_arg) >= pow)
-                            snn_max_pow[base-SNN_BASE_OFFSET] = pow -1U;
-                    } else {
-                        ul = snn_base_pow[base-SNN_BASE_OFFSET][pow] = ul2 * ul3;
-                    }
-                }
-            break;
-        }
-    }
-    return ul;
+    return snn_base_pow[base-SNN_BASE_OFFSET][pow];
 }
 
-/* lazy evaluation of maximum power to which a base can be raised with result <= ULONG_MAX */
-/* calls: initialize_snn, snn_base_power */
-/* called by: snn_base_power, snn_uint */
+/* maximum power to which a base can be raised with result <= ULONG_MAX */
+/* N.B. initialize_snn must be called before first use */
+/* called by: snn_uint */
 static
 #if defined(__STDC__) && __STDC_VERSION__ > 199900UL
 inline
@@ -261,16 +217,7 @@ inline
 unsigned int snn_max_power(unsigned int base,
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
-    unsigned int u;
-
-    if ((unsigned char)0U == snn_int_initialized)
-        initialize_snn_int();
-    u = snn_max_pow[base-SNN_BASE_OFFSET];
-    if (SNN_MAX_POWER == u) {
-        (void)snn_base_power(base, u, f, log_arg);
-        u = snn_max_pow[base-SNN_BASE_OFFSET];
-    }
-    return u;
+    return snn_max_pow[base-SNN_BASE_OFFSET];
 }
 
 /* d is >= 0.0
@@ -291,8 +238,6 @@ long int int_d(double d,
     static const char __func__[] = "int_d";
 #endif
 
-    if ((unsigned char)0U == snn_int_initialized)
-        initialize_snn_int();
     if (0.0 > d) e = 0.0 - d;
     else e = d;
     if (NULL != f) {
@@ -344,7 +289,7 @@ long int snlround(double d,
     static const char __func__[] = "snlround";
 #endif
 
-    if ((unsigned char)0U == snn_int_initialized)
+    if ((char)0 == snn_int_initialized)
         initialize_snn_int();
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
@@ -361,7 +306,7 @@ long int snlround(double d,
       sign < 0 puts '-' between whitespace padding (if any) and prefix
       sign >= 0 does not
 */
-/* calls: initialize_snn, snn_max_power, snn_base_power, isspace */
+/* calls: snn_max_power, snn_base_power, isspace */
 /* called by: snul,  snl */
 static
 #if defined(__STDC__) && __STDC_VERSION__ > 199900UL
@@ -380,8 +325,6 @@ int snn_uint(char *buf, int sz,
     static const char __func__[] = "snn_uint";
 #endif
 
-    if ((unsigned char)0U == snn_int_initialized)
-        initialize_snn_int();
     x = 0UL;
     /* how many digits are required for number (ignoring sign and padding)?
        at least one digit is always required (i.e. for 0)
@@ -522,7 +465,7 @@ int snul(char *buf, int sz, const char *prefix, const char *suffix,
     static const char __func__[] = "snul";
 #endif
 
-    if ((unsigned char)0U == snn_int_initialized)
+    if ((char)0 == snn_int_initialized)
         initialize_snn_int();
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
@@ -591,7 +534,7 @@ int snl(char *buf, int sz, const char *prefix, const char *suffix, long int l,
     static const char __func__[] = "snl";
 #endif
 
-    if ((unsigned char)0U == snn_int_initialized)
+    if ((char)0 == snn_int_initialized)
         initialize_snn_int();
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,

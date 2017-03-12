@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    snn_double.c copyright 2011 - 2017 Bruce Lilly.   \ snn_double.c $
+* $Id: ~|^` @(#)    snn_double.c copyright 2011-2017 Bruce Lilly.   \ snn_double.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is snn_double.c version 2.15 2017-02-25T03:54:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is snn_double.c version 2.16 2017-03-08T20:44:08Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "snn" */
 /*****************************************************************************/
 /* maintenance note: master file /src/relaymail/lib/libsnn/src/s.snn_double.c */
@@ -116,10 +116,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: snn_double.c ~|^` @(#)"
 #define SOURCE_MODULE "snn_double.c"
-#define MODULE_VERSION "2.15"
-#define MODULE_DATE "2017-02-25T03:54:13Z"
+#define MODULE_VERSION "2.16"
+#define MODULE_DATE "2017-03-08T20:44:08Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2011 - 2017"
+#define COPYRIGHT_DATE "2011-2017"
 
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -254,8 +254,6 @@ double snn_sf_double(double d,
     static const char __func__[] = "snn_sf_double";
 #endif
 
-    if ((unsigned char)0U == snn_double_initialized)
-        initialize_snn_double(f, log_arg);
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
             "%s: %s line %d: d=%.24g, mag=%d, max_sig_figs=%d, max_precision=%d",
@@ -468,7 +466,7 @@ int snsf(double d,
     static const char __func__[] = "snsf";
 #endif
 
-    if ((unsigned char)0U == snn_double_initialized)
+    if ((char)0 == snn_double_initialized)
         initialize_snn_double(f, log_arg);
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
@@ -481,8 +479,6 @@ int snsf(double d,
     /* nothing to do if d == 0.0 */
     if (0.0 < d) {
         unsigned char digits[32];       /* RATS: ignore (snn_sf_digits uses sizeof(digits)) */
-        if ((unsigned char)0U == snn_double_initialized)
-            initialize_snn_double(f, log_arg);
         (void)snn_sf_double(d, digits, sizeof(digits), snmagnitude(d, f, log_arg), snn_msf, SNN_EXTREME_PRECISION, &r, NULL, NULL, f, log_arg);
     }
     if (NULL != f) {
@@ -504,7 +500,7 @@ int snsf(double d,
    offs indicates the position of the radix point relative to the digits
    pad, min_dig, and precision are as for snf
 */
-/* calls: initialize_snn, isspace, snn_sf_double */
+/* calls: isspace, snn_sf_double */
 /* called by: snf, sng */
 static
 #if defined(__STDC__) && __STDC_VERSION__ > 199900UL
@@ -525,8 +521,6 @@ int snn_double(char *buf, int sz,
 
     /* type (whitespace or not) of padding */
     spp = isspace(pad);
-    if ((unsigned char)0U == snn_double_initialized)
-        initialize_snn_double(f, log_arg);
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
             "%s: %s line %d: d=%.24G, spp=%d, mag=%d, offs=%d, min_dig=%d, precision=%d",
@@ -682,7 +676,7 @@ int snf(char *buf, int sz, const char *prefix, const char *suffix, double d, int
     static const char __func__[] = "snf";
 #endif
 
-    if ((unsigned char)0U == snn_double_initialized)
+    if ((char)0 == snn_double_initialized)
         initialize_snn_double(f, log_arg);
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
@@ -708,8 +702,6 @@ int snf(char *buf, int sz, const char *prefix, const char *suffix, double d, int
         errno = EINVAL;
         return -1;
     }
-    if ((unsigned char)0U == snn_double_initialized)
-        initialize_snn_double(f, log_arg);
     /* magnitude and significant figures of number, rounded */
     d = snn_sf_double(d, digits, sizeof(digits), snmagnitude(d, f, log_arg), snn_msf, precision, &sf, &mag, &p, f, log_arg);
     if (NULL != f) {
@@ -772,7 +764,7 @@ int sng(char *buf, int sz, const char *prefix, const char *suffix, double d,
     static const char __func__[] = "sng";
 #endif
 
-    if ((unsigned char)0U == snn_double_initialized)
+    if ((char)0 == snn_double_initialized)
         initialize_snn_double(f, log_arg);
     if (NULL != f) {
         f(LOG_DEBUG, log_arg,
@@ -810,8 +802,6 @@ int sng(char *buf, int sz, const char *prefix, const char *suffix, double d,
         if (rsf < exp_mod)
             rsf = exp_mod;
     }
-    if ((unsigned char)0U == snn_double_initialized)
-        initialize_snn_double(f, log_arg);
     /* round, get digits, magnitude, significant figures */
     d = snn_sf_double(d, digits, sizeof(digits), snmagnitude(d, f, log_arg), rsf, SNN_EXTREME_PRECISION, &sf, &mag, NULL, f, log_arg);
     if (NULL != f) {

@@ -81,7 +81,7 @@
 #define MBM_N_CUTOFF        88UL /* ninther above */
 #define INSERTION_CUTOFF    6UL /* insertion sort arrays this size or smaller (like B&M) */
 
-#define SAVE_PARTIAL 1
+#define SAVE_PARTIAL        1
 
 /* nothing (much) to configure below this line */
 
@@ -252,13 +252,15 @@ count\tnumber of times to run each test (default 10)"
 #define TEST_SEQUENCE_RANDOM_VALUES            13U /* 0x002000 */
 #define TEST_SEQUENCE_RANDOM_VALUES_LIMITED    14U /* 0x004000 */
 #define TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED 15U /* 0x008000 */
-#define TEST_SEQUENCE_MEDIAN3KILLER            16U /* 0x010000 */
-#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        17U /* 0x020000 */
-#define TEST_SEQUENCE_PERMUTATIONS             18U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_COMBINATIONS             19U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_ADVERSARY                20U  /* also via TEST_TYPE_ADVERSARY */ /* must be last (comparison function changes) */
+#define TEST_SEQUENCE_RANDOM_VALUES_NORMAL     16U /* 0x010000 */
+#define TEST_SEQUENCE_HISTOGRAM                17U /* 0x020000 */
+#define TEST_SEQUENCE_MEDIAN3KILLER            18U /* 0x040000 */
+#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        19U /* 0x080000 */
+#define TEST_SEQUENCE_PERMUTATIONS             20U  /* also via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_COMBINATIONS             21U  /* also via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_ADVERSARY                22U  /* also via TEST_TYPE_ADVERSARY */ /* must be last (comparison function changes) */
 
-#define TEST_SEQUENCE_COUNT                    21U
+#define TEST_SEQUENCE_COUNT                    23U
 
 
 #define EXPECTED_RANDOM_MIN           (0)
@@ -327,9 +329,6 @@ static size_t nlt, neq, ngt, nsw;
 /* Element swapping code depends on the size and alignment of elements. */
 /* Assume basic types sizeof(foo) etc. are powers of 2. */
 #define NTYPES 6 /* double, pointer, long, int, short, char */
-/* Log of type size, indexed by type index. */
-/* initialized at first run */
-static int log2t[NTYPES];
 
 /* alignment; no fiddly bits */
 #define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
@@ -341,24 +340,62 @@ static size_t introsort_recursion_factor = 2UL;
 
 /* for repivoting */
 static size_t npartitions, nrepivot;
-static size_t repivot_factor = 8UL;
-static size_t repivot_cutoff = 16UL;
+static size_t repivot_factor = 9UL;
+static size_t repivot_cutoff = 17UL;
 static int lopsided_partition_limit = 2;
+
+/* To avoid repeatedly calculating the number of samples required for pivot
+   element selection vs. nmemb, which is expensive, a table is used; then
+   determining the number of samples simply requires a search of the (small)
+   table.  As the number of samples in each table entry is a power of 3, the
+   table may also be used to avoid multiplication and/or division by 3.
+*/
+struct sampling_table_struct {
+    size_t min_nmemb;
+    size_t samples;
+};
+#if (SIZE_T_MAX) > 4294967295
+# define SAMPLING_TABLE_SIZE 22
+#else
+# define SAMPLING_TABLE_SIZE 12
+#endif
+static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
+   {                    1UL,           1UL }, /* single sample, 1/4 position */
+   {                   13UL,           3UL }, /* median-of-3, 1/4,1/2,3/4
+                                              maybe samples!=sqrt(min_nmemb)
+                                          useful min_nmemb range 7UL to 13UL */
+   {                   81UL,           9UL }, /* remedian of samples */
+   {                  729UL,          27UL },
+   {                 6561UL,          81UL },
+   {                59049UL,         243UL },
+   {               531441UL,         729UL },
+   {              4782969UL,        2187UL },
+   {             41701511UL,        6561UL },
+   {            387420489UL,       19683UL },
+   {           3486784401UL,       59049UL },
+#if (SIZE_T_MAX) > 4294967295
+   {          31381059609UL,      177147UL }, /* silly to include large sizes?
+                                              check again in a decade or two */
+   {         282429536481UL,      531441UL },
+   {        2541865828329UL,     1594323UL },
+   {       22876792454961UL,     4782969UL },
+   {      205891132094649UL,    14348907UL },
+   {     1853020188851841UL,    43046721UL },
+   {    16677181699666569UL,   129140163UL },
+   {   150094635296999121UL,   387420489UL },
+   {  1350851717672992089UL,  1162261467UL },
+   { 12157665459056928801UL,  3486784401UL },
+   {   (SIZE_T_MAX),         10460353203UL }
+#else
+   {   (SIZE_T_MAX),              177147UL }
+#endif
+};
 
 /* initialize at run-time */
 static void initialize_median_test(V)
 {
-    size_t q;
     const char *s;
 
-    /* introsort insertion sort cutoff */
-    if (0UL==introsort_insertion_cutoff) {
-        if (0U==introsort_final_insertion_sort) introsort_insertion_cutoff=16UL;
-        else introsort_insertion_cutoff=7UL;
-    }
-    /* Initialize log2t table */
-    for (q=0UL; (NTYPES)>q; q++)
-        log2t[q]=log2s[typsz[q]];
     /* Initialize strings */
     s = strrchr(filenamebuf, '/');
     if (NULL == s)
@@ -501,15 +538,23 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void charswap(char *pa, char *pb, size_t count)
+void charswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
         char t;
-        do {
-            t=*pa, *pa=*pb, *pb=t;
-            if (0UL==--count) break;
-            pa++, pb++;
-        } while (1);
+        if (NULL==pc) {
+            do {
+                t=*pa, *pa=*pb, *pb=t;
+                if (0UL==--count) break;
+                pa++, pb++;
+            } while (1);
+        } else {
+            do {
+                t=*pa, *pa=*pb, *pb=*pc, *pc=t;
+                if (0UL==--count) break;
+                pa++, pb++, pc++;
+            } while (1);
+        }
     }
 }
 
@@ -517,16 +562,24 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void icharswap(char *pa, char *pb, size_t count)
+void icharswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
         char t;
         nsw+=count;
-        do {
-            t=*pa, *pa=*pb, *pb=t;
-            if (0UL==--count) break;
-            pa++, pb++;
-        } while (1);
+        if (NULL==pc) {
+            do {
+                t=*pa, *pa=*pb, *pb=t;
+                if (0UL==--count) break;
+                pa++, pb++;
+            } while (1);
+        } else {
+            do {
+                t=*pa, *pa=*pb, *pb=*pc, *pc=t;
+                if (0UL==--count) break;
+                pa++, pb++, pc++;
+            } while (1);
+        }
     }
 }
 
@@ -534,31 +587,50 @@ void icharswap(char *pa, char *pb, size_t count)
 # define GENERIC_SWAP(type)                 \
     type *px=(type *)pa, *py=(type *)pb, t; \
     count /= sizeof(type);                  \
-    do {                                    \
-        t=*px, *px=*py, *py=t;              \
-        if (0UL==--count) break;            \
-        px++, py++;                         \
-    } while (1)
+    if (NULL==pc) {                         \
+        do {                                \
+            t=*px, *px=*py, *py=t;          \
+            if (0UL==--count) break;        \
+            px++, py++;                     \
+        } while (1);                        \
+    } else {                                \
+        type *pz=(type *)pc;                \
+        do {                                \
+            t=*px, *px=*py, *py=*pz, *pz=t; \
+            if (0UL==--count) break;        \
+            px++, py++, *pz++;              \
+        } while (1);                        \
+    }
+
 
 #undef COUNTING_SWAP
 # define COUNTING_SWAP(type)                \
     type *px=(type *)pa, *py=(type *)pb, t; \
     count /= sizeof(type);                  \
     nsw+=count;                             \
-    do {                                    \
-        t=*px, *px=*py, *py=t;              \
-        if (0UL==--count) break;            \
-        px++, py++;                         \
-    } while (1)
+    if (NULL==pc) {                         \
+        do {                                \
+            t=*px, *px=*py, *py=t;          \
+            if (0UL==--count) break;        \
+            px++, py++;                     \
+        } while (1);                        \
+    } else {                                \
+        type *pz=(type *)pc;                \
+        do {                                \
+            t=*px, *px=*py, *py=*pz, *pz=t; \
+            if (0UL==--count) break;        \
+            px++, py++, *pz++;              \
+        } while (1);                        \
+    }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void shortswap(char *pa, char *pb, size_t count)
+void shortswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(short);
+        GENERIC_SWAP(short)
     }
 }
 
@@ -566,10 +638,10 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void ishortswap(char *pa, char *pb, size_t count)
+void ishortswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(short);
+        COUNTING_SWAP(short)
     }
 }
 
@@ -577,10 +649,10 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void intswap(char *pa, char *pb, size_t count)
+void intswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(int);
+        GENERIC_SWAP(int)
     }
 }
 
@@ -588,10 +660,10 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void iintswap(char *pa, char *pb, size_t count)
+void iintswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(int);
+        COUNTING_SWAP(int)
     }
 }
 
@@ -599,10 +671,10 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void doubleswap(char *pa, char *pb, size_t count)
+void doubleswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(double);
+        GENERIC_SWAP(double)
     }
 }
 
@@ -610,10 +682,55 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void idoubleswap(char *pa, char *pb, size_t count)
+void idoubleswap(char *pa, char *pb, char *pc, size_t count)
 {
     if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(double);
+        COUNTING_SWAP(double)
+    }
+}
+
+/* determine and return a pointer to an appropriate swap function */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void (*whichswap(char *base, size_t size, unsigned int instrumented))
+    (char *, char *, char *, size_t)
+{
+    int i, t;  /* general integer variables */
+    size_t s;  /* general size_t variable */
+
+    /* Determine size of data chunks to copy for element swapping.  Size is
+       determined by element size and alignment. typsz is an
+       array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
+    */
+    s=typsz[t=0]; /* double */
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+        s=typsz[t=3]; /* int */
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+        ||(!(is_aligned(base,i)))) {
+            s=typsz[t=4]; /* short */
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(base,i))))
+                s=typsz[t=5]; /* char */
+        }
+    }
+    switch (t) {
+        case 0 :
+            if (0U!=instrumented) return idoubleswap;
+        return doubleswap;
+        case 3 :
+            if (0U!=instrumented) return iintswap;
+        return intswap;
+        case 4 :
+            if (0U!=instrumented) return ishortswap;
+        return shortswap;
+        default :
+            if (0U!=instrumented) return icharswap;
+        return charswap;
     }
 }
 
@@ -623,7 +740,7 @@ inline
 #endif /* C99 */
 void iswap(char *pa, char *pb, size_t count)
 {
-    nsw++;
+    nsw+=count;
     swap2(pa,pb,count);
 }
 
@@ -932,7 +1049,6 @@ static size_t antiqsort_nsolid; /* number of solid items */
 static size_t pivot_candidate; /* pivot candidate */
 static size_t antiqsort_gas; /* gas value */
 static size_t antiqsort_n;
-static int antiqsort_direction;
 /* qsort uses one array, antiqsort another */
 static char *antiqsort_base, *qsort_base;
 static size_t antiqsort_typsz, qsort_typsz;
@@ -952,14 +1068,7 @@ size_t freeze(long z)
 #if DEBUG_CODE
 (V)fprintf(stderr,"// %s: z=%ld\n",__func__,z);
 #endif
-#if REVERSE_LATER
     l=antiqsort_nsolid;
-#else
-    if (1==antiqsort_direction)
-        l=antiqsort_nsolid;
-    else
-        l=antiqsort_n-1UL-antiqsort_nsolid;
-#endif
     switch (antiqsort_type) {
         case DATA_TYPE_LONG :
             {
@@ -973,77 +1082,12 @@ size_t freeze(long z)
                 *pint = l;
             }
         break;
-        case DATA_TYPE_POINTER :
-        /*FALLTHROUGH*/
-        case DATA_TYPE_STRUCT :
-        /*FALLTHROUGH*/
-        case DATA_TYPE_STRING :
-            {
-                struct big_struct *pbs;
-                pbs = (struct big_struct *)(antiqsort_base + z*antiqsort_typsz);
-                pbs->l = l;
-            }
+        default :
+            (V)fprintf(stderr, "%s: %s line %d: antiqsort_type %d is not valid\n",__func__,source_file,__LINE__,antiqsort_type);
         break;
     }
     antiqsort_nsolid++;
-#if REVERSE_LATER
     return l;
-#else
-    if (1==antiqsort_direction)
-        return antiqsort_nsolid;
-    return antiqsort_n-1UL-antiqsort_nsolid;
-#endif
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void reverse_antiqsort(int all)
-{
-    size_t i;
-
-#if REVERSE_LATER
-    if ((0!=all)&&(0>antiqsort_direction)) {
-#endif
-        for(i=0UL; i<antiqsort_n; i++) {
-            switch (antiqsort_type) {
-                case DATA_TYPE_LONG :
-                    {
-                        long *plong;
-                        plong = (long *)(antiqsort_base + antiqsort_typsz*i);
-                        *plong = antiqsort_n-1UL- *plong;
-                    }
-                break;
-                case DATA_TYPE_INT :
-                    {
-                        int *pint;
-                        pint = (int *)(antiqsort_base + antiqsort_typsz*i);
-                        *pint = (int)antiqsort_gas;
-                        *pint = (int)(antiqsort_n-1UL)- *pint;
-                    }
-                break;
-                case DATA_TYPE_STRUCT :
-                /*FALLTHROUGH*/
-                case DATA_TYPE_STRING :
-                    {
-                        struct big_struct *pbs;
-                        pbs = (struct big_struct *)(antiqsort_base + antiqsort_typsz*i);
-                        pbs->l = antiqsort_n-1UL- pbs->l;
-                        pbs->val = (int)(pbs->l);
-                        /* antiqsort uses only integer data */
-                    }
-                break;
-            }
-        }
-        antiqsort_gas = antiqsort_n-1UL- antiqsort_gas;
-#if REVERSE_LATER
-    }
-#endif
-    antiqsort_direction = 0 - antiqsort_direction;
-#if DEBUG_CODE
-(V)fprintf(stderr,"// %s line %d: antiqsort_direction=%d, antiqsort_gas=%lu\n",__func__,__LINE__,antiqsort_direction,antiqsort_gas);
-#endif
 }
 
 static long lastx, lasty;
@@ -1082,7 +1126,11 @@ int cmp(const void *px, const void *py) /* per C standard */
 #endif
         break;
         case DATA_TYPE_POINTER :
-        /*FALLTHROUGH*/
+            pbs = *((const struct big_struct **)px);
+            x = pbs->l;
+            pbs = *((const struct big_struct **)py);
+            y = pbs->l;
+        break;
         case DATA_TYPE_STRUCT :
         /*FALLTHROUGH*/
         case DATA_TYPE_STRING :
@@ -1099,19 +1147,14 @@ int cmp(const void *px, const void *py) /* per C standard */
        results remain valid).
     */
     if (x == y) {
-        if (pivot_candidate!=x) reverse_antiqsort(0);
         pivot_candidate = x;
     } else if (x == lastx) {
-        if (pivot_candidate!=x) reverse_antiqsort(0);
         pivot_candidate = x;
     } else if (y == lasty) {
-        if (pivot_candidate!=y) reverse_antiqsort(0);
         pivot_candidate = y;
     } else if (x == lasty) {
-        if (pivot_candidate!=x) reverse_antiqsort(0);
         pivot_candidate = x;
     } else if (y == lastx) {
-        if (pivot_candidate!=y) reverse_antiqsort(0);
         pivot_candidate = y;
     }
 #if DEBUG_CODE
@@ -1131,13 +1174,8 @@ int cmp(const void *px, const void *py) /* per C standard */
             plong = (const long *)(antiqsort_base + y*antiqsort_typsz);
             b = *plong;
         break;
-        case DATA_TYPE_STRUCT :
-        /*FALLTHROUGH*/
-        case DATA_TYPE_STRING :
-            pbs = (const struct big_struct *)(antiqsort_base + x*antiqsort_typsz);
-            a = pbs->l;
-            pbs = (const struct big_struct *)(antiqsort_base + y*antiqsort_typsz);
-            b = pbs->l;
+        default :
+            (V)fprintf(stderr, "%s: %s line %d: antiqsort_type %d is not valid\n",__func__,source_file,__LINE__,antiqsort_type);
         break;
     }
 #if DEBUG_CODE
@@ -1168,9 +1206,9 @@ int cmp(const void *px, const void *py) /* per C standard */
     if (a > b) return 1; else if (a < b) return -1; else return 0;
 #else
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s line %d: a=%d, b=%d, will return %d\n",__func__,__LINE__,a,b,antiqsort_direction*((a>b)?1:(a<b)?-1:0));
+(V)fprintf(stderr,"// %s line %d: a=%d, b=%d, will return %d\n",__func__,__LINE__,a,b,((a>b)?1:(a<b)?-1:0));
 #endif
-    if (a > b) return antiqsort_direction; else if (a < b) return 0-antiqsort_direction; else return 0;
+    if (a > b) return 1; else if (a < b) return 1; else return 0;
 #endif
  /* only the sign matters */
 }
@@ -1209,7 +1247,6 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
     pivot_candidate = n;
     antiqsort_ncmp = 0UL;
     lastx = lasty = n;
-    antiqsort_direction = 1;
 #if DEBUG_CODE
 (V)fprintf(stderr,"// %s: n=%lu, pv=%p, sz=%lu, alt=%p, altsz=%lu, type=%d, alt_type=%d\n",__func__,n,pv,sz,alt,altsz,type,alt_type);
 #endif
@@ -1238,7 +1275,15 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
                 }
             break;
             case DATA_TYPE_POINTER :
-            /*FALLTHROUGH*/
+                {
+                    struct big_struct *pbs;
+                    pbs = *((struct big_struct **)(qsort_base + qsort_typsz*i));
+                    pbs->l = (long)i;
+                    pbs->val = (int)i;
+                    (V)snl(pbs->string, BIG_STRUCT_STRING_SIZE, NULL, NULL, (long)i, 36, '0', BIG_STRUCT_STRING_SIZE-1, NULL, NULL);
+                    pbs->d = (double)i;
+                }
+            break;
             case DATA_TYPE_STRUCT :
             /*FALLTHROUGH*/
             case DATA_TYPE_STRING :
@@ -1268,16 +1313,8 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
                     *pint = (int)antiqsort_gas;
                 }
             break;
-            case DATA_TYPE_STRUCT :
-            /*FALLTHROUGH*/
-            case DATA_TYPE_STRING :
-                {
-                    struct big_struct *pbs;
-                    pbs = (struct big_struct *)(antiqsort_base + antiqsort_typsz*i);
-                    pbs->l = (long)antiqsort_gas;
-                    pbs->val = (int)antiqsort_gas;
-                    /* antiqsort uses only integer data */
-                }
+            default :
+                (V)fprintf(stderr, "%s: %s line %d: antiqsort_type %d is not valid\n",__func__,source_file,__LINE__,antiqsort_type);
             break;
         }
     }
@@ -1298,6 +1335,7 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
 #define swapcode(TYPE, parmi, parmj, n) {  \
     register TYPE *pi = (TYPE *) (parmi);  \
     register TYPE *pj = (TYPE *) (parmj);  \
+    nsw += n/sizeof(TYPE);                 \
     do {                                   \
         register TYPE t = *pi;             \
         *pi++ = *pj;                       \
@@ -1308,7 +1346,6 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
 static void swapfunc(char *a, char *b, size_t n, int swaptype)
 {   if (swaptype <= 1) swapcode(long, a, b, n)
     else swapcode(char, a, b, n)
-    nsw++;
 }
 #define bmswap(a, b)                       \
     if (swaptype == 0) {                   \
@@ -1527,9 +1564,9 @@ nbloop:        SWAPINIT((char *)a, es);
       avoid self-swapping pb,pc
       improved swapping
       don't repeat initialization during iteration
+      uses INSERTION_CUTOFF rather than BM_INSERION_CUTOFF (normally equivalent)
    No remedian of samples
    No break-glass mechanism to prevent quadratic behavior
-   No internal stack
    No order statistic selection
 */
 static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
@@ -1556,7 +1593,7 @@ static size_t mbm_n_cutoff = MBM_N_CUTOFF;
 
 void mbmqsort_internal(void *a, size_t n, size_t es,
     int (*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
         char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
         size_t d, r;
@@ -1565,11 +1602,11 @@ void mbmqsort_internal(void *a, size_t n, size_t es,
         assert(a != NULL || n == 0 || es == 0);
         assert(compar != NULL);
 
-loop:   if (n < (BM_INSERTION_CUTOFF)) {
+loop:   if (n <= (INSERTION_CUTOFF)) {
                 for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
                         for (pl = pm; pl > (char *) a && compar(pl - es, pl) > 0;
                              pl -= es)
-                                swapfunc(pl, pl - es,es);
+                                swapfunc(pl, pl - es, NULL, es);
                 return;
         }
         d = es * (n / 4UL);
@@ -1591,7 +1628,7 @@ loop:   if (n < (BM_INSERTION_CUTOFF)) {
         for (;;) {
                 while (pb <= pc && (cmp_result = compar(pb, pm)) <= 0) {
                         if (cmp_result == 0) {
-                                swapfunc(pa, pb,es);
+                                swapfunc(pa, pb, NULL, es);
                                 pm=pa;
                                 pa += es;
                         }
@@ -1599,7 +1636,7 @@ loop:   if (n < (BM_INSERTION_CUTOFF)) {
                 }
                 while (pb <= pc && (cmp_result = compar(pc, pm)) >= 0) {
                         if (cmp_result == 0) {
-                                swapfunc(pc, pd,es);
+                                swapfunc(pc, pd, NULL, es);
                                 pm=pd;
                                 pd -= es;
                         }
@@ -1607,7 +1644,7 @@ loop:   if (n < (BM_INSERTION_CUTOFF)) {
                 }
                 if (pb >= pc)
                         break;
-                swapfunc(pb, pc,es);
+                swapfunc(pb, pc, NULL, es);
                 pb += es;
                 pc -= es;
         }
@@ -1619,13 +1656,13 @@ loop:   if (n < (BM_INSERTION_CUTOFF)) {
         /* compute the size of the block of chars that needs to be moved to put the < region before the lower == region */
         /* pb-pa is the number of chars in the < block */
         r = bmmin(pa - (char *) a, pb - pa);
-        if (0<r) swapfunc(a, pb-r, r);
+        if (0<r) swapfunc(a, pb-r, NULL, r);
         /* after the swap (above), the start of the == section is at pb-r */
         /* compute the size of the block of chars that needs to be moved to put the > region after the upper == region */
         /* pn-pd-es (a.k.a. pu-pd) is the number of chars in the upper == block */
         /* pd-pc is the number of chars in the > block */
         r = bmmin((size_t)(pd - pc), pn - pd - es);
-        if (0<r) swapfunc(pb, pn-r, r);
+        if (0<r) swapfunc(pb, pn-r, NULL, r);
 
         r = pb - pa; /* size (only) of < region */
         d = pd - pc; /* size (only) of > region */
@@ -1648,39 +1685,7 @@ loop:   if (n < (BM_INSERTION_CUTOFF)) {
 
 void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
 {
-    int i, t;
-    size_t s;
-    void (*swapfunc)(char *,char *,size_t);
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. swaptype is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Long and pointer type sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((es<s)||(!(is_aligned(es,i=log2s[s])))||(!(is_aligned(a,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((es<s)||(!(is_aligned(es,i=log2s[s])))||(!(is_aligned(a,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((es<s)||(!(is_aligned(es,i=log2s[s])))
-            ||(!(is_aligned(a,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
-
-    mbmqsort_internal(a, n, es, compar, swapfunc);
+    mbmqsort_internal(a, n, es, compar, whichswap(a,es,1U));
 }
 
 /* ********************** glibc qsort code ********************************** */
@@ -1713,12 +1718,12 @@ Software - Practice and Experience; Vol. 23 (11), 1249-1265, 1993. */
 do { \
     size_t __size = (size); \
     char *__a = (a), *__b = (b); \
+    nsw+=__size; \
     do { \
         char __tmp = *__a; \
         *__a++ = *__b; \
         *__b++ = __tmp; \
     } while (--__size > 0); \
-    nsw++; \
 } while (0)
 #else
 # define SWAP(a,b,size)   iswap(a,b,1UL,size)
@@ -1957,7 +1962,7 @@ inline
 #endif /* C99 */
 void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     char *pa, *pb, *pc, *pl, *pu;
     size_t nmemb=beyond-first;
@@ -1969,7 +1974,7 @@ print_int_array(base,first,beyond-1UL);
     if (2UL>nmemb) return;
     for (pa=pl=base+first*size,pu=base+(beyond-1UL)*size; pa<pu; pa+=size)
         for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
-            swapfunc(pb,pc,size);
+            swapfunc(pb,pc,NULL,size);
 #if 0
 fprintf(stderr, "%s line %d:\n",__func__,__LINE__);
 print_int_array(base,first,beyond-1UL);
@@ -1982,32 +1987,7 @@ inline
 #endif /* C99 */
 void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
-    int i, t;
-    size_t s;
-    void (*swapfunc)(char *,char *,size_t);
-
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
-
-    isort_internal(base,0UL,nmemb,size,compar,swapfunc);
+    isort_internal(base,0UL,nmemb,size,compar,whichswap(base,size,1U));
 }
 
 /* simplified and full-blown quickselect-based qsort:
@@ -2015,51 +1995,6 @@ void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, co
       add sampling and remedian of samples, with sampling table
       pivot selection moves elements
 */
-/* To avoid repeatedly calculating the number of samples required for pivot
-   element selection vs. nmemb, which is expensive, a table is used; then
-   determining the number of samples simply requires a search of the (small)
-   table.  As the number of samples in each table entry is a power of 3, the
-   table may also be used to avoid multiplication and/or division by 3.
-*/
-struct sampling_table_struct {
-    size_t min_nmemb;
-    size_t samples;
-};
-#if (SIZE_T_MAX) > 4294967295
-# define SAMPLING_TABLE_SIZE 22
-#else
-# define SAMPLING_TABLE_SIZE 12
-#endif
-static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
-   {                    1UL,           1UL }, /* single sample, 1/4 position */
-   {                   13UL,           3UL }, /* median-of-3, 1/4,1/2,3/4 */
-   {                   81UL,           9UL }, /* remedian of samples */
-   {                  729UL,          27UL },
-   {                 6486UL,          81UL },
-   {                55388UL,         243UL },
-   {               531441UL,         729UL },
-   {              4185683UL,        2187UL },
-   {             43046721UL,        6561UL },
-   {            387420489UL,       19683UL },
-   {           3486784401UL,       59049UL },
-#if (SIZE_T_MAX) > 4294967295
-   {          31381059609UL,      177147UL }, /* silly to include large sizes?
-                                              check again in a decade or two */
-   {         282429536481UL,      531441UL },
-   {        2541865828329UL,     1594323UL },
-   {       22876792454961UL,     4782969UL },
-   {      205891132094649UL,    14348907UL },
-   {     1853020188851841UL,    43046721UL },
-   {    16677181699666569UL,   129140163UL },
-   {   150094635296999121UL,   387420489UL },
-   {  1350851717672992089UL,  1162261467UL },
-   { 12157665459056928801UL,  3486784401UL },
-   {   (SIZE_T_MAX),         10460353203UL }
-#else
-   {   (SIZE_T_MAX),              177147UL }
-#endif
-};
-
 /* medians of sets of 3 elements */
 /* Given base, size, and compar as for qsort, plus a row offset and sample
    offset, both in chars, find medians of sets of 3 elements where the three
@@ -2079,7 +2014,7 @@ inline
 char *medians3(char *base, size_t size,
     int(*compar)(const void *, const void *), size_t row_offset,
     size_t sample_offset, size_t row_samples,
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     int c;
     char *pa, *pb;
@@ -2103,12 +2038,12 @@ char *medians3(char *base, size_t size,
             char *pc=pb+row_offset;
             int d=compar(pb,pc);
             if (0!=d) {
-                if ((0<d)&&(0>c)) {
-                    if (0>compar(pa,pc)) swapfunc(pb,pc,size);
-                    else swapfunc(pa,pb,size);
-                } else if ((0>d)&&(0<c)) {
-                    if (0<compar(pa,pc)) swapfunc(pb,pc,size);
-                    else swapfunc(pa,pb,size);
+                if ((0<d)&&(0>c)) { /* pc<pb, pa<pb; pb is max. */
+                    if (0>=compar(pa,pc)) swapfunc(pb,pc,NULL,size); /* OK */
+                    else swapfunc(pc,pb,pa,size);
+                } else if ((0>d)&&(0<c)) { /* pb is min. */
+                    if (0<compar(pa,pc)) swapfunc(pa,pb,pc,size);
+                    else swapfunc(pa,pb,NULL,size); /* OK */
                 }
             }
         }
@@ -2122,8 +2057,8 @@ static
 inline
 #endif /* C99 */
 char *select_pivot(char *base, size_t first, size_t beyond, size_t size,
-    int (*compar)(const void *, const void*),
-    void (*swapfunc)(char *, char *, size_t))
+    int (*compar)(const void *, const void*), size_t *pk,
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     size_t n, nmemb, p, q, r, s, t;
     char *pivot;
@@ -2134,6 +2069,10 @@ char *select_pivot(char *base, size_t first, size_t beyond, size_t size,
             break; /* stop looking */
     if (0UL<q) q--; /* sampling table index */
     n=sampling_table[q].samples; /* total samples (a power of 3) */
+#if 0 /* should decrease, but increases comparison count */
+    /* exception; when sorting (NULL==pk), use minimum 3 samples */
+    if ((NULL==pk)&&(3UL>n)) n=sampling_table[++q].samples;
+#endif
 #if 0
 fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, nmemb=%lu, q=%lu, n=%lu\n",__func__,__LINE__,base,first,beyond,nmemb,q,n);
 #endif
@@ -2157,13 +2096,51 @@ fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, nmemb=%lu, q=%lu, n
                 -(t>>1)*s;                       /* - half row samples */
         break;
     }
-    if (1UL<n) { /* median or remedian of (at least 3) samples */
-        n=sampling_table[--q].samples;
-        pivot=medians3(pivot,size,compar,r,s,n,swapfunc);
-        while (0UL<q) {
+    switch (n) {
+        case 1UL :
+        break;
+#if 1
+        case 3UL :
+            pivot = fmed3(pivot,pivot+s,pivot+(s<<1),compar);
+        break;
+        case 9UL :
+            {
+                char *pa, *pb;
+
+                t=(s<<1);
+                p=(r<<1);
+                pa = fmed3(pivot,pivot+s,pivot+t,compar);
+                pb = fmed3(pivot+r,pivot+r+s,pivot+r+t,compar);
+                pivot = fmed3(pivot+p,pivot+p+s,pivot+p+t,compar);
+                pivot = fmed3(pa,pb,pivot,compar);
+            }
+        break;
+        case 27UL :
+            {
+                char *px[27];
+
+                for (p=0UL; p<9UL; p++) { /* 9 columns */
+                    /* 3 rows per column */
+                    for (t=0UL; t<3UL; t++)
+                       px[3UL*p+t] = pivot+p*s+t*r;
+                    /* pointers to column medians are first 9 pointers */
+                    px[p] = fmed3(px[3UL*p],px[3UL*p+1UL],px[3UL*p+2UL],compar);
+                }
+                px[0] = fmed3(px[0],px[3],px[6],compar);
+                px[1] = fmed3(px[1],px[4],px[7],compar);
+                px[2] = fmed3(px[2],px[5],px[8],compar);
+                pivot = fmed3(px[0],px[1],px[2],compar);
+            }
+        break;
+#endif
+        default : /* power of 3, in-place sort3 */
             n=sampling_table[--q].samples;
-            pivot=medians3(pivot,size,compar,n*s,s,n,swapfunc);
-        }
+            pivot=medians3(pivot,size,compar,r,s,n,swapfunc);
+            while (0UL<q) {
+                n=sampling_table[--q].samples;
+                pivot=medians3(pivot,size,compar,n*s,s,n,swapfunc);
+            }
+        break;
     }
 #if 0
 fprintf(stderr, "%s line %d: pivot=%p[%lu], r=%lu, s=%lu\n",__func__,__LINE__,pivot,(pivot-base)/size,r,s);
@@ -2179,7 +2156,7 @@ inline
 #endif /* C99 */
 void quickselect_loop(char *base, size_t first, size_t beyond, const size_t size,
     int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk,
-    void (*swapfunc)(char *, char *, size_t)
+    void (*swapfunc)(char *, char *, char *, size_t)
 #if SAVE_PARTIAL
     , char **ppeq, char **ppgt
 #endif
@@ -2192,7 +2169,7 @@ inline
 #endif /* C99 */
 char *repivot(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void*),
-    void (*swapfunc)(char *, char *, size_t),
+    void (*swapfunc)(char *, char *, char *, size_t),
     char **ppc, char **ppd, char **ppe, char **ppf)
 {
     size_t n, nmemb, mid;
@@ -2264,7 +2241,7 @@ inline
 #endif /* C99 */
 void partition(char *base, size_t first, size_t beyond, char *pivot,
     size_t size, int(*compar)(const void *,const void*),
-    void (*swapfunc)(char *, char *, size_t),
+    void (*swapfunc)(char *, char *, char *, size_t),
     size_t *peq, size_t *pgt)
 {
     char *pa, *pb, *pc, *pe, *pf, *pl, *pu;
@@ -2280,28 +2257,28 @@ print_int_array(base,first,beyond-1UL);
     pe=(pf=pu=base+beyond*size)-size;
     while (1) { /* loop - partitioning */
         while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
-            if (c==0) { swapfunc(pivot=pb,pc,size); pb+=size; }
+            if (c==0) { swapfunc(pivot=pb,pc,NULL,size); pb+=size; }
             pc+=size;
         }
         while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- */
-            if (d==0) { pf-=size; swapfunc(pe,pivot=pf,size); }
+            if (d==0) { pf-=size; swapfunc(pe,pivot=pf,NULL,size); }
             pe-=size;
         }
         if (pc>pe) break;
-        swapfunc(pc,pe,size); /* <, > */
+        swapfunc(pc,pe,NULL,size); /* <, > */
         pc+=size; pe-=size;
     }
     pe+=size; /* now start of > region */
     if (pf<pu) { /* pe unchanged if pf>=pu */
         if (pe<pf) { /* pe= original pu if pf>=pe */
             p=pu-pf, n=pf-pe; if (p<n) n=p;
-            swapfunc(pe,pu-n,n); pe+=p;
+            swapfunc(pe,pu-n,NULL,n); pe+=p;
         } else pe=pu;
     }
     if (pb<pc) { /* pb= original pl if pb>=pc */
         if (pl<pb) { /* pb= original pc if pb>=pa */
             p=pc-pb, n=pb-pl; if (p<n) n=p;
-            swapfunc(pl,pc-n,n); pb=pl+p;
+            swapfunc(pl,pc-n,NULL,n); pb=pl+p;
         } else pb=pc;
     } else pb=pl;
     /* |       <            |         =           |      >      | */
@@ -2323,7 +2300,7 @@ inline
 void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     char *pivot, char *pe, char *pf, size_t size,
     int(*compar)(const void *,const void*),
-    void (*swapfunc)(char *, char *, size_t),
+    void (*swapfunc)(char *, char *, char *, size_t),
     size_t *peq, size_t *pgt)
 {
     char *pa, *pb, *pg, *ph, *pl, *pu;
@@ -2361,7 +2338,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
                   partial partition from selection.
             */
             while (((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
-                if (0==c) { swapfunc(pivot=pa,pb,size); pa+=size; }
+                if (0==c) { swapfunc(pivot=pa,pb,NULL,size); pa+=size; }
                 pb+=size;
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
@@ -2372,7 +2349,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
                     if (pb<pe) { /* move = elements as a block */
                         if (pa<pd) { /* pa=pe if pd<=pa */
                             p=pe-pd, n=pd-pa; if (p<n) n=p;
-                            swapfunc(pa,pe-n,n); pa+=p;
+                            swapfunc(pa,pe-n,NULL,n); pa+=p;
                         } else pa=pe;
                         pivot=pa-size;
                         pb=pe;
@@ -2387,7 +2364,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
                   partition from selection.
             */
             while (((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
-                if (0==d) { ph-=size; swapfunc(pg,pivot=ph,size); }
+                if (0==d) { ph-=size; swapfunc(pg,pivot=ph,NULL,size); }
                 pg-=size;
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
@@ -2398,7 +2375,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
                     if (pd<=pg) { /* move = elements as a block */
                         if (pe<ph) { /* ph= original pd if pe>=ph */
                             p=ph-pe, n=pe-pd; if (p<n) n=p;
-                            swapfunc(pd,ph-n,n); ph-=n;
+                            swapfunc(pd,ph-n,NULL,n); ph-=n;
                         } else ph=pd;
                         pivot=ph;
                         pg=pd-size;
@@ -2410,7 +2387,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
         A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
         if (pb>pg) break;
         A(pb!=pg); /* no self-swapping */
-        swapfunc(pb,pg,size);
+        swapfunc(pb,pg,NULL,size);
         pb+=size, pg-=size;
     }
     pg+=size; /* now start of > region */
@@ -2422,7 +2399,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     if (ph<pu) { /* pg unchanged if ph>=pu */
         if (pg<ph) { /* pg= pu if ph<=pg */
             p=pu-ph, n=ph-pg; if (p<n) n=p;
-            swapfunc(pg,pu-n,n); pg+=p;
+            swapfunc(pg,pu-n,NULL,n); pg+=p;
         } else pg=pu;
     }
     /* |    =  |      <           |        =      |      >      | */
@@ -2432,7 +2409,7 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     if (pa<pb) { /* pa= original pl if pa>=pb */
         if (pl<pa) { /* pa= original pb if pa<=pl */
             p=pb-pa, n=pa-pl; if (p<n) n=p;
-            swapfunc(pl,pb-n,n); pa=pl+p;
+            swapfunc(pl,pb-n,NULL,n); pa=pl+p;
         } else pa=pb;
     } else pa=pl;
     A(pl<=pa); A(pa<=pg); A(pg<=pu);
@@ -2444,45 +2421,16 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
 #endif
 
 /* simplified quickselect */
-void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+void sqsort_internal(void *base, size_t nmemb, size_t size,
+    int (*compar)(const void *, const void *),
+    void(*swapfunc)(char *, char *, char *, size_t))
 {
     char *pl;  /* left (or lowest) end of array being processed */
     char *po;  /* origin of array (maintained so that ranks can be computed) */
-    size_t s;  /* general size_t variable */
-    int i;              /* general integer variables */
-    int t; /* index into array of type sizes for swapping size */
     char *pb, *pe, *pivot;
     size_t n, p, q, r;
-    void (*swapfunc)(char *,char *,size_t);
 
     pl=po=(char *)base;
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. swaptype is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
 
 sloop: ;
     if (nmemb<=(INSERTION_CUTOFF)) {
@@ -2490,7 +2438,7 @@ sloop: ;
 /* <- */return; /* Done; */
     }
     n=(pl-po)/size;
-    pivot = select_pivot(po, n, n+nmemb, size, compar, swapfunc);
+    pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc);
     partition(po,n,n+nmemb,pivot,size,compar,swapfunc,&q,&p);
     npartitions++;
     pb=po+q*size;
@@ -2498,14 +2446,14 @@ sloop: ;
     q-=n;
     if (n+nmemb>p) r=n+nmemb-p; else r=0UL;  /* size of the > region */
     if (q<r) { /* > region is larger */
-        if (q>1UL) sqsort(pl, q, size, compar);
+        if (q>1UL) sqsort_internal(pl, q, size, compar, swapfunc);
         if (r>1UL) {
             pl=pe;
             nmemb=r;
             goto sloop;
         }
     } else { /* < region is larger, or regions are the same size */
-        if (r>1UL) sqsort(pe, r, size, compar);
+        if (r>1UL) sqsort_internal(pe, r, size, compar, swapfunc);
         if (q>1UL) {
             nmemb=q;
             goto sloop;
@@ -2513,20 +2461,25 @@ sloop: ;
     }
 }
 
+void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    sqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U));
+}
+
 /* modified quickselect sort; always get worst-case pivot for given
    repivot_factor and repivot_cutoff that would just avoid repivoting
 */
-void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+void wqsort_internal(void *base, size_t nmemb, size_t size,
+    int (*compar)(const void *, const void *),
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     char *pl;  /* left (or lowest) end of array being processed */
     char *po;  /* origin of array (maintained so that ranks can be computed) */
     size_t s;  /* general size_t variable */
     int i;              /* general integer variables */
-    int swaptype; /* index into array of type sizes for swapping size */
     int nlopsided=0;
     char *pb, *pe, *pivot;
     size_t n, p, q, r, t, karray[1];
-    void (*swapfunc)(char *,char *,size_t);
 #if 1
     double d, x;
 
@@ -2534,33 +2487,6 @@ void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, c
 #endif
 
     pl=po=(char *)base;
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. swaptype is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[swaptype=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
-        s=typsz[swaptype=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(po,i)))) {
-            s=typsz[swaptype=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(po,i))))
-                swaptype=5; /* char */
-        }
-    }
-    switch (swaptype) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
 
 #if 1
     s=repivot_cutoff*snlround(x+1.8,NULL,NULL);
@@ -2575,7 +2501,7 @@ wloop: ;
     }
     /* normal pivot selection (for comparison and swap counts) */
     n=(pl-po)/size;
-    pivot = select_pivot(po, n, n+nmemb, size, compar, swapfunc);
+    pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc);
     /* get pivot at rank that just avoids repivoting (minimum possible) */
     /* minimum possible rank is determined by number of samples used for pivot selection */
     /* 3^^p samples -> minimum rank is 2^^p-1 */
@@ -2610,14 +2536,14 @@ wloop: ;
     /* |       <            |         =           |      >      | */
     /*  pl                   b                     e             u*/
     if (q<r) { /* > region is larger */
-        if (q>1UL) wqsort(pl, q, size, compar);
+        if (q>1UL) wqsort_internal(pl, q, size, compar, swapfunc);
         if (r>1UL) {
             pl=pe;
             nmemb=r;
             goto wloop;
         }
     } else { /* < region is larger, or regions are the same size */
-        if (r>1UL) wqsort(pe, r, size, compar);
+        if (r>1UL) wqsort_internal(pe, r, size, compar, swapfunc);
         if (q>1UL) {
             nmemb=q;
             goto wloop;
@@ -2625,12 +2551,18 @@ wloop: ;
     }
 }
 
+void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    wqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U));
+}
+
 /* full-blown quickselect */
 static size_t quickselect_insertion_cutoff = 6UL;
 
 #define NREGIONS (LONG_BIT)+8
 
-/* basic quickselect loop (system stack) */
+/* basic quickselect loop (using system stack) */
+/* modular version of inlined code in quickselect.c */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -2638,7 +2570,7 @@ inline
 void quickselect_loop(char *base, size_t first, size_t beyond, const size_t size,
     int(*compar)(const void *,const void *),
     const size_t *pk, size_t firstk, size_t beyondk,
-    void (*swapfunc)(char *, char *, size_t)
+    void (*swapfunc)(char *, char *, char *, size_t)
 #if SAVE_PARTIAL
     , char **ppeq, char **ppgt
 #endif
@@ -2649,7 +2581,7 @@ void quickselect_loop(char *base, size_t first, size_t beyond, const size_t size
 
     while ((NULL!=pk)||(nmemb>quickselect_insertion_cutoff)) {
         size_t lk, p, q, r, rk, s, t;
-        char *pivot=select_pivot(base,first,beyond,size,compar,swapfunc);
+        char *pivot=select_pivot(base,first,beyond,size,compar,pk,swapfunc);
         partition(base,first,beyond,pivot,size,compar,swapfunc,&p,&q);
 check_sizes: ;
         if (NULL==pk) npartitions++;
@@ -2687,6 +2619,7 @@ check_sizes: ;
                 if (rk==beyondk) break;
                 A(lk>=firstk);A(rk<=beyondk);
             }
+            A((lk==beyondk)||(pk[lk]>=p));A((rk==beyondk)||(pk[rk]>=q));
         }
         A(lk>=firstk);A(rk<=beyondk);A(lk<=rk);
 
@@ -2715,7 +2648,7 @@ check_sizes: ;
         if ((2UL>r)||((NULL!=pk)&&(firstk>=beyondk))) return;
         /* should large region be repivoted? */
         c+=should_repivot(nmemb,r);
-        if (lopsided_partition_limit<=c) { /* wait for 2nd poor partition */
+        if (lopsided_partition_limit<=c) { /* wait for enough poor partitions */
             char *pc, *pd, *pe, *pf;
 
             /* yes: do it and check resulting sizes */
@@ -2767,40 +2700,7 @@ void quickselect_internal(char *base, size_t nmemb,
 #endif
    )
 {
-    int t; /* index into array of type sizes for swapping size */
-    int i;     /* general integer variable */
-    size_t s;  /* general size_t variable */
-    void (*swapfunc)(char *,char *,size_t);
-
     if (2UL>nmemb) return; /* Return early if there's nothing to do. */
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. t is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
 
     if (0UL==nk) pk=NULL;
     else if (NULL==pk) nk=0UL;
@@ -2810,7 +2710,8 @@ void quickselect_internal(char *base, size_t nmemb,
             ,NULL,NULL
 #endif
         );
-    quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapfunc
+    quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,
+        whichswap(base,size,1U)
 #if SAVE_PARTIAL
         ,ppeq,ppgt
 #endif
@@ -2825,18 +2726,18 @@ inline
 #endif /* C99 */
 void sort5(char *pa, char *pb, char *pc, char *pd, char *pe, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     /* Batcher sorting network: 9 comparisons, 0-9 exchanges */
-    if (0>compar(pa,pe)) swapfunc(pa,pe,size);
-    if (0>compar(pa,pc)) swapfunc(pa,pc,size);
-    if (0>compar(pb,pd)) swapfunc(pb,pd,size);
-    if (0>compar(pa,pb)) swapfunc(pa,pb,size);
-    if (0>compar(pc,pe)) swapfunc(pc,pe,size);
-    if (0>compar(pc,pd)) swapfunc(pc,pd,size);
-    if (0>compar(pb,pe)) swapfunc(pb,pe,size);
-    if (0>compar(pb,pc)) swapfunc(pb,pc,size);
-    if (0>compar(pd,pe)) swapfunc(pd,pe,size);
+    if (0>compar(pa,pe)) swapfunc(pa,pe,NULL,size);
+    if (0>compar(pa,pc)) swapfunc(pa,pc,NULL,size);
+    if (0>compar(pb,pd)) swapfunc(pb,pd,NULL,size);
+    if (0>compar(pa,pb)) swapfunc(pa,pb,NULL,size);
+    if (0>compar(pc,pe)) swapfunc(pc,pe,NULL,size);
+    if (0>compar(pc,pd)) swapfunc(pc,pd,NULL,size);
+    if (0>compar(pb,pe)) swapfunc(pb,pe,NULL,size);
+    if (0>compar(pb,pc)) swapfunc(pb,pc,NULL,size);
+    if (0>compar(pd,pe)) swapfunc(pd,pe,NULL,size);
 }
 
 static size_t dp_cutoff = 26UL; /* 26 seems to be optimal */
@@ -2848,7 +2749,7 @@ inline
 #endif /* C99 */
 void dpqsort_internal(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *,const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     char *pa, *pb, *pivot1, *pivot2, *pm, *pn, *ps, *pt, *pu;
     size_t n, q, r, s, t, u, v, w, karray[2];
@@ -2890,8 +2791,8 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         for (r=((s+1UL)>>1),q=1UL,t=nmemb/s*size; q<r; q++) {
             u=q*t;
             v=q*size;
-            if (pm-u>=base) swapfunc(pm-u,pm-v,size);
-            if (pm+u<pu) swapfunc(pm+u,pm+v,size);
+            if (pm-u>=base) swapfunc(pm-u,pm-v,NULL,size);
+            if (pm+u<pu) swapfunc(pm+u,pm+v,NULL,size);
         }
         r=s>>1;
 # if 1
@@ -2962,14 +2863,14 @@ print_int_array(base,0UL,nmemb-1UL);
         for (pb=pm=base,ps=pu; pm<ps;) {
             A(base<=pm);A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0<=compar(pivot1,pm)) {
-                swapfunc(pb,pm,size);
+                swapfunc(pb,pm,NULL,size);
                 if (pivot1==pm) pivot1=pb; else if (pivot2==pm) pivot2=pb;
                 else if (pivot1==pb) pivot1=pm; else if (pivot2==pb) pivot2=pm;
                 pb+=size;
             } else if (0>=compar(pivot2,pm)) {
                 do ps-=size; while ((pm<ps)&&(0>=compar(pivot2,ps)));
                 if (pm>=ps) break;
-                swapfunc(pm,ps,size);
+                swapfunc(pm,ps,NULL,size);
                 if (pivot1==pm) pivot1=ps; else if (pivot2==pm) pivot2=ps;
                 else if (pivot1==ps) pivot1=pm; else if (pivot2==ps) pivot2=pm;
                 continue; /* new unknown at pm */
@@ -2991,7 +2892,7 @@ print_int_array(base,0UL,nmemb-1UL);
         for (pa=pb,pm=base; pm<pa; pm+=size) {
             if (0==compar(pivot1,pm)) {
                 pa-=size;
-                swapfunc(pm,pa,size);
+                swapfunc(pm,pa,NULL,size);
                 if (pivot1==pm) pivot1=pa; else if (pivot2==pm) pivot2=pa;
             }
         }
@@ -3002,7 +2903,7 @@ print_int_array(base,0UL,nmemb-1UL);
 #endif
         for (pt=ps,pm=pu-size; pm>=pt; pm-=size) {
             if (0==compar(pivot2,pm)) {
-                swapfunc(pm,pt,size);
+                swapfunc(pm,pt,NULL,size);
                 if (pivot1==pm) pivot1=pt; else if (pivot2==pm) pivot2=pt;
                 pt+=size;
             }
@@ -3018,14 +2919,14 @@ print_int_array(base,0UL,nmemb-1UL);
             A(base<=pm);A(base<=pa);A(pa<=pm);A(pt<=pu);
             A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0<compar(pivot1,pm)) {
-                swapfunc(pa,pm,size);
+                swapfunc(pa,pm,NULL,size);
                 if (pivot1==pa) pivot1=pm; else if (pivot2==pa) pivot2=pm;
                 else if (pivot2==pm) pivot2=pa;
                 pa+=size;
             } else if (0>compar(pivot2,pm)) {
                 do pt-=size; while ((pm<pt)&&(0>compar(pivot2,pt)));
                 if (pm>=pt) break;
-                swapfunc(pm,pt,size);
+                swapfunc(pm,pt,NULL,size);
                 if (pivot1==pt) pivot1=pm; else if (pivot2==pt) pivot2=pm;
                 else if (pivot1==pm) pivot1=pt;
                 continue; /* new unknown at pm */
@@ -3048,14 +2949,14 @@ print_int_array(base,0UL,nmemb-1UL);
             A(base<=pm);A(base<=pa);A(pa<=pb);A(ps<=pt);A(pt<=pu);
             A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0==compar(pivot1,pm)) {
-                swapfunc(pb,pm,size);
+                swapfunc(pb,pm,NULL,size);
                 if (pivot1==pm) pivot1=pb; else if (pivot1==pb) pivot1=pm;
                 if (pivot2==pm) pivot2=pb; else if (pivot2==pb) pivot2=pm;
                 pb+=size;
             } else if (0==compar(pivot2,pm)) {
                 do ps-=size; while ((pm<ps)&&(0==compar(pivot2,ps)));
                 if (pm>=ps) break;
-                swapfunc(pm,ps,size);
+                swapfunc(pm,ps,NULL,size);
                 if (pivot1==pm) pivot1=ps; else if (pivot1==ps) pivot1=pm;
                 if (pivot2==pm) pivot2=ps; else if (pivot2==ps) pivot2=pm;
                 continue; /* test moved element at pm */
@@ -3091,39 +2992,8 @@ inline
 #endif /* C99 */
 void dpqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *))
 {
-    int i, t;
-    size_t s;
-    void (*swapfunc)(char *,char *,size_t);
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. t is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
     if (4UL>dp_cutoff) dp_cutoff=4UL; /* need at least 5 elements for samples */
-    dpqsort_internal(base, nmemb, size, compar, swapfunc);
+    dpqsort_internal(base, nmemb, size, compar, whichswap(base,size,1U));
 }
 
 /* Yaroslavskiy's dual-pivot sort */
@@ -3146,7 +3016,7 @@ inline
 #endif /* C99 */
 void yqsort_internal(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *, const void *), size_t y_div,
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     int pcmp;
     char *pg, *pivot1, *pivot2, *pk, *pl, *pr;
@@ -3175,11 +3045,11 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     pivot2=pr-t;
     pcmp=compar(pivot1,pivot2); /* cached comparison */
     if (0<pcmp) {
-        swapfunc(base,pivot2,size);
-        swapfunc(pivot1,pr,size);
+        swapfunc(base,pivot2,NULL,size);
+        swapfunc(pivot1,pr,NULL,size);
     } else {
-        swapfunc(base,pivot1,size);
-        swapfunc(pivot2,pr,size);
+        swapfunc(base,pivot1,NULL,size);
+        swapfunc(pivot2,pr,NULL,size);
     }
     /* pivot elements (moved) */
     pivot1=base, pivot2=pr;
@@ -3187,11 +3057,11 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     pl=base+size, pg=pr-size;
     /* sorting */
     for (pk=pl; pk<=pg; pk+=size) {
-        if (0>compar(pk,pivot1)) swapfunc(pk,pl,size), pl+=size;
+        if (0>compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
         else if (0<compar(pk,pivot2)) {
             while ((pk<pg)&&(0<compar(pg,pivot2))) pg-=size;
-            swapfunc(pk,pg,size), pg-=size;
-            if (0>compar(pk,pivot1)) swapfunc(pk,pl,size), pl+=size;
+            swapfunc(pk,pg,NULL,size), pg-=size;
+            if (0>compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
         }
     }
     npartitions++;
@@ -3203,9 +3073,9 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     if (dist < y_cutoff2) y_div++;
 #endif
     pivot1=pl-size; /* new location for pivot1 */
-    swapfunc(pivot1,base,size);
+    swapfunc(pivot1,base,NULL,size);
     pivot2=pg+size; /* new location for pivot2 */
-    swapfunc(pivot2,pr,size);
+    swapfunc(pivot2,pr,NULL,size);
     /* subarrays */
     t=(pivot1-base)/size; /* save size for protection comparison and recursion */
     A((2UL>t)||(base+(t-1UL)*size<=pr));
@@ -3222,10 +3092,10 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
 #endif
     ) { /* avoid overflow/underflow */
         for (pk=pl; pk<=pg; pk+=size) {
-            if (0==compar(pk,pivot1)) swapfunc(pk,pl,size), pl+=size;
+            if (0==compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
             else if (0==compar(pk,pivot2)) {
-                swapfunc(pk,pg,size), pg-=size;
-                if (0==compar(pk,pivot1)) swapfunc(pk,pl,size), pl+=size;
+                swapfunc(pk,pg,NULL,size), pg-=size;
+                if (0==compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
             }
         }
         /* revised "dist" */
@@ -3243,39 +3113,8 @@ inline
 #endif /* C99 */
 void yqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *))
 {
-    int i, t;
-    size_t s;
-    void (*swapfunc)(char *,char *,size_t);
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. t is an index into an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
     if (4UL>y_cutoff) y_cutoff=4UL; /* require po<pivot1<pivot2<pr */
-    yqsort_internal(base, nmemb, size, compar, 3UL,swapfunc);
+    yqsort_internal(base, nmemb, size, compar, 3UL,whichswap(base,size,1U));
 }
 /* ************************************************************** */
 
@@ -3354,7 +3193,7 @@ inline
 #endif /* C99 */
 size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     size_t c, rc;
 
@@ -3367,7 +3206,7 @@ size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
         }
         if (0 <= compar(base+size*p, base+size*c))        /* proper p vs. c relationship achieved */
             return p; /* nothing else to do */
-        swapfunc(base+size*p, base+size*c, size);
+        swapfunc(base+size*p, base+size*c, NULL, size);
     }
     return p;
 }
@@ -3379,7 +3218,7 @@ inline
 #endif /* C99 */
 void heapify_array(char *base, size_t r, size_t u, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     size_t p;
 
@@ -3402,9 +3241,9 @@ inline
 #endif /* C99 */
 size_t heap_delete_root(char *base, size_t r, size_t n, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
-    if (r != n) { swapfunc(base+size*r, base+size*n, size); /* swap root and last */ }
+    if (r != n) { swapfunc(base+size*r, base+size*n, NULL, size); /* swap root and last */ }
     --n;
     (V)heap_siftdown(base, r, r, n, size, compar, swapfunc);
     return n;
@@ -3416,7 +3255,7 @@ inline
 #endif /* C99 */
 void heap_sort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t))
+    void (*swapfunc)(char *, char *, char *, size_t))
 {
     size_t n;
 
@@ -3432,31 +3271,7 @@ inline
 void heap_sort(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *,const void *))
 {
-    int i, t;
-    size_t s;
-    void (*swapfunc)(char *,char *,size_t);
-
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
-    heap_sort_internal(base, 0UL, nmemb, size, compar, swapfunc);
+    heap_sort_internal(base, 0UL, nmemb, size, compar, whichswap(base,size,1U));
 }
 
 static
@@ -3465,7 +3280,7 @@ inline
 #endif /* C99 */
 void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, size_t),
+    void (*swapfunc)(char *, char *, char *, size_t),
     size_t depth_limit)
 {
     size_t eq, gt;
@@ -3487,7 +3302,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
         pivot = fmed3(base+size*first,base+size*(first+(beyond-first)>>1),base+size*(beyond-1UL),compar);
 #else
         /* adaptive sampling for pivot selection as in quickselect */
-        pivot = select_pivot(base, first, beyond, size, compar, swapfunc);
+        pivot = select_pivot(base, first, beyond, size, compar, NULL, swapfunc);
 #endif
         /* partition is modified Bentley&McIlroy split-end partition returning
            indices of equal-to and greater-than region starts.  This efficient
@@ -3521,31 +3336,15 @@ inline
 #endif /* C99 */
 void introsort(char *base, size_t nmemb, size_t size, int(*compar)(const void *,const void *))
 {
-    int i, t;
-    size_t depth_limit, s;
-    void (*swapfunc)(char *,char *,size_t);
+    size_t depth_limit;
+    void (*swapfunc)(char *,char *,char *, size_t);
 
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
+    /* introsort insertion sort cutoff */
+    if (0UL==introsort_insertion_cutoff) {
+        if (0U==introsort_final_insertion_sort) introsort_insertion_cutoff=16UL;
+        else introsort_insertion_cutoff=7UL;
     }
-    switch (t) {
-        case 0 :  swapfunc=idoubleswap;
-        break;
-        case 3 :  swapfunc=iintswap;
-        break;
-        case 4 :  swapfunc=ishortswap;
-        break;
-        default : swapfunc=icharswap;
-        break;
-    }
-
+    swapfunc=whichswap(base,size,1U);
     depth_limit=introsort_recursion_factor*floor_lg(nmemb);
     introsort_loop(base, 0UL, nmemb, size, compar, swapfunc, depth_limit);
     if (0U!=introsort_final_insertion_sort)
@@ -3608,6 +3407,10 @@ static const char *sequence_name(unsigned int testnum)
         return "random values (limited range)";
         case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :
         return "random values (restricted range)";
+        case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :
+        return "random values (approximately normal distribution)";
+        case TEST_SEQUENCE_HISTOGRAM :
+        return "histogram data";
         case TEST_SEQUENCE_MANY_EQUAL_LEFT :
         return "many equal (left)";
         case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :
@@ -3648,22 +3451,31 @@ static void reverse(long *p, size_t l, size_t r)
     }
 }
 
-/* fill integer array p between l and r inclusive with integers beginning with n */
+/* fill long array p between l and r inclusive with integers beginning with n */
 static void increment(long *p, size_t l, size_t r, long n)
 {
     for (;l<=r; l++)
         p[l] = n++;
 }
 
-/* fill integer array p between l and r inclusive with constant value n */
+/* fill long array p between l and r inclusive with constant value n */
 static void constant_fill(long *p, size_t l, size_t r, long n)
 {
     for (;l<=r; l++)
         p[l] = n;
 }
 
-/* fill integer array p with random values in [0,modulus) */
-static void random_fill(long *p, size_t count, int modulus)
+/* fill long array p with random values in [0,modulus) */
+static void random_fill(long *p, size_t count, uint64_t modulus)
+{
+    size_t j;
+
+    for (j=0UL; j<count; j++)
+        *p++ = (int)random64n(modulus);
+}
+
+/* add random values in [0,modulus) to values in long array p */
+static void random_add(long *p, size_t count, uint64_t modulus)
 {
     size_t j;
 
@@ -3767,6 +3579,26 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                 case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :
                     h=snlround(sqrt((double)n),NULL,NULL);
                     random_fill(&p[o],n,h);
+                break;
+                case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :
+                    constant_fill(&p[o],0UL,u,0L);
+                    /* Ref: R.W.Hamming, "Numerical Methods for Scientists and Engineers",
+                       2nd Ed., Sect. 8.6, ISBN 978-0-486-65241-2
+                    */
+                    for (h=0UL,k=max_val/12UL; h<12UL; h++)
+                        random_add(&p[o],n,k);
+                break;
+                case TEST_SEQUENCE_HISTOGRAM :
+                    constant_fill(&p[o],0UL,u,0L);
+                    if (max_val / n < n) x=n*n; else x=max_val/n;
+                    if (10000000UL<x) x=10000000UL; /* time limit */
+                    z=12UL*u+1UL;
+                    for (j=0UL; j<x; j++) {
+                        for (i=0L,h=0UL; h<12UL; h++) {
+                            i += (long)random64n(n);
+                        }
+                        p[o+(n*i)/z]++;
+                    }
                 break;
                 case TEST_SEQUENCE_MANY_EQUAL_LEFT :
                     random_fill(&p[o],n,n);
@@ -4072,6 +3904,7 @@ static int valid_test(unsigned int test_type, unsigned int testnum, size_t n)
     switch (testnum) {
         /* size-limited */
         case TEST_SEQUENCE_ORGAN_PIPE :               /*FALLTHROUGH*/
+        case TEST_SEQUENCE_HISTOGRAM :                /*FALLTHROUGH*/
         case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
             if (3UL > n) return 0;
         break;
@@ -4097,6 +3930,7 @@ static int valid_test(unsigned int test_type, unsigned int testnum, size_t n)
         case TEST_SEQUENCE_CONSTANT :                 /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :    /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED : /*FALLTHROUGH*/
+        case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :     /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_VALUES :
         break;
         /* placeholders: type-specific known (not unrecognized) tests */
@@ -4289,6 +4123,8 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                 emin--; emin--; emax++; emax++;
                 if (0 > emin) emin = 0;
             break;
+            case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :     /*FALLTHROUGH*/
+            case TEST_SEQUENCE_HISTOGRAM :                /*FALLTHROUGH*/
             case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :
                 emin = 0 ; emax = (int)u;
             break;
@@ -4412,7 +4248,9 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                     case TEST_SEQUENCE_CONSTANT :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES :           /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :   /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :     /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :/*FALLTHROUGH*/
+                    case TEST_SEQUENCE_HISTOGRAM :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_LEFT :         /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :       /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_RIGHT :        /*FALLTHROUGH*/
@@ -4705,7 +4543,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
         buf25[256], buf26[256], buf27[256], buf28[256], buf29[256], buf30[256];
     const char *pcc=NULL, *pfunc=NULL, *ptest="", *psize;
     const char *comment="";
-    int c, emin, emax;
+    int c, emin, emax, i;
     unsigned int errs=0U, rpt=flags['d'];
     size_t k, karray[2], m, marray[10], dn, ocount=count, t, u;
     size_t best_m
@@ -4836,6 +4674,8 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
             case TEST_SEQUENCE_MEDIAN3KILLER :
                 emin--; emin--; emax++; emax++;
             break;
+            case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :     /*FALLTHROUGH*/
+            case TEST_SEQUENCE_HISTOGRAM :                /*FALLTHROUGH*/
             case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :
                 emin = 0 ; emax = (int)u;
             break;
@@ -5263,20 +5103,19 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                     }
                 }
                 if (0U != flags['i']) {
+                    c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
                     t=nlt+neq+ngt;
                     d = (double)t / (double)count / factor;
                     if (0U!=flags['R']) {
-                        c = 1 + snprintf(buf2, sizeof(buf2), "%lu", n);
-                        (V)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf2, col-c, col-c, " ", d, psize);
+                        (V)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf, col-c, col-c, " ", d, psize);
                     } else {
-                        c = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
+                        i = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
                         (V)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
-                            comment, buf3, col-c, col-c, " ", nlt, 100.0*(double)nlt/(double)t, neq,
+                            comment, buf3, col-i, col-i, " ", nlt, 100.0*(double)nlt/(double)t, neq,
                             100.0*(double)neq/(double)t, ngt, 100.0*(double)ngt/(double)t,
                             t, d, psize);
                     }
                     if (0UL<nsw) {
-                        c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
                         d = (double)nsw / (double)count / factor;
                         (V)printf("%s%s%*.*s%.6G %s swaps\n", comment, buf, col-c, col-c, " ", d, psize);
                     }
@@ -5288,9 +5127,6 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                 if (0U != flags['K']) {
                     switch (testnum) {
                         case TEST_SEQUENCE_ADVERSARY :
-#if REVERSE_LATER
-                            reverse_antiqsort(1);
-#endif
                             (V)printf("#Adversary sequence:\n");
                             for(j=0UL; j<n; j++) {
                                 switch (antiqsort_type) {
@@ -6048,7 +5884,7 @@ extern const char *quickselect_build_options;
 
 int main(int argc, const char * const *argv)
 {
-    char buf[4096];             /* RATS: ignore (big enough) */
+    char buf[4096], buf2[256];  /* RATS: ignore (big enough) */
     char prog[PATH_MAX];
     char host[MAXHOSTNAMELEN];  /* RATS: ignore (big enough) */
     char iplist[1024];          /* RATS: ignore (size is checked) */
@@ -6060,7 +5896,7 @@ int main(int argc, const char * const *argv)
     int bufsz, c, col= RESULTS_COLUMN , i, optind;
     int maxlen = 1024;
     int sockfd = -1;
-    int cflags = REG_EXTENDED;
+    int cflags = REG_EXTENDED | REG_ICASE ;
     int eflags = 0;
     unsigned int seqid = 1U;
     unsigned int tzknown = 1U;
@@ -6080,6 +5916,7 @@ int main(int argc, const char * const *argv)
     uint64_t s[16];
     regex_t re;
     regmatch_t match[3]; /* line_buf, name, value */
+    auto struct rusage rusage_start, rusage_end;
 #if ! defined(PP__FUNCTION__)
     static const char __func__[] = "main";
 #endif
@@ -6796,7 +6633,7 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
         sz=ul;
     }
     if (0U!=flags['O']) {
-        if (sz<100000000UL) sz=100000000UL;
+        if (sz<10000000UL) sz=10000000UL;
     }
     if (SIZE_T_MAX/q <= sz) {
         logger(LOG_ERR, log_arg,
@@ -6855,6 +6692,9 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
         free(big_array);
         return errs;
     }
+    /* pointers in parray point to structures in big_array */
+    for (q=0UL; q<sz; q++)
+        parray[q]=&(big_array[q]);
 
 #if DEBUG_CODE
     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s %s: %s line %d: arrays allocated, sz=%lu", comment, prog, __func__, source_file, __LINE__, sz);
@@ -6947,17 +6787,27 @@ if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",__fu
                 unsigned char oldi=flags['i'];
                 unsigned int cs=0U,
 #if 0
-                    ts=0x01U<<TEST_SEQUENCE_RANDOM_DISTINCT
                     ts=0x01U<<TEST_SEQUENCE_MEDIAN3KILLER
                     ts=0x01U<<TEST_SEQUENCE_DUAL_PIVOT_KILLER
-#else
                     ts=0x01U<<TEST_SEQUENCE_RANDOM_VALUES
+#else
+                    ts=0x01U<<TEST_SEQUENCE_RANDOM_DISTINCT
 #endif
                 ;
                 size_t m, step, value[3], result[3];
                 int dir;
                 double d;
 
+#if 0
+# define METRIC neq+nlt+ngt+nsw      /* comparisons + swaps */
+# define METRIC neq+nlt+ngt+(nsw<<1) /* comparisons + 2*swaps */
+# define METRIC nsw                  /* swaps */
+# define METRIC neq+nlt+ngt          /* comparisons */
+# define METRIC neq+nlt+ngt+(nsw>>1) /* comparisons + swaps/2 */
+# define METRIC neq+nlt+ngt+(nsw>>2) /* comparisons + swaps/4 */
+#else
+# define METRIC 1000000UL*rusage_end.ru_utime.tv_sec+rusage_end.ru_utime.tv_usec-1000000UL*rusage_start.ru_utime.tv_sec-rusage_start.ru_utime.tv_usec /* run-time */
+#endif
                 tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
                 flags['i']=1U;
                 for (x=1UL; x<SAMPLING_TABLE_SIZE; x++)
@@ -6983,9 +6833,11 @@ if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",__fu
 #endif
                     sampling_table[x].min_nmemb = value[1];
 fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                    (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
-                    result[1] = neq+nlt+ngt;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1], nsw);
+                    (V)getrusage(RUSAGE_SELF,&rusage_start);
+                    (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
+                    (V)getrusage(RUSAGE_SELF,&rusage_end);
+                    result[1] = METRIC;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
                     step=(value[1]>>4);
                     if (1UL>step) step=1UL;
 fprintf(stderr, "step=%lu\n",step);
@@ -6999,9 +6851,11 @@ fprintf(stderr, "testing %lu <= nmemb for %lu samples <= %lu\n",value[0], sampli
                                 sampling_table[x].min_nmemb = value[0];
                                 (V)seed_random64n(s, p);
 fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
-                                result[0] = neq+nlt+ngt;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu), %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[0], result[1], value[1], nsw);
+                (V)getrusage(RUSAGE_SELF,&rusage_start);
+                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
+                (V)getrusage(RUSAGE_SELF,&rusage_end);
+                                result[0] = METRIC;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric (best %lu@%lu)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[0], result[1], value[1]);
                                 if ((result[2]==result[1])&&(result[0]==result[1])) {
                                     value[1] = value[2];
                                     dir=0;
@@ -7024,9 +6878,11 @@ fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu),
                                 sampling_table[x].min_nmemb = value[2];
                                 (V)seed_random64n(s, p);
 fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, timeout, f, log_arg, flags);
-                                result[2] = neq+nlt+ngt;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu), %lu swaps\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[2], result[1], value[1], nsw);
+                (V)getrusage(RUSAGE_SELF,&rusage_start);
+                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
+                (V)getrusage(RUSAGE_SELF,&rusage_end);
+                                result[2] = METRIC;
+fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric (best %lu@%lu)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[2], result[1], value[1]);
                                 if ((result[2]==result[1])&&(result[0]==result[1])) {
                                     value[1] = value[2];
                                     dir=0;
@@ -7049,11 +6905,16 @@ fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu comparisons (best %lu@%lu),
 fprintf(stderr, "step=%lu\n",step);
                     }
                     sampling_table[x].min_nmemb = value[1];
-fprintf(stderr, "%lu samples for nmemb >= %lu (%lu comparisons)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
-sleep(5);
+fprintf(stderr, "%lu samples for nmemb >= %lu (%lu metric)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
                 }
-                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++)
-                    printf("nmemb>=%lu, %lu samples\n", sampling_table[x].min_nmemb, sampling_table[x].samples);
+                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++) {
+                    if (((SIZE_T_MAX)==sampling_table[x].min_nmemb)
+                    && ((SIZE_T_MAX) / sampling_table[x].samples > sampling_table[x].samples))
+                        sampling_table[x].min_nmemb = sampling_table[x].samples * sampling_table[x].samples;
+                    i = snul(buf,sizeof(buf),NULL,"UL,",sampling_table[x].min_nmemb, 10, ' ', 21, f, log_arg);
+                    i = snul(buf2,sizeof(buf2),NULL,"UL },",sampling_table[x].samples, 10, ' ', 12, f, log_arg);
+                    printf("   {%s%s\n", buf, buf2);
+                }
                 flags['i']=oldi;
             }
             flags['O']=0U; /* reset to re-enable output from timing tests */
