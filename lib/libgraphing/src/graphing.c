@@ -27,7 +27,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is graphing.c version 2.5 2017-02-10T22:43:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is graphing.c version 2.10 2017-04-03T04:25:09Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "graphing" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/projects/automation/940/lib/libgraphing/src/s.graphing.c */
@@ -47,8 +47,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: graphing.c ~|^` @(#)"
 #define SOURCE_MODULE "graphing.c"
-#define MODULE_VERSION "2.5"
-#define MODULE_DATE "2017-02-10T22:43:03Z"
+#define MODULE_VERSION "2.10"
+#define MODULE_DATE "2017-04-03T04:25:09Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2014-2017"
 
@@ -121,22 +121,32 @@ double rem(FILE *f, double x, double scale, double res)
 int prec(FILE *f, double d)
 {
     int a=snmagnitude(d,NULL,NULL), b=snsf(d,NULL,NULL);
-    if (0>a) a=0;
-    if (d==0.0) b=0;
+    if (0>a) a++;
+    if (d==0.0) return 0;
+    if (debug > 0) {
+        (void)fprintf(f, "%s %s: d=%g, magnitude=%d, sf=%d, return %d%s",
+            COMMENTSTART, __func__, d, a, b, b-a, COMMENTEND);
+    }
     return b-a;
 }
 
 /* return number of digits of precision required to represent
-      fractional parts of low, high, and interval
+      fractional parts of low, high, and intermediate values
 */
 int formatprecision(FILE *f, double low, double high, double interval)
 {
     int p, q;
+    double d;
 
     if ((char)0 == graphing_initialized)
         initialize_graphing();
-    p = prec(f, interval);
-    q = prec(f, low);
+    p = prec(f, low);
+    d=snmultiple(low+interval,interval,NULL,NULL);
+    q = prec(f, d);
+    if (q > p)
+        p = q;
+    d=snmultiple(high-interval,interval,NULL,NULL);
+    q = prec(f, d);
     if (q > p)
         p = q;
     q = prec(f, high);
@@ -283,30 +293,25 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
             COMMENTEND);
     if (g <= 0.0) {
         return res;
-    } else if (g <= 1.0) {
-        for (d=1.0; d > g; d /= 10.0) ;
     } else {
-        for (d=1.0; d < g; d *= 10.0) ;
+        /* select power of 10 for d such that g/10 <= d <= g */
+        g /= 10.0;
+        for (d=1.0; d > g; d /= 10.0) ;
+        for (; d < g; d *= 10.0) ;
     }
-    do {
-        maxt = maxtick(f, low, high, res, d, llim, ulim);
-        mint = mintick(f, low, high, res, d, llim, ulim);
-        i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
-        if (debug > 0)
-            (void)fprintf(f,
-                "%s %s: power of 10 %g gives %d tick%s %s %g %s %g%s",
-                COMMENTSTART, __func__,
-                d, i, i!=1? "s": "", subintvl==0U? "from": "between", mint, subintvl==0U? "through": "and", maxt,
-                COMMENTEND);
-        if ((i <= 0) && (0U == subintvl))
-            return res;
-        if (i > nticks)
-            d *= 10.0;
-        else if (i < nticks / 10)
-            d /= 10.0;
-    } while ((i > nticks) || (i < nticks / 10));
-    /* if the tick interval is smaller than the inherent data resolution, increase the tick interval */
-    while (d < res) {
+    maxt = maxtick(f, low, high, res, d, llim, ulim);
+    mint = mintick(f, low, high, res, d, llim, ulim);
+    i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
+    if (debug > 0)
+        (void)fprintf(f,
+            "%s %s: power of 10 %g gives %d tick%s %s %g %s %g%s",
+            COMMENTSTART, __func__,
+            d, i, i!=1? "s": "", subintvl==0U? "from": "between", mint, subintvl==0U? "through": "and", maxt,
+            COMMENTEND);
+    if ((i <= 0) && (0U == subintvl))
+        return res;
+    /* if the tick interval is much smaller than the inherent data resolution, increase the tick interval */
+    while (d*10.0 < res) {
         d *= 10.0;
         maxt = maxtick(f, low, high, res, d, llim, ulim);
         mint = mintick(f, low, high, res, d, llim, ulim);
@@ -318,9 +323,8 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
             COMMENTSTART, __func__,
             d, i, i!=1? "s": "", subintvl==0U? "from": "between", mint, subintvl==0U? "through": "and", maxt,
             COMMENTEND);
-    /* a smaller power of 10 will give too many ticks, but is the basis for the eventual tick interval */
-    y = d / 10.0;
-    d = y;
+    /* d will give too many ticks, but is the basis for the eventual tick interval */
+    y = d;
     maxt = maxtick(f, low, high, res, d, llim, ulim);
     mint = mintick(f, low, high, res, d, llim, ulim);
     i=(int)snlround((maxt-mint)/d+1.0-(subintvl!=0U?2.0:0.0),NULL,NULL);
@@ -366,6 +370,13 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
                     COMMENTEND);
             }
             if ((0U == subintvl) || ((mint >= llim * 0.999) && (maxt <= ulim * 1.001))) {
+                if ((0<debug)&&(i>nticks))
+                    (void)fprintf(f,
+                        "%s %s: skipping interval %g = %g * %g because %d ticks > nticks %d%s",
+                        COMMENTSTART, __func__,
+                        d, fz[j], y, i, nticks,
+                        COMMENTEND);
+                if (i > nticks) continue;
                 /* avoid values which are not near an integral multiple of inherent resolution */
                 r = rem(f, d, 1.0, res);
                 if ((r < 0.105) || (r > 0.905)) {
@@ -373,8 +384,10 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
                     r = rem(f, maxt-mint, 1.0, d);
                     if ((r < 0.105) || (r > 0.905)) {
                         done = 1U;
-                    }
-                }
+                    } else if (0<debug)
+                        (void)fprintf(f, "%s %s: %G %% %G = 4/3/2017s",COMMENTSTART,__func__,maxt-mint,d,r,COMMENTEND);
+                } else if (0<debug)
+                    (void)fprintf(f, "%s %s: %G %% %G = 4/3/2017s",COMMENTSTART,__func__,d,res,r,COMMENTEND);
             }
         }
         else
@@ -386,6 +399,12 @@ double intvl(FILE *f, double low, double high, double res, double llim, double u
                     COMMENTEND);
             }
         if ((debug > 0) && (0U == done)) {
+            if (i > nticks)
+                (void)fprintf(f,
+                    "%s %s: skipping interval %g = %g * %g because %d ticks > ntcks%d%s",
+                    COMMENTSTART, __func__,
+                    d, fz[j], y, i, nticks,
+                    COMMENTEND);
             if (d < g)
                 (void)fprintf(f,
                     "%s %s: skipping interval %g = %g * %g < %g%s",

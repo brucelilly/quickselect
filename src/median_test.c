@@ -53,35 +53,62 @@
 */
 /* should be at least 8 to hold base-36 32-bit integers */
 /* should be at least 15 to hold base-36 64-bit integers */
-#define BIG_STRUCT_STRING_SIZE      17
+#define BIG_STRUCT_STRING_SIZE   17
 
-#define ASSERT_CODE                 0
-#define DEBUG_CODE                  0
-#define GENERATOR_TEST              0
-#define SILENCE_WHINEY_COMPILERS    0
+#define ASSERT_CODE              0
+#define DEBUG_CODE               0
+#define GENERATOR_TEST           0
+#define SILENCE_WHINEY_COMPILERS 0
 
-#define TEST_TIMEOUT                5.0      /* seconds (default value) */
+#define REPARTITION_DEBUG_LEVEL  3  /* low to print debug output, high to hide */
 
-#define RESULTS_COLUMN              72
+#define TEST_TIMEOUT             5.0  /* seconds (default value) */
 
-#define MAX_ARRAY_PRINT             290UL
+#define RESULTS_COLUMN           72
 
-#define QUICKSELECT_ARG_CHECKS      DEBUG_CODE
+#define MAX_ARRAY_PRINT          290UL
+
+#define QUICKSELECT_ARG_CHECKS   DEBUG_CODE
 
 /* for even-sized arrays, return lower- (else upper-) median */
-#define LOWER_MEDIAN                0
+#define LOWER_MEDIAN             0
 
-#define BM_INSERTION_CUTOFF 7UL /* 7UL in original B&M code */
-#define BM_SWAP_CODE        1    /* 0 uses exchange.h swap */
-#define BM_MEDIAN_CODE      1    /* 0 preferred because redundant comparisons can be eliminated */
-#define BM_PVINIT           1    /* 0 preferred because PVINIT screws up pointer differences */
-#define BM_RECURSE          1    /* 0 preferred because recursion on both regions causes the stack to grow too much */
-#define GL_SWAP_CODE        1    /* 0 uses exchange.h swap */
-#define MBM_M3_CUTOFF       12UL /* median-of-3 above */
-#define MBM_N_CUTOFF        88UL /* ninther above */
-#define INSERTION_CUTOFF    6UL /* insertion sort arrays this size or smaller (like B&M) */
+#define BM_INSERTION_CUTOFF      7UL  /* 7UL in original B&M code */
+#define BM_SWAP_CODE             1    /* 0 uses exchange.h swap */
+#define BM_MEDIAN_CODE           1    /* 0 preferred because redundant comparisons can be eliminated */
+#define BM_PVINIT                1    /* 0 preferred because PVINIT screws up pointer differences */
+#define BM_RECURSE               1    /* 0 preferred because recursion on both regions causes the stack to grow too much */
+#define GL_SWAP_CODE             1    /* 0 uses exchange.h swap */
+#define INSERTION_CUTOFF         6UL  /* insertion sort arrays this size or smaller (like B&M) */
 
-#define SAVE_PARTIAL        1
+/* When repivoting is necessary using median-of-medians, the middle third of
+   the array is partitioned as a result of finding the median of the medians.
+   This partial partitioning may be preserved to avoid some recomparisons
+   when repartitioning. Careful coding does not affect regular partitioning,
+   but object file size may increase due to the additional code required to
+   preserve and use the partial partitioning information to avoid some
+   comparisons. (Or object file might be smaller when saving partial
+   partitioning, depending on compiler options.)
+   Saving partial partitioning recomparisons improves performance on adverse
+   inputs by about 2% for sorting, about 10% for selection.  But it adds a
+   little overhead for non-adverse inputs.
+*/
+#define SAVE_PARTIAL             0
+
+/* Repivoting parameters control the tradeoff between minimal effect on random
+   inputs and effective repivoting of adverse inputs.
+   Choices are (defined by macros later):
+      DISABLED          repivot only under extreme circumstances
+      TRANSPARENT	(almost) no repivots for random inputs
+      LOOSE		worst adverse performance < 2 N log(N)
+      RELAXED		worst adverse performance ~ 1.5 N log(N)
+      AGGRESSIVE	performance penalty ~ 0.1% for random inputs
+*/
+#define TABLE_ENTRIES            AGGRESSIVE
+
+#define SAMPLING_DENOMINATOR     3 /* 3 (uniform spacing) or 4 (organ-pipe optimum) */
+
+#define USE_FMED5                0 /* using median-of-5 from 25 <= nmemb < 81 raises sorting and selection cost */
 
 /* nothing (much) to configure below this line */
 
@@ -134,7 +161,7 @@
 #define EXCHANGE_DO_LONG  1     /* 1 bigger, but also faster */
 
 /* local header files needed */
-#include "compare.h"            /* doublecmp intcmp ulcmp */
+#include "compare.h"            /* charcmp ... */
 #include "exchange.h"           /* exchange swap swap2 */
 #include "get_host_name.h"      /* get_host_name */
 #include "get_ips.h"            /* get_ips */
@@ -160,7 +187,7 @@
 #include <regex.h>              /* regcomp regerror regexec regfree */
 #include <stdio.h>
 #include <stdlib.h>             /* strtol strtoul */
-#include <string.h>             /* strrchr strstr */
+#include <string.h>             /* memcpy strrchr strstr */
 #include <time.h>               /* CLOCK_* clock_gettime */
 #include <unistd.h>             /* getpid */
 
@@ -175,24 +202,27 @@
 #undef buildstr
 #define buildstr(s) #s
 
-#define OPTSTRING "aAbBc:C:dD:eFghHiIjk:KlLm:M:nNoOPq:Q:r:RsStT:wW:y:z"
-#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d] [-D [n]] [-e] [-F] [-g] [-h] [-H] [-i] [-I] [-j] [-k col] [-l] [-L] [-m [f[,c[,l]]]] [-M [m3,n]] [-n] [-N] [-o] [-O] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-w] [-W [f,c[,l]]] [-y [n]] [-z] -- [[start incr]] [size [count]]\n\
+#define OPTSTRING "aAbBc:C:d:D:eEFgGhHiIjJ:k:KlLm:M:nNopPq:Q:r:RsStT:uvVwW:y:z"
+#define USAGE_STRING     "[-a] [-A] [-b] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d [n]] [-D [n]] [-e] [-E] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [f[,c[,l]]]] [-M [m3,n]] [-n] [-N] [-o] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-v] [-V] [-w] [-W [f,c[,l]]] [-y [n]] [-z] -- [[start incr]] [size [count]]\n\
 -a\ttest with McIlroy quicksort adversary\n\
 -A\talphabetic (string) data type tests\n\
 -b\ttest Bentley&McIlroy qsort\n\
 -B\toutput data for drawing box plots\n\
 -c [c1[,c2[,...]]]\ttest simplified sort-only quickselect with optional cutoff values\n\
 -C sequences\tinclude correctness tests for specified sequences\n\
--d\tturn on debugging output\n\
--D [n]\ttest dual-pivot qsort code with optional insertion sort cutoff\n\
+-d [n]\tturn on debugging output\n\
+-D [n]\ttest dual-pivot qsort code with optional small-array sort cutoff\n\
 -e\ttest heapsort code\n\
+-E\ttest selection sort\n\
 -F\tfloating-point (double) tests\n\
 -g\ttest glibc qsort code\n\
+-G\tuse Shell sort instead of insertion sort for small arrays\n\
 -h\tomit program headings (args, parameters, machine)\n\
 -H\toutput host information\n\
 -i\tuse instrumented comparison functions and report results\n\
 -I\tinteger data type tests\n\
 -j\ttest insertion sort\n\
+-J [gap[,gap[,...]]]\ttest Shell sort with specified gaps\n\
 -k col\t align timing numbers at column col\n\
 -K\twrite integer sequence generated by adversary (if given with -a)\n\
 -l\ttest library qsort\n\
@@ -202,24 +232,34 @@
 -n\tdo nothing except as specified by option flags\n\
 -N\ttest NetBSD qsort code\n\
 -o\tprint execution costs of operations on basic types\n\
--O\toptimize sampling table for quickselect\n\
+-p\tswap pivot initially (normally deferred)\n\
 -P\tpointer to structure data type tests\n\
--q [n[,f[,c]]]\ttest quickselect sort with optional insertion sort cutoff, repivot_factor, and repivot_cutoff and lopsided_partition_limit\n\
+-q [n[,f[,c]]]\ttest quickselect sort with optional small-array sort cutoff, repivot_factor, and repivot_cutoff and lopsided_partition_limit\n\
 -Q timeout\ttime out tests after timeout seconds\n\
--r [i[,n[,f]]]\ttest introsort sort with optional final insertion sort flag, insertion sort cutoff and recursion depth factor\n\
+-r [i[,n[,f]]]\ttest introsort sort with optional final insertion sort flag, small-array sort cutoff and recursion depth factor\n\
 -R\traw timing output (median time (and comparison counts if requested) only)\n\
 -s\tprint sizes of basic types\n\
 -S\tstructure data type tests\n\
 -t\tthorough tests\n\
 -T sequences\tinclude timing tests for specified sequences\n\
+-u\tuse a copy of the pivot for comparisons\n\
+-v\ttest sorting networks for small arrays\n\
+-V\tuse sorting networks instead of insertion sort for small arrays\n\
 -w\ttest qsort_wrapper\n\
--w [f,c]\ttest lopsided partitions in quickselect with optional repivot_factor and repivot_cutoff and lopsided_partition_limit\n\
+-W [f,c]\ttest lopsided partitions in quickselect with optional repivot_factor and repivot_cutoff and lopsided_partition_limit\n\
 -y [n]\tYaroslavskiy's dual-pivot sort with optional insertion sort cutoff\n\
 -z\tset repeatable random number generator state\n\
 start\tbegin testing with array size\n\
 incr\tincrement array size (prefix with * for geometric sequence)\n\
 size\tnumber of items in each test (maximum size if start is given) (default 10000)\n\
 count\tnumber of times to run each test (default 10)"
+
+/* repivot tuning */
+#define DISABLED    0
+#define TRANSPARENT 1 /* (almost) no repivots for random inputs */
+#define LOOSE       2 /* adversary < 2 N log N */
+#define RELAXED     3 /* adversary < 1.5 N log N */
+#define AGGRESSIVE  4 /* penalty < 0.1% */
 
 /* space-saving */
 #undef V
@@ -241,26 +281,28 @@ count\tnumber of times to run each test (default 10)"
 #define TEST_SEQUENCE_REVERSE                  2U  /* 0x000004 */
 #define TEST_SEQUENCE_ORGAN_PIPE               3U  /* 0x000008 */
 #define TEST_SEQUENCE_INVERTED_ORGAN_PIPE      4U  /* 0x000010 */
-#define TEST_SEQUENCE_SAWTOOTH                 5U  /* 0x000020 */ /* 3 distinct values */
-#define TEST_SEQUENCE_BINARY                   6U  /* 0x000040 */ /* 2 distinct values */
-#define TEST_SEQUENCE_CONSTANT                 7U  /* 0x000080 */ /* only 1 value */
-#define TEST_SEQUENCE_MANY_EQUAL_LEFT          8U  /* 0x000100 */
-#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE        9U  /* 0x000200 */
-#define TEST_SEQUENCE_MANY_EQUAL_RIGHT         10U /* 0x000400 */
-#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED      11U /* 0x000800 */
-#define TEST_SEQUENCE_RANDOM_DISTINCT          12U /* 0x001000 */
-#define TEST_SEQUENCE_RANDOM_VALUES            13U /* 0x002000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED    14U /* 0x004000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED 15U /* 0x008000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_NORMAL     16U /* 0x010000 */
-#define TEST_SEQUENCE_HISTOGRAM                17U /* 0x020000 */
-#define TEST_SEQUENCE_MEDIAN3KILLER            18U /* 0x040000 */
-#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        19U /* 0x080000 */
-#define TEST_SEQUENCE_PERMUTATIONS             20U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_COMBINATIONS             21U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_ADVERSARY                22U  /* also via TEST_TYPE_ADVERSARY */ /* must be last (comparison function changes) */
+#define TEST_SEQUENCE_ROTATED                  5U  /* 0x000020 */ /* after organ-pipe for graphing */
+#define TEST_SEQUENCE_SAWTOOTH                 6U  /* 0x000040 */ /* 3 distinct values, repeated sequence */
+#define TEST_SEQUENCE_TERNARY                  7U  /* 0x000080 */ /* 3 distinct values, random */
+#define TEST_SEQUENCE_BINARY                   8U  /* 0x000100 */ /* 2 distinct values */
+#define TEST_SEQUENCE_CONSTANT                 9U  /* 0x000200 */ /* only 1 value */
+#define TEST_SEQUENCE_MANY_EQUAL_LEFT          10U /* 0x000400 */
+#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE        11U /* 0x000800 */
+#define TEST_SEQUENCE_MANY_EQUAL_RIGHT         12U /* 0x001000 */
+#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED      13U /* 0x002000 */
+#define TEST_SEQUENCE_RANDOM_DISTINCT          14U /* 0x004000 */
+#define TEST_SEQUENCE_RANDOM_VALUES            15U /* 0x008000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED    16U /* 0x010000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED 17U /* 0x020000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_NORMAL     18U /* 0x040000 */
+#define TEST_SEQUENCE_HISTOGRAM                19U /* 0x080000 */
+#define TEST_SEQUENCE_MEDIAN3KILLER            20U /* 0x100000 */
+#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        21U /* 0x200000 */
+#define TEST_SEQUENCE_PERMUTATIONS             22U  /* also via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_COMBINATIONS             23U  /* also via TEST_TYPE_THOROUGH */
+#define TEST_SEQUENCE_ADVERSARY                24U  /* also via TEST_TYPE_ADVERSARY */ /* must be last (comparison function changes) */
 
-#define TEST_SEQUENCE_COUNT                    23U
+#define TEST_SEQUENCE_COUNT                    25U
 
 
 #define EXPECTED_RANDOM_MIN           (0)
@@ -290,6 +332,13 @@ struct big_struct {
     char string[BIG_STRUCT_STRING_SIZE];
 };
 
+/* aligned data block */
+union aligned_union {
+    void *p;
+    long l;
+    double d;
+};
+
 /* definitions:
    size is the size of the element type in bytes as returned by sizeof()
 */
@@ -297,6 +346,11 @@ struct big_struct {
 static char median_test_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
+static int debug=0;
+static int pivot_swap=0;
+static int pivot_copy=0;
+static int use_shell=0;
+static int use_networks=0;
 static const char *build_options = "@(#)median_test.c: " "built with configuration options: "
                   "LOWER_MEDIAN=" xbuildstr(LOWER_MEDIAN)
                   ", ASSERT_CODE=" xbuildstr(ASSERT_CODE)
@@ -318,9 +372,22 @@ static const char *build_options = "@(#)median_test.c: " "built with configurati
                   ", BM_PVINIT=" xbuildstr(BM_PVINIT)
                   ", BM_RECURSE=" xbuildstr(BM_RECURSE)
                   ", GL_SWAP_CODE=" xbuildstr(GL_SWAP_CODE)
-                  ", MBM_M3_CUTOFF=" xbuildstr(MBM_M3_CUTOFF)
-                  ", MBM_N_CUTOFF=" xbuildstr(MBM_N_CUTOFF)
                   ", TEST_TIMEOUT=" xbuildstr(TEST_TIMEOUT)
+#ifdef SAVE_PARTIAL
+    ", SAVE_PARTIAL=" xbuildstr(SAVE_PARTIAL)
+#endif
+    ", TABLE_ENTRIES="
+#if TABLE_ENTRIES == TRANSPARENT
+        "transparent"
+#elif TABLE_ENTRIES == LOOSE
+        "loose"
+#elif TABLE_ENTRIES == RELAXED
+        "relaxed"
+#elif TABLE_ENTRIES == AGGRESSIVE
+        "aggressive"
+#else
+        "disabled"
+#endif
                   ;
 static struct big_struct *input_data=NULL;
 /* for instrumented comparisons and swaps: */
@@ -335,14 +402,19 @@ static size_t nlt, neq, ngt, nsw;
 
 /* insertion sort parameters */
 static unsigned int introsort_final_insertion_sort = 1U;
-static size_t introsort_insertion_cutoff = 0UL; /* sentinel value */
+static size_t introsort_small_array_cutoff = 0UL; /* sentinel value */
 static size_t introsort_recursion_factor = 2UL;
+
+static size_t quickselect_small_array_cutoff = 8UL;
 
 /* for repivoting */
 static size_t npartitions, nrepivot;
-static size_t repivot_factor = 9UL;
-static size_t repivot_cutoff = 17UL;
+static size_t repivot_factor = 40UL;
+/* random shuffle @nmemb=80, repivot_factor=39 (lopsided_partition_limit=1, no_aux_repivot=1), ~0.014% repivots */
+static size_t repivot_factor2 = 9UL;
+static size_t repivot_cutoff = 5UL;
 static int lopsided_partition_limit = 2;
+static int no_aux_repivot = 0;
 
 /* To avoid repeatedly calculating the number of samples required for pivot
    element selection vs. nmemb, which is expensive, a table is used; then
@@ -353,43 +425,160 @@ static int lopsided_partition_limit = 2;
 struct sampling_table_struct {
     size_t min_nmemb;
     size_t samples;
+    size_t factor1;
+    size_t factor2;
+    size_t max_ratio; /* for statistics */
+    size_t repivots;  /* for statistics */
+    size_t repivot_ratio;  /* for statistics */
 };
-#if (SIZE_T_MAX) > 4294967295
-# define SAMPLING_TABLE_SIZE 22
-#else
-# define SAMPLING_TABLE_SIZE 12
+static struct sampling_table_struct sampling_table[] = {
+   {                    1UL,           1UL,  2UL,  1UL, 1UL, 0UL, 1UL }, /* single sample */
+#if TABLE_ENTRIES == TRANSPARENT
+   {                    3UL,           3UL, 40UL, 37UL, 1UL, 0UL, 1UL }, /* median-of-3 */ /* transparent */
+#elif TABLE_ENTRIES == LOOSE
+   {                    3UL,           3UL, 38UL, 17UL, 1UL, 0UL, 1UL }, /* median-of-3 */ /* loose */
+#elif TABLE_ENTRIES == RELAXED
+   {                    3UL,           3UL, 25UL, 10UL, 1UL, 0UL, 1UL }, /* median-of-3 */ /* relaxed */
+#elif TABLE_ENTRIES == AGGRESSIVE
+   {                    3UL,           3UL, 24UL,  7UL, 1UL, 0UL, 1UL }, /* median-of-3 */ /* aggressive */
+#else /* DISABLED */
+   {                   81UL,           9UL,999UL,999UL, 1UL, 0UL, 1UL }, /* disabled */
 #endif
-static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
-   {                    1UL,           1UL }, /* single sample, 1/4 position */
-   {                   13UL,           3UL }, /* median-of-3, 1/4,1/2,3/4
-                                              maybe samples!=sqrt(min_nmemb)
-                                          useful min_nmemb range 7UL to 13UL */
-   {                   81UL,           9UL }, /* remedian of samples */
-   {                  729UL,          27UL },
-   {                 6561UL,          81UL },
-   {                59049UL,         243UL },
-   {               531441UL,         729UL },
-   {              4782969UL,        2187UL },
-   {             41701511UL,        6561UL },
-   {            387420489UL,       19683UL },
-   {           3486784401UL,       59049UL },
+                                                 /* maximum possible ratio 39:1 (11:1 w/ USE_FMED5) */
+                                                 /* random shuffle @nmemb=80, factor2=7UL, ~0.3% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=8UL, ~0.15% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=9UL, ~0.09% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=10UL, ~0.05% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=11UL, ~0.03% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=12UL, ~0.02% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=13UL, ~0.013% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=14UL, ~0.01% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=15UL, ~0.007% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=16UL, ~0.004% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=17UL-18UL, ~0.003% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=19UL, ~0.002% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=20UL-21UL, ~0.001% repivots */
+                                                 /* random shuffle @nmemb=80, factor2=22UL-29UL, very few repivots */
+                                                 /* random shuffle @nmemb=80, factor2=30UL, no repivots */
+                                                 /* random shuffle @nmemb=80, factor1=20UL, ~0.096% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=25UL, ~0.060% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=27UL, ~0.025% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=28UL, ~0.023% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=29UL, ~0.021% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=30UL, ~0.020% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=31UL, ~0.018% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=32UL, ~0.017% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=33UL-34UL, ~0.016% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=35UL, ~0.015% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=36UL-39UL, ~0.014% repivots */
+                                                 /* random shuffle @nmemb=80, factor1=40UL+, no repivots (above maximum possible ratio) */
+#if USE_FMED5
+   {                   25UL,           5UL, 40UL, 10UL, 1UL, 0UL, 1UL }, /* median of 5 */
+#endif
+#if TABLE_ENTRIES == TRANSPARENT
+   {                   81UL,           9UL, 45UL, 24UL, 1UL, 0UL, 1UL }, /* remedian of samples */ /* transparent */
+#elif TABLE_ENTRIES == LOOSE
+   {                   81UL,           9UL, 45UL, 20UL, 1UL, 0UL, 1UL }, /* remedian of samples */ /* loose */
+#elif TABLE_ENTRIES == RELAXED
+   {                   81UL,           9UL, 23UL, 20UL, 1UL, 0UL, 1UL }, /* remedian of samples */ /* relaxed */
+#elif TABLE_ENTRIES == AGGRESSIVE
+   {                   81UL,           9UL, 17UL,  9UL, 1UL, 0UL, 1UL }, /* remedian of samples */ /* aggressive */
+#else /* DISABLED */
+   {                   81UL,           9UL,999UL,999UL, 1UL, 0UL, 1UL }, /* disabled */
+#endif
+                                                 /* maximum possible ratio 181:1 */
+                                                 /* random shuffle @nmemb=728, factor2=4UL, ~0.044% repivots */
+                                                 /* random shuffle @nmemb=728, factor2=5UL, ~0.012% repivots */
+                                                 /* random shuffle @nmemb=728, factor2=6UL, ~0.004% repivots */
+                                                 /* random shuffle @nmemb=728, factor2=7UL, ~0.001% repivots */
+                                                 /* random shuffle @nmemb=728, factor2=8UL-12UL, very few repivots */
+                                                 /* random shuffle @nmemb=728, factor2=13UL, no repivots */
+                                                 /* random shuffle @nmemb=728, factor1=9UL, ~0.031% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=10UL, ~0.020% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=11UL, ~0.014% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=12UL, ~0.010% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=13UL, ~0.007% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=14UL, ~0.005% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=15UL, ~0.004% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=16UL, ~0.003% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=17UL, ~0.002% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=18UL-21UL, ~0.001% repivots */
+                                                 /* random shuffle @nmemb=728, factor1=22UL-40UL, very few repivots */
+                                                 /* random shuffle @nmemb=728, factor1=41UL+, no repivots */
+#if TABLE_ENTRIES == TRANSPARENT
+   {                  729UL,          27UL, 12UL,  5UL, 1UL, 0UL, 1UL }, /* transparent */
+#elif TABLE_ENTRIES == LOOSE
+   {                  729UL,          27UL, 12UL,  5UL, 1UL, 0UL, 1UL }, /* loose */
+#elif TABLE_ENTRIES == RELAXED
+   {                  729UL,          27UL,  8UL,  5UL, 1UL, 0UL, 1UL }, /* relaxed */
+#elif TABLE_ENTRIES == AGGRESSIVE
+   {                  729UL,          27UL,  8UL,  5UL, 1UL, 0UL, 1UL }, /* aggressive */
+#else /* DISABLED */
+   {                  729UL,          27UL,999UL,999UL, 1UL, 0UL, 1UL }, /* disabled */
+#endif
+                                                 /* maximum possible ratio 819:1 */
+                                                 /* random shuffle @nmemb=6560, factor2=2UL, ~0.025% repivots */
+                                                 /* random shuffle @nmemb=6560, factor2=3UL, ~0.001% repivots */
+                                                 /* random shuffle @nmemb=6560, factor2=4UL, very few repivots */
+                                                 /* random shuffle @nmemb=6560, factor2=5UL+, no repivots */
+                                                 /* random shuffle @nmemb=6560, factor1=3UL, ~0.025% repivots */
+                                                 /* random shuffle @nmemb=6560, factor1=4UL, ~0.006% repivots */
+                                                 /* random shuffle @nmemb=6560, factor1=5UL-6UL, ~0.001% repivots */
+                                                 /* random shuffle @nmemb=6560, factor1=7UL-11UL, very few repivots */
+                                                 /* random shuffle @nmemb=6560, factor1=12UL+, no repivots */
+#if TABLE_ENTRIES == TRANSPARENT
+   {                 6561UL,          81UL,  4UL,  3UL, 1UL, 0UL, 1UL }, /* transparent */
+#elif TABLE_ENTRIES == LOOSE
+   {                 6561UL,          81UL,  4UL,  3UL, 1UL, 0UL, 1UL }, /* loose */
+#elif TABLE_ENTRIES == RELAXED
+   {                 6561UL,          81UL,  4UL,  3UL, 1UL, 0UL, 1UL }, /* relaxed */
+#elif TABLE_ENTRIES == AGGRESSIVE
+   {                 6561UL,          81UL,  4UL,  3UL, 1UL, 0UL, 1UL }, /* aggressive */
+#else /* DISABLED */
+   {                 6561UL,          81UL,999UL,999UL, 1UL, 0UL, 1UL }, /* disabled */
+#endif
+                                                 /* maximum possible ratio 3689:1 */
+                                                 /* random shuffle @nmemb=59048, factor2=2UL, very few repivots */
+                                                 /* random shuffle @nmemb=59048, factor2=3UL+, no repivots */
+                                                 /* random shuffle @nmemb=59048, factor1=2UL, ~0.003% repivots */
+                                                 /* random shuffle @nmemb=59048, factor1=3UL+, no repivots */
+#if TABLE_ENTRIES == TRANSPARENT
+   {                59049UL,         243UL,  2UL,  2UL, 1UL, 0UL, 1UL }, /* transparent */
+#elif TABLE_ENTRIES == LOOSE
+   {                59049UL,         243UL,  2UL,  2UL, 1UL, 0UL, 1UL }, /* loose */
+#elif TABLE_ENTRIES == RELAXED
+   {                59049UL,         243UL,  2UL,  2UL, 1UL, 0UL, 1UL }, /* relaxed */
+#elif TABLE_ENTRIES == AGGRESSIVE
+   {                59049UL,         243UL,  2UL,  2UL, 1UL, 0UL, 1UL }, /* aggressive */
+#else /* DISABLED */
+   {                59049UL,         243UL,999UL,999UL, 1UL, 0UL, 1UL }, /* disabled */
+#endif
+                                                 /* maximum possible ratio 16606:1 */
+                                                 /* random shuffle @nmemb=531440, factor2=2UL+, no repivots */
+                                                 /* random shuffle @nmemb=531440, factor1=2UL+, no repivots */
+   {               531441UL,         729UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {              4782969UL,        2187UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {             41701511UL,        6561UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {            387420489UL,       19683UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {           3486784401UL,       59049UL,  2UL,  2UL, 1UL, 0UL, 1UL },
 #if (SIZE_T_MAX) > 4294967295
-   {          31381059609UL,      177147UL }, /* silly to include large sizes?
+   {          31381059609UL,      177147UL,  2UL,  2UL, 1UL, 0UL, 1UL }, /* silly to include large sizes?
                                               check again in a decade or two */
-   {         282429536481UL,      531441UL },
-   {        2541865828329UL,     1594323UL },
-   {       22876792454961UL,     4782969UL },
-   {      205891132094649UL,    14348907UL },
-   {     1853020188851841UL,    43046721UL },
-   {    16677181699666569UL,   129140163UL },
-   {   150094635296999121UL,   387420489UL },
-   {  1350851717672992089UL,  1162261467UL },
-   { 12157665459056928801UL,  3486784401UL },
-   {   (SIZE_T_MAX),         10460353203UL }
+   {         282429536481UL,      531441UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {        2541865828329UL,     1594323UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {       22876792454961UL,     4782969UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {      205891132094649UL,    14348907UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {     1853020188851841UL,    43046721UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {    16677181699666569UL,   129140163UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {   150094635296999121UL,   387420489UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {  1350851717672992089UL,  1162261467UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   { 12157665459056928801UL,  3486784401UL,  2UL,  2UL, 1UL, 0UL, 1UL },
+   {   (SIZE_T_MAX),         10460353203UL,  2UL,  2UL, 1UL, 0UL, 1UL }
 #else
-   {   (SIZE_T_MAX),              177147UL }
+   {   (SIZE_T_MAX),              177147UL,  2UL,  2UL, 1UL, 0UL, 1UL }
 #endif
 };
+static size_t sampling_table_size = sizeof(sampling_table)/sizeof(sampling_table[0]);
 
 /* initialize at run-time */
 static void initialize_median_test(V)
@@ -403,90 +592,6 @@ static void initialize_median_test(V)
     else
         s++;
     median_test_initialized = register_build_strings(build_options, &source_file, s);
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int big_struct_intcmp(const void *p1, const void *p2)
-{
-    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
-        const struct big_struct *pa = (const struct big_struct *)p1,
-            *pb = (const struct big_struct *)p2;
-        return intcmp(&(pa->val),&(pb->val));
-    }
-    return 0;
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int ibig_struct_intcmp(const void *p1, const void *p2)
-{
-    int r=big_struct_intcmp(p1,p2);
-    if (0<r) ngt++;
-    else if (0>r) nlt++;
-    else neq++;
-    return r;
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int big_struct_strcmp(const void *p1, const void *p2)
-{
-    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
-        const struct big_struct *pa = (const struct big_struct *)p1,
-            *pb = (const struct big_struct *)p2;
-
-        return strcmp(pa->string, pb->string);
-    }
-    return 0;
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int ibig_struct_strcmp(const void *p1, const void *p2)
-{
-    int c = big_struct_strcmp(p1, p2);
-    if (0 < c) ngt++;
-    else if (0 > c) nlt++;
-    else neq++;
-    return c;
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int indcmp(const void *p1, const void *p2)
-{
-    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
-        const struct big_struct **pa = (const struct big_struct **)p1,
-            **pb = (const struct big_struct **)p2;
-
-        /* compare as strings (intentionally slow) */
-        return big_struct_strcmp(*pa, *pb);
-    }
-    return 0;
-}
-
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int iindcmp(const void *p1, const void *p2)
-{
-    int c = indcmp(p1, p2);
-    if (0 < c) ngt++;
-    else if (0 > c) nlt++;
-    else neq++;
-    return c;
 }
 
 static
@@ -531,6 +636,96 @@ int idoublecmp(const void *p1, const void *p2)
     return r;
 }
 
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int big_struct_intcmp(const void *p1, const void *p2)
+{
+    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
+        int c;
+        const struct big_struct *pa = (const struct big_struct *)p1,
+            *pb = (const struct big_struct *)p2;
+        c = intcmp(&(pa->val),&(pb->val));
+        return c;
+    }
+    return 0;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int ibig_struct_intcmp(const void *p1, const void *p2)
+{
+    int r=big_struct_intcmp(p1,p2);
+    if (0<r) ngt++;
+    else if (0>r) nlt++;
+    else neq++;
+    return r;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int big_struct_strcmp(const void *p1, const void *p2)
+{
+    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
+        int c;
+        const struct big_struct *pa = (const struct big_struct *)p1,
+            *pb = (const struct big_struct *)p2;
+
+        c = strcmp(pa->string, pb->string);
+        return c;
+    }
+    return 0;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int ibig_struct_strcmp(const void *p1, const void *p2)
+{
+    int c = big_struct_strcmp(p1, p2);
+    if (0 < c) ngt++;
+    else if (0 > c) nlt++;
+    else neq++;
+    return c;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int indcmp(const void *p1, const void *p2)
+{
+    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
+        int c;
+        const struct big_struct **pa = (const struct big_struct **)p1,
+            **pb = (const struct big_struct **)p2;
+
+        /* compare as strings (intentionally slow) */
+        c = big_struct_strcmp(*pa, *pb);
+        return c;
+    }
+    return 0;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int iindcmp(const void *p1, const void *p2)
+{
+    int c = indcmp(p1, p2);
+    if (0 < c) ngt++;
+    else if (0 > c) nlt++;
+    else neq++;
+    return c;
+}
+
 /* Array element swaps: */
 /* count is in chars */
 /* versions to swap by char, short, int, double */
@@ -538,155 +733,108 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void charswap(char *pa, char *pb, char *pc, size_t count)
+void charswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        char t;
-        if (NULL==pc) {
-            do {
-                t=*pa, *pa=*pb, *pb=t;
-                if (0UL==--count) break;
-                pa++, pb++;
-            } while (1);
-        } else {
-            do {
-                t=*pa, *pa=*pb, *pb=*pc, *pc=t;
-                if (0UL==--count) break;
-                pa++, pb++, pc++;
-            } while (1);
-        }
-    }
+    char t;
+    A(pa!=pb);A(0UL<count);
+    do {
+        t=*pa, *pa=*pb, *pb=t;
+        if (0UL==--count) break;
+        pa++, pb++;
+    } while (1);
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void icharswap(char *pa, char *pb, char *pc, size_t count)
+void icharswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        char t;
-        nsw+=count;
-        if (NULL==pc) {
-            do {
-                t=*pa, *pa=*pb, *pb=t;
-                if (0UL==--count) break;
-                pa++, pb++;
-            } while (1);
-        } else {
-            do {
-                t=*pa, *pa=*pb, *pb=*pc, *pc=t;
-                if (0UL==--count) break;
-                pa++, pb++, pc++;
-            } while (1);
-        }
-    }
+    char t;
+
+    A(pa!=pb);A(0UL<count);
+    nsw+=count;
+    do {
+        t=*pa, *pa=*pb, *pb=t;
+        if (0UL==--count) break;
+        pa++, pb++;
+    } while (1);
 }
 
 #undef GENERIC_SWAP
+#undef COUNTING_SWAP
 # define GENERIC_SWAP(type)                 \
     type *px=(type *)pa, *py=(type *)pb, t; \
+    A(pa!=pb);A(0UL<count);                 \
     count /= sizeof(type);                  \
-    if (NULL==pc) {                         \
         do {                                \
             t=*px, *px=*py, *py=t;          \
             if (0UL==--count) break;        \
             px++, py++;                     \
-        } while (1);                        \
-    } else {                                \
-        type *pz=(type *)pc;                \
-        do {                                \
-            t=*px, *px=*py, *py=*pz, *pz=t; \
-            if (0UL==--count) break;        \
-            px++, py++, *pz++;              \
-        } while (1);                        \
-    }
-
-
-#undef COUNTING_SWAP
+        } while (1);
 # define COUNTING_SWAP(type)                \
     type *px=(type *)pa, *py=(type *)pb, t; \
+    A(pa!=pb);A(0UL<count);                 \
     count /= sizeof(type);                  \
     nsw+=count;                             \
-    if (NULL==pc) {                         \
         do {                                \
             t=*px, *px=*py, *py=t;          \
             if (0UL==--count) break;        \
             px++, py++;                     \
-        } while (1);                        \
-    } else {                                \
-        type *pz=(type *)pc;                \
-        do {                                \
-            t=*px, *px=*py, *py=*pz, *pz=t; \
-            if (0UL==--count) break;        \
-            px++, py++, *pz++;              \
-        } while (1);                        \
-    }
+        } while (1);
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void shortswap(char *pa, char *pb, char *pc, size_t count)
+void shortswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(short)
-    }
+    GENERIC_SWAP(short)
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void ishortswap(char *pa, char *pb, char *pc, size_t count)
+void ishortswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(short)
-    }
+    COUNTING_SWAP(short)
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void intswap(char *pa, char *pb, char *pc, size_t count)
+void intswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(int)
-    }
+    GENERIC_SWAP(int)
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void iintswap(char *pa, char *pb, char *pc, size_t count)
+void iintswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(int)
-    }
+    COUNTING_SWAP(int)
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void doubleswap(char *pa, char *pb, char *pc, size_t count)
+void doubleswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        GENERIC_SWAP(double)
-    }
+    GENERIC_SWAP(double)
 }
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void idoubleswap(char *pa, char *pb, char *pc, size_t count)
+void idoubleswap(char *pa, char *pb, size_t count)
 {
-    if ((pa!=pb)&&(0UL<count)) { /* else nothing to do */
-        COUNTING_SWAP(double)
-    }
+    COUNTING_SWAP(double)
 }
 
 /* determine and return a pointer to an appropriate swap function */
@@ -695,7 +843,7 @@ static
 inline
 #endif /* C99 */
 void (*whichswap(char *base, size_t size, unsigned int instrumented))
-    (char *, char *, char *, size_t)
+    (char *, char *, size_t)
 {
     int i, t;  /* general integer variables */
     size_t s;  /* general size_t variable */
@@ -804,6 +952,77 @@ static void print_double_array(double *target, size_t l, size_t u)
     }
     (V)fprintf(stderr, "\n");
 }
+
+static void write_int_array(char *buf, size_t sz, int *target, size_t l, size_t u)
+{
+    size_t i;
+    int n;
+
+    for (i=l; i<=u; i++) {
+        if (i != l) {
+            n=snprintf(buf,sz, ", ");
+            buf+=n;
+            if (n+2>=sz) break;
+            sz-=n;
+        }
+        n=snprintf(buf,sz, "%lu:%d", i, target[i]);
+        buf+=n;
+        if (n+2>=sz) break;
+        sz-=n;
+    }
+    (V)snprintf(buf,sz, "\n");
+}
+
+#if ASSERT_CODE /* XXX */
+static void fprint_int_array(FILE *f, int *target, size_t l, size_t u)
+{
+    size_t i;
+
+    for (i=l; i<=u; i++) {
+        if (i != l)
+            (V)fprintf(f, ", ");
+        (V)fprintf(f, "%lu:%d", i, target[i]);
+    }
+    (V)fprintf(f, "\n");
+}
+
+static void fprint_double_array(FILE *f, double *target, size_t l, size_t u)
+{
+    size_t i;
+
+    for (i=l; i<=u; i++) {
+        if (i != l)
+            (V)fprintf(f, ", ");
+        (V)fprintf(f, "%lu:%G", i, target[i]);
+    }
+    (V)fprintf(f, "\n");
+}
+
+static void fprint_long_array(FILE *f, long *target, size_t l, size_t u)
+{
+    size_t i;
+
+    for (i=l; i<=u; i++) {
+        if (i != l)
+            (V)fprintf(f, ", ");
+        (V)fprintf(f, "%lu:%ld", i, target[i]);
+    }
+    (V)fprintf(f, "\n");
+}
+
+static FILE *logfile = NULL;
+
+static FILE *start_log(const char *path) {
+    return fopen(path,"w+");
+}
+
+static void close_log(FILE *f) {
+    if (NULL!=f) {
+        fflush(f);
+        fclose(f);
+    }
+}
+#endif
 
 /* optimized for & less expensive than % (esp. for unsigned long) */
 static
@@ -1066,7 +1285,7 @@ size_t freeze(long z)
 {
     long l;
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s: z=%ld\n",__func__,z);
+if (3<debug) (V)fprintf(stderr,"// %s: z=%ld\n",__func__,z);
 #endif
     l=antiqsort_nsolid;
     switch (antiqsort_type) {
@@ -1080,6 +1299,16 @@ size_t freeze(long z)
             {
                 int *pint=(int *)(antiqsort_base + z*antiqsort_typsz);
                 *pint = l;
+            }
+        break;
+        case DATA_TYPE_STRUCT :
+            {
+                struct big_struct *pbs;
+                pbs = (struct big_struct *)(antiqsort_base + z*antiqsort_typsz);
+                pbs->l = l;
+                pbs->val = (int)l;
+                (V)snl(pbs->string, BIG_STRUCT_STRING_SIZE, NULL, NULL, l, 36, '0', BIG_STRUCT_STRING_SIZE-1, NULL, NULL);
+                pbs->d = (double)l;
             }
         break;
         default :
@@ -1103,6 +1332,7 @@ int cmp(const void *px, const void *py) /* per C standard */
 {
     long a, b, x, y;
     const struct big_struct *pbs;
+    const int *pint;
     const long *plong;
 
     antiqsort_ncmp++;
@@ -1115,14 +1345,14 @@ int cmp(const void *px, const void *py) /* per C standard */
             x = *((const int *)px);
             y = *((const int *)py);
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s: x=%ld, y=%ld\n",__func__,x,y);
+if (3<debug) (V)fprintf(stderr,"// %s: x=%ld, y=%ld\n",__func__,x,y);
 #endif
         break;
         case DATA_TYPE_DOUBLE :
             x = (long)(*((const double *)px));
             y = (long)(*((const double *)py));
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s: *px=%G, x=%ld, *py=%G, y=%ld\n",__func__,*((const double *)px),x,*((const double *)py),y);
+if (3<debug) (V)fprintf(stderr,"// %s: *px=%G, x=%ld, *py=%G, y=%ld\n",__func__,*((const double *)px),x,*((const double *)py),y);
 #endif
         break;
         case DATA_TYPE_POINTER :
@@ -1158,9 +1388,11 @@ int cmp(const void *px, const void *py) /* per C standard */
         pivot_candidate = y;
     }
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s line %d: lastx=%ld, x=%ld, pivot_candidate=%ld, lasty=%ld, y=%ld\n",__func__,__LINE__,lastx,x,pivot_candidate,lasty,y);
+if (3<debug) (V)fprintf(stderr,"// %s line %d: lastx=%ld, x=%ld, pivot_candidate=%ld, lasty=%ld, y=%ld\n",__func__,__LINE__,lastx,x,pivot_candidate,lasty,y);
 #endif
-    A(x<antiqsort_n);A(y<antiqsort_n);
+if ((0L>x)||(x>=antiqsort_n)) (V)fprintf(stderr,"// %s line %d: x (%ld) is out of range 0<=x<%ld\n",__func__,__LINE__,x,antiqsort_n);
+if ((0L>y)||(y>=antiqsort_n)) (V)fprintf(stderr,"// %s line %d: y (%ld) is out of range 0<=y<%ld\n",__func__,__LINE__,y,antiqsort_n);
+    A(0L<=x);A(x<antiqsort_n);A(0L<=y);A(y<antiqsort_n);
     switch (antiqsort_type) {
         case DATA_TYPE_LONG :
             plong = (const long *)(antiqsort_base + x*antiqsort_typsz);
@@ -1169,17 +1401,23 @@ int cmp(const void *px, const void *py) /* per C standard */
             b = *plong;
         break;
         case DATA_TYPE_INT :
-            plong = (const long *)(antiqsort_base + x*antiqsort_typsz);
-            a = *plong;
-            plong = (const long *)(antiqsort_base + y*antiqsort_typsz);
-            b = *plong;
+            pint = (const int *)(antiqsort_base + x*antiqsort_typsz);
+            a = (long)(*pint);
+            pint = (const int *)(antiqsort_base + y*antiqsort_typsz);
+            b = (long)(*pint);
+        break;
+        case DATA_TYPE_STRUCT :
+            pbs = (struct big_struct *)(antiqsort_base + x*antiqsort_typsz);
+            a=pbs->l;
+            pbs = (struct big_struct *)(antiqsort_base + y*antiqsort_typsz);
+            b=pbs->l;
         break;
         default :
             (V)fprintf(stderr, "%s: %s line %d: antiqsort_type %d is not valid\n",__func__,source_file,__LINE__,antiqsort_type);
         break;
     }
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s line %d: a=%ld, b=%ld\n",__func__,__LINE__,a,b);
+if (3<debug) (V)fprintf(stderr,"// %s line %d: a=%ld, b=%ld\n",__func__,__LINE__,a,b);
 #endif
     /* brackets added BL */
     if ((a==antiqsort_gas) && (b==antiqsort_gas)) {
@@ -1206,7 +1444,7 @@ int cmp(const void *px, const void *py) /* per C standard */
     if (a > b) return 1; else if (a < b) return -1; else return 0;
 #else
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s line %d: a=%d, b=%d, will return %d\n",__func__,__LINE__,a,b,((a>b)?1:(a<b)?-1:0));
+if (3<debug) (V)fprintf(stderr,"// %s line %d: a=%d, b=%d, will return %d\n",__func__,__LINE__,a,b,((a>b)?1:(a<b)?-1:0));
 #endif
     if (a > b) return 1; else if (a < b) return 1; else return 0;
 #endif
@@ -1234,7 +1472,7 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
 {
     size_t i;
 
-    A(NULL!=pv);A(NULL!=alt);A(pv!=alt);
+    A(NULL!=pv);A(NULL!=alt);A(pv!=alt);A(type!=alt_type);
     qsort_base = pv;
     qsort_type = type;
     qsort_typsz = sz;
@@ -1248,7 +1486,7 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
     antiqsort_ncmp = 0UL;
     lastx = lasty = n;
 #if DEBUG_CODE
-(V)fprintf(stderr,"// %s: n=%lu, pv=%p, sz=%lu, alt=%p, altsz=%lu, type=%d, alt_type=%d\n",__func__,n,pv,sz,alt,altsz,type,alt_type);
+if (3<debug) (V)fprintf(stderr,"// %s: n=%lu, pv=%p, sz=%lu, alt=%p, altsz=%lu, type=%d, alt_type=%d\n",__func__,n,pv,sz,alt,altsz,type,alt_type);
 #endif
     for(i=0UL; i<n; i++) {
         /* initialize the array that qsort uses */
@@ -1311,6 +1549,16 @@ static void initialize_antiqsort(size_t n, char *pv, const size_t sz, char *alt,
                     int *pint;
                     pint = (int *)(antiqsort_base + antiqsort_typsz*i);
                     *pint = (int)antiqsort_gas;
+                }
+            break;
+            case DATA_TYPE_STRUCT :
+                {
+                    struct big_struct *pbs;
+                    pbs = (struct big_struct *)(antiqsort_base + antiqsort_typsz*i);
+                    pbs->l = (long)antiqsort_gas;
+                    pbs->val = (int)(pbs->l);
+                    (V)snl(pbs->string, BIG_STRUCT_STRING_SIZE, NULL, NULL, pbs->l, 36, '0', BIG_STRUCT_STRING_SIZE-1, NULL, NULL);
+                    pbs->d = (double)(pbs->l);
                 }
             break;
             default :
@@ -1407,7 +1655,7 @@ void bmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void 
         long v;
         size_t s; /* added BL */
 
-bmloop:   SWAPINIT(a, es);
+bmloop: SWAPINIT(a, es);
         if (n < (BM_INSERTION_CUTOFF)) {         /* Insertion sort on smallest arrays */
                 for (pm = a + es; pm < a + n*es; pm += es)
                         for (pl = pm; pl > a && compar(pl-es, pl) > 0; pl -= es)
@@ -1415,9 +1663,9 @@ bmloop:   SWAPINIT(a, es);
                 return;
         }
         pm = a + (n/2)*es;    /* Small arrays, middle element */
+        pc = pd = pn = a + (n-1)*es; /* moved outside of pivot selection guard */
         if (n > 7) {
                 pl = a; /* moved outside of pivot selection guard */
-                pn = a + (n-1)*es; /* moved outside of pivot selection guard */
                 if (n > 40) {    /* Big arrays, pseudomedian of 9 */
                         s = (n/8)*es;
                         pl = med3(pl, pl+s, pl+2*s, compar);
@@ -1427,10 +1675,8 @@ bmloop:   SWAPINIT(a, es);
                 pm = med3(pl, pm, pn, compar); /* Mid-size, med of 3 */
                 pl = a; /* reset (BL) */
         }
-        pn = a + n*es;
         PVINIT(pv, pm);       /* pv points to partition value */
         pa = pb = a; /* original code; redundant comparison pa vs. pa */
-        pc = pd = a + (n-1)*es;
         for (;;) {
                 while (pb <= pc && (r = compar(pb, pv)) <= 0) {
                         if (r == 0) { bmswap(pa, pb); pa += es; }
@@ -1454,6 +1700,7 @@ bmloop:   SWAPINIT(a, es);
         /* compute the size of the block of chars that needs to be moved to put the > region after the upper == region */
         /* pn-pd-es (a.k.a. pu-pd) is the number of chars in the upper == block */
         /* pd-pc is the number of chars in the > block */
+        pn = a + n*es;
         s = bmmin(pd-pc, pn-pd-es); vecswap(pb, pn-s, s);
 
         if ((s = pb-pa) > es) bmqsort(a,    s/es, es, compar);
@@ -1555,138 +1802,6 @@ nbloop:        SWAPINIT((char *)a, es);
 /*                nbqsort(pn - r, r / es, es, compar);*/
 }
 /* ************************************************************************** */
-
-/* Modified Bentley&McIlroy qsort:
-      ternary median-of-3
-      type-independent deferred pivot swap
-      improved sampling for singleton, median-of-3, ninther
-      recurse on small region, iterate large region
-      avoid self-swapping pb,pc
-      improved swapping
-      don't repeat initialization during iteration
-      uses INSERTION_CUTOFF rather than BM_INSERION_CUTOFF (normally equivalent)
-   No remedian of samples
-   No break-glass mechanism to prevent quadratic behavior
-   No order statistic selection
-*/
-static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
-{
-    int c=compar(pa,pb);
-    if (0!=c) {
-        int d=compar(pb,pc);
-        if (0!=d) {
-            if ((0<d)&&(0>c)) {
-                if (0>compar(pa,pc)) return pc;
-                else return pa;
-            } else if ((0>d)&&(0<c)) {
-                if (0<compar(pa,pc)) return pc;
-                else return pa;
-            }
-        }
-    }
-    return pb;
-}
-
-/* programmable cutoffs; a bit slower than compile-time constants */
-static size_t mbm_m3_cutoff = MBM_M3_CUTOFF;
-static size_t mbm_n_cutoff = MBM_N_CUTOFF;
-
-void mbmqsort_internal(void *a, size_t n, size_t es,
-    int (*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
-{
-        char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
-        size_t d, r;
-        int cmp_result;
-
-        assert(a != NULL || n == 0 || es == 0);
-        assert(compar != NULL);
-
-loop:   if (n <= (INSERTION_CUTOFF)) {
-                for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
-                        for (pl = pm; pl > (char *) a && compar(pl - es, pl) > 0;
-                             pl -= es)
-                                swapfunc(pl, pl - es, NULL, es);
-                return;
-        }
-        d = es * (n / 4UL);
-        pm = (char *) a + d; /* 1/4 */
-        if (n > mbm_m3_cutoff) {
-                pl = (char *)a + es * (n / 2UL); /* 1/2 */
-                pn = (char *) a + (n - 1UL) * es - d; /* 3/4 */
-                if (n > mbm_n_cutoff) {
-                        d = (n / 12UL) * es; /* twelfths */
-                        r = 2UL*d;
-                        pm = fmed3(pm-r, pm-d, pm, compar); /* 1,2,3 */
-                        pl = fmed3(pl-d, pl, pl+d, compar); /* 5,6,7 */
-                        pn = fmed3(pn, pn+d, pn+r, compar); /* 9,10,11 */
-                }
-                pm = fmed3(pl, pm, pn, compar);
-        }
-        pa = pb = (char *) a;
-        pc = pd = (char *) a + (n - 1) * es;
-        for (;;) {
-                while (pb <= pc && (cmp_result = compar(pb, pm)) <= 0) {
-                        if (cmp_result == 0) {
-                                swapfunc(pa, pb, NULL, es);
-                                pm=pa;
-                                pa += es;
-                        }
-                        pb += es;
-                }
-                while (pb <= pc && (cmp_result = compar(pc, pm)) >= 0) {
-                        if (cmp_result == 0) {
-                                swapfunc(pc, pd, NULL, es);
-                                pm=pd;
-                                pd -= es;
-                        }
-                        pc -= es;
-                }
-                if (pb >= pc)
-                        break;
-                swapfunc(pb, pc, NULL, es);
-                pb += es;
-                pc -= es;
-        }
-        npartitions++;
-
-        pn = (char *) a + n * es;
-        /* | = |  <  |  >  | = | */
-        /*    a     b     d     n*/
-        /* compute the size of the block of chars that needs to be moved to put the < region before the lower == region */
-        /* pb-pa is the number of chars in the < block */
-        r = bmmin(pa - (char *) a, pb - pa);
-        if (0<r) swapfunc(a, pb-r, NULL, r);
-        /* after the swap (above), the start of the == section is at pb-r */
-        /* compute the size of the block of chars that needs to be moved to put the > region after the upper == region */
-        /* pn-pd-es (a.k.a. pu-pd) is the number of chars in the upper == block */
-        /* pd-pc is the number of chars in the > block */
-        r = bmmin((size_t)(pd - pc), pn - pd - es);
-        if (0<r) swapfunc(pb, pn-r, NULL, r);
-
-        r = pb - pa; /* size (only) of < region */
-        d = pd - pc; /* size (only) of > region */
-        if (r<=d) {
-                /* recurse on small pa..pb, iterate large */
-                if (r>es) mbmqsort_internal(a, r/es, es, compar, swapfunc);
-                if (d>es) {
-                    a = pn-d;
-                    n = d/es;
-                    goto loop;
-                }
-        } else {
-                if (d>es) mbmqsort_internal(pn-d, d/es, es, compar, swapfunc);
-                if (r>es) {
-                    n = r/es;
-                    goto loop;
-                }
-        }
-}
-
-void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
-{
-    mbmqsort_internal(a, n, es, compar, whichswap(a,es,1U));
-}
 
 /* ********************** glibc qsort code ********************************** */
 /* Copyright (C) 1991-2016 Free Software Foundation, Inc.
@@ -1962,22 +2077,26 @@ inline
 #endif /* C99 */
 void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     char *pa, *pb, *pc, *pl, *pu;
     size_t nmemb=beyond-first;
 
 #if 0
+if (3<debug) {
 fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu\n",__func__,__LINE__,base,first,beyond);
 print_int_array(base,first,beyond-1UL);
+}
 #endif
     if (2UL>nmemb) return;
     for (pa=pl=base+first*size,pu=base+(beyond-1UL)*size; pa<pu; pa+=size)
         for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
-            swapfunc(pb,pc,NULL,size);
+            swapfunc(pb,pc,size);
 #if 0
+if (3<debug) {
 fprintf(stderr, "%s line %d:\n",__func__,__LINE__);
 print_int_array(base,first,beyond-1UL);
+}
 #endif
 }
 
@@ -1990,20 +2109,502 @@ void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, co
     isort_internal(base,0UL,nmemb,size,compar,whichswap(base,size,1U));
 }
 
-/* simplified and full-blown quickselect-based qsort:
-   Like modified B&M qsort, except:
-      add sampling and remedian of samples, with sampling table
-      pivot selection moves elements
+ /* selection sort */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void selsort_internal(char *base, size_t first, size_t beyond, size_t size,
+    int (*compar)(const void *, const void *),
+    void (*swapfunc)(char *, char *, size_t))
+{
+    size_t nmemb=beyond-first;
+
+    if (2UL<=nmemb) {
+        char *pa, *pb, *pc, *pl, *pr;
+
+        for (pa=pl=base+first*size,pr=base+(beyond-1UL)*size; pa<pr; pa+=size) {
+            for (pb=pa,pc=pa+size; pc<=pr; pc+=size) {
+                if (0<compar(pb,pc)) pb=pc;
+            }
+            if (pb!=pa) swapfunc(pa,pb,size);
+        }
+    }
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void selsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    selsort_internal(base,0UL,nmemb,size,compar,whichswap(base,size,1U));
+}
+
+#if 0
+static size_t ciura[] = { 1, 4, 10, 23, 57, 132, 301, 701, (SIZE_T_MAX) };
+static size_t gaps[] = { 1, 9, 67, 479, 3359, 23531, 164729, 1153109, 8071783, (SIZE_T_MAX) };
+static size_t ktokuda[] = { 1, 4, 9, 20, 46, 103, 233, 525, 1182, 2660, 5985, 13467, 30301, 68178, 153401, 345152, 776591, 1747331, 3931496, 8845866, 19903198, (SIZE_T_MAX) };
+static size_t kprimes[] = { 1, 2, 5, 11, 23, 47, 97, 197, 397, 797, 1597, 3203, 6421, 12853, 25717, 51437, 102877, 205759, 411527, 823117, 1646237, 3292489, 6584983, 13169977, (SIZE_T_MAX) };
+/* khibbard: 63 non-prime 1023 non-prime 4095 non-prime 16383 non-prime 65535 non-prime 262143 non-prime 1048575 non-prime 4194303 non-prime 16777215 non-prime */
+static size_t khibbard[] = { 1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 2047, 4095, 8191, 16383, 32767, 65535, 131071, 262143, 524287, 1048575, 2097151, 4194303, 8388607, 16777215, (SIZE_T_MAX) };
+/* kbentley: 4 non-prime 40 non-prime 3280 non-prime 29524 non-prime 265720 non-prime 2391484 non-prime */
+static size_t kbentley[] = { 1, 4, 13, 40, 121, 364, 1093, 3280, 9841, 29524, 88573, 265720, 797161, 2391484, 7174453, (SIZE_T_MAX) };
+static size_t kprimes2[] = { 1, 3, 7, 17, 37, 79, 163, 331, 673, 1361, 2729, 5471, 10949, 21911, 43853, 87719, 175447, 350899, 701819, 1403641, 2807303, 5614657, 11229331, (SIZE_T_MAX) };
+#else
+static size_t gaps[] = { 1, 4, 10, 23 };
+#endif
+static size_t ngaps = sizeof(gaps)/sizeof(size_t);
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void shellsort_internal(char *base, size_t first, size_t beyond, size_t size,
+    int(*compar)(const void *, const void *),
+    void (*swapfunc)(char *, char *, size_t))
+{
+    size_t h, i, j, k, n, nmemb, o;
+    char *pa, *pb, *pc, *pl, *pu;
+
+    pl=base+first*size;
+    pu=base+beyond*size;
+    /* loop, decreasing gap */
+#if 0
+    for (h=(beyond-first)*5UL/11UL; ; h=h*5UL/11UL) {
+    for (h=(beyond-first)>>1; ; h>>=1) {
+    for (nmemb=beyond-first,h=(nmemb>>1)-(nmemb>>4); ; h=(h>>1)-(h>>4)) {
+    for (n=ngaps,h=gaps[--n]; ; h=gaps[--n]) {
+#else
+    /* obtain largest applicable gap h */
+    for (nmemb=beyond-first,n=0UL,h=gaps[n]; h<=nmemb; h=gaps[++n]) { ; }
+    for (h=gaps[--n]; ; h=gaps[--n]) {
+#endif
+        for (o=h*size,pa=pc=pl+o; pa<pu; pa+=size) {
+            for (pb=pa; (pb>=pc)&&(0<compar(pb-o,pb)); pb-=o) {
+                swapfunc(pb-o,pb,size);
+            }
+        }
+        if (1UL==h) return;
+    }
+#if 0
+shellsort(itemType a[], int l, int r)
+  { int i, j, k, h; itemType v;
+    int incs[16] = { 1391376, 463792, 198768, 86961, 33936,
+                     13776, 4592, 1968, 861, 336, 
+                     112, 48, 21, 7, 3, 1 };
+    for ( k = 0; k < 16; k++)
+      for (h = incs[k], i = l+h; i <= r; i++)
+        { 
+          v = a[i]; j = i;
+          while (j >= h && a[j-h] > v)
+            { a[j] = a[j-h]; j -= h; }
+          a[j] = v; 
+        } 
+  }
+#endif
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void shellsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    shellsort_internal(base,0UL,nmemb,size,compar,whichswap(base,size,1U));
+}
+
+
+#define MAX_NETWORK 10UL
+#define COMPARE_EXCHANGE(ma,mb) if(0<compar(ma,mb))swapfunc(ma,mb,size)
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
+    int(*compar)(const void *, const void *),
+    void (*swapfunc)(char *, char *, size_t))
+{
+    size_t nmemb;
+
+    if ((2UL<=(nmemb=beyond-first))&&((MAX_NETWORK)>=nmemb)) {
+        char *p0, *p1, *p2, *p3, *p4, *p5, *p6, *p7, *p8, *p9;
+
+        p0=base+first*size;
+        p1=p0+size;
+        switch (nmemb) {
+            case 2UL :
+                COMPARE_EXCHANGE(p0,p1);
+            return;
+            case 3UL :
+                p2=p1+size;
+#if 0 /* would require readjusting ppeq,ppgt as the element desired by the caller is not necessarily the middle element */
+                /* Special-case here to support selection for median-of-medians
+                   with retention of equals region boundaries to avoid
+                   recomparisons when repartitioning.
+                */
+                {
+                    if ((NULL!=ppeq)&&(NULL!=ppgt)) {
+                        int b, c, d;
+                        if (0<(b=compar(p0,p2))) swapfunc(p0,p2,size);
+                        if (0<(c=compar(p0,p1))) swapfunc(p0,p1,size);
+                        if (0<(d=compar(p1,p2))) swapfunc(p1,p2,size);
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) (V)fprintf(stderr, "// %s line %d: p0@%lu, p1@%lu, p2=%lu, b=%d, c=%d, d=%d\n",__func__,__LINE__,(p0-base)/size,(p1-base)/size,(p2-base)/size,b,c,d);
+#endif
+                        if (0<d) {
+                            *ppgt=p2;
+                            if (0==b) *ppeq=p0; else *ppeq=p1;
+                        } else {
+                            if (0==d) *ppgt=p2+size; else *ppgt=p2;
+                            if (0==c) *ppeq=p0; else *ppeq=p1;
+                        }
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) (V)fprintf(stderr, "// %s line %d: *ppeq@%lu, *ppgt@%lu\n",__func__,__LINE__,(*ppeq-base)/size,(*ppgt-base)/size);
+#endif
+                    } else {
+                        COMPARE_EXCHANGE(p0,p2);
+                        COMPARE_EXCHANGE(p0,p1);
+                        COMPARE_EXCHANGE(p1,p2);
+                    }
+                }
+#else
+                COMPARE_EXCHANGE(p0,p2);
+                COMPARE_EXCHANGE(p0,p1);
+                COMPARE_EXCHANGE(p1,p2);
+#endif
+            return;
+            case 4UL :
+                p2=p1+size;
+                p3=p2+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p1,p3);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p3);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+            return;
+            case 5UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p4);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p1,p3);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p4);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+                    COMPARE_EXCHANGE(p1,p4);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p3,p4);
+            return;
+            case 6UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                p5=p4+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p4);
+                    COMPARE_EXCHANGE(p1,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p1,p3);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p4);
+                    COMPARE_EXCHANGE(p3,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+                    COMPARE_EXCHANGE(p4,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p4);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p3,p4);
+            return;
+            case 7UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                p5=p4+size;
+                p6=p5+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p4);
+                    COMPARE_EXCHANGE(p1,p5);
+                    COMPARE_EXCHANGE(p2,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p1,p3);
+                    COMPARE_EXCHANGE(p4,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p4);
+                    COMPARE_EXCHANGE(p3,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+                    COMPARE_EXCHANGE(p4,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p4);
+                    COMPARE_EXCHANGE(p3,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p3,p4);
+                    COMPARE_EXCHANGE(p5,p6);
+            return;
+            case 8UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                p5=p4+size;
+                p6=p5+size;
+                p7=p6+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p4);
+                    COMPARE_EXCHANGE(p1,p5);
+                    COMPARE_EXCHANGE(p2,p6);
+                    COMPARE_EXCHANGE(p3,p7);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p1,p3);
+                    COMPARE_EXCHANGE(p4,p6);
+                    COMPARE_EXCHANGE(p5,p7);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p4);
+                    COMPARE_EXCHANGE(p3,p5);
+                    COMPARE_EXCHANGE(p6,p7);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+                    COMPARE_EXCHANGE(p4,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p4);
+                    COMPARE_EXCHANGE(p3,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p3,p4);
+                    COMPARE_EXCHANGE(p5,p6);
+            return;
+            case 9UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                p5=p4+size;
+                p6=p5+size;
+                p7=p6+size;
+                p8=p7+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p3,p4);
+                    COMPARE_EXCHANGE(p6,p7);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p4,p5);
+                    COMPARE_EXCHANGE(p7,p8);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p3,p4);
+                    COMPARE_EXCHANGE(p6,p7);
+                    COMPARE_EXCHANGE(p2,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p3);
+                    COMPARE_EXCHANGE(p1,p4);
+                    COMPARE_EXCHANGE(p5,p8);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p3,p6);
+                    COMPARE_EXCHANGE(p4,p7);
+                    COMPARE_EXCHANGE(p2,p5);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p3);
+                    COMPARE_EXCHANGE(p1,p4);
+                    COMPARE_EXCHANGE(p5,p7);
+                    COMPARE_EXCHANGE(p2,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p3);
+                    COMPARE_EXCHANGE(p4,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p4);
+                    COMPARE_EXCHANGE(p5,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+            return;
+            case 10UL :
+                p2=p1+size;
+                p3=p2+size;
+                p4=p3+size;
+                p5=p4+size;
+                p6=p5+size;
+                p7=p6+size;
+                p8=p7+size;
+                p9=p8+size;
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p5);
+                    COMPARE_EXCHANGE(p1,p6);
+                    COMPARE_EXCHANGE(p2,p7);
+                    COMPARE_EXCHANGE(p3,p8);
+                    COMPARE_EXCHANGE(p4,p9);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p3);
+                    COMPARE_EXCHANGE(p1,p4);
+                    COMPARE_EXCHANGE(p5,p8);
+                    COMPARE_EXCHANGE(p6,p9);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p2);
+                    COMPARE_EXCHANGE(p3,p6);
+                    COMPARE_EXCHANGE(p7,p9);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p0,p1);
+                    COMPARE_EXCHANGE(p2,p4);
+                    COMPARE_EXCHANGE(p5,p7);
+                    COMPARE_EXCHANGE(p8,p9);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p2);
+                    COMPARE_EXCHANGE(p3,p5);
+                    COMPARE_EXCHANGE(p4,p6);
+                    COMPARE_EXCHANGE(p7,p8);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p1,p3);
+                    COMPARE_EXCHANGE(p2,p5);
+                    COMPARE_EXCHANGE(p4,p7);
+                    COMPARE_EXCHANGE(p6,p8);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p2,p3);
+                    COMPARE_EXCHANGE(p6,p7);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p3,p4);
+                    COMPARE_EXCHANGE(p5,p6);
+                /* parallel group */
+                    COMPARE_EXCHANGE(p4,p5);
+            return;
+        }
+    }
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void networksort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+{
+    networksort_internal(base,0UL,nmemb,size,compar,whichswap(base,size,1U));
+}
+
+/* support functions */
+
+/* array element moves in blocks */
+/* Given two adjacent blocks of data delimited by pointers
+   pa = start of block A, pb = start of block B, and pc pointing just past the
+   end of block B, swap the minimum number of chars to place all of block B
+   before block A (order within blocks is not preserved), returning a pointer
+   to the start of block A (which is now after block B).
+ Z |  A |   B  |  C
+    pa   pb     pc
+    vvvvvvvvvvv
+ Z |  B  |  A  |  C
+    pa    p     pc
+ returned ^
+   In addition to reversing the relative order of blocks A and B, this function
+   is useful to consolidate like regions separated by a different type of
+   region, e.g. when it is desirable to consolidate Z and B and/or A and C in
+   the above diagram.
 */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+char *blockmove(char *pa, char *pb, char *pc,
+    void(*swapfunc)(char *,char *,size_t))
+{
+    A(pa<=pb);A(pb<=pc);
+    if (pb<pc) {
+        if (pa<pb) {
+            size_t p=pc-pb, n=pb-pa;
+            if (p<n) n=p;
+            swapfunc(pa,pc-n,n); return pa+p;
+        } return pc;
+    } return pa;
+}
+
+/* Ternary median-of-3, biased toward middle element if possible, else first element. */
+/* Average 8/3 comparisons for 3 elements (distinct values) = 0.889 comparisons/element */
+static char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *))
+{
+    int c=compar(pa,pb);
+    if (0!=c) {
+        int d=compar(pb,pc);
+        if (0!=d) {
+            if ((0<d)&&(0>c)) {
+                if (0>compar(pa,pc)) return pc;
+                else return pa;
+            } else if ((0>d)&&(0<c)) {
+                if (0<compar(pa,pc)) return pc;
+                else return pa;
+            }
+        }
+    }
+    return pb;
+}
+
+static char *fmed5(char *pa, char *pb, char *pc, char *pd, char *pe,
+    int(*compar)(const void *,const void *))
+{
+    char *t;
+
+    /* No swapping of data, only pointers. */
+#if 0
+    /* The following 7 comparators implement median finding as a sorting network:
+       a --o--o---------------- l1 smaller than 3 of a,b,d,e (cannot be median of 5)
+           |  |     :
+       b --o--+--o----o--o----- l2 a,b,c,d, or e
+              |  |  : |  |
+       c -----+--+----+--o--o-- m  a,b,c,d, or e
+              |  |  : |     |
+       d --o--o--+----o-----o-- u1 a,b,c,d, or e
+           |     |  :
+       e --o-----o------------- u2 larger than 3 of a,b,d,e (cannot be median of 5)
+       Four compare-exchange pairs followed by median-of-3.
+       Using ternary median of 2 instead of a sorting network reduces
+          comparisons for the median-of-3 part from 3 comparisons / 3 elements
+          to 8/3 comparisons / 3 elements (for distinct inputs).
+       Average (distinct inputs) 6.667 comparisons per 5 elements =
+          1.333 comparisons/element.
+    */
+    if (0<compar(pa,pb)) t=pa, pa=pb, pb=t;
+    if (0<compar(pd,pe)) t=pd, pd=pe, pe=t;
+    if (0<compar(pa,pd)) t=pa, pa=pd, pd=t;
+    if (0<compar(pb,pe)) t=pb, pb=pe, pe=t;
+    return fmed3(pb,pc,pd,compar);
+#else
+if (2<debug) (V)fprintf(stderr,"%s line %d: pa=%p, pb=%p, pc=%p, pd=%p, pe=%p\n",__func__,__LINE__,pa,pb,pc,pd,pe);
+    /* 6 comparisons per set of 5 elements = 1.2 comparisons/element */
+    if (0<compar(pa,pb)) t=pa, pa=pb, pb=t;
+    if (0<compar(pc,pd)) t=pc, pc=pd, pd=t;
+    if (0<compar(pa,pc)) { pc=pe; if (0<compar(pc,pd)) t=pc, pc=pd, pd=t;
+    } else { pa=pe; if (0<compar(pa,pb)) t=pa, pa=pb, pb=t; }
+    if (0<compar(pa,pc)) { if (0<compar(pa,pd)) return pa; else return pd;
+    } else { if (0<compar(pb,pc)) return pb; else return pc; }
+    A(0>1); /* shouldn't get here */
+#endif
+}
+
 /* medians of sets of 3 elements */
 /* Given base, size, and compar as for qsort, plus a row offset and sample
    offset, both in chars, find medians of sets of 3 elements where the three
    elements for each median are taken from three rows starting with base, and
    each subsequent set of three elements is offset from the previous set by
-   sample_offset. As each median is determined, it is placed in the position of
-   the middle element of the set.
-   The return value is a pointer to the first median (which has been moved as
-   described above).
+   sample_offset. As each median is determined, it is placed in the
+   middle row, to which a pointer is returned. When moving the median to the
+   middle, avoid creating a reverse-sorted set by using rotation to place the
+   elements in sorted order.  This is not quite a full sort of the three
+   elements, as (e.g.) the third element might be the minimum if the first two
+   compare equal (in which case there is no data movement).
    N.B. base is not necessarily the first element in the array passed to qsort.
 */
 /* called from select_pivot() and repivot() */
@@ -2014,41 +2615,49 @@ inline
 char *medians3(char *base, size_t size,
     int(*compar)(const void *, const void *), size_t row_offset,
     size_t sample_offset, size_t row_samples,
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     int c;
     char *pa, *pb;
     size_t n, o;
 
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr, "%s line %d: row_offset=%lu, sample_offset=%lu, row_samples=%lu\n",__func__,__LINE__,row_offset,sample_offset,row_samples);
+}
+#endif
     for (n=o=0UL; n<row_samples; n++,o+=sample_offset) {
         pa=base+o;
         pb=pa+row_offset; /* middle element */
-        /* Optimized ternary median-of-3: 1-3 comparisons.
-           Minimum number of comparisons (because in the qsort model (external
-           function for comparison), comparisons are expensive).  If any two
-           elements (of the 3) compare equal, either can be chosen for the
-           median (the value is the median of the 3, regardless of the value of
-           the third element).  Likewise, the median may be determined by the
-           first two comparisons, e.g. a < b and b < c.  In the worst case, 3
-           comparisons are required. The median element is swapped to the middle
-           position.
-        */
-        c=compar(pa,pb);
-        if (0!=c) {
-            char *pc=pb+row_offset;
-            int d=compar(pb,pc);
-            if (0!=d) {
-                if ((0<d)&&(0>c)) { /* pc<pb, pa<pb; pb is max. */
-                    if (0>=compar(pa,pc)) swapfunc(pb,pc,NULL,size); /* OK */
-                    else swapfunc(pc,pb,pa,size);
-                } else if ((0>d)&&(0<c)) { /* pb is min. */
-                    if (0<compar(pa,pc)) swapfunc(pa,pb,pc,size);
-                    else swapfunc(pa,pb,NULL,size); /* OK */
-                }
-            }
-        }
+        pa=fmed3(pa,pb,pb+row_offset,compar);
+        if (pa!=pb) swapfunc(pa,pb,size);
     }
     return base+row_offset; /* middle row */
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+/* spacings are in chars */
+char *remedian(char *middle, size_t row_spacing, size_t sample_spacing,
+    unsigned int idx, int(*compar)(const void*,const void*))
+{
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr, "%s line %d: middle=%p, row_spacing=%lu, sample_spacing=%lu, idx=%u\n",__func__,__LINE__,middle,row_spacing,sample_spacing,idx);
+}
+#endif
+    if (0UL < --idx) {
+        char *pa, *pb, *pc;
+        size_t s=sample_spacing/3UL;
+
+        pa=remedian(middle-s,row_spacing,s,idx,compar);
+        pb=remedian(middle,row_spacing,s,idx,compar);
+        pc=remedian(middle+s,row_spacing,s,idx,compar);
+        return fmed3(pa,pb,pc,compar);
+    }
+    return fmed3(middle-row_spacing,middle,middle+row_spacing,compar);
 }
 
 /* fast pivot selection using a single sample, median-of-3, or remedian of samples */
@@ -2058,94 +2667,71 @@ inline
 #endif /* C99 */
 char *select_pivot(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void*), size_t *pk,
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t), size_t max_samples)
 {
     size_t n, nmemb, p, q, r, s, t;
     char *pivot;
 
     nmemb=beyond-first;
-    for (q=0UL; q<SAMPLING_TABLE_SIZE; q++)
+    for (q=0UL; q<sampling_table_size; q++)
         if (nmemb<sampling_table[q].min_nmemb)
             break; /* stop looking */
     if (0UL<q) q--; /* sampling table index */
-    n=sampling_table[q].samples; /* total samples (a power of 3) */
-#if 0 /* should decrease, but increases comparison count */
-    /* exception; when sorting (NULL==pk), use minimum 3 samples */
-    if ((NULL==pk)&&(3UL>n)) n=sampling_table[++q].samples;
+    /* total samples (a power of 3) */
+    for (n=sampling_table[q].samples; n>max_samples; )
+        n=sampling_table[--q].samples; /* support limiting samples for mbmqsort */
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, nmemb=%lu, q=%lu, n=%lu\n",__func__,__LINE__,base,first,beyond,nmemb,q,n);
 #endif
-#if 0
-fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, nmemb=%lu, q=%lu, n=%lu\n",__func__,__LINE__,base,first,beyond,nmemb,q,n);
-#endif
+    pivot=base+size*(first+(nmemb>>1));      /* [upper-]middle element */
     switch (n) {
         case 1UL :
-            /* best for organ-pipe, OK others */
-            pivot=base+(first+(nmemb>>2))*size;
             s=r=0UL;
         break;
-        case 3UL :
-            s=r=(nmemb>>2)*size;                        /* 1/4 spacing */
-            pivot=base+size*(first+(nmemb>>1))-r;      /* first sample */
+        case 3UL : /*FALLTHROUGH*/
+        case 5UL :
+            s=r=(nmemb/n)*size;
         break;
         default : /* > 3, power of 3 */
-            t = n/3UL;                              /* samples per row */
-            if (0UL<t) s=(p=nmemb>>2)/t; else s=0UL; /* sample spacing */
-            if (1UL>=t) r=((nmemb+2UL)>>2); else r=p+s; /* row spacing */
-            s*=size, r*=size;                      /* spacing in chars */
-            pivot=base+size*(first+(nmemb>>1))       /* middle element */
-                -r                              /* -> middle first row */
-                -(t>>1)*s;                       /* - half row samples */
+            t=n/3UL;  /* could use sampling table if no entries for 5 */
+            s=nmemb/n;                         /* uniform sample spacing */
+            r=s*t;                             /* uniform row spacing */
+            s*=size, r*=size;                  /* spacing in chars */
         break;
     }
+#if DEBUG_CODE
+if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
+    (V)fprintf(stderr, "// %s line %d: nmemb=%lu, pivot=%p[%lu](%d), pl=%p, pu=%p\n// ",__func__,__LINE__,nmemb,pivot,(pivot-base)/size,*((int *)pivot),base+first*size,base+beyond*size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+    A(base+first*size<=pivot);A(pivot<base+beyond*size);
     switch (n) {
         case 1UL :
         break;
-#if 1
-        case 3UL :
-            pivot = fmed3(pivot,pivot+s,pivot+(s<<1),compar);
+        case 5UL :
+            /* median-of-5, no data movement */
+            t=(s<<1); /* 2s */
+            pivot = fmed5(pivot-t,pivot-s,pivot,pivot+s,pivot+t,compar);
         break;
-        case 9UL :
-            {
-                char *pa, *pb;
-
-                t=(s<<1);
-                p=(r<<1);
-                pa = fmed3(pivot,pivot+s,pivot+t,compar);
-                pb = fmed3(pivot+r,pivot+r+s,pivot+r+t,compar);
-                pivot = fmed3(pivot+p,pivot+p+s,pivot+p+t,compar);
-                pivot = fmed3(pa,pb,pivot,compar);
-            }
-        break;
-        case 27UL :
-            {
-                char *px[27];
-
-                for (p=0UL; p<9UL; p++) { /* 9 columns */
-                    /* 3 rows per column */
-                    for (t=0UL; t<3UL; t++)
-                       px[3UL*p+t] = pivot+p*s+t*r;
-                    /* pointers to column medians are first 9 pointers */
-                    px[p] = fmed3(px[3UL*p],px[3UL*p+1UL],px[3UL*p+2UL],compar);
-                }
-                px[0] = fmed3(px[0],px[3],px[6],compar);
-                px[1] = fmed3(px[1],px[4],px[7],compar);
-                px[2] = fmed3(px[2],px[5],px[8],compar);
-                pivot = fmed3(px[0],px[1],px[2],compar);
-            }
-        break;
-#endif
-        default : /* power of 3, in-place sort3 */
-            n=sampling_table[--q].samples;
-            pivot=medians3(pivot,size,compar,r,s,n,swapfunc);
-            while (0UL<q) {
-                n=sampling_table[--q].samples;
-                pivot=medians3(pivot,size,compar,n*s,s,n,swapfunc);
-            }
+        default : /* power of 3, remedian of samples */
+            n/=3UL;
+            pivot=remedian(pivot,r,r,q,compar);
         break;
     }
 #if 0
-fprintf(stderr, "%s line %d: pivot=%p[%lu], r=%lu, s=%lu\n",__func__,__LINE__,pivot,(pivot-base)/size,r,s);
-print_int_array(base,first,beyond-1UL);
+if (2<debug) {
+    fprintf(stderr, "%s line %d: pivot=%p[%lu], r=%lu, s=%lu\n",__func__,__LINE__,pivot,(pivot-base)/size,r,s);
+    print_int_array(base,first,beyond-1UL);
+}
 #endif
+#if DEBUG_CODE
+if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
+    (V)fprintf(stderr, "// %s line %d: nmemb=%lu, pivot=%p[%lu](%d), pl=%p, pu=%p\n// ",__func__,__LINE__,nmemb,pivot,(pivot-base)/size,*((int *)pivot),base+first*size,base+beyond*size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+    A(base+first*size<=pivot);A(pivot<base+beyond*size);
     return pivot;
 }
 
@@ -2154,9 +2740,10 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void quickselect_loop(char *base, size_t first, size_t beyond, const size_t size,
-    int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk,
-    void (*swapfunc)(char *, char *, char *, size_t)
+void quickselect_loop(char *base, size_t first, size_t beyond,
+    const size_t size, int(*compar)(const void *,const void *),
+    const size_t *pk, size_t firstk, size_t beyondk,
+    void (*swapfunc)(char *, char *, size_t), char *pv, size_t swaps, int nr
 #if SAVE_PARTIAL
     , char **ppeq, char **ppgt
 #endif
@@ -2169,15 +2756,15 @@ inline
 #endif /* C99 */
 char *repivot(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void*),
-    void (*swapfunc)(char *, char *, char *, size_t),
+    void (*swapfunc)(char *, char *, size_t), char *pv, size_t swaps,
     char **ppc, char **ppd, char **ppe, char **ppf)
 {
-    size_t n, nmemb, mid;
+    size_t n, nmemb;
     char *pa, *pivot, *pl;
 
     nmemb=beyond-first;
-    mid=first+(nmemb>>1);
-    pl=base+first*size;
+    pa=pl=base+first*size;
+#if 1
     /* Finding a pivot with guaranteed intermediate rank. Ideally,
        median (50%).  Blum, Floyd, Pratt, Rivest, Tarjan
        median-of-medians using sets of 5 elements with recursion
@@ -2190,32 +2777,88 @@ char *repivot(char *base, size_t first, size_t beyond, size_t size,
        wider if "leftover" elements are ignored) at lower
        computational cost.
     */
-    n=nmemb, pa=pl;
     /* Medians of sets of 3 elements. */
-    n/=3UL;    /* number of complete sets */
-    if (1UL<=n)
-        pa=medians3(pl,size,compar,n*size,size,n,swapfunc);
+/* XXX maybe these should be better centered around the middle element, e.g. for nmemb=8 */
+    n=nmemb/3UL;    /* number of complete sets */
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"%s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu\n",__func__,__LINE__,first,beyond,nmemb,n);
+print_int_array(base,first,beyond-1UL);
+}
+#endif
+    if (1UL<=n) {
+        if (nmemb>3UL*n) pa+=size; /* cheaper than %3 test */
+        pa=medians3(pa,size,compar,n*size,size,n,swapfunc);
+        A(pl<pa);
+    }
+# if 0 /* median-of-medians-of-medians */
+    /* Chen & Dumitrescu use two iterations of median-of-3 followed by
+       selection of the median of that 1/9 of the original array to yield
+       about the same range. More work in medians3, less in selection.
+       Overall more work to get a slightly inferior rank range (because of
+       fewer comparisons).
+    */
+    if (3UL<=n) {
+/* XXX something buggy here; fails against adversary */
+        n/=3UL;
+        pa=medians3(pa,size,compar,n*size,size,n,swapfunc);
+    }
+# endif
     *ppc=pa;
-    if (1UL<n) { /* median of medians */
+    if (1UL<n) { /* median of medians [of medians] */
         size_t karray[1];
-        karray[0]=mid; /* upper-median for even size arrays */
         first=(pa-base)/size;
+        karray[0]=first+(n>>1); /* upper-median for even size arrays */
         beyond=first+n;
+        A(first<beyond);
+if (karray[0]>=beyond) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, first=%lu, mid=%lu, beyond=%lu\n",__func__,__LINE__,nmemb,n,first,karray[0],beyond);
+        A(first<=karray[0]);A(karray[0]<beyond);
         *ppf=base+beyond*size;
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"%s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, karray[0]=%lu, *ppc=pa@%lu, *ppf=base+beyond*size@%lu\n",__func__,__LINE__,first,beyond,nmemb,n,karray[0],(pa-base)/size,(*ppf-base)/size);
+print_int_array(base,first,beyond-1UL);
+}
+#endif
         quickselect_loop(base,first,beyond,size,compar,karray,0UL,1UL,swapfunc
-#if SAVE_PARTIAL
+            ,pv,swaps,0
+# if SAVE_PARTIAL
             ,ppd,ppe
-#endif
+# endif
         );
-#if SAVE_PARTIAL
-        /* Middle third of array (medians) is partitioned. */
-        pivot=*ppd;
-#else
-        *ppe=*ppd=pivot=base+karray[0]*size; /* pointer to median of medians */
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"%s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, pivot@karray[0]=%lu\n",__func__,__LINE__,first,beyond,nmemb,n,karray[0]);
+print_int_array(base,first,beyond-1UL);
+}
 #endif
+        pivot=base+karray[0]*size; /* pointer to median of medians */
+# if SAVE_PARTIAL
+        /* Middle third of array (medians) is partitioned. */
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"%s line %d: first=%lu, beyond=%lu, karray[0]=%lu, *ppd=%p[%lu], *ppe=%p[%lu]\n",__func__,__LINE__,first,beyond,karray[0],*ppd,(*ppd-base)/size,*ppe,(*ppe-base)/size);
+}
+#endif
+        A(*ppd<=pivot);A(pivot<*ppe);
+# else
+        *ppd=pivot;
+        *ppe=pivot+size;
+# endif
     } else {
+        *ppd=pivot=pa;
+        *ppe=pivot+size;
         *ppf=pa+n*size;
     }
+#else
+    /* (nearly) full remedian */
+/* XXX something buggy here; fails against adversary */
+    n=nmemb/3UL;
+    *ppc=pl;
+    *ppd=pivot=remedian(pl,size*n,size,n,compar);
+    *ppe=pivot+size;
+    *ppf=pa+n*size;
+#endif
     return pivot;
 }
 
@@ -2223,10 +2866,72 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-int should_repivot(size_t nmemb, size_t n)
+int should_repivot(size_t nmemb, size_t n, size_t *pk, int *pn2)
 {
-    if (((repivot_cutoff)<=nmemb)&&((n/(repivot_factor))>=nmemb-n-1UL))
+    size_t p, q, r;
+
+    if (NULL==pk) { /* sorting */
+        if (quickselect_small_array_cutoff+2UL>=n) return 0;
+    } else { /* order statistic selection */
+        if (8UL>=n) return 0; /* no repivot unless >= 3 medians-of-3 */
+    }
+    if (n>=nmemb) {
+if ((2<debug)||(n>nmemb)) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu\n",__func__,__LINE__,nmemb,n);
+        ++*pn2;
         return 1;
+    }
+    q=nmemb-n;
+    A(0UL<q);
+    if (n<=q) return 0; /* ratio 0; return w/o incurring division cost */
+    r=n/q;
+    /* for statistics */
+    for (q=0UL; q<sampling_table_size; q++)
+        if (nmemb<sampling_table[q].min_nmemb)
+            break; /* stop looking */
+    if (0UL<q) q--; /* sampling table index */
+    if (r>sampling_table[q].max_ratio) sampling_table[q].max_ratio = r;
+    /* aux tests, if not disabled */
+    /* should be disabled for time vs. factor,limit graph */
+    if (0==no_aux_repivot) {
+        /* size-dependent count 1 limit test */
+        p=sampling_table[q].factor1;
+        if (r>=p) {
+if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor1=%lu\n",__func__,__LINE__,nmemb,n,r,p);
+                sampling_table[q].repivots++;
+                sampling_table[q].repivot_ratio = r;
+                return 1;
+        }
+        /* size-dependent count 2 limit test */
+        p=sampling_table[q].factor2;
+        if (r>=p) {
+            ++*pn2;
+            if (*pn2>=2UL) {
+if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor2=%lu, *pn2=%d, limit=%d\n",__func__,__LINE__,nmemb,n,r,p,*pn2,2UL);
+                sampling_table[q].repivots++;
+                sampling_table[q].repivot_ratio = r;
+                return 1;
+            }
+        }
+    } else {
+        /* global limit test */
+        if (r>=repivot_factor) {
+            if (0!=no_aux_repivot) {
+                /* need limit here for time vs factor,limit graph */
+                ++*pn2; /* use count for factor2 */
+                if (*pn2>=lopsided_partition_limit) {
+if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor=%lu, *pn2=%d, limit=%d\n",__func__,__LINE__,nmemb,n,r,repivot_factor,*pn2,lopsided_partition_limit);
+                    sampling_table[q].repivots++;
+                    sampling_table[q].repivot_ratio = r;
+                    return 1;
+                }
+            } else {
+if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor=%lu\n",__func__,__LINE__,nmemb,n,r,repivot_factor);
+                sampling_table[q].repivots++;
+                sampling_table[q].repivot_ratio = r;
+                return 1;
+            }
+        }
+    }
     return 0;
 }
 
@@ -2239,56 +2944,182 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void partition(char *base, size_t first, size_t beyond, char *pivot,
+size_t partition(char *base, size_t first, size_t beyond, char *pivot,
     size_t size, int(*compar)(const void *,const void*),
-    void (*swapfunc)(char *, char *, char *, size_t),
-    size_t *peq, size_t *pgt)
+    void (*swapfunc)(char *, char *, size_t), char *pv,
+    size_t swaps, size_t *peq, size_t *pgt)
 {
-    char *pa, *pb, *pc, *pe, *pf, *pl, *pu;
+    char *pb, *pc, *pe, *pf, *pl, *pu;
     int c, d;
     size_t n, p;
 
 #if 0
-fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, pivot=%p\n",__func__,__LINE__,base,first,beyond,pivot);
+fprintf(stderr, "%s line %d: base=%p, first=%lu, beyond=%lu, pivot=%p\n// ",__func__,__LINE__,base,first,beyond,pivot);
 print_int_array(base,first,beyond-1UL);
 #endif
-    pl=base+size*first;
-    pa=pb=pc=pl;
-    pe=(pf=pu=base+beyond*size)-size;
-    while (1) { /* loop - partitioning */
-        while ((pc<=pe)&&(0<=(c=compar(pivot,pc)))) { /* scan -> */
-            if (c==0) { swapfunc(pivot=pb,pc,NULL,size); pb+=size; }
-            pc+=size;
+#if DEBUG_CODE
+if ((3<debug)||((2<debug)&&(0UL<swaps))) {
+    (V)fprintf(stderr, "// %s: line %d: nmemb %lu, swaps %lu, pivot=%p[%lu]\n// ",__func__,__LINE__,beyond-first,swaps,pivot,(pivot-base)/size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+    pc=pl=base+size*first;
+    pe=(pu=base+beyond*size)-size;
+#if DEBUG_CODE
+if ((pivot<pl)||(pivot>=pu)) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p(%d), pl=%p, pc=%p, pe=%p, pu=%p\n// ",__func__,__LINE__,pivot,*((int *)pivot),pl,pc,pe,pu);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pivot);A(pivot<pu); /* pivot in array */
+    /* swap pivot to first or last position if 0 interchange swaps last partition */
+    /* Counterintuitively, swapping to far end yields better results */
+    /* But don't swap if the pivot is already at one end. */
+    if (1UL>swaps) {
+        if (pivot-pl<pu-pivot) { /* pivot is closer to first element */
+            if (pl!=pivot) { swapfunc(pe,pivot,size); pivot=pe; }
+        } else { /* pivot is closer to last element */
+            if (pe!=pivot) { swapfunc(pl,pivot,size); pivot=pl; }
         }
-        while ((pc<=pe)&&(0>=(d=compar(pivot,pe)))) { /* scan <- */
-            if (d==0) { pf-=size; swapfunc(pe,pivot=pf,NULL,size); }
-            pe-=size;
-        }
-        if (pc>pe) break;
-        swapfunc(pc,pe,NULL,size); /* <, > */
-        pc+=size; pe-=size;
     }
+#if 1
+    else
+#endif
+    if (0!=pivot_copy) { /* use a copy of the pivot */
+        pivot=memcpy(pv,pivot,size);
+    }
+    /* +-----------------------------------------------------+ */
+    /* |   =   |   <   |  ?               ?  |   >   |   =   | */
+    /* +-----------------------------------------------------+ */
+    /*  pl      b       c                   E e       f       u*/
+#if DEBUG_CODE
+if (2<debug) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p(%d), pl=%p, pc=%p, pe=%p, pu=%p\n// ",__func__,__LINE__,pivot,*((int *)pivot),pl,pc,pe,pu);
+    print_int_array(base,first,beyond-1UL);
+// partition: line 2705: nmemb 2, swaps 0, pivot=0x7f7ff7b3778c[12771]
+// 12770:6386, 12771:6386
+// partition line 2733: pivot=0x7f7ff7b3778c(6386), pl=0x7f7ff7b37788, pc=0x7f7ff7b37788, pe=0x7f7ff7b3778c, pu=0x7f7ff7b37790
+// 12770:6386, 12771:6386
+// partition line 2814: pivot=0x7f7ff7b3778c, pl=0x7f7ff7b37788[12770], pb=0x7f7ff7b37790[12772], pc=0x7f7ff7b37790[12772], pe=0x7f7ff7b37790[12772], pf=0x7f7ff7b3778c[12771], pu=0x7f7ff7b37790[12772]
+// 12770:6386, 12771:6386
+}
+#endif
+    A(pc<=pe);
+
+/* Kiwiel's algorithm L excluding cleanup as a macro */
+/* use S1, S2 for pivot pointer update if required */
+#define KIWIEL_L(S1,S2)                                                  \
+    if (pivot==pc) pc+=size;                                             \
+    else if (pivot==pe) pe-=size;                                        \
+    /* I2(K) */                                                          \
+    while ((pc<=pe)&&(0==(c=compar(pivot,pc)))) { pc+=size; }            \
+    pb=pc;                                                               \
+    if ((pc<=pe)&&(0<c)) {                                               \
+        /* I3(K) */                                                      \
+        for (pc+=size; (pc<=pe)&&(0<=(c=compar(pivot,pc))); pc+=size) {  \
+            if (0==c) { A(pb!=pc); swapfunc(pb,pc,size); S1; pb+=size; } \
+        }                                                                \
+    }                                                                    \
+    /* I4(K) */                                                          \
+    while ((pc<pe)&&(0==(d=compar(pivot,pe)))) { pe-=size; }             \
+    pf=pe+size; /* different semantics from Kiwiel's q */                \
+    if ((pc<pe)&&(0>d)) {                                                \
+        /* I5(K) */                                                      \
+        for (pe-=size; (pc<pe)&&(0>=(d=compar(pivot,pe))); pe-=size) {   \
+            if (0==d) { pf-=size; A(pe!=pf); swapfunc(pe,pf,size); S2; } \
+        }                                                                \
+    }                                                                    \
+    while (pc<pe) {                                                      \
+        /* I7 (there is no I6) */                                        \
+        A(0>c);A(0<d);                                                   \
+        swapfunc(pc,pe,size); swaps++;                                   \
+        /* I8(J) */                                                      \
+        A(pl<=pb);A(pb<=pc);A(pe<pf);A(pf<=pu);                          \
+        pc+=size, pe-=size;                                              \
+        /* I9(J) */                                                      \
+        for (; (pc<=pe)&&(0<=(c=compar(pivot,pc))); pc+=size) {          \
+            if (0==c) { A(pb!=pc); swapfunc(pb,pc,size); S1; pb+=size; } \
+        }                                                                \
+        /* I10(J) */                                                     \
+        for (; (pc<pe)&&(0>=(d=compar(pivot,pe))); pe-=size) {           \
+            if (0==d) { pf-=size; A(pe!=pf); swapfunc(pe,pf,size); S2; } \
+        }                                                                \
+        /* I11(J): loop */                                               \
+    }                                                                    \
+    pe = pc-size /* terminating semicolon after macro call */
+
+/* Bentley&McIlroy partitioning algorithm w/ self-swapping guards as a macro */
+/* use S1, S2 for pivot pointer update if required */
+#define BM_PARTITION(S1,S2)                                                   \
+    if (pivot==pc) pc+=size;                                                  \
+    else if (pivot==pe) pe-=size;                                             \
+    for (pb=pc,pf=pe+size;;) { /* loop - partitioning */                      \
+        for (; (pc<=pe)&&(0<=(c=compar(pivot,pc))); pc+=size) {               \
+            if (0==c) { if (pb!=pc) { swapfunc(pb,pc,size); S1; } pb+=size; } \
+        }                                                                     \
+        for (; (pc<=pe)&&(0>=(d=compar(pivot,pe))); pe-=size) {               \
+            if (0==d) { pf-=size; if (pe!=pf) { swapfunc(pe,pf,size); S2; } } \
+        }                                                                     \
+        if (pc>pe) break;                                                     \
+        if (pc!=pe) { swapfunc(pc,pe,size); swaps++; }                        \
+        pc+=size; pe-=size;                                                   \
+    }
+
+#if 1
+    if ((1UL>swaps)||(0!=pivot_copy)) { /* no pivot update: compact loop */
+        KIWIEL_L(/**/,/**/);
+    } else { /* update pivot pointer when pivot is moved */
+        KIWIEL_L(if(pc==pivot)pivot=pb,if(pe==pivot)pivot=pf);
+    }
+#else
+    if ((1UL>swaps)||(0!=pivot_copy)) { /* no pivot update: compact loop */
+        BM_PARTITION(/**/,/**/)
+    } else { /* update pivot pointer when pivot is moved */
+        BM_PARTITION(if(pc==pivot)pivot=pb,if(pe==pivot)pivot=pf)
+    }
+#endif
     pe+=size; /* now start of > region */
-    if (pf<pu) { /* pe unchanged if pf>=pu */
-        if (pe<pf) { /* pe= original pu if pf>=pe */
-            p=pu-pf, n=pf-pe; if (p<n) n=p;
-            swapfunc(pe,pu-n,NULL,n); pe+=p;
-        } else pe=pu;
-    }
-    if (pb<pc) { /* pb= original pl if pb>=pc */
-        if (pl<pb) { /* pb= original pc if pb>=pa */
-            p=pc-pb, n=pb-pl; if (p<n) n=p;
-            swapfunc(pl,pc-n,NULL,n); pb=pl+p;
-        } else pb=pc;
-    } else pb=pl;
+#if DEBUG_CODE
+if ((2<debug)||(pe>pf)) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p, pl=%p[%lu], pb=%p[%lu], pc=%p[%lu], pe=%p[%lu], pf=%p[%lu], pu=%p[%lu]\n// ",__func__,__LINE__,pivot,pl,first,pb,(pb-base)/size,pc,(pc-base)/size,pe,(pe-base)/size,pf,(pf-base)/size,pu,(pu-base)/size);
+    print_int_array(base,first,beyond-1UL);
+}
+    A(pl<=pb);A(pb<=pc);/*A(pe<=pf);*/A(pf<=pu);A(pc<=pe);
+#endif
+    A(pb<=pe);
+    A(pc==pe);
+    /* I12: [Cleanup.] Set a := l + i - p and b := r - q + j. Exchange
+       x[l: p - 1] <-> x[p: j] and x[i: q] <-> x[q + 1: r].
+    */
+    /* |   =   |   <              |              >   |   =   | */
+    /*  pl      b                  e                  f       u*/
+    A(pl<=pb);A(pb<=pe);
+    pb=blockmove(pl,pb,pe,swapfunc);
+    A(pe<=pf);A(pf<=pu);
+    pe=blockmove(pe,pf,pu,swapfunc);
     /* |       <            |         =           |      >      | */
     /*  pl                   b                     e             u*/
+    A(pl<=pb);A(pe<=pu);
+#if DEBUG_CODE
+if ((2<debug)&&(pb>=pe)) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p[%lu], pl=%p[%lu], pb=%p, pe=%p, pu=%p\n// ",__func__,__LINE__,pivot,(pivot-base)/size,pl,(pl-base)/size,pb,pe,pu);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+    A(pb<pe);
     if (NULL!=peq) *peq=(pb-base)/size;
     if (NULL!=pgt) *pgt=(pe-base)/size;
+#if DEBUG_CODE
+if ((3<debug)||((2<debug)&&(0UL<swaps))) {
+    (V)fprintf(stderr, "// %s: line %d: nmemb %lu, swaps %lu, pb=%p[%lu], pe=%p[%lu]\n// ",__func__,__LINE__,beyond-first,swaps,pb,(pb-base)/size,pe,(pe-base)/size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
 #if 0
-fprintf(stderr, "%s line %d: pb=%p[%lu], pe=%p[%lu]\n",__func__,__LINE__,pb,(pb-base)/size,pe,(pe-base)/size);
+fprintf(stderr, "%s line %d: pb=%p[%lu], pe=%p[%lu]\n// ",__func__,__LINE__,pb,(pb-base)/size,pe,(pe-base)/size);
 print_int_array(base,first,beyond-1UL);
 #endif
+    return swaps;
 }
 
 #if SAVE_PARTIAL
@@ -2300,22 +3131,13 @@ inline
 void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     char *pivot, char *pe, char *pf, size_t size,
     int(*compar)(const void *,const void*),
-    void (*swapfunc)(char *, char *, char *, size_t),
+    void (*swapfunc)(char *, char *, size_t),
     size_t *peq, size_t *pgt)
 {
     char *pa, *pb, *pg, *ph, *pl, *pu;
     int c, d;
     size_t n, p;
 
-    pa=pb=pl=base+size*first;
-    ph=pu=base+size*beyond;
-    pg=ph-size;
-    /* |   ?   : < :=p=: > :   ?   | */
-    /*          c   d   e   f       u*/
-    /* reinitialize for repartitioning */
-    /* |   ?   : < :=p=: > :   ?   | */
-    /*  pl      c   d   e   f       u*/
-    /*  a=b                       g h*/
     /* McGeoch & Tygar suggest that partial partition information
        from median-of-medians might be used to avoid recomparisons
        during repartitioning.
@@ -2324,146 +3146,404 @@ void repartition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     /* Separate partitioning loop here to avoid overhead when not
        preserving partial partition. Subtleties involved: empty
        regions (pc-pd, pe-pf, pg-ph, pl-pa, pa-pb), whether pb or pg
-       reaches the partially partitioned region first.
+       reaches the partially partitioned region first. No initial pivot swap
+       because that would put an unknown status element in the already-
+       partitioned region.
     */
-    while (1) { /* partitioning loop */
-        /* +------------------------------------------------------------+ */
-        /* |    =    |    <    |    ? : < :=: > :   ?   |   >   |   =   | */
-        /* +------------------------------------------------------------+ */
-        /*  pl        a         b      c   d e   f     G g       h       u*/
-        A(pl<=pa);A(pa<=pb);A(pg<=ph);A(ph<=pu);
-        A(pc<=pd);A(pd<pe);A(pe<=pf);
-        while (pb<=pg) { /* scan -> */
-            /* 1. Like regular partitioning except when within
-                  partial partition from selection.
-            */
-            while (((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
-                if (0==c) { swapfunc(pivot=pa,pb,NULL,size); pa+=size; }
-                pb+=size;
-            }
-            A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-            /* 2. Within partial partition; no recomparisons. */
-            if ((pc<=pb)&&(pb<pf)) { /* partitioned */
-                /* First skip over < elements, possibly past pg. */
-                if (pd<=pg) { /* If pg didn't, move = block. */
-                    if (pb<pe) { /* move = elements as a block */
-                        if (pa<pd) { /* pa=pe if pd<=pa */
-                            p=pe-pd, n=pd-pa; if (p<n) n=p;
-                            swapfunc(pa,pe-n,NULL,n); pa+=p;
-                        } else pa=pe;
-                        pivot=pa-size;
-                        pb=pe;
-                    }
-                } else pb=pg+size; /* < elements */
-                if ((pb>=pe)&&(pb<pf)) break; /* at > element */
-            } else break; /* not partitioned region; break loop */
-        }
-        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-        while (pb<=pg) { /* scan <- */
-            /* 3. Like regular partitioning except when within partial
-                  partition from selection.
-            */
-            while (((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
-                if (0==d) { ph-=size; swapfunc(pg,pivot=ph,NULL,size); }
-                pg-=size;
-            }
-            A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-            /* 4. Within partial partition; no recomparisons. */
-            if ((pc<=pg)&&(pg<pf)) { /* partitioned */
-                /* First skip over > elements, possibly past pb. */
-                if (pb<pe) { /* If pb didn't, move = block. */
-                    if (pd<=pg) { /* move = elements as a block */
-                        if (pe<ph) { /* ph= original pd if pe>=ph */
-                            p=ph-pe, n=pe-pd; if (p<n) n=p;
-                            swapfunc(pd,ph-n,NULL,n); ph-=n;
-                        } else ph=pd;
-                        pivot=ph;
-                        pg=pd-size;
-                    }
-                } else pg=pb-size; /* > elements */
-                if ((pg<pd)&&(pc<=pg)) break; /* at < element */
-            } else break; /* not partitioned region; break loop */
-        }
-        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-        if (pb>pg) break;
-        A(pb!=pg); /* no self-swapping */
-        swapfunc(pb,pg,NULL,size);
-        pb+=size, pg-=size;
-    }
-    pg+=size; /* now start of > region */
-    /* |    =  |      <             |             >    |   =    | */
-    /*  pl      a                    g                  h        u*/
-    /* swap > and upper = regions, set pg to start of > */
-    pb=pg; /* = region will start here */
-    A(pl<=pa); A(pb==pg); A(pg<=ph); A(ph<=pu);
-    if (ph<pu) { /* pg unchanged if ph>=pu */
-        if (pg<ph) { /* pg= pu if ph<=pg */
-            p=pu-ph, n=ph-pg; if (p<n) n=p;
-            swapfunc(pg,pu-n,NULL,n); pg+=p;
-        } else pg=pu;
-    }
-    /* |    =  |      <           |        =      |      >      | */
-    /*  pl      a                  b               g             u*/
-    /* swap left = and < regions */
-    A(pl<=pa); A(pa<=pb); A(pg<=pu);
-    if (pa<pb) { /* pa= original pl if pa>=pb */
-        if (pl<pa) { /* pa= original pb if pa<=pl */
-            p=pb-pa, n=pa-pl; if (p<n) n=p;
-            swapfunc(pl,pb-n,NULL,n); pa=pl+p;
-        } else pa=pb;
-    } else pa=pl;
-    A(pl<=pa); A(pa<=pg); A(pg<=pu);
-    /* |       <            |         =           |      >      | */
-    /*  pl                   a                     g             u*/
-    if (NULL!=peq) *peq=(pa-base)/size;
-    if (NULL!=pgt) *pgt=(pg-base)/size;
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"// %s line %d: first=%lu, beyond=%lu, pivot@%lu\n// ",__func__,__LINE__,first,beyond,(pivot-base)/size);
+print_int_array(base,first,beyond-1UL);
 }
 #endif
+/*
+Kiwiel alg. L code; no initial test for pivot at pc or pg (not applicable here).
+Final canonicalization not included.  Initialization would have to be performed
+first. For repartitionig pc becomes pb, stage 1 should end w/o comparisons when
+pb==pc (maybe then skip to pd, blockmove equals, then stop at pf).  Upper
+pointer pg needs to stop w/o comparisons after pf (maybe skip to pe, blockmove,
+stop at pd-size). Stage 2 loops also need to test for already-partitioned range.
+*/
+    /* +-----------------------------------------------------+ */
+    /* |   =   |   <   |  ?  : < :=: > :  ?  |   >   |   =   | */
+    /* +-----------------------------------------------------+ */
+    /*  pl      a       b     c   d e   f   G g       h       u*/
+    pb=pl=base+size*first, pu=base+size*beyond, pg=pu-size;
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+logfile=start_log("log");
+fprintf(logfile,"/* +-----------------------------------------------------+ */\n");
+fprintf(logfile,"/* |   =   |   <   |  ?  : < :=: > :  ?  |   >   |   =   | */\n");
+fprintf(logfile,"/* +-----------------------------------------------------+ */\n");
+fprintf(logfile,"/*  pl      a       b     c   d e   f   G g       h       u*/\n");
+fprintf(logfile, "// %s line %d: pl=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,(pl-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    while ((pb<pc)&&(0==(c=compar(pivot,pb)))) { pb+=size; }
+    pa=pb;
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over equals at left\n");
+fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    if ((pb<pc)&&(0<c)) {
+        for (pb+=size; (pb<pc)&&(0<=(c=compar(pivot,pb))); pb+=size) {
+            if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+        }
+    }
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over less-than and equals at left\n");
+fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
+    /* 2. Within partial partition; no recomparisons. */
+    if ((pc<=pb)&&(pb<pf)) { /* partitioned */
+        /* First skip over < elements, possibly past pg. */
+        if (pd<=pg) { /* If pg didn't, move = block. */
+            if (pb<pe) { /* move = elements as a block */
+                A(pa<=pd);A(pd<=pe);
+                pa=blockmove(pivot=pa,pd,pb=pe,swapfunc);
+                pb=pe, c=-2;
+            }
+        } else pb=pg+size; /* < elements */
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over already-partitioned less-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    }
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
+    while ((pb<=pg)&&((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
+        if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+        pb+=size;
+    }
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over less-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
+    while ((pf<=pg)&&(0==(d=compar(pivot,pg)))) { pg-=size; }
+    ph=pg+size;
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over equals at right\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+    if ((pf<=pg)&&(0>d)) {
+        for (pg-=size; (pf<=pg)&&(0>=(d=compar(pivot,pg))); pg-=size) {
+            if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+        }
+    }
+    /* check for already-partitioned region here (but no comparisons) */
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over greater-than and equals at right\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+    /* 4. Within partial partition; no recomparisons. */
+    if ((pc<=pg)&&(pg<pf)) { /* partitioned */
+        /* First skip over > elements, possibly past pb. */
+        if (pb<pe) { /* If pb didn't, move = block. */
+            if (pd<=pg) { /* move = elements as a block */
+                A(pd<=pe);A(pe<=ph);
+                pivot=ph=blockmove(pd,pe,ph,swapfunc); pg=pd-size; d=2;
+            }
+        } else pg=pb-size; /* > elements */
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over already-partitioned greater-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    }
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+    while ((pb<=pg)&&((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
+        if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+        pg-=size;
+    }
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over greater-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+    A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+    while (pb<pg) {
+#if ASSERT_CODE /* XXX */
+if (((0<=c)||(0>=d))&&(2<debug)) {
+fprintf(logfile,"\n// ERROR: pb,pg should be ready for swap\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        A(0>c);A(0<d);
+        swapfunc(pb,pg,size);
+        pb+=size, pg-=size;
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// swapped pb,pg and updated pointers\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        while ((pb<=pg)&&((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
+            if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+            pb+=size;
+        }
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over less-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+        /* 6. Within partial partition; no recomparisons. */
+        if ((pc<=pb)&&(pb<pf)) { /* partitioned */
+            /* First skip over < elements, possibly past pg. */
+            if (pd<=pg) { /* If pg didn't, move = block. */
+                if (pb<pe) { /* move = elements as a block */
+                    A(pa<=pd);A(pd<=pe);
+                    pa=blockmove(pivot=pa,pd,pb=pe,swapfunc);
+                    pb=pe, c=-2;
+                }
+            } else pb=pg+size; /* < elements */
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pb over already-partitioned less-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        }
+        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+        while ((pb<=pg)&&((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
+            if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+            pg-=size;
+        }
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over greater-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+        /* 8. Within partial partition; no recomparisons. */
+        if ((pc<=pg)&&(pg<pf)) { /* partitioned */
+            /* First skip over > elements, possibly past pb. */
+            if (pb<pe) { /* If pb didn't, move = block. */
+                if (pd<=pg) { /* move = elements as a block */
+                    A(pd<=pe);A(pe<=ph);
+                    pivot=ph=blockmove(pd,pe,ph,swapfunc); pg=pd-size;
+                    d=2;
+                }
+            } else pg=pb-size; /* > elements */
+#if ASSERT_CODE /* XXX */
+if (2<debug) {
+fprintf(logfile,"\n// skipped pg over already-partitioned greater-than and equals\n");
+fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
+if (swapfunc==intswap) fprint_int_array(logfile,base,first,beyond-1UL);
+else if (swapfunc==doubleswap) fprint_double_array(logfile,base,first,beyond-1UL);
+}
+#endif
+        }
+        A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
+    }
+    /* pb is start of > region */
+    /* |    =  |      <             |             >    |   =    | */
+    /*  pl      a                    b                  h        u*/
+if (pb<pa) {
+    (V)fprintf(stderr,
+       "// %s line %d: pl=%p[%lu], pa=%p[%lu], pb=%p[%lu], pc=%p[%lu], pd=%p[%lu], pe=%p[%lu], pf=%p[%lu], pg=%p[%lu], ph=%p[%lu], pu=%p[%lu]\n// ",
+       __func__,__LINE__,
+       pl,(pl-base)/size, pa,(pa-base)/size, pb,(pb-base)/size,
+       pc,(pc-base)/size, pd,(pd-base)/size, pe,(pe-base)/size,
+       pf,(pf-base)/size, pg,(pg-base)/size, ph,(ph-base)/size,
+       pu,(pu-base)/size
+    );
+    print_int_array(base,first,beyond-1UL);
+}
+    A(pl<=pa); A(pa<=pb); A(pb<=ph); A(ph<=pu);
+    pc=blockmove(pl,pa,pb,swapfunc);
+    pf=blockmove(pb,ph,pu,swapfunc);
+    A(pl<=pc); A(pc<pf); A(pf<=pu);
+    /* |       <            |         =           |      >      | */
+    /*  pl                   c                     f             u*/
+if ((pf<=pc)||(pc<pl)) {
+    (V)fprintf(stderr,
+       "// %s line %d: pb=%p[%lu], pc=%p[%lu], pf=%p[%lu], pg=%p[%lu], pl=%p[%lu], pa=%p[%lu], ph=%p[%lu], pu=%p[%lu]\n// ",
+       __func__,__LINE__,
+       pb,(pb-base)/size,
+       pc,(pc-base)/size,
+       pf,(pf-base)/size,
+       pg,(pg-base)/size,
+       pl,(pl-base)/size,
+       pa,(pa-base)/size,
+       ph,(ph-base)/size,
+       pu,(pu-base)/size
+    );
+    print_int_array(base,first,beyond-1UL);
+}
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) {
+(V)fprintf(stderr,"// %s line %d: first=%lu, beyond=%lu\n// ",__func__,__LINE__,first,beyond);
+print_int_array(base,first,beyond-1UL);
+}
+#endif
+#if ASSERT_CODE /* XXX */
+if (2<debug) close_log(logfile);
+#endif
+    if (NULL!=peq) *peq=(pc-base)/size;
+    if (NULL!=pgt) *pgt=(pf-base)/size;
+}
+#endif
+
+/* Modified Bentley&McIlroy qsort:
+      ternary median-of-3
+      optional type-independent deferred pivot swap
+      improved sampling for singleton, median-of-3, ninther
+      recurse on small region, iterate large region
+      avoid self-swapping pb,pc
+      improved swapping sizes
+      don't repeat initialization during iteration
+      uses quickselect_small_array_cutoff rather than BM_INSERION_CUTOFF (normally equivalent)
+      can use network sort or Shell sort instead of insertion sort
+   No remedian of samples (except equivalent to ninther)
+   No break-glass mechanism to prevent quadratic behavior
+   No order statistic selection
+*/
+
+void mbmqsort_internal(void *a, size_t n, size_t es,
+    int (*compar)(const void *, const void *),
+    void(*swapfunc)(char *, char *, size_t), char *pv,
+    size_t swaps)
+{
+
+    for (;;) {
+        char *pe, *pm;
+        size_t p, q, r;
+        int cmp_result;
+
+        if (n <= quickselect_small_array_cutoff) {
+            if (0!=use_networks) networksort_internal(a,0UL,n,es,compar,swapfunc);
+            else if (0!=use_shell) shellsort_internal(a,0UL,n,es,compar,swapfunc);
+            else isort_internal(a,0UL,n,es,compar,swapfunc);
+            return;
+        }
+        pm = select_pivot(a, 0UL, n, es, compar, NULL, swapfunc, 9UL);
+        swaps=partition(a,0UL,n,pm,es,compar,swapfunc,pv,
+            0!=pivot_swap?0UL:swaps,&q,&p);
+        npartitions++;
+        pe=a+p*es;
+        if (n>p) r=n-p; else r=0UL;  /* size of the > region */
+        if (q<r) { /* > region is larger */
+            if (q>1UL) mbmqsort_internal(a, q, es, compar, swapfunc, pv, swaps+pivot_swap);
+            if (2UL>r) return;
+            a=pe;
+            n=r;
+        } else { /* < region is larger, or regions are the same size */
+            if (r>1UL) mbmqsort_internal(pe, r, es, compar, swapfunc, pv, swaps+pivot_swap);
+            if (2UL>q) return;
+            n=q;
+        }
+    }
+}
+
+void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
+{
+    union aligned_union pv[1+(es-1UL)/sizeof(union aligned_union)];
+
+    assert(a != NULL || n == 0 || es == 0);
+    assert(compar != NULL);
+    mbmqsort_internal(a, n, es, compar, whichswap(a,es,1U), pv, n);
+}
+
+/* simplified and full-blown quickselect-based qsort:
+   Like modified B&M qsort, except:
+      add sampling and remedian of samples, with sampling table
+      pivot selection moves elements
+*/
 
 /* simplified quickselect */
 void sqsort_internal(void *base, size_t nmemb, size_t size,
     int (*compar)(const void *, const void *),
-    void(*swapfunc)(char *, char *, char *, size_t))
+    void(*swapfunc)(char *, char *, size_t), char *pv,
+    size_t swaps)
 {
     char *pl;  /* left (or lowest) end of array being processed */
     char *po;  /* origin of array (maintained so that ranks can be computed) */
-    char *pb, *pe, *pivot;
+    char *pe, *pivot;
     size_t n, p, q, r;
 
     pl=po=(char *)base;
 
-sloop: ;
-    if (nmemb<=(INSERTION_CUTOFF)) {
-        isort_internal(pl,0UL,nmemb,size,compar,swapfunc);
-/* <- */return; /* Done; */
-    }
-    n=(pl-po)/size;
-    pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc);
-    partition(po,n,n+nmemb,pivot,size,compar,swapfunc,&q,&p);
-    npartitions++;
-    pb=po+q*size;
-    pe=po+p*size;
-    q-=n;
-    if (n+nmemb>p) r=n+nmemb-p; else r=0UL;  /* size of the > region */
-    if (q<r) { /* > region is larger */
-        if (q>1UL) sqsort_internal(pl, q, size, compar, swapfunc);
-        if (r>1UL) {
+    for (;;) {
+        if (nmemb<=quickselect_small_array_cutoff) {
+            if (0!=use_networks) networksort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+            else if (0!=use_shell) shellsort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+            else isort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+    /* <- */return; /* Done; */
+        }
+        n=(pl-po)/size;
+        pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc, (SIZE_T_MAX));
+        swaps=partition(po,n,n+nmemb,pivot,size,compar,swapfunc,pv,
+            0!=pivot_swap?0UL:swaps,&q,&p);
+        npartitions++;
+        pe=po+p*size;
+        q-=n;
+        if (n+nmemb>p) r=n+nmemb-p; else r=0UL;  /* size of the > region */
+        if (q<r) { /* > region is larger */
+            if (q>1UL) sqsort_internal(pl, q, size, compar, swapfunc, pv, swaps+pivot_swap);
+            if (2UL>r) return;
             pl=pe;
             nmemb=r;
-            goto sloop;
-        }
-    } else { /* < region is larger, or regions are the same size */
-        if (r>1UL) sqsort_internal(pe, r, size, compar, swapfunc);
-        if (q>1UL) {
+        } else { /* < region is larger, or regions are the same size */
+            if (r>1UL) sqsort_internal(pe, r, size, compar, swapfunc, pv, swaps+pivot_swap);
+            if (2UL>q) return;
             nmemb=q;
-            goto sloop;
         }
     }
 }
 
 void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
-    sqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U));
+    union aligned_union pv[1+(size-1UL)/sizeof(union aligned_union)];
+
+    sqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U), pv, nmemb);
 }
 
 /* modified quickselect sort; always get worst-case pivot for given
@@ -2471,7 +3551,8 @@ void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, c
 */
 void wqsort_internal(void *base, size_t nmemb, size_t size,
     int (*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t), char *pv,
+    size_t swaps)
 {
     char *pl;  /* left (or lowest) end of array being processed */
     char *po;  /* origin of array (maintained so that ranks can be computed) */
@@ -2495,21 +3576,24 @@ void wqsort_internal(void *base, size_t nmemb, size_t size,
 #endif
 
 wloop: ;
-    if (nmemb<=(INSERTION_CUTOFF)) {
-        isort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+    if (nmemb<=quickselect_small_array_cutoff) {
+        if (0!=use_networks) networksort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+        else if (0!=use_shell) shellsort_internal(pl,0UL,nmemb,size,compar,swapfunc);
+        else isort_internal(pl,0UL,nmemb,size,compar,swapfunc);
 /* <- */return; /* Done; */
     }
     /* normal pivot selection (for comparison and swap counts) */
     n=(pl-po)/size;
-    pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc);
+    pivot = select_pivot(po, n, n+nmemb, size, compar, NULL, swapfunc, (SIZE_T_MAX));
     /* get pivot at rank that just avoids repivoting (minimum possible) */
     /* minimum possible rank is determined by number of samples used for pivot selection */
     /* 3^^p samples -> minimum rank is 2^^p-1 */
-    for (p=0UL; p<SAMPLING_TABLE_SIZE; p++)
+    for (p=0UL; p<sampling_table_size; p++)
         if (nmemb<sampling_table[p].min_nmemb)
             break; /* stop looking */
     if (0UL<p) p--; /* sampling table index */
     for (t=1UL,q=0UL; q<p; q++,t<<=1) ;
+    /* XXX this does not take aux repivot parameters into account */
     if (nmemb<repivot_cutoff) {
         karray[0]=t-1UL; /* worst possible minimum rank */
     } else {
@@ -2527,7 +3611,8 @@ wloop: ;
     pivot=pl+size*karray[0];
     /* restore comparison and swap counts */
     neq=p, nlt=q, ngt=r, nsw=t;
-    partition(po,n,n+nmemb,pivot,size,compar,swapfunc,&q,&p);
+    swaps=partition(po,n,n+nmemb,pivot,size,compar,swapfunc,pv,
+        0!=pivot_swap?0UL:swaps,&q,&p);
     npartitions++;
     pb=po+q*size;
     pe=po+p*size;
@@ -2536,14 +3621,14 @@ wloop: ;
     /* |       <            |         =           |      >      | */
     /*  pl                   b                     e             u*/
     if (q<r) { /* > region is larger */
-        if (q>1UL) wqsort_internal(pl, q, size, compar, swapfunc);
+        if (q>1UL) wqsort_internal(pl, q, size, compar, swapfunc,pv,swaps+pivot_swap);
         if (r>1UL) {
             pl=pe;
             nmemb=r;
             goto wloop;
         }
     } else { /* < region is larger, or regions are the same size */
-        if (r>1UL) wqsort_internal(pe, r, size, compar, swapfunc);
+        if (r>1UL) wqsort_internal(pe, r, size, compar, swapfunc,pv,swaps+pivot_swap);
         if (q>1UL) {
             nmemb=q;
             goto wloop;
@@ -2553,12 +3638,12 @@ wloop: ;
 
 void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
-    wqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U));
+    union aligned_union pv[1+(size-1UL)/sizeof(union aligned_union)];
+
+    wqsort_internal(base,nmemb,size,compar,whichswap(base,size,1U),pv,nmemb);
 }
 
 /* full-blown quickselect */
-static size_t quickselect_insertion_cutoff = 6UL;
-
 #define NREGIONS (LONG_BIT)+8
 
 /* basic quickselect loop (using system stack) */
@@ -2567,42 +3652,62 @@ static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void quickselect_loop(char *base, size_t first, size_t beyond, const size_t size,
-    int(*compar)(const void *,const void *),
+void quickselect_loop(char *base, size_t first, size_t beyond,
+    const size_t size, int(*compar)(const void *,const void *),
     const size_t *pk, size_t firstk, size_t beyondk,
-    void (*swapfunc)(char *, char *, char *, size_t)
+    void (*swapfunc)(char *, char *, size_t), char *pv,
+    size_t swaps, int nr
 #if SAVE_PARTIAL
     , char **ppeq, char **ppgt
 #endif
    )
 {
-    size_t nmemb=beyond-first;
-    int c=0;
+    size_t lk=beyondk, nmemb=beyond-first, rk=firstk;
+    auto int c=nr;
 
-    while ((NULL!=pk)||(nmemb>quickselect_insertion_cutoff)) {
-        size_t lk, p, q, r, rk, s, t;
-        char *pivot=select_pivot(base,first,beyond,size,compar,pk,swapfunc);
-        partition(base,first,beyond,pivot,size,compar,swapfunc,&p,&q);
-check_sizes: ;
-        if (NULL==pk) npartitions++;
-#if SAVE_PARTIAL
-        /* only applicable for median-of-medians */
-        if ((0UL==firstk)&&(1UL==beyondk)&&(NULL!=ppeq)&&(NULL!=ppgt))
-            *ppeq=base+size*p, *ppgt=base+size*q;
+if (2<debug) (V) fprintf(stderr,"// %s line %d: first=%lu, beyond=%lu, pk=%p, firstk=%lu, beyondk=%lu, swaps=%lu, nr=%d\n",__func__,__LINE__,first,beyond,pk,firstk,beyondk,swaps,nr);
+    while (((NULL!=pk)
+#if ! SAVE_PARTIAL
+          &&(nmemb>4UL) /* sorting networks for nmemb <= 4 for selection */
 #endif
+    )||(nmemb>quickselect_small_array_cutoff)) {
+        size_t p, q, r, s, t;
+        char *pivot;
+
+#if 0
+        if ((NULL!=pk)&&(3UL>=nmemb)&&(0!=use_networks)) break; /* sorting networks for selection at sizes 2,3 */
+#endif
+        pivot=select_pivot(base,first,beyond,size,compar,pk,swapfunc, (SIZE_T_MAX));
+#if DEBUG_CODE
+if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p(%d), pl=%p, pu=%p\n// ",__func__,__LINE__,pivot,*((int *)pivot),base+first*size,base+beyond*size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+        A(base+first*size<=pivot);A(pivot<base+beyond*size);
+        swaps=partition(base,first,beyond,pivot,size,compar,swapfunc,pv,
+            0!=pivot_swap?0UL:swaps,&p,&q);
+check_sizes: ;
+        npartitions++;
+if (p>=q) {
+    (V)fprintf(stderr, "%s line %d: beyond=%lu, first=%lu, beyond-first=%lu, nmemb=%lu, q=%lu, p=%lu, q-p=%lu, pk=%p, s=%lu, t=%lu, q-p+s+t=%lu\n",__func__,__LINE__,beyond,first,beyond-first,nmemb,q,p,q-p,pk,s,t,q-p+s+t);
+}
         /* sizes of < and > regions (elements) */
         s=p-first, t=beyond-q;
+if (q-p+s+t!=nmemb) {
+    /* should always have pivot plus at least one other element excluded from large region */
+    (V)fprintf(stderr, "%s line %d: beyond=%lu, first=%lu, beyond-first=%lu, nmemb=%lu, q=%lu, p=%lu, q-p=%lu, pk=%p, s=%lu, t=%lu, q-p+s+t=%lu\n",__func__,__LINE__,beyond,first,beyond-first,nmemb,q,p,q-p,pk,s,t,q-p+s+t);
+}
+        A(q-p+s+t==nmemb);
         /* revised range of order statistic ranks */
         /* < region indices [first,p), order statistics [firstk,lk) */
         /* > region indices [q,beyond), order statistics [rk,beyondk) */
-        if (NULL==pk) { /* sorting */
-            lk=beyondk, rk=firstk;
-        } else {
+        if (NULL!=pk) {
             size_t ll, lr, rl, rr;
 
             /* binary search through pk to find limits for each region */
             ll=rl=firstk, lr=rr=beyondk;
-            lk=rk=ll+((lr+1UL-ll)>>1);
+            lk=rk=ll+((lr-ll)>>1);
             while (ll<lr) {
                 if (pk[lk]>=p) { if (0UL<lk) lr=lk-1UL; else lr=lk; }
                 else ll=lk;
@@ -2611,6 +3716,9 @@ check_sizes: ;
                 A(lk>=firstk);A(rk<=beyondk);
             }
             if ((lk<beyondk)&&(pk[lk]<p)) lk++;
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) (V)fprintf(stderr, "// %s line %d: lk=%lu, rk=%lu, pk[0]=%lu\n",__func__,__LINE__,lk,rk,pk[0]);
+#endif
             A(lk>=firstk);A(rk<=beyondk);
             while (rl<rr) {
                 if (pk[rk]<q) { if (rk<beyondk) rl=rk+1UL; else rl=rk; }
@@ -2619,7 +3727,27 @@ check_sizes: ;
                 if (rk==beyondk) break;
                 A(lk>=firstk);A(rk<=beyondk);
             }
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) (V)fprintf(stderr, "// %s line %d: lk=%lu, rk=%lu, pk[0]=%lu\n",__func__,__LINE__,lk,rk,pk[0]);
+#endif
             A((lk==beyondk)||(pk[lk]>=p));A((rk==beyondk)||(pk[rk]>=q));
+#if SAVE_PARTIAL
+            /* only applicable for median-of-medians */
+            if ((0UL==firstk)&&(1UL==beyondk)&&(NULL!=ppeq)&&(NULL!=ppgt)) {
+                int set=0;
+                A(p<q);
+                /* update range pointers if median is [in] one of 3 regions */
+                r=pk[0];
+                if ((p<=r)&&(r<q)) *ppeq=base+size*p, *ppgt=base+size*q, set++;
+                else if ((1UL==s)&&(first<=r)&&(r<p))
+                    *ppeq=base+size*first, *ppgt=*ppeq+size, set++;
+                else if ((1UL==t)&&(q<=r)&&(r<beyond))
+                    *ppgt=base+size*beyond, *ppeq=*ppgt-size, set++;
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) if (0!=set) (V)fprintf(stderr, "// %s line %d: *ppeq@%lu, *ppgt@%lu, pk[0]=%lu\n",__func__,__LINE__,(*ppeq-base)/size,(*ppgt-base)/size,r);
+#endif
+            }
+#endif
         }
         A(lk>=firstk);A(rk<=beyondk);A(lk<=rk);
 
@@ -2627,6 +3755,7 @@ check_sizes: ;
             /* recurse on small region, if effective size > 1 */
             if ((1UL<s)&&((NULL==pk)||(lk>firstk)))
                 quickselect_loop(base,first,p,size,compar,pk,firstk,lk,swapfunc
+                ,pv,swaps+pivot_swap,0
 #if SAVE_PARTIAL
                 ,ppeq,ppgt
 #endif
@@ -2637,6 +3766,7 @@ check_sizes: ;
             /* recurse on small region, if effective size > 1 */
             if ((1UL<t)&&((NULL==pk)||(beyondk>rk)))
                quickselect_loop(base,q,beyond,size,compar,pk,rk,beyondk,swapfunc
+                ,pv,swaps+pivot_swap,0
 #if SAVE_PARTIAL
                 ,ppeq,ppgt
 #endif
@@ -2645,30 +3775,79 @@ check_sizes: ;
             beyond=p, r=s, beyondk=lk;
         }
         /* iterate on large region (size r), if effective size > 1 */
+#if DEBUG_CODE
+if (REPARTITION_DEBUG_LEVEL<debug) (V)fprintf(stderr,"// %s line %d: p=%lu, q=%lu, first=%lu, beyond=%lu, r=%lu, firstk=%lu, beyondk=%lu: %s\n",__func__,__LINE__,p,q,first,beyond,r,firstk,beyondk,((2UL>r)||((NULL!=pk)&&(firstk>=beyondk)))?"done":"continuing");
+#endif
         if ((2UL>r)||((NULL!=pk)&&(firstk>=beyondk))) return;
+        if ((1<debug)&&(NULL==pk)) { /* for graphing ratios during sorting */
+            A(nmemb>r);
+            (V)fprintf(stderr, "%s line %d: nmemb=%lu, s=%lu, e=%lu, t=%lu, ratio=%lu\n", __func__, __LINE__, nmemb, s, q-p, t, r/(nmemb-r));
+        }
         /* should large region be repivoted? */
-        c+=should_repivot(nmemb,r);
-        if (lopsided_partition_limit<=c) { /* wait for enough poor partitions */
+if (r>=nmemb) {
+    /* should always have pivot plus at least one other element excluded from large region */
+    (V)fprintf(stderr, "%s line %d: nmemb=%lu, q=%lu, p=%lu, q-p=%lu, pk=%p, s=%lu, t=%lu, q-p+s+t=%lu\n",__func__,__LINE__,nmemb,q,p,q-p,pk,s,t,q-p+s+t);
+}
+        if(0!=should_repivot(nmemb,r,pk,&c)) {
             char *pc, *pd, *pe, *pf;
 
+if (2<debug) (V) fprintf(stderr,"// %s line %d: repivoting large region %lu / %lu, first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu\n",__func__,__LINE__,r,nmemb,first,beyond,firstk,beyondk);
             /* yes: do it and check resulting sizes */
-            pivot=repivot(base,first,beyond,size,compar,swapfunc,&pc,&pd,
-                      &pe,&pf);
-            if (NULL==pk) nrepivot++;
+            pivot=repivot(base,first,beyond,size,compar,swapfunc,pv,
+                      swaps+pivot_swap,&pc,&pd,&pe,&pf);
+            A(pc<=pd);A(pd<pe);A(pe<=pf);
+            nrepivot++;
+#if DEBUG_CODE
+if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
+    (V)fprintf(stderr, "// %s line %d: pivot=%p(%d), pl=%p, pc=%p, pe=%p, pu=%p\n// ",__func__,__LINE__,pivot,*((int *)pivot),base+first*size,pc,pe,base+beyond*size);
+    print_int_array(base,first,beyond-1UL);
+}
+#endif
+            A(pd<=pivot);A(pivot<pe);
+            nmemb=r;
 #if SAVE_PARTIAL
             repartition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,
                 swapfunc,&p,&q);
 #else
-            partition(base,first,beyond,pivot,size,compar,swapfunc,&p,&q);
+            swaps=partition(base,first,beyond,pivot,size,compar,swapfunc,pv,
+                0!=pivot_swap?0UL:swaps,&p,&q);
 #endif
-            if (NULL==pk) npartitions++;
+if (p>=q) {
+    (V)fprintf(stderr, "%s line %d: beyond=%lu, first=%lu, beyond-first=%lu, nmemb=%lu, q=%lu, p=%lu, q-p=%lu, pk=%p, s=%lu, t=%lu, q-p+s+t=%lu\n",__func__,__LINE__,beyond,first,beyond-first,nmemb,q,p,q-p,pk,s,t,q-p+s+t);
+}
+#if 1 /* for debugging of broken repivot/repartition */
+        /* sizes of < and > regions (elements) */
+        s=p-first, t=beyond-q;
+if (q-p+s+t!=nmemb) {
+    /* should always have pivot plus at least one other element excluded from large region */
+    (V)fprintf(stderr, "%s line %d: beyond=%lu, first=%lu, beyond-first=%lu, nmemb=%lu, q=%lu, p=%lu, q-p=%lu, pk=%p, s=%lu, t=%lu, q-p+s+t=%lu\n",__func__,__LINE__,beyond,first,beyond-first,nmemb,q,p,q-p,pk,s,t,q-p+s+t);
+}
+if (s>t) r=s; else r=t;
+if (r/(nmemb-r)>3) {
+    char *pu=base+beyond*size;
+(V)fprintf(stderr, "%s line %d: repivot/repartition failed: nmemb=%lu, first=%lu, beyond=%lu, p=%lu, q=%lu, s=%lu, e=%lu, t=%lu\n",__func__,__LINE__,nmemb,first,beyond,p,q,s,q-p,t);
+# if 0 /* adversary cmp() doesn't give consistent results */
+/* is partition valid? */
+for (pivot=base+p*size,pf=base+first*size; pf<pd; pf+=size)
+    A(0<compar(pivot,pf));
+for (; pf<pe; pf+=size)
+    A(0==compar(pivot,pf));
+for (; pf<pu; pf+=size)
+    A(0>compar(pivot,pf));
+# endif
+    print_int_array(base,first,beyond-1UL);
+    A(1<0);
+}
+#endif
             c=0; /* clean slate */
             goto check_sizes;
         }
         /* no repivot: just process large region as usual */
         nmemb=r;
     }
-    isort_internal(base,first,beyond,size,compar,swapfunc);
+    if (0!=use_networks) networksort_internal(base,first,beyond,size,compar,swapfunc);
+    else if (0!=use_shell) shellsort_internal(base,first,beyond,size,compar,swapfunc);
+    else isort_internal(base,first,beyond,size,compar,swapfunc);
 }
 
 /* comparison function for sorting order statistic ranks */
@@ -2700,22 +3879,43 @@ void quickselect_internal(char *base, size_t nmemb,
 #endif
    )
 {
+    union aligned_union pv[1+(size-1UL)/sizeof(union aligned_union)];
+    size_t q;
+
     if (2UL>nmemb) return; /* Return early if there's nothing to do. */
 
     if (0UL==nk) pk=NULL;
     else if (NULL==pk) nk=0UL;
-    else if (1UL<nk) quickselect_internal((void *)pk,nk,sizeof(size_t),
-        size_t_cmp,NULL,0UL
+    else if (1UL<nk) {
+        for (q=1UL; q<nk; q++) /* verify */
+            if (pk[q-1UL]>pk[q]) break;
+        if (q<nk) /* fix iff broken */
+            quickselect_internal((void *)pk,nk,sizeof(size_t),size_t_cmp,NULL,
+                0UL
 #if SAVE_PARTIAL
-            ,NULL,NULL
+                ,NULL,NULL
 #endif
-        );
+            );
+    }
+    for (q=0UL; q<sampling_table_size; q++)
+        sampling_table[q].max_ratio=sampling_table[q].repivot_ratio=1UL,
+            sampling_table[q].repivots=0UL;
     quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,
-        whichswap(base,size,1U)
+        whichswap(base,size,1U),pv,nmemb,0
 #if SAVE_PARTIAL
         ,ppeq,ppgt
 #endif
     );
+    if (0<debug) /* for graphing worst-case partition ratios */
+        for (q=0UL; q<sampling_table_size; q++) {
+            if (1UL<sampling_table[q].max_ratio)
+                (V)fprintf(stderr,
+                    "%s: min_nmemb=%lu, samples=%lu, max_ratio=%lu, repivots=%lu@%lu\n",
+                    __func__,sampling_table[q].min_nmemb,
+                    sampling_table[q].samples,sampling_table[q].max_ratio,
+                    sampling_table[q].repivots,
+                    sampling_table[q].repivot_ratio);
+        }
 }
 
 
@@ -2726,18 +3926,18 @@ inline
 #endif /* C99 */
 void sort5(char *pa, char *pb, char *pc, char *pd, char *pe, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     /* Batcher sorting network: 9 comparisons, 0-9 exchanges */
-    if (0>compar(pa,pe)) swapfunc(pa,pe,NULL,size);
-    if (0>compar(pa,pc)) swapfunc(pa,pc,NULL,size);
-    if (0>compar(pb,pd)) swapfunc(pb,pd,NULL,size);
-    if (0>compar(pa,pb)) swapfunc(pa,pb,NULL,size);
-    if (0>compar(pc,pe)) swapfunc(pc,pe,NULL,size);
-    if (0>compar(pc,pd)) swapfunc(pc,pd,NULL,size);
-    if (0>compar(pb,pe)) swapfunc(pb,pe,NULL,size);
-    if (0>compar(pb,pc)) swapfunc(pb,pc,NULL,size);
-    if (0>compar(pd,pe)) swapfunc(pd,pe,NULL,size);
+    if (0>compar(pa,pe)) swapfunc(pa,pe,size);
+    if (0>compar(pa,pc)) swapfunc(pa,pc,size);
+    if (0>compar(pb,pd)) swapfunc(pb,pd,size);
+    if (0>compar(pa,pb)) swapfunc(pa,pb,size);
+    if (0>compar(pc,pe)) swapfunc(pc,pe,size);
+    if (0>compar(pc,pd)) swapfunc(pc,pd,size);
+    if (0>compar(pb,pe)) swapfunc(pb,pe,size);
+    if (0>compar(pb,pc)) swapfunc(pb,pc,size);
+    if (0>compar(pd,pe)) swapfunc(pd,pe,size);
 }
 
 static size_t dp_cutoff = 26UL; /* 26 seems to be optimal */
@@ -2749,7 +3949,7 @@ inline
 #endif /* C99 */
 void dpqsort_internal(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *,const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     char *pa, *pb, *pivot1, *pivot2, *pm, *pn, *ps, *pt, *pu;
     size_t n, q, r, s, t, u, v, w, karray[2];
@@ -2768,10 +3968,12 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
 # undef SAMPLE_SELECTION
 # define SAMPLE_SELECTION ADAPTIVE_SAMPLING
 #endif
-    while (1) {
+    for (;;) {
         pu=base+(nmemb-1UL)*size; /* last element */
-        if (nmemb<=dp_cutoff) { /* insertion sort */
-            isort_internal(base,0UL,nmemb,size,compar,swapfunc);
+        if (nmemb<=dp_cutoff) { /* small-array sort */
+            if (0!=use_networks) networksort_internal(base,0UL,nmemb,size,compar,swapfunc);
+            else if (0!=use_shell) shellsort_internal(base,0UL,nmemb,size,compar,swapfunc);
+            else isort_internal(base,0UL,nmemb,size,compar,swapfunc);
     /* <- */return; /* Done; */
         }
 #if ADAPTIVE_SAMPLING
@@ -2791,8 +3993,8 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         for (r=((s+1UL)>>1),q=1UL,t=nmemb/s*size; q<r; q++) {
             u=q*t;
             v=q*size;
-            if (pm-u>=base) swapfunc(pm-u,pm-v,NULL,size);
-            if (pm+u<pu) swapfunc(pm+u,pm+v,NULL,size);
+            if (pm-u>=base) swapfunc(pm-u,pm-v,size);
+            if (pm+u<pu) swapfunc(pm+u,pm+v,size);
         }
         r=s>>1;
 # if 1
@@ -2842,7 +4044,7 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         sort5(pa,pivot1,pm,pivot2,ps,size,compar,swapfunc);
 #endif
 #if DPDEBUG
-fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2));
+fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n// ",__func__,__LINE__,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
         /* partition array around pivot elements */
@@ -2863,14 +4065,14 @@ print_int_array(base,0UL,nmemb-1UL);
         for (pb=pm=base,ps=pu; pm<ps;) {
             A(base<=pm);A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0<=compar(pivot1,pm)) {
-                swapfunc(pb,pm,NULL,size);
+                swapfunc(pb,pm,size);
                 if (pivot1==pm) pivot1=pb; else if (pivot2==pm) pivot2=pb;
                 else if (pivot1==pb) pivot1=pm; else if (pivot2==pb) pivot2=pm;
                 pb+=size;
             } else if (0>=compar(pivot2,pm)) {
                 do ps-=size; while ((pm<ps)&&(0>=compar(pivot2,ps)));
                 if (pm>=ps) break;
-                swapfunc(pm,ps,NULL,size);
+                swapfunc(pm,ps,size);
                 if (pivot1==pm) pivot1=ps; else if (pivot2==pm) pivot2=ps;
                 else if (pivot1==ps) pivot1=pm; else if (pivot2==ps) pivot2=pm;
                 continue; /* new unknown at pm */
@@ -2886,24 +4088,24 @@ print_int_array(base,0UL,nmemb-1UL);
         /*  base  pa    pb        ps    pt    pu */
 #if DPDEBUG
 fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2));
-fprintf(stderr, "//%s line %d: pb=%p[%lu](%d), ps=%p[%lu](%d)\n",__func__,__LINE__,pb,(pb-base)/size,*((int *)pb),ps,(ps-base)/size,*((int *)ps));
+fprintf(stderr, "//%s line %d: pb=%p[%lu](%d), ps=%p[%lu](%d)\n// ",__func__,__LINE__,pb,(pb-base)/size,*((int *)pb),ps,(ps-base)/size,*((int *)ps));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
         for (pa=pb,pm=base; pm<pa; pm+=size) {
             if (0==compar(pivot1,pm)) {
                 pa-=size;
-                swapfunc(pm,pa,NULL,size);
+                swapfunc(pm,pa,size);
                 if (pivot1==pm) pivot1=pa; else if (pivot2==pm) pivot2=pa;
             }
         }
 #if DPDEBUG
 fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2));
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pb,(pb-base)/size,*((int *)pb));
+fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n// ",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pb,(pb-base)/size,*((int *)pb));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
         for (pt=ps,pm=pu-size; pm>=pt; pm-=size) {
             if (0==compar(pivot2,pm)) {
-                swapfunc(pm,pt,NULL,size);
+                swapfunc(pm,pt,size);
                 if (pivot1==pm) pivot1=pt; else if (pivot2==pm) pivot2=pt;
                 pt+=size;
             }
@@ -2911,7 +4113,7 @@ print_int_array(base,0UL,nmemb-1UL);
 #if DPDEBUG
 fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2));
 fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pb,(pb-base)/size,*((int *)pb));
-fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,ps,(ps-base)/size,*((int *)ps),pt,(pt-base)/size,*((int *)pt));
+fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n// ",__func__,__LINE__,ps,(ps-base)/size,*((int *)ps),pt,(pt-base)/size,*((int *)pt));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
 #else
@@ -2919,14 +4121,14 @@ print_int_array(base,0UL,nmemb-1UL);
             A(base<=pm);A(base<=pa);A(pa<=pm);A(pt<=pu);
             A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0<compar(pivot1,pm)) {
-                swapfunc(pa,pm,NULL,size);
+                swapfunc(pa,pm,size);
                 if (pivot1==pa) pivot1=pm; else if (pivot2==pa) pivot2=pm;
                 else if (pivot2==pm) pivot2=pa;
                 pa+=size;
             } else if (0>compar(pivot2,pm)) {
                 do pt-=size; while ((pm<pt)&&(0>compar(pivot2,pt)));
                 if (pm>=pt) break;
-                swapfunc(pm,pt,NULL,size);
+                swapfunc(pm,pt,size);
                 if (pivot1==pt) pivot1=pm; else if (pivot2==pt) pivot2=pm;
                 else if (pivot1==pm) pivot1=pt;
                 continue; /* new unknown at pm */
@@ -2938,7 +4140,7 @@ print_int_array(base,0UL,nmemb-1UL);
         /*  base  pa                    pt    pu */
 #if DPDEBUG
 fprintf(stderr, "//%s line %d: base=%p, pivot1=%p[%lu](%d), pivot2=%p[%lu](%d), pu=%p\n",__func__,__LINE__,base,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2),pu);
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pt,(pt-base)/size,*((int *)pt));
+fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pt=%p[%lu](%d)\n// ",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pt,(pt-base)/size,*((int *)pt));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
         /* group equals */
@@ -2949,14 +4151,14 @@ print_int_array(base,0UL,nmemb-1UL);
             A(base<=pm);A(base<=pa);A(pa<=pb);A(ps<=pt);A(pt<=pu);
             A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
             if (0==compar(pivot1,pm)) {
-                swapfunc(pb,pm,NULL,size);
+                swapfunc(pb,pm,size);
                 if (pivot1==pm) pivot1=pb; else if (pivot1==pb) pivot1=pm;
                 if (pivot2==pm) pivot2=pb; else if (pivot2==pb) pivot2=pm;
                 pb+=size;
             } else if (0==compar(pivot2,pm)) {
                 do ps-=size; while ((pm<ps)&&(0==compar(pivot2,ps)));
                 if (pm>=ps) break;
-                swapfunc(pm,ps,NULL,size);
+                swapfunc(pm,ps,size);
                 if (pivot1==pm) pivot1=ps; else if (pivot1==ps) pivot1=pm;
                 if (pivot2==pm) pivot2=ps; else if (pivot2==ps) pivot2=pm;
                 continue; /* test moved element at pm */
@@ -2966,7 +4168,7 @@ print_int_array(base,0UL,nmemb-1UL);
 #if DPDEBUG
 fprintf(stderr, "//%s line %d: base=%p, pivot1=%p[%lu](%d), pivot2=%p[%lu](%d), pu=%p\n",__func__,__LINE__,base,pivot1,(pivot1-base)/size,*((int *)pivot1),pivot2,(pivot2-base)/size,*((int *)pivot2),pu);
 fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,pa,(pa-base)/size,*((int *)pa),pb,(pb-base)/size,*((int *)pb));
-fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,ps,(ps-base)/size,*((int *)ps),pt,(pt-base)/size,*((int *)pt));
+fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n// ",__func__,__LINE__,ps,(ps-base)/size,*((int *)ps),pt,(pt-base)/size,*((int *)pt));
 print_int_array(base,0UL,nmemb-1UL);
 #endif
 #endif
@@ -3016,7 +4218,7 @@ inline
 #endif /* C99 */
 void yqsort_internal(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *, const void *), size_t y_div,
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     int pcmp;
     char *pg, *pivot1, *pivot2, *pk, *pl, *pr;
@@ -3027,8 +4229,10 @@ void yqsort_internal(char *base, size_t nmemb, size_t size,
 fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
 #endif
     pr=base+(nmemb-1UL)*size;
-    if (nmemb<y_cutoff) { /* insertion sort */
-        isort_internal(base,0UL,nmemb,size,compar,swapfunc);
+    if (nmemb<y_cutoff) { /* small-array sort */
+        if (0!=use_networks) networksort_internal(base,0UL,nmemb,size,compar,swapfunc);
+        else if (0!=use_shell) shellsort_internal(base,0UL,nmemb,size,compar,swapfunc);
+        else isort_internal(base,0UL,nmemb,size,compar,swapfunc);
 /* <- */return; /* Done; */
     }
     /* ideally, pivots should split array into 3 equal-sized regions */
@@ -3045,11 +4249,11 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     pivot2=pr-t;
     pcmp=compar(pivot1,pivot2); /* cached comparison */
     if (0<pcmp) {
-        swapfunc(base,pivot2,NULL,size);
-        swapfunc(pivot1,pr,NULL,size);
+        swapfunc(base,pivot2,size);
+        swapfunc(pivot1,pr,size);
     } else {
-        swapfunc(base,pivot1,NULL,size);
-        swapfunc(pivot2,pr,NULL,size);
+        swapfunc(base,pivot1,size);
+        swapfunc(pivot2,pr,size);
     }
     /* pivot elements (moved) */
     pivot1=base, pivot2=pr;
@@ -3057,11 +4261,12 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     pl=base+size, pg=pr-size;
     /* sorting */
     for (pk=pl; pk<=pg; pk+=size) {
-        if (0>compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
+        if (0>compar(pk,pivot1)) { if (pk!=pl) swapfunc(pk,pl,size); pl+=size; }
         else if (0<compar(pk,pivot2)) {
             while ((pk<pg)&&(0<compar(pg,pivot2))) pg-=size;
-            swapfunc(pk,pg,NULL,size), pg-=size;
-            if (0>compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
+            if (pk!=pg) swapfunc(pk,pg,size);
+            pg-=size;
+            if (0>compar(pk,pivot1)) { if (pk!=pl) swapfunc(pk,pl,size); pl+=size; }
         }
     }
     npartitions++;
@@ -3073,9 +4278,9 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
     if (dist < y_cutoff2) y_div++;
 #endif
     pivot1=pl-size; /* new location for pivot1 */
-    swapfunc(pivot1,base,NULL,size);
+    if (pivot1!=base) swapfunc(pivot1,base,size);
     pivot2=pg+size; /* new location for pivot2 */
-    swapfunc(pivot2,pr,NULL,size);
+    if (pivot2!=pr) swapfunc(pivot2,pr,size);
     /* subarrays */
     t=(pivot1-base)/size; /* save size for protection comparison and recursion */
     A((2UL>t)||(base+(t-1UL)*size<=pr));
@@ -3092,10 +4297,11 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,base,nmemb,size,compar,y_div);
 #endif
     ) { /* avoid overflow/underflow */
         for (pk=pl; pk<=pg; pk+=size) {
-            if (0==compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
+            if (0==compar(pk,pivot1)) { if (pk!=pl) swapfunc(pk,pl,size); pl+=size; }
             else if (0==compar(pk,pivot2)) {
-                swapfunc(pk,pg,NULL,size), pg-=size;
-                if (0==compar(pk,pivot1)) swapfunc(pk,pl,NULL,size), pl+=size;
+                if (pk!=pg) swapfunc(pk,pg,size);
+                pg-=size;
+                if (0==compar(pk,pivot1)) { if (pk!=pl) swapfunc(pk,pl,size); pl+=size; }
             }
         }
         /* revised "dist" */
@@ -3193,7 +4399,7 @@ inline
 #endif /* C99 */
 size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     size_t c, rc;
 
@@ -3206,7 +4412,7 @@ size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
         }
         if (0 <= compar(base+size*p, base+size*c))        /* proper p vs. c relationship achieved */
             return p; /* nothing else to do */
-        swapfunc(base+size*p, base+size*c, NULL, size);
+        swapfunc(base+size*p, base+size*c, size);
     }
     return p;
 }
@@ -3218,7 +4424,7 @@ inline
 #endif /* C99 */
 void heapify_array(char *base, size_t r, size_t u, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     size_t p;
 
@@ -3241,9 +4447,9 @@ inline
 #endif /* C99 */
 size_t heap_delete_root(char *base, size_t r, size_t n, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
-    if (r != n) { swapfunc(base+size*r, base+size*n, NULL, size); /* swap root and last */ }
+    if (r != n) { swapfunc(base+size*r, base+size*n, size); /* swap root and last */ }
     --n;
     (V)heap_siftdown(base, r, r, n, size, compar, swapfunc);
     return n;
@@ -3255,7 +4461,7 @@ inline
 #endif /* C99 */
 void heap_sort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t))
+    void (*swapfunc)(char *, char *, size_t))
 {
     size_t n;
 
@@ -3280,13 +4486,13 @@ inline
 #endif /* C99 */
 void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapfunc)(char *, char *, char *, size_t),
-    size_t depth_limit)
+    void (*swapfunc)(char *, char *, size_t), char *pv,
+    size_t depth_limit, size_t swaps)
 {
-    size_t eq, gt;
+    size_t eq, gt, s;
     char *pivot;
 
-    while (beyond-first>introsort_insertion_cutoff) {
+    while (beyond-first>introsort_small_array_cutoff) {
         if (0UL==depth_limit) {
             heap_sort_internal(base,first,beyond,size,compar,swapfunc);
             return;
@@ -3302,20 +4508,24 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
         pivot = fmed3(base+size*first,base+size*(first+(beyond-first)>>1),base+size*(beyond-1UL),compar);
 #else
         /* adaptive sampling for pivot selection as in quickselect */
-        pivot = select_pivot(base, first, beyond, size, compar, NULL, swapfunc);
+        pivot = select_pivot(base, first, beyond, size, compar, NULL, swapfunc, (SIZE_T_MAX));
 #endif
         /* partition is modified Bentley&McIlroy split-end partition returning
            indices of equal-to and greater-than region starts.  This efficient
            partition function also avoids further processing of elements
            comparing equal to the pivot.
         */
-        partition(base,first,beyond,pivot,size,compar,swapfunc,&eq,&gt);
+        swaps=partition(base,first,beyond,pivot,size,compar,swapfunc,pv,
+            0!=pivot_swap?0UL:swaps,&eq,&gt);
         npartitions++;
-        introsort_loop(base,gt,beyond,size,compar,swapfunc,depth_limit);
+        introsort_loop(base,gt,beyond,size,compar,swapfunc,pv,depth_limit,swaps);
         beyond=eq;
     }
-    if (0U==introsort_final_insertion_sort)
-        isort_internal(base,first,beyond,size,compar,swapfunc);
+    if (0U==introsort_final_insertion_sort) {
+        if (0!=use_networks) networksort_internal(base,first,beyond,size,compar,swapfunc);
+        else if (0!=use_shell) shellsort_internal(base,first,beyond,size,compar,swapfunc);
+        else isort_internal(base,first,beyond,size,compar,swapfunc);
+    }
 }
 
 static
@@ -3337,18 +4547,20 @@ inline
 void introsort(char *base, size_t nmemb, size_t size, int(*compar)(const void *,const void *))
 {
     size_t depth_limit;
-    void (*swapfunc)(char *,char *,char *, size_t);
+    void (*swapfunc)(char *,char *, size_t);
+    union aligned_union pv[1+(size-1UL)/sizeof(union aligned_union)];
 
-    /* introsort insertion sort cutoff */
-    if (0UL==introsort_insertion_cutoff) {
-        if (0U==introsort_final_insertion_sort) introsort_insertion_cutoff=16UL;
-        else introsort_insertion_cutoff=7UL;
+    /* introsort small-array sort cutoff */
+    if (0UL==introsort_small_array_cutoff) {
+        if (0U==introsort_final_insertion_sort) introsort_small_array_cutoff=16UL;
+        else introsort_small_array_cutoff=8UL;
     }
     swapfunc=whichswap(base,size,1U);
     depth_limit=introsort_recursion_factor*floor_lg(nmemb);
-    introsort_loop(base, 0UL, nmemb, size, compar, swapfunc, depth_limit);
-    if (0U!=introsort_final_insertion_sort)
+    introsort_loop(base, 0UL, nmemb, size, compar, swapfunc, pv, depth_limit,nmemb);
+    if (0U!=introsort_final_insertion_sort) {
         isort_internal(base,0UL,nmemb,size,compar,swapfunc);
+    }
 }
 /* ************************************************************** */
 
@@ -3387,12 +4599,16 @@ static const char *sequence_name(unsigned int testnum)
         return "increasing sorted sequence";
         case TEST_SEQUENCE_REVERSE :
         return "decreasing sorted sequence";
+        case TEST_SEQUENCE_ROTATED :
+        return "rotated sequence";
         case TEST_SEQUENCE_ORGAN_PIPE :
         return "organ pipe sequence";
         case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
         return "inverted organ pipe sequence";
         case TEST_SEQUENCE_SAWTOOTH :
         return "sawtooth sequence";
+        case TEST_SEQUENCE_TERNARY :
+        return "random ternary values";
         case TEST_SEQUENCE_BINARY :
         return "random zeros and ones";
         case TEST_SEQUENCE_CONSTANT :
@@ -3466,21 +4682,17 @@ static void constant_fill(long *p, size_t l, size_t r, long n)
 }
 
 /* fill long array p with random values in [0,modulus) */
-static void random_fill(long *p, size_t count, uint64_t modulus)
+static void random_fill(long *p, size_t l, size_t r, uint64_t modulus)
 {
-    size_t j;
-
-    for (j=0UL; j<count; j++)
-        *p++ = (int)random64n(modulus);
+    for (;l<=r; l++)
+        p[l] = (long)random64n(modulus);
 }
 
 /* add random values in [0,modulus) to values in long array p */
-static void random_add(long *p, size_t count, uint64_t modulus)
+static void random_add(long *p, size_t l, size_t r, uint64_t modulus)
 {
-    size_t j;
-
-    for (j=0UL; j<count; j++)
-        *p++ = (int)random64n(modulus);
+    for (;l<=r; l++)
+        p[l] += (long)random64n(modulus);
 }
 
 static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned int testnum, uint64_t max_val, void(*f)(int, void *, const char *, ...), void *log_arg)
@@ -3500,36 +4712,43 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                         p[j] = input_data[i].val;
                 break;
                 case TEST_SEQUENCE_SORTED :
-                    increment(&p[o],0UL,u,0);
+                    increment(&p[o],0UL,u,0L);
                 break;
                 case TEST_SEQUENCE_REVERSE :
-                    increment(&p[o],0UL,n,0);
+                    increment(&p[o],0UL,u,0L);
                     reverse(&p[o],0UL,u);
                 break;
+                case TEST_SEQUENCE_ROTATED :
+                    if (0UL<u) increment(&p[o],0UL,u-1UL,1L);
+                    p[u]=0UL;
+                break;
                 case TEST_SEQUENCE_ORGAN_PIPE :
-                    increment(&p[o],0UL,n>>1,0);
-                    increment(&p[o],(n+1UL)>>1,u,0);
+                    increment(&p[o],0UL,n>>1,0L);
+                    increment(&p[o],(n+1UL)>>1,u,0L);
                     reverse(&p[o],(n+1UL)>>1,u);
                 break;
                 case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
-                    increment(&p[o],n>>1,u,0);
-                    increment(&p[o],0UL,(n-1UL)>>1,0);
+                    increment(&p[o],n>>1,u,0L);
+                    increment(&p[o],0UL,(n-1UL)>>1,0L);
                     reverse(&p[o],0UL,(n-1UL)>>1);
                 break;
                 case TEST_SEQUENCE_SAWTOOTH :
-                    increment(&p[o],0UL,u,0);
+                    increment(&p[o],0UL,u,0L);
                     k = sawtooth_modulus(j,NULL,log_arg);
-                    modulo(&p[o],0UL,n,k);
+                    modulo(&p[o],0UL,u,k);
+                break;
+                case TEST_SEQUENCE_TERNARY :
+                    random_fill(&p[o],0UL,u,3);
                 break;
                 case TEST_SEQUENCE_BINARY :
-                    random_fill(&p[o],n,2);
+                    random_fill(&p[o],0UL,u,2);
                 break;
                 case TEST_SEQUENCE_CONSTANT :
                     constant_fill(&p[o],0UL,u,CONSTANT_VALUE);
                 break;
                 case TEST_SEQUENCE_MEDIAN3KILLER :
                     /* start with increasing sorted sequence */
-                    increment(&p[o],0UL,u,0);
+                    increment(&p[o],0UL,u,0L);
                     k = n;
                     /* median-of-3-killer sequence */
                     if (1UL < k) {
@@ -3546,7 +4765,7 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                 break;
                 case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
                     /* start with increasing sorted sequence */
-                    increment(&p[o],0UL,u,0);
+                    increment(&p[o],0UL,u,0L);
                     /* swap extreme elements to 1/3 and 2/3 positions */
                     for (x=((n-4UL)>>1); ; x--) { /*x=1st index @ yqsort*/
                         A(n>(x<<1));
@@ -3567,18 +4786,18 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                     }
                 break;
                 case TEST_SEQUENCE_RANDOM_DISTINCT :
-                    increment(&p[o],0UL,u,0);
+                    increment(&p[o],0UL,u,0L);
                     (V)fisher_yates_shuffle(&(p[o]), n, sizeof(long), random64n, f, log_arg);
                 break;
                 case TEST_SEQUENCE_RANDOM_VALUES :
-                    random_fill(&p[o],n,max_val);
+                    random_fill(&p[o],0UL,u,max_val);
                 break;
                 case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :
-                    random_fill(&p[o],n,n);
+                    random_fill(&p[o],0UL,u,n);
                 break;
                 case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :
                     h=snlround(sqrt((double)n),NULL,NULL);
-                    random_fill(&p[o],n,h);
+                    random_fill(&p[o],0UL,u,h);
                 break;
                 case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :
                     constant_fill(&p[o],0UL,u,0L);
@@ -3586,7 +4805,7 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                        2nd Ed., Sect. 8.6, ISBN 978-0-486-65241-2
                     */
                     for (h=0UL,k=max_val/12UL; h<12UL; h++)
-                        random_add(&p[o],n,k);
+                        random_add(&p[o],0UL,u,k);
                 break;
                 case TEST_SEQUENCE_HISTOGRAM :
                     constant_fill(&p[o],0UL,u,0L);
@@ -3601,19 +4820,19 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
                     }
                 break;
                 case TEST_SEQUENCE_MANY_EQUAL_LEFT :
-                    random_fill(&p[o],n,n);
+                    random_fill(&p[o],0UL,u,n);
                     constant_fill(&p[o],0UL,n>>2,CONSTANT_VALUE);
                 break;
                 case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :
-                    random_fill(&p[o],n,n);
+                    random_fill(&p[o],0UL,u,n);
                     constant_fill(&p[o],(n>>1)-(n>>3),(n>>1)+(n>>3),CONSTANT_VALUE);
                 break;
                 case TEST_SEQUENCE_MANY_EQUAL_RIGHT :
-                    random_fill(&p[o],n,n);
+                    random_fill(&p[o],0UL,u,n);
                     constant_fill(&p[o],(n>>1)+(n>>2),u,CONSTANT_VALUE);
                 break;
                 case TEST_SEQUENCE_MANY_EQUAL_SHUFFLED :
-                    random_fill(&p[o],n,n);
+                    random_fill(&p[o],0UL,u,n);
                     constant_fill(&p[o],(n>>1)-(n>>3),(n>>1)+(n>>3),CONSTANT_VALUE);
                     (V)fisher_yates_shuffle(&(p[o]), n, sizeof(long), random64n, f, log_arg);
                 break;
@@ -3724,15 +4943,18 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
 #define WQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) wqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #if SAVE_PARTIAL
-#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,NULL,NULL)
+# define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,NULL,NULL)
 #else
-#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl)
+# define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl)
 #endif
 #define YQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) yqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define DPQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) dpqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define HEAPSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) heap_sort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define INTROSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) introsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define ISORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) isort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define SELSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) selsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define SHELLSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) shellsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define NETWORKSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) networksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 
 #define FUNCTION_WQSORT         1U
 #define FUNCTION_YQSORT         2U
@@ -3748,6 +4970,9 @@ static int generate_long_test_arrays(long *p, size_t count, size_t n, unsigned i
 #define FUNCTION_HEAPSORT      12U
 #define FUNCTION_INTROSORT     13U
 #define FUNCTION_ISORT         14U
+#define FUNCTION_SELSORT       15U
+#define FUNCTION_SHELLSORT     16U
+#define FUNCTION_NETWORKSORT   17U
 
 /* type of test */
 #define TEST_TYPE_MEDIAN       0x002U
@@ -3853,6 +5078,12 @@ static const char *function_name(unsigned int func, size_t n)
         break;
         case FUNCTION_ISORT :         ret = "insertion sort";
         break;
+        case FUNCTION_SELSORT :       ret = "selection sort";
+        break;
+        case FUNCTION_SHELLSORT :     ret = "Shell sort";
+        break;
+        case FUNCTION_NETWORKSORT :   ret = "network sort";
+        break;
         default :
             errno = EINVAL;
         break;
@@ -3883,6 +5114,9 @@ static const char *function_type(unsigned int func, unsigned int *ptests)
         case FUNCTION_HEAPSORT :      /*FALLTHROUGH*/
         case FUNCTION_INTROSORT :     /*FALLTHROUGH*/
         case FUNCTION_ISORT :         /*FALLTHROUGH*/
+        case FUNCTION_SELSORT :       /*FALLTHROUGH*/
+        case FUNCTION_SHELLSORT :     /*FALLTHROUGH*/
+        case FUNCTION_NETWORKSORT :   /*FALLTHROUGH*/
         case FUNCTION_QSORT :         ret = "sort";
             *ptests |= ( TEST_TYPE_PARTITION | TEST_TYPE_MEDIAN | TEST_TYPE_SORT );
         break;
@@ -3922,8 +5156,10 @@ static int valid_test(unsigned int test_type, unsigned int testnum, size_t n)
         /* not size-limited */
         case TEST_SEQUENCE_STDIN :                    /*FALLTHROUGH*/
         case TEST_SEQUENCE_SORTED :                   /*FALLTHROUGH*/
+        case TEST_SEQUENCE_ROTATED :                  /*FALLTHROUGH*/
         case TEST_SEQUENCE_REVERSE :                  /*FALLTHROUGH*/
         case TEST_SEQUENCE_BINARY :                   /*FALLTHROUGH*/
+        case TEST_SEQUENCE_TERNARY :                  /*FALLTHROUGH*/
         case TEST_SEQUENCE_COMBINATIONS :             /*FALLTHROUGH*/
         case TEST_SEQUENCE_PERMUTATIONS :             /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_DISTINCT :          /*FALLTHROUGH*/
@@ -4082,8 +5318,9 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
             emax++;
         }
         switch (testnum) {
-            case TEST_SEQUENCE_STDIN :              /*FALLTHROUGH*/
-            case TEST_SEQUENCE_SORTED :              /*FALLTHROUGH*/
+            case TEST_SEQUENCE_STDIN :                /*FALLTHROUGH*/
+            case TEST_SEQUENCE_SORTED :               /*FALLTHROUGH*/
+            case TEST_SEQUENCE_ROTATED :              /*FALLTHROUGH*/
             case TEST_SEQUENCE_REVERSE :              /*FALLTHROUGH*/
                 count = 1UL;
             break;
@@ -4102,6 +5339,7 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                 emax = n - emin;
             break;
             case TEST_SEQUENCE_BINARY :              /*FALLTHROUGH*/
+            case TEST_SEQUENCE_TERNARY :             /*FALLTHROUGH*/
             case TEST_SEQUENCE_COMBINATIONS :
                 emin = 0; emax = n;                  /*FALLTHROUGH*/
             case TEST_SEQUENCE_PERMUTATIONS :        /*FALLTHROUGH*/
@@ -4222,6 +5460,7 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                         if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
 #endif /* GENERATOR_TEST */
                     case TEST_SEQUENCE_REVERSE :                 /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_ROTATED :                 /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_DISTINCT :         /*FALLTHROUGH*/
                     case TEST_SEQUENCE_PERMUTATIONS :            /*FALLTHROUGH*/
                     case TEST_SEQUENCE_DUAL_PIVOT_KILLER :       /*FALLTHROUGH*/
@@ -4245,6 +5484,7 @@ static unsigned int correctness_test(int type, size_t size, long *larray, int *a
                     case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :     /*FALLTHROUGH*/
                     case TEST_SEQUENCE_SAWTOOTH :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_BINARY :                  /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_TERNARY :             /*FALLTHROUGH*/
                     case TEST_SEQUENCE_CONSTANT :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES :           /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :   /*FALLTHROUGH*/
@@ -4310,7 +5550,7 @@ do_test:
                             QSEL(pv,o,o+u,size,comparison_function,karray,0UL,2UL,rpt);
                         }
 #if DEBUG_CODE
-(V)fprintf(stderr, "%s line %d: quickselect returned\n", __func__, __LINE__);
+if (2<debug) (V)fprintf(stderr, "%s line %d: quickselect returned\n", __func__, __LINE__);
 #endif /* DEBUG_CODE */
                     break;
                     case FUNCTION_BMQSORT :
@@ -4352,6 +5592,15 @@ do_test:
                     case FUNCTION_ISORT :
                         ISORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
+                    case FUNCTION_SELSORT :
+                        SELSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_SHELLSORT :
+                        SHELLSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_NETWORKSORT :
+                        NETWORKSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
                 }
                 if ((1UL==count)&&(0U != flags['i'])) {
                     const char *psize;
@@ -4369,7 +5618,7 @@ fprintf(stderr, "%s line %d: *ptests=0x%x\n",__func__,__LINE__,*ptests);
                         c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
                         (V)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf, col-c, col-c, " ", d, psize);
                     } else {
-                        c = 1 + snprintf(buf, sizeof(buf), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
+                        c = 1 + snprintf(buf, sizeof(buf), "%s %s vs. %lu %s %s comparison counts:", pcc, pfunc, n, typename, ptest);
                         (V)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
                             comment, buf, col-c, col-c, " ", nlt, 100.0*(double)nlt/(double)t, neq,
                             100.0*(double)neq/(double)t, ngt, 100.0*(double)ngt/(double)t,
@@ -4655,8 +5904,8 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
         }
         switch (testnum) {
             case TEST_SEQUENCE_STDIN :              /*FALLTHROUGH*/
-            case TEST_SEQUENCE_SORTED :
-            break;
+            case TEST_SEQUENCE_SORTED :             /*FALLTHROUGH*/
+            case TEST_SEQUENCE_ROTATED :            /*FALLTHROUGH*/
             case TEST_SEQUENCE_REVERSE :
             break;
             case TEST_SEQUENCE_ORGAN_PIPE :          /*FALLTHROUGH*/
@@ -4693,6 +5942,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                 emax = CONSTANT_VALUE + 10 + (int)u / 4 + 1;
             break;
             case TEST_SEQUENCE_BINARY :              /*FALLTHROUGH*/
+            case TEST_SEQUENCE_TERNARY :             /*FALLTHROUGH*/
             case TEST_SEQUENCE_COMBINATIONS :
                 emin = 0; emax = 1;
             /*FALLTHROUGH */
@@ -4769,7 +6019,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                 return errs;
             }
 #if DEBUG_CODE
-            if (NULL!=f) f(LOG_INFO, log_arg, "%s %s line %d: %s %s %s", __func__, source_file, __LINE__, pcc, typename, pfunc);
+            if (2<debug) if (NULL!=f) f(LOG_INFO, log_arg, "%s %s line %d: %s %s %s", __func__, source_file, __LINE__, pcc, typename, pfunc);
 #endif /* DEBUG_CODE */
             /* run tests */
             nrepivot=npartitions=0UL;
@@ -4778,6 +6028,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                 switch (testnum) {
                     case TEST_SEQUENCE_ADVERSARY :
                         /* generate new test sequence */
+#if 0
                         c=generate_long_test_arrays(larray,
                             1UL, n, TEST_SEQUENCE_SORTED, max_val, f, log_arg);
                         if (0 > c) {
@@ -4788,7 +6039,8 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                         } else if (0 < c) {
                             return errs;
                         }
-                        j = k, o = 0UL;
+#endif
+                        j=k=(u>>1), o = 0UL;
                         initialize_antiqsort(n, pv, size, alt, altsz, type, alt_type);
                     break;
                     case TEST_SEQUENCE_COMBINATIONS :
@@ -4827,7 +6079,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     case FUNCTION_QSELECT :
                         if (TEST_TYPE_SORT == (TEST_TYPE_SORT & *ptests)) {
                             QSEL(pv,o,o+u,size,comparison_function,NULL,0UL,0UL,rpt);
-                        } else {
+                        } else { /* MEDIAN */
                             karray[0] = karray[1] = k; /* 0-based rank */
                             QSEL(pv,o,o+u,size,comparison_function,karray,0UL,2UL,rpt);
                         }
@@ -4870,6 +6122,15 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     break;
                     case FUNCTION_ISORT :
                         ISORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_SELSORT :
+                        SELSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_SHELLSORT :
+                        SHELLSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
+                    break;
+                    case FUNCTION_NETWORKSORT :
+                        NETWORKSORT(pv,o,o+u,size,comparison_function,karray,0UL,0UL,rpt);
                     break;
                 }
                 (V)getrusage(RUSAGE_SELF,&rusage_end);
@@ -4941,7 +6202,7 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                 (V)sng(buf, sizeof(buf), NULL, NULL, test_u / factor, -6, 3, f, log_arg);
                 (V)sng(buf6, sizeof(buf6), NULL, NULL, test_u, -6, 3, f, log_arg);
 #if DEBUG_CODE
-(V)fprintf(stderr, "%s line %d: tot_u=%G, factor=%G, count=%lu, mean=%G (%s)\n", __func__, __LINE__, tot_u, factor, count, test_u, buf);
+if (3<debug) (V)fprintf(stderr, "%s line %d: tot_u=%G, factor=%G, count=%lu, mean=%G (%s)\n", __func__, __LINE__, tot_u, factor, count, test_u, buf);
 #endif /* DEBUG_CODE */
                 test_s = tot_s / (double)m;
                 (V)sng(buf7, sizeof(buf7), NULL, NULL, test_s / factor, -4, 3, f, log_arg);
@@ -4966,12 +6227,12 @@ static unsigned int timing_test(int type, size_t size, long *larray, int *array,
                     marray[8] = dn-1UL-(dn/50UL); /* 98%ile */
                     marray[9] = dn-1UL;           /* max */
 #if DEBUG_CODE
-(V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, dn-n-1UL=%lu, marray[4]=%lu, marray[5]=%lu\n", __func__, __LINE__, dn, n, u, dn-n-1UL, marray[4], marray[5]);
+if (3<debug) (V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, marray[4]=%lu, marray[5]=%lu\n", __func__, __LINE__, dn, n, u, marray[4], marray[5]);
 #endif /* DEBUG_CODE */
 ustats:             quickselect((void *)(uarray), dn, sizeof(double), doublecmp,
                         marray, 10UL);
 #if DEBUG_CODE
-(V)fprintf(stderr, "%s line %d: quickselect returned\n", __func__, __LINE__);
+if (3<debug) (V)fprintf(stderr, "%s line %d: quickselect returned\n", __func__, __LINE__);
 #endif /* DEBUG_CODE */
                     test_u = (uarray[marray[4]] + uarray[marray[5]]) / 2.0; /* median user */
                     (V)sng(buf5, sizeof(buf5), NULL, NULL, test_u, -4, 3, f, log_arg);
@@ -5050,7 +6311,7 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                 (V)sng(buf12, sizeof(buf12), NULL, NULL, test_s / factor, -4, 3, f, log_arg);
                 (V)sng(buf14, sizeof(buf14), NULL, NULL, test_w / factor, -4, 3, f, log_arg);
 #if DEBUG_CODE
-(V)fprintf(stderr, "%s line %d: factor=%G, count=%lu, dn=%lu, median=%G (%s)\n", __func__, __LINE__, factor, count, dn, test_u, buf2);
+if (3<debug) (V)fprintf(stderr, "%s line %d: factor=%G, count=%lu, dn=%lu, median=%G (%s)\n", __func__, __LINE__, factor, count, dn, test_u, buf2);
 #endif /* DEBUG_CODE */
                 if ((0UL<dn)&&(0U!=flags['B'])) {
                     /* wall-clock box plot data: 2%, 9%, 1/4, median, 3/4, 91%, 98% */
@@ -5109,7 +6370,7 @@ wstats:             quickselect((void *)(warray), dn, sizeof(double), doublecmp,
                     if (0U!=flags['R']) {
                         (V)printf("%s%s%*.*s%.6G %s comparisons\n", comment, buf, col-c, col-c, " ", d, psize);
                     } else {
-                        i = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s comparison counts:", pcc, pfunc, n, ptest);
+                        i = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s %s comparison counts:", pcc, pfunc, n, typename, ptest);
                         (V)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
                             comment, buf3, col-i, col-i, " ", nlt, 100.0*(double)nlt/(double)t, neq,
                             100.0*(double)neq/(double)t, ngt, 100.0*(double)ngt/(double)t,
@@ -5376,7 +6637,7 @@ unsigned int test_function(const char *prog, int *array, struct big_struct *big_
 #endif
 
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: %s %s start: array=%p, big_array=%p, darray=%p", prog, fname, ftype,array,big_array,darray);
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: %s %s start: array=%p, big_array=%p, darray=%p", prog, fname, ftype,array,big_array,darray);
 #endif
     /* check flags, modify tests as requested */
     /* first pass for test types */
@@ -5399,7 +6660,7 @@ unsigned int test_function(const char *prog, int *array, struct big_struct *big_
         if (c == UCHAR_MAX) break; /* That's All Folks! */
     }
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: %s %s flags 1st pass completed", prog, fname, ftype);
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: %s %s flags 1st pass completed", prog, fname, ftype);
 #endif
     /* second pass for tests with data types */
     for (c=0U; 1; c++) {
@@ -5466,7 +6727,7 @@ unsigned int test_function(const char *prog, int *array, struct big_struct *big_
         }
         if (c == UCHAR_MAX) break; /* That's All Folks! */
 #if DEBUG_CODE
-        if (NULL!=f) f(LOG_INFO, log_arg, "%s: %s %s flag %c tests", prog, fname, ftype, c);
+        if (2<debug) if (NULL!=f) f(LOG_INFO, log_arg, "%s: %s %s flag %c tests", prog, fname, ftype, c);
 #endif
         if (0U == errs) {
             if (TEST_TYPE_CORRECTNESS == (TEST_TYPE_CORRECTNESS & *ptests)) {
@@ -5480,7 +6741,7 @@ unsigned int test_function(const char *prog, int *array, struct big_struct *big_
         }
     }
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) {
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)) {
         if (0U!=flags['K']) fprintf(stderr, "// ");
         f(LOG_INFO, log_arg, "%s: %s %s %s tests completed: errs %u", prog, fname, ftype, typename, errs);
     }
@@ -5983,43 +7244,11 @@ int main(int argc, const char * const *argv)
             if ((':' == (char)c) || (NULL == strchr(OPTSTRING, (char)c)))
                 c = (int)'?';
             switch (c) {
-                /* this program has no options (that's what a compiler diagnostic for the loop is about) */
 #if SILENCE_WHINEY_COMPILERS
+                /* this program has no options (that's what a compiler diagnostic for the loop is about) */
                 case ':': /* clang! STFU!! */ /* cannot happen here, but clang is unable to figure that out */
                 break;
 #endif
-                case 'a' : /*FALLTHROUGH*/
-                case 'A' : /*FALLTHROUGH*/
-                case 'b' : /*FALLTHROUGH*/
-                case 'B' : /*FALLTHROUGH*/
-                case 'e' : /*FALLTHROUGH*/
-                case 'E' : /*FALLTHROUGH*/
-                case 'f' : /*FALLTHROUGH*/
-                case 'F' : /*FALLTHROUGH*/
-                case 'g' : /*FALLTHROUGH*/
-                case 'h' : /*FALLTHROUGH*/
-                case 'H' : /*FALLTHROUGH*/
-                case 'i' : /*FALLTHROUGH*/
-                case 'I' : /*FALLTHROUGH*/
-                case 'j' : /*FALLTHROUGH*/
-                case 'K' : /*FALLTHROUGH*/
-                case 'l' : /*FALLTHROUGH*/
-                case 'L' : /*FALLTHROUGH*/
-                case 'n' : /*FALLTHROUGH*/
-                case 'N' : /*FALLTHROUGH*/
-                case 'o' : /*FALLTHROUGH*/
-                case 'O' : /*FALLTHROUGH*/
-                case 'p' : /*FALLTHROUGH*/
-                case 'P' : /*FALLTHROUGH*/
-                case 'R' : /*FALLTHROUGH*/
-                case 's' : /*FALLTHROUGH*/
-                case 'S' : /*FALLTHROUGH*/
-                case 't' : /*FALLTHROUGH*/
-                case 'w' : /*FALLTHROUGH*/
-                case 'z' : /*FALLTHROUGH*/
-                    flags[c] = 1U;
-                    if (0U!=flags['K']) comment="#";
-                break;
                 case 'c' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc)) {
@@ -6030,9 +7259,9 @@ int main(int argc, const char * const *argv)
                         }
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
-                    for (x=1UL; x<SAMPLING_TABLE_SIZE; x++) {
+                    for (x=1UL; x<sampling_table_size; x++) {
                         y = strtoul(pcc, &endptr, 10);
-                        if (4UL>y) x=0UL; /* in case user gives cutoff for 1 sample */
+                        if (3UL>y) x=0UL; /* in case user gives cutoff for 1 sample */
                         sampling_table[x].min_nmemb=y;
                         if ('\0' != *endptr) pcc=endptr+1;
                         else break;
@@ -6087,9 +7316,27 @@ int main(int argc, const char * const *argv)
                 break;
                 case 'd' :
                     flags[c] = 1U;
-                    ls.logmask = LOG_UPTO(LOG_DEBUG) ;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no debug level) */
+                            pcc--;
+                            debug++;
+                        } else {
+                            pcc = argv[++optind]; /* debug level */
+                            debug = strtoul(pcc, &endptr, 10);
+                            pcc=endptr;
+                            for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                            pcc--;
+                        }
+                    } else {
+                        debug = strtoul(pcc, &endptr, 10);
+                        pcc=endptr;
+                        for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                        pcc--;
+                    }
+                    if (4<debug) ls.logmask = LOG_UPTO(LOG_DEBUG) ;
                 break;
-                case 'D' : /*FALLTHROUGH*/
+                case 'D' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc)) {
                         if ('-' == argv[optind+1][0]) {
@@ -6104,6 +7351,32 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
+                case 'G' :
+                    flags[c] = 1U;
+                    use_shell++;
+                break;
+                case 'J' :
+                    flags[c] = 1U;
+                    endptr = pcc;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg (no gaps) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* gap value(s) */
+                    }
+                    for (x=1UL; x<ngaps; x++) {
+                        y = strtoul(pcc, &endptr, 10);
+                        if (2UL>y) x=0UL; /* in case user gives gap of 1 */
+                        gaps[x]=y;
+                        if ('\0' != *endptr) pcc=endptr+1;
+                        else break;
+                    }
+                    pcc=endptr;
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
                 case 'k' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
@@ -6111,6 +7384,10 @@ int main(int argc, const char * const *argv)
                     col = atoi(pcc);
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
+                break;
+                case 'K' : /*FALLTHROUGH*/
+                    flags[c] = 1U;
+                    comment="#";
                 break;
                 case 'm' :
                     flags[c] = 1U;
@@ -6122,18 +7399,21 @@ int main(int argc, const char * const *argv)
                         }
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
+                    no_aux_repivot=1;
                     repivot_factor = strtoul(pcc, &endptr, 0);
                     pcc=endptr;
                     if ('\0' != *pcc) {
                         repivot_cutoff = strtoul(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
                     if ('\0' != *pcc) {
                         lopsided_partition_limit = (int)strtol(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
+                    if ('\0' != *pcc) {
+                        no_aux_repivot = (int)strtol(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
@@ -6145,16 +7425,14 @@ int main(int argc, const char * const *argv)
                             pcc--;
                             continue;
                         }
-                        pcc = argv[++optind]; /* cutoff value(s) */
-                    }
-                    mbm_m3_cutoff = strtoul(pcc, &endptr, 10);
-                    pcc=endptr;
-                    if ('\0' != *pcc) {
-                        mbm_n_cutoff = strtoul(++pcc, &endptr, 10);
-                        pcc=endptr;
+                        (V)fprintf(stderr, "ERROR: -%c optional arguments no longer supported\n", c);
                     }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
+                break;
+                case 'p' :
+                    flags[c] = 1U;
+                    pivot_swap++;
                 break;
                 case 'q' :
                     flags[c] = 1U;
@@ -6166,23 +7444,25 @@ int main(int argc, const char * const *argv)
                         }
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
-                    quickselect_insertion_cutoff = strtoul(pcc, &endptr, 0);
+                    quickselect_small_array_cutoff = strtoul(pcc, &endptr, 0);
                     pcc=endptr;
                     if ('\0' != *pcc) {
+                        no_aux_repivot=1;
                         repivot_factor = strtoul(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
                     if ('\0' != *pcc) {
                         repivot_cutoff = strtoul(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
                     if ('\0' != *pcc) {
                         lopsided_partition_limit = (int)strtol(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
+                    if ('\0' != *pcc) {
+                        no_aux_repivot = (int)strtol(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
@@ -6207,7 +7487,7 @@ int main(int argc, const char * const *argv)
                     introsort_final_insertion_sort = strtoul(pcc, &endptr, 10);
                     pcc=endptr;
                     if ('\0' != *pcc) {
-                        introsort_insertion_cutoff = strtoul(++pcc, &endptr, 10);
+                        introsort_small_array_cutoff = strtoul(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
                     pcc=endptr;
@@ -6263,6 +7543,14 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
+                case 'u' :
+                    flags[c] = 1U;
+                    pivot_copy++;
+                break;
+                case 'V' :
+                    flags[c] = 1U;
+                    use_networks++;
+                break;
                 case 'W' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc)) {
@@ -6273,15 +7561,19 @@ int main(int argc, const char * const *argv)
                         }
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
+                    no_aux_repivot=1;
                     repivot_factor = strtoul(pcc, &endptr, 10);
                     pcc=endptr;
                     if ('\0' != *pcc) {
                         repivot_cutoff = strtoul(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
-                    pcc=endptr;
                     if ('\0' != *pcc) {
                         lopsided_partition_limit = (int)strtol(++pcc, &endptr, 10);
+                        pcc=endptr;
+                    }
+                    if ('\0' != *pcc) {
+                        no_aux_repivot = (int)strtol(++pcc, &endptr, 10);
                         pcc=endptr;
                     }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
@@ -6308,10 +7600,14 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
-                default:
+                case '?' :
                     logger(LOG_ERR, log_arg,
                         "%s: %s: %s line %d: unrecognized option %s",
                         prog, __func__, source_file, __LINE__, argv[optind]);
+                    logger(LOG_ERR, log_arg,
+                        "%s: %s: %s line %d: OPTSTRING is %s",
+                        prog, __func__, source_file, __LINE__, OPTSTRING);
+usage: 
                     logger(LOG_ERR, log_arg,
                         "%s: usage: %s %s",
                         prog, prog, USAGE_STRING);
@@ -6321,9 +7617,16 @@ int main(int argc, const char * const *argv)
                         fprintf(stderr, "%s %s\n", buf, sequence_name(tests));
                     }
                 return 1;
+                default : /* recognized option with no special processing */
+                    flags[c] = 1U;
+                break;
             }
         }
     }
+    if (argc<2) goto usage;
+    /* repivot parameter sanity */
+    if (repivot_cutoff<repivot_factor+2UL) repivot_cutoff=repivot_factor+2UL;
+    /* print configured parameters in header */
     if (0U==flags['h']) {
         /* command line */
         (V)fprintf(stdout, "%s%s", comment, prog);
@@ -6334,41 +7637,73 @@ int main(int argc, const char * const *argv)
             if (0U!=flags[n]) {
                 switch (n) {
                     case 'c' :
-                        for (x=0UL; x<SAMPLING_TABLE_SIZE; x++)
+                        for (x=0UL; x<sampling_table_size; x++)
                             (V)fprintf(stdout, "%snmemb>=%lu, %lu sample%s\n", comment, sampling_table[x].min_nmemb, sampling_table[x].samples, sampling_table[x].samples==1?"":"s");
+                    break;
+                    case 'd' :
+                        (V)fprintf(stdout, "%sdebug = %d\n", comment, debug);
+                    break;
+                    case 'G' :
+                        (V)fprintf(stdout, "%suse_shell = %d\n", comment, use_shell);
+                    break;
+                    case 'J' :
+                        for (x=0UL; x<ngaps; x++)
+                            (V)fprintf(stdout, "%sShell sort gap[%lu] %lu\n", comment, x, gaps[x]);
                     break;
                     case 'k' :
                         (V)fprintf(stdout, "%stiming column = %d\n", comment, col);
                     break;
                     case 'm' :
                         (V)fprintf(stdout,
-                            "%squickselect repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
-                            comment, repivot_factor, repivot_cutoff, lopsided_partition_limit);
+                            "%squickselect no_aux_repivot = %d, repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
+                            comment, no_aux_repivot, repivot_factor, repivot_cutoff, lopsided_partition_limit);
                     break;
-                    case 'M' :
-                        (V)fprintf(stdout,
-                            "%smodified Bentley&McIlroy qsort median-of-3-cutoff = %lu, ninther_cutoff = %lu\n",
-                            comment, mbm_m3_cutoff, mbm_n_cutoff);
+                    case 'p' :
+                        (V)fprintf(stdout, "%spivot_swap = %d\n", comment, pivot_swap);
                     break;
                     case 'q' :
                         (V)fprintf(stdout,
-                            "%squickselect insertion sort cutoff = %lu, repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
-                            comment, quickselect_insertion_cutoff,
-                            repivot_factor, repivot_cutoff, lopsided_partition_limit);
+                            "%squickselect small-array sort cutoff = %lu, no_aux_repivot = %d, repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
+                            comment, quickselect_small_array_cutoff,
+                            no_aux_repivot, repivot_factor, repivot_cutoff, lopsided_partition_limit);
+                        if (0<debug) {
+                            (V)fprintf(stdout,"sampling table (%s):\n%s\n",
+                                (TABLE_ENTRIES == TRANSPARENT)? "transparent":
+                                (TABLE_ENTRIES == LOOSE)? "loose":
+                                (TABLE_ENTRIES == RELAXED)? "relaxed":
+                                (TABLE_ENTRIES == AGGRESSIVE)?  "aggressive":
+                                "disabled",
+                                "                  min_nmemb,     samples,factor1,factor2"
+                                );
+                            for (x=1UL; x<sampling_table_size; x++) {
+                                char buf3[256], buf4[256], buf5[256];
+                                i = snul(buf,sizeof(buf),NULL,"UL,",sampling_table[x].min_nmemb, 10, ' ', 21, f, log_arg);
+                                i = snul(buf2,sizeof(buf2),NULL,"UL,",sampling_table[x].samples, 10, ' ', 12, f, log_arg);
+                                i = snul(buf3,sizeof(buf3),NULL,"UL,",sampling_table[x].factor1, 10, ' ', 4, f, log_arg);
+                                i = snul(buf4,sizeof(buf4),NULL,"UL,",sampling_table[x].factor2, 10, ' ', 3, f, log_arg);
+                                (V)fprintf(stdout,"   {%s%s%s%s },\n",buf,buf2,buf3,buf4,buf5);
+                            }
+                        }
                     break;
                     case 'Q' :
                         (V)fprintf(stdout, "%stest timeout = %0.2f\n", comment, timeout);
                     break;
                     case 'r' :
-                        (V)fprintf(stdout, "%sintrosort_final_insertion_sort = %lu, introsort insertion sort cutoff = %lu, recursion factor = %lu\n", comment, introsort_final_insertion_sort, introsort_insertion_cutoff, introsort_recursion_factor);
+                        (V)fprintf(stdout, "%sintrosort_final_insertion_sort = %lu, introsort small-array sort cutoff = %lu, recursion factor = %lu\n", comment, introsort_final_insertion_sort, introsort_small_array_cutoff, introsort_recursion_factor);
+                    break;
+                    case 'u' :
+                        (V)fprintf(stdout, "%spivot_copy = %d\n", comment, pivot_copy);
+                    break;
+                    case 'V' :
+                        (V)fprintf(stdout, "%suse_networks = %d\n", comment, use_networks);
                     break;
                     case 'W' :
                         (V)fprintf(stdout,
-                            "%slopsided quickselect repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
-                            comment, repivot_factor, repivot_cutoff, lopsided_partition_limit);
+                            "%slopsided quickselect no_aux_repivot = %d, repivot_factor = %lu, repivot_cutoff = %lu, lopsided_partition_limit = %d\n",
+                            comment, no_aux_repivot, repivot_factor, repivot_cutoff, lopsided_partition_limit);
                     break;
                     case 'y' :
-                        (V)fprintf(stdout, "%sdual-pivot insertion sort cutoff = %lu\n", comment, y_cutoff);
+                        (V)fprintf(stdout, "%sdual-pivot small-array sort cutoff = %lu\n", comment, y_cutoff);
                     break;
                 }
             }
@@ -6393,7 +7728,7 @@ int main(int argc, const char * const *argv)
     }
 
 #if DEBUG_CODE
-fprintf(stderr,"%s line %d: argc=%d, optind=%d\n",__func__,__LINE__,argc,optind);
+if (2<debug) fprintf(stderr,"%s line %d: argc=%d, optind=%d\n",__func__,__LINE__,argc,optind);
 #endif
     if (argc > optind+2) {
         startn = strtoul(argv[optind++], NULL, 10);
@@ -6423,11 +7758,11 @@ fprintf(stderr,"%s line %d: argc=%d, optind=%d\n",__func__,__LINE__,argc,optind)
     if (1UL > ul) ul = 10000UL;
     if (2UL > ul) ul = 2UL;
 #if DEBUG_CODE
-fprintf(stdout, "%s line %d: ul = %lu, startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, ul, startn, incr, mult);
+if (3<debug) fprintf(stdout, "%s line %d: ul = %lu, startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, ul, startn, incr, mult);
 #endif
     if ((ul<startn)||(0UL==startn)) startn = ul;
 #if DEBUG_CODE
-fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, startn, incr, mult);
+if (3<debug) fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, startn, incr, mult);
 #endif
 
     if (optind >= argc) {
@@ -6440,8 +7775,8 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
         count = 10UL;
 
 #if DEBUG_CODE
-fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, startn, incr, mult);
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: args processed", comment, prog);
+if (3<debug) fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, __LINE__, startn, incr, mult);
+if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: args processed", comment, prog);
 #endif
 
     q=1UL;
@@ -6632,9 +7967,6 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
         /* not testing with permutations or combinations */
         sz=ul;
     }
-    if (0U!=flags['O']) {
-        if (sz<10000000UL) sz=10000000UL;
-    }
     if (SIZE_T_MAX/q <= sz) {
         logger(LOG_ERR, log_arg,
             "%s: %s: %s line %d: %s %lu",
@@ -6697,7 +8029,7 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
         parray[q]=&(big_array[q]);
 
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s %s: %s line %d: arrays allocated, sz=%lu", comment, prog, __func__, source_file, __LINE__, sz);
+if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s %s: %s line %d: arrays allocated, sz=%lu", comment, prog, __func__, source_file, __LINE__, sz);
 #endif
 
     /* read data from stdin if requested */
@@ -6732,7 +8064,7 @@ fprintf(stdout, "%s line %d: startn = %lu, incr = %lu, mult = %lu\n", __func__, 
             big_array[i].val=big_array[i].l=snlround(big_array[i].d,f,log_arg);
             (V)snprintf(big_array[i].string, (BIG_STRUCT_STRING_SIZE), "%*.*s", (BIG_STRUCT_STRING_SIZE)-1, (BIG_STRUCT_STRING_SIZE)-1, endptr);
 #if DEBUG_CODE
-if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",__func__,__LINE__,big_array[i].val,big_array[i].d,big_array[i].string);
+if (3<debug) if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",__func__,__LINE__,big_array[i].val,big_array[i].d,big_array[i].string);
 #endif
         }
         /* allocate structures to save input data for reuse */
@@ -6772,152 +8104,6 @@ if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \"%s\"\n",__fu
 #if DEBUG_CODE
               else logger(LOG_INFO, log_arg, "%s: random generator initialized, state saved", prog);
 #endif
-        }
-
-        if ((0U == errs) && (0U != flags['O'])) { /* optimize quickselect sampling table */
-            i = seed_random64n(s, p);
-            if (0 != i) {
-                logger(LOG_ERR, log_arg, 
-                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
-                    prog, __func__, source_file, __LINE__,
-                    (unsigned long)s, p, i
-                );
-                errs++;
-            } else if (n==startn) {
-                unsigned char oldi=flags['i'];
-                unsigned int cs=0U,
-#if 0
-                    ts=0x01U<<TEST_SEQUENCE_MEDIAN3KILLER
-                    ts=0x01U<<TEST_SEQUENCE_DUAL_PIVOT_KILLER
-                    ts=0x01U<<TEST_SEQUENCE_RANDOM_VALUES
-#else
-                    ts=0x01U<<TEST_SEQUENCE_RANDOM_DISTINCT
-#endif
-                ;
-                size_t m, step, value[3], result[3];
-                int dir;
-                double d;
-
-#if 0
-# define METRIC neq+nlt+ngt+nsw      /* comparisons + swaps */
-# define METRIC neq+nlt+ngt+(nsw<<1) /* comparisons + 2*swaps */
-# define METRIC nsw                  /* swaps */
-# define METRIC neq+nlt+ngt          /* comparisons */
-# define METRIC neq+nlt+ngt+(nsw>>1) /* comparisons + swaps/2 */
-# define METRIC neq+nlt+ngt+(nsw>>2) /* comparisons + swaps/4 */
-#else
-# define METRIC 1000000UL*rusage_end.ru_utime.tv_sec+rusage_end.ru_utime.tv_usec-1000000UL*rusage_start.ru_utime.tv_sec-rusage_start.ru_utime.tv_usec /* run-time */
-#endif
-                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
-                flags['i']=1U;
-                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++)
-                    sampling_table[x].min_nmemb=(SIZE_T_MAX);
-                for (x=1UL; x<SAMPLING_TABLE_SIZE-1UL; x++) {
-                    value[0] = sampling_table[x-1UL].min_nmemb + 1UL;
-                    value[1] = sampling_table[x].samples * sampling_table[x].samples; /* start at samples^^2 (McGeock&Tygar, Martinez&Roura) */
-                    value[2] = value[1] * 2UL;
-                    if (value[1]>sz) break;
-                    m = value[2]*2UL;
-                    if (32768UL>m) m=32768UL;
-                    if (m>sz) m=sz;
-#if 1
-                    /* many runs for randomized data */
-                    d=test_factor(TEST_TYPE_SORT,m);
-                    if (d!= 0.0) y=snlround(1.0e8/d,logger,log_arg); else y=499UL;
-                    if (y>sz/m) y=sz/m;
-                    if (499UL<y) y=499UL;
-                    if (9UL>y) y=9UL;
-#else
-                    /* single run for fixed sequence data */
-                    y=1UL;
-#endif
-                    sampling_table[x].min_nmemb = value[1];
-fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                    (V)getrusage(RUSAGE_SELF,&rusage_start);
-                    (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
-                    (V)getrusage(RUSAGE_SELF,&rusage_end);
-                    result[1] = METRIC;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
-                    step=(value[1]>>4);
-                    if (1UL>step) step=1UL;
-fprintf(stderr, "step=%lu\n",step);
-                    for (dir=-1; 0!=dir;) {
-fprintf(stderr, "testing %lu <= nmemb for %lu samples <= %lu\n",value[0], sampling_table[x].samples, value[2]);
-                        switch (dir) {
-                            case -1 :
-                                value[0] = value[1]-step;
-                                if (value[0]<=sampling_table[x-1UL].min_nmemb)
-                                    value[0]=sampling_table[x-1UL].min_nmemb+1UL, step=1UL;
-                                sampling_table[x].min_nmemb = value[0];
-                                (V)seed_random64n(s, p);
-fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                (V)getrusage(RUSAGE_SELF,&rusage_start);
-                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
-                (V)getrusage(RUSAGE_SELF,&rusage_end);
-                                result[0] = METRIC;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric (best %lu@%lu)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[0], result[1], value[1]);
-                                if ((result[2]==result[1])&&(result[0]==result[1])) {
-                                    value[1] = value[2];
-                                    dir=0;
-                                } else if (result[0]<result[1]) {
-                                    value[1] = value[0];
-                                    result[1] = result[0];
-#if 0
-                                    step += step>>1;
-#endif
-                                } else if ((result[0]>=result[1])&&(value[2]==value[1]+1UL)) {
-                                    dir=0;
-                                } else {
-                                    dir=1;
-                                    step -= step>>1;
-                                    if (1UL>step) step=1UL;
-                                }
-                            break;
-                            case 1 :
-                                value[2] = value[1]+step;
-                                sampling_table[x].min_nmemb = value[2];
-                                (V)seed_random64n(s, p);
-fprintf(stderr, "testing for %lu samples at nmemb >= %lu\n", sampling_table[x].samples, sampling_table[x].min_nmemb);
-                (V)getrusage(RUSAGE_SELF,&rusage_start);
-                                (V)test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SQSORT, m, y, &cs, &ts, &tests, col, 9999.9, f, log_arg, flags);
-                (V)getrusage(RUSAGE_SELF,&rusage_end);
-                                result[2] = METRIC;
-fprintf(stderr, "cutoff for %lu samples @ %lu -> %lu metric (best %lu@%lu)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[2], result[1], value[1]);
-                                if ((result[2]==result[1])&&(result[0]==result[1])) {
-                                    value[1] = value[2];
-                                    dir=0;
-                                } else if (result[2]<result[1]) {
-                                    value[1] = value[2];
-                                    result[1] = result[2];
-#if 0
-                                    step += step>>1;
-#endif
-                                } else if ((result[2]>=result[1])&&(value[0]==value[1]-1UL)) {
-                                    if (result[2]==result[1]) value[1]=value[2];
-                                    dir=0;
-                                } else {
-                                    dir=-1;
-                                    step -= step>>1;
-                                    if (1UL>step) step=1UL;
-                                }
-                            break;
-                        }
-fprintf(stderr, "step=%lu\n",step);
-                    }
-                    sampling_table[x].min_nmemb = value[1];
-fprintf(stderr, "%lu samples for nmemb >= %lu (%lu metric)\n", sampling_table[x].samples, sampling_table[x].min_nmemb, result[1]);
-                }
-                for (x=1UL; x<SAMPLING_TABLE_SIZE; x++) {
-                    if (((SIZE_T_MAX)==sampling_table[x].min_nmemb)
-                    && ((SIZE_T_MAX) / sampling_table[x].samples > sampling_table[x].samples))
-                        sampling_table[x].min_nmemb = sampling_table[x].samples * sampling_table[x].samples;
-                    i = snul(buf,sizeof(buf),NULL,"UL,",sampling_table[x].min_nmemb, 10, ' ', 21, f, log_arg);
-                    i = snul(buf2,sizeof(buf2),NULL,"UL },",sampling_table[x].samples, 10, ' ', 12, f, log_arg);
-                    printf("   {%s%s\n", buf, buf2);
-                }
-                flags['i']=oldi;
-            }
-            flags['O']=0U; /* reset to re-enable output from timing tests */
         }
 
         if ((0U == errs) && (0U != flags['b'])) { /* test Bentley&McIlroy qsort */
@@ -7085,6 +8271,51 @@ fprintf(stderr, "%lu samples for nmemb >= %lu (%lu metric)\n", sampling_table[x]
             }
         }
 
+        if ((0U == errs) && (0U != flags['J'])) { /* test Shell sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SHELLSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['E'])) { /* test selection sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, parray, FUNCTION_SELSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
+        if ((0U == errs) && (0U != flags['v'])) { /* test network sort */
+            i = seed_random64n(s, p);
+            if (0 != i) {
+                logger(LOG_ERR, log_arg, 
+                    "%s: %s: %s line %d: seed_random64n(0x%lx, %u) returned %d: %m",
+                    prog, __func__, source_file, __LINE__,
+                    (unsigned long)s, p, i
+                );
+                errs++;
+            } else {
+                tests = TEST_TYPE_MEDIAN | TEST_TYPE_PARTITION | TEST_TYPE_SORT ;
+                errs += test_function(prog, array, big_array, darray, larray, parray, FUNCTION_NETWORKSORT, n, count, &csequences, &tsequences, &tests, col, timeout, f, log_arg, flags);
+            }
+        }
+
         if ((0U == errs) && (0U != flags['e'])) { /* test heapsort */
             i = seed_random64n(s, p);
             if (0 != i) {
@@ -7148,7 +8379,7 @@ fprintf(stderr, "%lu samples for nmemb >= %lu (%lu metric)\n", sampling_table[x]
     }
 
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: tests ended", prog);
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: tests ended", prog);
 #endif
 
     if (NULL!=input_data) free(input_data);
@@ -7159,10 +8390,10 @@ fprintf(stderr, "%lu samples for nmemb >= %lu (%lu metric)\n", sampling_table[x]
     free(array);
 
 #if DEBUG_CODE
-    if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: arrays freed", prog);
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s: arrays freed", prog);
 #endif
 
-    if ((0U==flags['h'])&&(NULL!=f)&&(0UL!=errs)) f(LOG_INFO, log_arg, "%s: errs=%lu", prog, errs);
+    if (2<debug) if ((0U==flags['h'])&&(NULL!=f)&&(0UL!=errs)) f(LOG_INFO, log_arg, "%s: errs=%lu", prog, errs);
     return (0U==errs?0:1);
 
 #undef buildstr

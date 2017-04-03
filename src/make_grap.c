@@ -106,7 +106,7 @@ void     arc4random_addrandom(u_char *, int);
 #include "graphing.h"           /* formatprecision formatwidth mintick maxtick prec rem intvl */
 #include "logger.h"             /* logger */
 #include "paths_decl.h"         /* path_basename */
-#include "snn.h"                /* sng snl snul */
+#include "snn.h"                /* sng snl snround snul */
 #include "trim.h"               /* trim */
 #include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
 
@@ -119,7 +119,7 @@ void     arc4random_addrandom(u_char *, int);
 #include <ctype.h>              /* isdigit */
 #include <errno.h>
 #include <limits.h>             /* *_MAX */
-#include <math.h>               /* ceil exp2 floor log2 round */
+#include <math.h>               /* ceil exp2 floor log2 */
 #include <stdio.h>
 #include <stdlib.h>             /* strtoul */
 #include <string.h>             /* strncpy strrchr */
@@ -134,13 +134,14 @@ void     arc4random_addrandom(u_char *, int);
 #define buildstr(s) #s
 
 /* XXX cleanup */
-#define OPTSTRING "dh:H:l:L:mp:T:V:w:x:Xy:Y"
+#define OPTSTRING "dh:H:l:L:mn:p:T:V:w:x:Xy:Y"
 #define USAGE_STRING     "[-d] [-h ht] [-H val] [-l legend-text] [-L lim] [-m] [-p offset] [-T \"title\"] [-V val] [-w wid] [-x \"x-label\"] [-X] [-y \"y-label\"] [-Y]\n\
 -h ht\tspecify graph height\n\
 -H val\tdraw a dashed horizontal line at val\n\
 -l legend-text\tlegend for data (may be repeated for multiplots)\n\
 -L lim\tset threshold for data reduction\n\
 -m\tmark maximum data point\n\
+-n[x][y]\tomit x- or y-axis ticks\n\
 -p offset\tset page offset\n\
 -T \"title\"\tset graph title\n\
 -V val\tdraw a dashed vertical line at val\n\
@@ -313,12 +314,12 @@ int main(int argc, const char * const *argv)
                 case ':': /* clang! STFU!! */ /* cannot happen here, but clang is unable to figure that out */
                 break;
 #endif
-                case 'd' : /*FALLTHROUGH*/
-                case 'D' : /*FALLTHROUGH*/
-                case 'm' : /*FALLTHROUGH*/
-                case 'X' : /*FALLTHROUGH*/
-                case 'Y' : /*FALLTHROUGH*/
+                default :
                     flags[c] = 1U;
+                break;
+                case 'd' :
+                    flags[c] = 1U;
+                    debug++;
                 break;
                 case 'h' :
                     flags[c] = 1U;
@@ -365,6 +366,29 @@ int main(int argc, const char * const *argv)
                         pcc = argv[++optind];
                     lim = strtod(pcc, NULL);
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
+                case 'n' : 
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind];
+                    }
+                    for (; '\0' != *pcc; pcc++)
+                        switch (*pcc) {
+                            case 'x' : /*FALLTHROUGH*/
+                            case 'X' :
+                                flags[c] |= 2U;
+                            break;
+                            case 'y' : /*FALLTHROUGH*/
+                            case 'Y' :
+                                flags[c] |= 4U;
+                            break;
+                        }
                     pcc--;
                 break;
                 case 'p' : 
@@ -438,7 +462,7 @@ int main(int argc, const char * const *argv)
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
-                default:
+                case '?' :
                     logger(LOG_ERR, log_arg,
                         "%s: %s: %s line %d: unrecognized option %s",
                         prog, __func__, __FILE__, __LINE__, argv[optind]);
@@ -463,8 +487,6 @@ int main(int argc, const char * const *argv)
     (void)fprintf(stdout, "%s %s%s", ingrap?grapcommentstart:commentstart,
         build_options+4,ingrap?grapcommentend:commentend);
 
-    if (0U<flags['d']) debug=1;
-
     errs = 0U;
 
     if (optind >= argc) {
@@ -482,6 +504,7 @@ int main(int argc, const char * const *argv)
     /* read input */
     for (maxdim=dim=count=0UL; NULL!=fgets(buf,sizeof(buf),fp); ox=dx,oy=dy) {
         dx = strtod(buf, &endptr);
+// if (debug) (void)fprintf(stderr, "x=%G, buf %s\n",dx, buf);
         if ((dx!=0.0) && (dx<minx)) minx=dx;
         if (dx>maxx) maxx=dx;
         if (0U!=flags['X']) {
@@ -494,6 +517,7 @@ int main(int argc, const char * const *argv)
             if (lx>maxlx) maxlx=lx;
         }
         dy = strtod(endptr, &endptr);
+// if (debug) (void)fprintf(stderr, "y=%G, buf %s\n",dy, buf);
         if ((dy!=0.0) && (dy<miny)) miny=dy;
         if (dy>maxy) maxy=dy, maxyx=dx;
         if (0U!=flags['Y']) {
@@ -511,10 +535,10 @@ int main(int argc, const char * const *argv)
             if (0UL<count) {
                 d=dx-ox;
                 if (0.0>d) d=0.0-d;
-                if (d<deltax) deltax=d;
+                if ((d<deltax)&&(0.0<d)) deltax=d;
                 d=dy-oy;
                 if (0.0>d) d=0.0-d;
-                if (d<deltay) deltay=d;
+                if ((d<deltay)&&(0.0<d)) deltay=d;
             }
             count++;
             if (NULL!=x) { x=realloc(x,sizeof(double)*count);
@@ -575,9 +599,18 @@ int main(int argc, const char * const *argv)
             printf("coord log y\n");
 /* XXX maybe make frame types settable via option args */
         printf("frame ht %s wid %s top invis right invis\n",graph_height, graph_width);
+#if 0
+        if ((maxy-miny)/1.0e-6>deltay) deltay=(maxy-miny)*1.0e-6;
+#endif
+        c=snmagnitude(maxy,NULL,NULL);
+        if (0>c) c++;
         yp=formatprecision(stderr,miny,maxy,deltay);
+        if (yp-c>8) yp=8-c;
+#if 0
+        if (yp>6) yp=6;
+#endif
         yw=formatwidth(stderr, miny,maxy,yp);
-        maxyticks=htp*3/4/12; /* assumes 12 pt spacing, ticks 75% of graph ht */
+        maxyticks=htp*4/5*4/5/12; /* assumes 12 pt spacing, ticks 80% of graph ht and 80% maximum text density */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, miny=%.9G, maxy=%.9G, deltay=%.9G, yp=%d, yw=%d, maxyticks=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,miny,maxy,deltay,yp,yw,maxyticks,ingrap?grapcommentend:commentend);
         if (0U!=flags['Y']) {
             ytickintvl=intvl(stderr, minly, maxly, 1.0, minly, maxly, maxyticks, 0U);
@@ -586,12 +619,15 @@ int main(int argc, const char * const *argv)
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: minly=%.6G, maxly=%.6G, ytickintvl=%.6G, minytick=%.6G, maxytick=%.6G%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minly,maxly,ytickintvl,minytick,maxytick,ingrap?grapcommentend:commentend);
 #endif /* DEBUG_CODE */
-            ytickintvl=round(exp2(ytickintvl));
+            ytickintvl=snround(exp2(ytickintvl),NULL,NULL);
             minytick=exp2(minytick);
             maxytick=exp2(maxytick);
             while (minytick*ytickintvl<miny) minytick*=ytickintvl;
             while (maxytick>maxy*ytickintvl) maxytick/=ytickintvl;
             yp=formatprecision(stderr,minytick,maxytick,ytickintvl);
+#if 0
+            if (yp>6) yp=6;
+#endif
             yw=formatwidth(stderr, minytick,maxytick,yp);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: ytickintvl=%.6G, minytick=%.6G, maxytick=%.6G, yw=%d, yp=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,ytickintvl,minytick,maxytick,yw,yp,ingrap?grapcommentend:commentend);
@@ -602,26 +638,65 @@ int main(int argc, const char * const *argv)
             minytick=mintick(stderr, miny, maxy, yres, ytickintvl, miny, maxy);
             maxytick=maxtick(stderr, miny, maxy, yres, ytickintvl, miny, maxy);
             yp=formatprecision(stderr,minytick,maxytick,ytickintvl);
+#if 0
+            if (yp>6) yp=6;
+#endif
             yw=formatwidth(stderr, minytick,maxytick,yp);
 (void)fprintf(stderr,"%s %s line %d: minytick=%.6G, maxytick=%.6G, yp=%d, yw=%d, ytickintvl=%.6G%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minytick,maxytick,yp,yw,ytickintvl,ingrap?grapcommentend:commentend);
         }
+#if 0
+        if ((maxx-minx)/1.0e-6>deltax) deltax=(maxx-minx)*1.0e-6;
+#endif
+        c=snmagnitude(maxx,NULL,NULL);
+        if (0>c) c++;
         xp=formatprecision(stderr,minx,maxx,deltax);
+        if (xp-c>8) xp=8-c;
+#if 0
+        if (xp>6) xp=6;
+#endif
         xw=formatwidth(stderr,minx,maxx,xp);
         maxxticks=widp*4/5/(xw+xp+1-(0U!=flags['X']?1:0))/4; /* assumes digit width 4 pt, ticks 80% of graph width */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, maxx=%G, xp=%d, xw=%d, maxxticks=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,maxx,xp,xw,maxxticks,ingrap?grapcommentend:commentend);
         if (0U!=flags['X']) {
-            xtickintvl=intvl(stderr, minlx, maxlx, 1.0, minlx, maxlx, maxxticks, 0U);
+#if 0
             minxtick=mintick(stderr, minlx, maxlx, 1.0, xtickintvl, minlx, maxlx);
             maxxtick=maxtick(stderr, minlx, maxlx, 1.0, xtickintvl, minlx, maxlx);
+            xtickintvl=intvl(stderr, minlx, maxlx, 1.0e-12, minlx, maxlx, maxxticks, 0U);
+            minxtick=mintick(stderr, minlx, maxlx, 1.0e-12, xtickintvl, minlx, maxlx);
+            maxxtick=maxtick(stderr, minlx, maxlx, 1.0e-12, xtickintvl, minlx, maxlx);
+            xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
+            minxtick=snround(exp2(minxtick),NULL,NULL);
+            maxxtick=snround(exp2(maxxtick),NULL,NULL);
+            while (minxtick*xtickintvl<minx) minxtick=snround(minxtick*xtickintvl,NULL,NULL);
+            while (maxxtick>maxx*xtickintvl) maxxtick=snround(maxxtick/xtickintvl,NULL,NULL);
+            /* for log X, assume powers of 2 and don't worry about  intervals */
+            xtickintvl=(maxlx-minlx)/(maxxticks-1UL);
+            xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
+#else
+            d=(maxlx-minlx)/(maxxticks-1);
+            if (d>=1.5)
+                d=snmultiple(d,2.0,NULL,NULL);
+            else
+                d=1.0;
+            xtickintvl=intvl(stderr, minlx, maxlx, d, minlx, maxlx, maxxticks, 0U);
+            xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
+            minxtick=minx;
+            maxxtick=maxx;
+#endif
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: minlx=%G, maxlx=%G, xtickintvl=%G, minxtick=%G, maxxtick=%G%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minlx,maxlx,xtickintvl,minxtick,maxxtick,ingrap?grapcommentend:commentend);
 #endif /* DEBUG_CODE */
-            xtickintvl=round(exp2(xtickintvl));
-            minxtick=exp2(minxtick);
-            maxxtick=exp2(maxxtick);
-            while (minxtick*xtickintvl<minx) minxtick*=xtickintvl;
-            while (maxxtick>maxx*xtickintvl) maxxtick/=xtickintvl;
+#if 0
+        c=snmagnitude(maxx,NULL,NULL);
+        if (0>c) c++;
+#endif
             xp=formatprecision(stderr,minxtick,maxxtick,xtickintvl);
+#if 0
+        if (xp-c>8) xp=8-c;
+#endif
+#if 0
+            if (xp>6) xp=6;
+#endif
             xw=formatwidth(stderr, minxtick,maxxtick,xp);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: xtickintvl=%G, minxtick=%G, maxxtick=%G, xw=%d, xp=%d%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,xtickintvl,minxtick,maxxtick,xw,xp,ingrap?grapcommentend:commentend);
@@ -632,6 +707,9 @@ int main(int argc, const char * const *argv)
             minxtick=mintick(stderr, minx, maxx, xres, xtickintvl, minx, maxx);
             maxxtick=maxtick(stderr, minx, maxx, xres, xtickintvl, minx, maxx);
             xp=formatprecision(stderr,minxtick,maxxtick,xtickintvl);
+#if 0
+            if (xp>6) xp=6;
+#endif
             xw=formatwidth(stderr, minxtick,maxxtick,xp);
         }
         if (NULL!=title) {
@@ -660,18 +738,22 @@ int main(int argc, const char * const *argv)
         (void)sng(buf,sizeof(buf),NULL,NULL,minytick,0-(yw+yp),3,logger,log_arg);
         (void)sng(buf2,sizeof(buf2),NULL,NULL,maxytick,0-(yw+yp),3,logger,log_arg);
         /* tick numbers look better if width is left unspecified */
-        if (0U!=flags['Y'])
-            printf("ticks left out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
-        else
-            printf("ticks left out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
+        if (0U==(flags['n']&4U)) {
+            if (0U!=flags['Y'])
+                printf("ticks left out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
+            else
+                printf("ticks left out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, ytickintvl, yp);
+        } else printf("ticks left off\n");
         if (NULL!=ylabel)
             printf("label left %s\n",ylabel);
         (void)sng(buf,sizeof(buf),NULL,NULL,minxtick,0-(xw+xp),3,logger,log_arg);
         (void)sng(buf2,sizeof(buf2),NULL,NULL,maxxtick,0-(xw+xp),3,logger,log_arg);
-        if (0U!=flags['X'])
-            printf("ticks bot out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
-        else
-            printf("ticks bot out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
+        if (0U==(flags['n']&2U)) {
+            if (0U!=flags['X'])
+                printf("ticks bot out from %s to %s by *%.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
+            else
+                printf("ticks bot out from %s to %s by %.6f \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
+        } else printf("ticks bot off\n");
         /* legend */
         buf[0]='\0';
         xlines=0UL;
@@ -683,7 +765,9 @@ int main(int argc, const char * const *argv)
                 xlines++;
             }
             for (ul=0UL; ul<q; ul++) {
-                wordlen=strlen(symbols[ul].legend_text);
+                endptr=symbols[ul].legend_text;
+                if (NULL==endptr) wordlen=1;
+                else wordlen=strlen(endptr);
                 if (widp*1UL/3UL<=len+wordlen+(0UL<ul?6UL:4UL)) {
                     strlcat(buf,"\" \"",sizeof(buf));
                     len=0UL;
@@ -694,7 +778,7 @@ int main(int argc, const char * const *argv)
                     strlcat(buf,buf2,sizeof(buf));
                 }
                 snprintf(buf2,sizeof(buf2),"%s\\0%s", symbols[ul].mchar,
-                    NULL!=symbols[ul].legend_text?symbols[ul].legend_text:"?"
+                    NULL!=endptr?endptr:"?"
                 );
                 len+=wordlen+2UL;
                 strlcat(buf,buf2,sizeof(buf));
