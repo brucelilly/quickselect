@@ -41,7 +41,8 @@ FAKE_TARGETS += .PRECIOUS .SUFFIXES
 
 default_target : all
 # update FAKE_TARGETS list before including makefile.include1
-FAKE_TARGETS += default_target all analyses start host ccbase depend test indent install macros clean cleaner cleanest
+FAKE_TARGETS += default_target all analyses start host ccbase depend test
+FAKE_TARGETS += indent install macros overrides clean cleaner cleanest
 
 # N.B. MAKEFILES_DIR is not yet defined...
 include makefile.include1
@@ -88,21 +89,25 @@ include makefile.include1
 # stage4: adds files included by makefile.include4
 #     makefile.ccbase-$(OS)-$(FQDN)
 #     makefile.platform, makefile.$(CCBASE), makefile.suffixes,
-#     makefile.suffix_rules, makefile.files, makefile.imports, makefile.depend
-#   and builds $(PRE_DEPEND)
+#     makefile.suffix_rules, makefile.files, makefile.imports
+#   and builds $(OVERRIDES)
 #   using makefile.stage4
 # stage5: adds files included by makefile.include5
-#     $(PRE_DEPEND), makefile.licenses
-#   and emits licenses and builds $(DEPEND)
+#     makefile.overrides.$(CCBASE)-$(OS)-$(FQDN), makefile.depend
+#   and builds $(PRE_DEPEND)
 #   using makefile.stage5
 # stage6: adds files included by makefile.include6
+#     $(PRE_DEPEND), makefile.licenses
+#   and emits licenses and builds $(DEPEND)
+#   using makefile.stage6
+# stage7: adds files included by makefile.include7
 #     $(DEPEND), makefile.build
 #   to complete the bootstrap process
 #   and builds the desired target(s) (default is "all")
-#   using makefile.stage6
+#   using makefile.stage7
 # macros for last stage makefiles used below and in makefile.targets
-LAST_STAGE = $(MAKEFILES_DIR)/makefile.stage6
-LAST_INCLUDE = $(MAKEFILES_DIR)/makefile.include6
+LAST_STAGE = $(MAKEFILES_DIR)/makefile.stage7
+LAST_INCLUDE = $(MAKEFILES_DIR)/makefile.include7
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LAST_STAGE LAST_INCLUDE
 
@@ -118,33 +123,40 @@ start : NO_FAKE_TARGETS \
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
 host : start \
  $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
-  $(MAKEFILES_DIR)/makefile.project $(MAKEFILES_DIR)/makefile.fqdn # also makefile.$(OS), but environment is not yet set
+ $(MAKEFILES_DIR)/makefile.project $(MAKEFILES_DIR)/makefile.fqdn # also makefile.$(OS), but environment is not yet set
 	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2"
 
 # combined dependencies and recipe
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
 ccbase : host \
  $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
-  $(MAKEFILES_DIR)/makefile.tools # also makefile.$(OS)-$(FQDN), but environment is not yet set
+ $(MAKEFILES_DIR)/makefile.tools # also makefile.$(OS)-$(FQDN), but environment is not yet set
 	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage3"
 
 # combined dependencies and recipe
+overrides : ccbase \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+ $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.overrides \
+ # also makefile.$(OS)-$(FQDN), but environment is not yet set
+	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage4"
+
+# combined dependencies and recipe
 # dependencies also include makefile.ccbase-$(OS)-$(FQDN) [stage4], \
-# makefile.$(CCBASE) [stage4], \
+# makefile.overrides.$(CCBASE)-$(OS)-$(FQDN) [stage4], \
 # $(PRE_DEPEND) [stage5]
 # but dmake botches parse of makefile if these are included as a comment at
 # the end of the dependency list!
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-depend : ccbase \
+depend : overrides \
  $(AWKSCRIPTSDIR)/decomment.awk $(AWKSCRIPTSDIR)/depend.awk \
- $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
  $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.include5 \
-  $(MAKEFILES_DIR)/makefile.platform $(MAKEFILES_DIR)/makefile.suffixes \
-  $(MAKEFILES_DIR)/makefile.suffix_rules $(MAKEFILES_DIR)/makefile.files \
-  $(MAKEFILES_DIR)/makefile.licenses $(MAKEFILES_DIR)/makefile.imports \
-  $(MAKEFILES_DIR)/makefile.depend
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage4"
+ $(MAKEFILES_DIR)/makefile.stage6 $(MAKEFILES_DIR)/makefile.include6 \
+ $(MAKEFILES_DIR)/makefile.platform $(MAKEFILES_DIR)/makefile.suffixes \
+ $(MAKEFILES_DIR)/makefile.suffix_rules $(MAKEFILES_DIR)/makefile.files \
+ $(MAKEFILES_DIR)/makefile.licenses $(MAKEFILES_DIR)/makefile.imports \
+ $(MAKEFILES_DIR)/makefile.depend
 	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage5"
+	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage6"
 
 # dependencies for primary targets
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles

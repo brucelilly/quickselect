@@ -65,7 +65,7 @@ OPTIMIZE = -Ofast
 # compiler flags that aren't includes or defines, e.g. -Wxxx
 # -std=c89 (etc.) may be overridden by a subsequent [N.B.] -std=c99
 #XTRAS += -Wall -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wredundant-decls -Wnested-externs -pedantic 
-# fail on OpenIndian "hister" 64-bit due to -fstack_protector
+# fail on OpenIndiana "hipster" 64-bit due to -fstack_protector
 #XTRAS += -fmessage-length=0 -fstack-protector -funwind-tables -fasynchronous-unwind-tables -Wall -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wredundant-decls -Wnested-externs -Wunused -Wl,-s -pedantic 
 XTRAS += -fmessage-length=0 -funwind-tables -fasynchronous-unwind-tables -Wall -Wstrict-prototypes -Wmissing-declarations -Wmissing-prototypes -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wredundant-decls -Wnested-externs -Wunused -Wl,-s -pedantic 
 #XTRAS += 

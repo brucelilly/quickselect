@@ -89,6 +89,11 @@ DEPEND = $(DEPEND_DIR)/depend-file
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += DEPEND
 
+# file containing per-host/OS/compiler overrides
+OVERRIDES = $(MAKEFILES_DIR)/makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += OVERRIDES
+
 # Directory for analysis (lint, etc.) output.
 # Configuration: trailing "/$(ARCHDIR)" can be removed if only building for
 #   one platform.
@@ -116,3 +121,41 @@ MACROS += BINDIR
 TESTDIR = $(MAKEFILES_DIR)/test/$(ARCHDIR)
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += TESTDIR
+
+# dependencies for makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+$(OVERRIDES) : \
+ $(MAKEFILES_DIR)/makefile.ccbase-$(OS)-$(FQDN) \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.include1 \
+ $(MAKEFILES_DIR)/makefile.directories $(MAKEFILES_DIR)/makefile.make \
+ $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
+ $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
+ $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
+ $(MAKEFILES_DIR)/makefile.$(OS) $(MAKEFILES_DIR)/makefile.project \
+ $(MAKEFILES_DIR)/makefile.fqdn $(MAKEFILES_DIR)/makefile.tools \
+ $(MAKEFILES_DIR)/makefile.$(OS)-$(FQDN) $(MAKEFILES_DIR)/makefile.platform \
+ $(MAKEFILES_DIR)/makefile.overrides
+
+# recipe for makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+$(OVERRIDES) : 
+	> $@.$${PPID}.temp
+	@echo "# $@ generated on host $(FQDN) at $(DATE_TIME) from $(MAKEFILES_READ)" >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# $@ rebuilt when out-of-date with respect to: $?" >> $@.$${PPID}.temp
+	@if test -n "$?" ; then ( gls -lrt --full-time $? 2>/dev/null || ls -lrt --full-time $? 2>/dev/null || ls -lrtT $? 2>/dev/null || ls -lrt $? ) | sed -e 's/^/# /' >> $@.$${PPID}.temp ; fi
+	@echo "" >> $@.$${PPID}.temp
+	@echo "# environment:" >> $@.$${PPID}.temp
+	@env | sed -e 's/^/# /' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Boilerplate text generated from the template in makefile.overrides follows below.' >> $@.$${PPID}.temp
+	@cat makefile.overrides >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@echo '# Macros for tool options (e.g. EQN_OPTIONS) are defined in makefile.project' >> $@.$${PPID}.temp
+	@echo '#   (q.v.).' >> $@.$${PPID}.temp
+	@echo '# They may be overridden by redefining them in this file.' >> $@.$${PPID}.temp
+	@echo '# Likewise for macros such as PROJECT_LIBS, RES, etc.' >> $@.$${PPID}.temp
+	@echo "" >> $@.$${PPID}.temp
+	@if test -s $@.$${PPID}.temp ; then mv -f $@.$${PPID}.temp $@ ; fi

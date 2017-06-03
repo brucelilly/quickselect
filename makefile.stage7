@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%. \ makefile.stage6 $
+#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%. \ makefile.stage7 $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -33,9 +33,9 @@
 
 # Add makefile name to MAKEFILES_READ macro
 MAKEFILES_READ += makefile makefile.stage2 makefile.stage3 makefile.stage4 \
- makefile.stage5 makefile.stage6
+ makefile.stage5 makefile.stage6 makefile.stage7
 
-default_target : depend
+default_target : all
 
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
 # MAKEFILES_DIR not yet defined...
@@ -45,18 +45,15 @@ include makefile.include1
 .PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.stage2
 .PRECIOUS : $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.stage4
 .PRECIOUS : $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.stage6
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.stage7
 
 include $(MAKEFILES_DIR)/makefile.include2
 include $(MAKEFILES_DIR)/makefile.include3
 include $(MAKEFILES_DIR)/makefile.include4
 include $(MAKEFILES_DIR)/makefile.include5
 include $(MAKEFILES_DIR)/makefile.include6
+include $(MAKEFILES_DIR)/makefile.include7
 
-# have now included through makefile.licenses
+# have now included everything through makefile.build
 
-# Fake target EMIT_LICENSES may be used as a dependency after both
-#   makefile.licenses and $(PRE_DEPEND) are included.
-depend : EMIT_LICENSES $(DEPEND)
-
-# dependencies and recipe for $(DEPEND) are in makefile.depend, included via
-#   makefile.include5
+# finally!

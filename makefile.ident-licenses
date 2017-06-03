@@ -1,4 +1,4 @@
-# Description: wrapper makefile that determines {host,OS,tools}-specific makefiles to use
+# Description: license makefile that emits license/copyright notices # $Id: ~\|^` @(#)%M% %I% %O% copyright 2015 %Q%\ makefile $
 
 # The following license covers this software, including makefiles and documentation:
 # This software is covered by the zlib/libpng license.
@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%. \ makefile.stage6 $
+#$Id: ~\|^` @(#)%M% copyright 2017 %Q%\ makefile.ident-licenses $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -31,32 +31,29 @@
 #############################################################################
 # maintenance note: master file  %P%
 
-# Add makefile name to MAKEFILES_READ macro
-MAKEFILES_READ += makefile makefile.stage2 makefile.stage3 makefile.stage4 \
- makefile.stage5 makefile.stage6
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : makefile makefile.ident-licenses
+MAKEFILES_READ += makefile makefile.ident-licenses
 
-default_target : depend
+# licenses reside under top-level directory "licenses"
+#  each license has an eponymous subdirectory under "licenses"
+#   each license subdirectory contains at least a "license" file containing the license text per se
+#   license subdirectories may contain the following (optional) files:
+#    "header" contains text emitted prior to license text per se
+#    "trailer" contains text emitted after to license text per se
+#    "description" contains any informative information about the license:
+#       e.g. links, references, known compatibility issues
+#   when license text is displayed, make generates an "emitted" file in the license subdirectory
+#   make clean removes the "emitted" files
 
-# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-# MAKEFILES_DIR not yet defined...
-include makefile.include1
+# Dependency lines indicate which licenses apply to each source/header/makefile file.
+# The dependencies target the "emitted" file in the license subdirectory of "licenses".
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to everything.
+$(MAKEFILES_DIR)/licenses/zlib/emitted : \
+ $(MAKEFILES_DIR)/README.ident \
+ $(SCRIPTSDIR)/date.sh $(SCRIPTSDIR)/host.sh $(SCRIPTSDIR)/ident.sh \
+ $(SCRIPTSDIR)/network.sh $(SCRIPTSDIR)/system.sh $(SCRIPTSDIR)/time.sh \
+ $(SCRIPTSDIR)/zone.sh \
+ $(ALL_SOURCES) $(ALL_HEADERS) \
+#
 
-# Add makefile name to .PRECIOUS pseudo-target
-.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.stage2
-.PRECIOUS : $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.stage4
-.PRECIOUS : $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.stage6
-
-include $(MAKEFILES_DIR)/makefile.include2
-include $(MAKEFILES_DIR)/makefile.include3
-include $(MAKEFILES_DIR)/makefile.include4
-include $(MAKEFILES_DIR)/makefile.include5
-include $(MAKEFILES_DIR)/makefile.include6
-
-# have now included through makefile.licenses
-
-# Fake target EMIT_LICENSES may be used as a dependency after both
-#   makefile.licenses and $(PRE_DEPEND) are included.
-depend : EMIT_LICENSES $(DEPEND)
-
-# dependencies and recipe for $(DEPEND) are in makefile.depend, included via
-#   makefile.include5

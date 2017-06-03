@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2016 %Q%. \ makefile.include4 $
+#$Id: ~\|^` @(#)%M% copyright 2016-2017 %Q%. \ makefile.include4 $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -92,11 +92,3 @@ include $(MAKEFILES_DIR)/makefile.imports
 #	must be included after makefile.directories
 #	should be included after makefile.suffix_rules
 
-# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-include $(MAKEFILES_DIR)/makefile.depend
-#	has recipes to build $(PRE_DEPEND) and $(DEPEND)
-#	depends on makefile.$(CCBASE)
-#	must be included after makefile.ccbase-$(OS)-$(FQDN), which defines CCBASE
-#	must be included after makefile.$(CCBASE)
-#	builds dependencies based on project files, therefore must be included
-#	  after makefile.files and makefile.imports

@@ -65,8 +65,6 @@ PROFILE_LIBDIR = /lib/libp
 # where to install and find configuration files
 #PUBLIC_CONFIGDIR = /etc/$(PROJECT)
 PUBLIC_CONFIGDIR = $(PROJECT_DIR)
-#LEMD_PUBLIC_CONFIGDIR = $(LEMD_PROJECT_DIR)
-#THERMOSTATD_PUBLIC_CONFIGDIR = $(THERMOSTATD_PROJECT_DIR)
 
 # where to install shared resources
 #PUBLIC_SHARED_DIR = $(PATH_PREFIX)/pkg/share/$(PROJECT)

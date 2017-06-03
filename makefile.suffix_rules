@@ -41,12 +41,12 @@
 MAKEFILES_READ += makefile.suffix_rules
 
 # SUFFIX rules
-.c~.c .cpp~.cpp .h~.h .y~.y .l~.l .gperf~.gperf .rl~.rl .dot~.dot .pic~.pic .in~.in .ms~.ms .mspe~.mspe .mm~.mm .me~.me .0~.0 .1~.1 .2~.2 .3~.3 .4~.4 .5~.5 .6~.6 .7~.7 .8~.8 .9~.9 .file~.file .gz~.gz :
+.c~.c .cpp~.cpp .h~.h .y~.y .l~.l .gperf~.gperf .rl~.rl .dot~.dot .pic~.pic .in~.in .ms~.ms .mm~.mm .me~.me .0~.0 .1~.1 .2~.2 .3~.3 .4~.4 .5~.5 .6~.6 .7~.7 .8~.8 .9~.9 .file~.file .gz~.gz :
 	if test -n "$(DEGET)" ; then $(DEGET) $@ ; fi
 	if test -n "$(GET)" ; then $(GET) s.$@ ; fi
 
 FAKE_TARGETS += .c~.c .cpp~.cpp .h~.h .y~.y .l~.l .gperf~.gperf .rl~.rl
-FAKE_TARGETS += .dot~.dot .pic~.pic .in~.in .ms~.ms .mspe~.mspe .mm~.mm .me~.me
+FAKE_TARGETS += .dot~.dot .pic~.pic .in~.in .ms~.ms .mm~.mm .me~.me
 FAKE_TARGETS += .0~.0 .1~.1 .2~.2 .3~.3 .4~.4 .5~.5 .6~.6 .7~.7 .8~.8 .9~.9
 FAKE_TARGETS += .file~.file .gz~.gz
 
@@ -69,11 +69,6 @@ FAKE_TARGETS += .1.ps .2.ps .3.ps .4.ps .5.ps .6.ps .7.ps .8.ps .9.ps
 	$(TROFF) -Tps -ms $< $(MAKEPS) > $@
 
 FAKE_TARGETS += .ms.ps
-
-.mspe.troff :
-	$(TROFF) -mspe -TLatin1 $< > $@
-
-FAKE_TARGETS += .mspe.troff
 
 .rl.c :
 	$(RAGEL) $(RAGEL_CODE_OPT) -o $@ $<
@@ -190,13 +185,13 @@ FAKE_TARGETS += .tbl.eqn
 
 FAKE_TARGETS += .ntbl.neqn
 
-.eqn.ms .eqn.mm .eqn.mspe .eqn.me :
+.eqn.ms .eqn.mm .eqn.troff .eqn.me :
 	if $(GREP) "^[.][ ]*E[QN]" $< >/dev/null 2>&1 ;\
 	then	$(SOELIM) $< | $(EQN) > $@ ;\
 	else	cp $< $@ ;\
 	fi
 
-FAKE_TARGETS += .eqn.ms .eqn.mm .eqn.mspe .eqn.me
+FAKE_TARGETS += .eqn.ms .eqn.mm .eqn.troff .eqn.me
 
 .troff.ps :
 	if $(GREP) -i "landscape" $< > /dev/null 2>&1 ;\

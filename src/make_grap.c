@@ -768,7 +768,13 @@ int main(int argc, const char * const *argv)
                 endptr=symbols[ul].legend_text;
                 if (NULL==endptr) wordlen=1;
                 else wordlen=strlen(endptr);
-                if (widp*1UL/3UL<=len+wordlen+(0UL<ul?6UL:4UL)) {
+#if 1
+if (0!=ingrap)
+(void)printf("%s %s line %d: widp=%lu, wordlen=%lu, len=%lu, ul=%lu, xlines=%lu%s",grapcommentstart,__func__,__LINE__,widp,wordlen,len,ul,xlines,grapcommentend);
+else
+(void)printf("%s %s line %d: widp=%lu, wordlen=%lu, len=%lu, ul=%lu, xlines=%lu%s",commentstart,__func__,__LINE__,widp,wordlen,len,ul,xlines,commentend);
+#endif
+                if (widp<=3UL*(len+wordlen+(0UL<ul?6UL:4UL))) {
                     strlcat(buf,"\" \"",sizeof(buf));
                     len=0UL;
                     xlines++;

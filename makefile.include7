@@ -1,4 +1,4 @@
-# Description: wrapper makefile that determines {host,OS,tools}-specific makefiles to use
+# Description: makefile that includes other makefiles
 
 # The following license covers this software, including makefiles and documentation:
 # This software is covered by the zlib/libpng license.
@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%. \ makefile.stage6 $
+#$Id: ~\|^` @(#)%M% copyright 2016-2017 %Q%. \ makefile.include7 $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -31,32 +31,17 @@
 #############################################################################
 # maintenance note: master file  %P%
 
-# Add makefile name to MAKEFILES_READ macro
-MAKEFILES_READ += makefile makefile.stage2 makefile.stage3 makefile.stage4 \
- makefile.stage5 makefile.stage6
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.include7
+MAKEFILES_READ += makefile.include7
 
-default_target : depend
+# gmake fails if some included file doesn't exist (bootstrapping fails)
+#	  (reported gmake bug #47399)
+#	work-around is multiple runs to build files to be included
+#		this is why there are makefile.stage?, makefile.include? files
+
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to include files
+include $(DEPEND)
 
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-# MAKEFILES_DIR not yet defined...
-include makefile.include1
-
-# Add makefile name to .PRECIOUS pseudo-target
-.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.stage2
-.PRECIOUS : $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.stage4
-.PRECIOUS : $(MAKEFILES_DIR)/makefile.stage5 $(MAKEFILES_DIR)/makefile.stage6
-
-include $(MAKEFILES_DIR)/makefile.include2
-include $(MAKEFILES_DIR)/makefile.include3
-include $(MAKEFILES_DIR)/makefile.include4
-include $(MAKEFILES_DIR)/makefile.include5
-include $(MAKEFILES_DIR)/makefile.include6
-
-# have now included through makefile.licenses
-
-# Fake target EMIT_LICENSES may be used as a dependency after both
-#   makefile.licenses and $(PRE_DEPEND) are included.
-depend : EMIT_LICENSES $(DEPEND)
-
-# dependencies and recipe for $(DEPEND) are in makefile.depend, included via
-#   makefile.include5
+include $(MAKEFILES_DIR)/makefile.build

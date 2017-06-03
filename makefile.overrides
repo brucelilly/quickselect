@@ -1,0 +1,81 @@
+#  Description: This is the description file used by the make command; project files specification
+
+# The following license covers this software, including makefiles and documentation:
+# This software is covered by the zlib/libpng license.
+# The zlib/libpng license is a recognized open source license by the
+# Open Source Initiative: http://opensource.org/licenses/Zlib
+# The zlib/libpng license is a recognized "\"free\"" software license by the
+# Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
+################### Copyright notice (part of the license) ###################
+#$Id: ~\|^` @(#)%M% copyright 2017 %Q%. \ makefile.overrides $
+# This software is provided 'as-is', without any express or implied warranty.
+# In no event will the authors be held liable for any damages arising from the
+# use of this software.
+#
+# Permission is granted to anyone to use this software for any purpose,
+# including commercial applications, and to alter it and redistribute it freely,
+# subject to the following restrictions:
+#
+# 1. The origin of this software must not be misrepresented; you must not claim
+#    that you wrote the original software. If you use this software in a
+#    product, an acknowledgment in the product documentation would be
+#    appreciated but is not required.
+#
+# 2. Altered source versions must be plainly marked as such, and must not be
+#    misrepresented as being the original software.
+#
+# 3. This notice may not be removed or altered from any source distribution.
+############################## (end of license) ##############################
+# This is %M% version %I% dated %O%.
+# You may send bug reports for makefiles to %Y% with subject \"makefiles\".
+#############################################################################
+# maintenance note: master file  %P%
+
+# This file incorporates optional per-host/OS/compiler overrides.
+# It is used for generation of dependency files, for building and installation.
+
+# (All Macro Definitions are described on line preceding definition)
+
+# Add makefile name to .PRECIOUS pseudo-target and to MAKEFILES_READ macro
+.PRECIOUS : $(MAKEFILES_DIR)/makefile $(MAKEFILES_DIR)/makefile.overrides
+.PRECIOUS : $(MAKEFILES_DIR)/makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+MAKEFILES_READ += makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+
+# Editing hint:
+#   One file per line (with line ending escaped) makes additions,
+#   relocations, and deletions easy.  The next line after the last
+#   line used should begin with a quadrathorpe to eat the escaped
+#   line ending.
+# Editing hint: ensure that there are no trailing spaces in macro definitions!
+
+# It is possible to override OS macros (e.g. PUBLIC_MANDIR, OS_LIBS) here.
+# Note that overriding here affects the project for this host/OS/compiler only.
+
+# It is possible to override compilation option macros (e.g. OPTIMIZE) here.
+# Note that overriding here affects the project for this host/OS/compiler only.
+#OPTIMIZE = -O0
+#OPTIMIZE = -O1
+#OPTIMIZE = -O2
+#OPTIMIZE = -O3
+#OPTIMIZE = -Ofast
+#OPTIMIZE = -Os
+#OPTIMIZE = -Oz
+# One way to force C99 for all files...
+#C = $(C99)
+# Or force C89/90 for all...
+#C99 = $(C)
+# profiling
+#PROFILE =
+#PROFILE = -pg
+#PROFILE = -pg -fprofile-arcs -ftest-coverage
+# tuning for machine architecture of machine used for compilation
+#XTRAS += -mtune=native -march=native
+# debugging symbols
+# -grecord-gcc-switches fails for gcc 4.5.3 on Linux and NetBSD
+#DEBUG_SYM = -g -grecord-gcc-switches
+#DEBUG_SYM = -g
+#DEBUG_SYM = 
+# OS library macro
+#OS_LIBS =
+# Project library macro
+#PROJECT_LIBS = -lm -lrt -pthread

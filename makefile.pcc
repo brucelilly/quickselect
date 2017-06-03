@@ -50,23 +50,21 @@ C99 =
 MAKE_DEPEND_ARG = -MM
 
 # optimization flag
-OPTIMIZE = -O3
-#OPTIMIZE = -O2
-#OPTIMIZE = -O1
-#OPTIMIZE = -O0
+OPTIMIZE = -O
 
 # compiler flags that aren't includes or defines, e.g. -Wxxx
 XTRAS += 
 
 # debugging symbols
-DEBUG_SYM = -g
+# disables optimization
+#DEBUG_SYM = -g
 
 # profiling
 #PROFILE = -pg
 
 # if $(CC) can't handle simultaneous -O and -g, comment out DP_OPTIMIZE
 #	optimize debugging/profiled code?
-DP_OPTIMIZE = $(OPTIMIZE)
+# DP_OPTIMIZE = $(OPTIMIZE)
 
 # Flags used by C compiler
 # Should include $(DEFS) and $(OS_DEFS).

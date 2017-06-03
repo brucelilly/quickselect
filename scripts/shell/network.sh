@@ -273,6 +273,10 @@ case ${OS} in
 	;;
 esac
 export IPV6_PREFIX=`ifconfig -a | grep inet6 | egrep -v " fe80::| ::1" | sed -e "s/addr: //" -e "s/inet6 //" | cut -d: -f1-4 | awk '{print $1}'`
+if test ${debug} -gt 0
+then
+	echo IPV6_PREFIX \"${IPV6_PREFIX}\"
+fi
 export ADDRESS=`${DIG} +short ${FQDN} A`
 if test -z "${ADDRESS}"
 then

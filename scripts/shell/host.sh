@@ -15,7 +15,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%\ host.sh $
+#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%\ host.sh $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -227,7 +227,7 @@ fi
 export HOST=${HOSTNAME%%.*}
 export DOMAIN=`domainname | tr -d " "`
 DOMAIN="${DOMAIN%'.(none)'}"
-if test "${DOMAIN}" = "(none)" -o "${DOMAIN}" = "--version"
+if test "${DOMAIN}" = "(none)" -o "${DOMAIN}" = "localdomain" -o "${DOMAIN}" = "--version"
 then
 	DOMAIN=""
 fi
@@ -249,7 +249,7 @@ then
 		export DOMAIN=${HOSTNAME#*.}
 	fi
 fi
-if test "${DOMAIN}" = "(none)" -o "${DOMAIN}" = "--version"
+if test "${DOMAIN}" = "(none)" -o "${DOMAIN}" = "localdomain" -o "${DOMAIN}" = "--version"
 then
 	DOMAIN=""
 fi

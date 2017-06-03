@@ -59,6 +59,7 @@ MAKEFILES_READ += makefile.files
 C99OBJS =\
  make_grap.o\
  median_test.o\
+ simple_config.o\
 # 
 OBJS =\
 #
@@ -88,7 +89,7 @@ MACROS += RESOURCEFILES
 
 # Configuration files.
 CONFIGFILES =\
-# $(PROJECT).conf\
+# (PROJECT).conf\
 # $(PROJECT)2.conf\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -327,12 +328,20 @@ LIB16MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB16ARCH C99LIB16OBJS LIB16OBJS LIB16HDRS LIB16MAN
 
-LIB17ARCH = # libconfig.a
+LIB17ARCH = libconfig.a
 C99LIB17OBJS =\
 #
 LIB17OBJS =\
+ indent.o\
+ re_config.o\
+ simple_config.o\
+ sorted_array.o\
 #
 LIB17HDRS =\
+ indent.h\
+ re_config.h\
+ simple_config.h\
+ sorted_array.h\
 #
 LIB17MAN =\
 #
@@ -677,6 +686,7 @@ INSTMAN2 =\
 #
 INSTMAN3 =\
  logger.3\
+ quickselect.3\
 #
 INSTMAN4 =\
 #
@@ -745,7 +755,8 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 # Note that overriding here affects the project for all hosts.
 
 # It is possible to override compilation option macros (e.g. OPTIMIZE) here.
-# Note that overriding here affects the project for all hosts.
+# Note that overriding here affects the project for all hosts, but may itself
+#   be overridden by makefile.overrides.$(CCBASE)-$(OS)-$(FQDN).
 #OPTIMIZE = -O0
 #OPTIMIZE = -O1
 #OPTIMIZE = -O2
@@ -786,6 +797,8 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 # Targets (including fake ones) should be added to makefile.targets.
 
 # dependencies which could not be specified in makefile.targets
+
+# XXX rules to make built files need to go here; they need to be translated from old-makefiles/makefile.files
 
 # hints
 # admin -i$$base -r$(SID) -fq"$(MAINTAINER)" -ft$(ADDRESS) $$file

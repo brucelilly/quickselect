@@ -63,7 +63,7 @@ PUBLIC_LIBDIR = /usr/lib
 PUBLIC_PROFILE_LIBDIR = /lib/lipb
 
 # Libraries used during loading
-OS_LIBS = -lnsl -lsocket
+OS_LIBS = -lresolv -lsocket -lnsl
 
 # work-around for Solaris non-standard get -G... issue
 GFLAGS =

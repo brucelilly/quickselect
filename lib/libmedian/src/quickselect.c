@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.78 dated 2017-04-03T06:09:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.81 dated 2017-06-03T15:39:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -98,28 +98,49 @@
    inputs by about 2% for sorting, about 10% for selection.  But it adds a
    little overhead for non-adverse inputs.
 */
-#define SAVE_PARTIAL        0
+#ifndef SAVE_PARTIAL
+# define SAVE_PARTIAL       1
+#endif
 
 /* tuning */
 /* Repivoting parameters control the tradeoff between minimal effect on random
    inputs and effective repivoting of adverse inputs.
    Choices are (defined by macros later):
-      DISABLED          repivot only under extreme circumstances
-      TRANSPARENT	(almost) no repivots for random inputs
-      LOOSE		worst adverse performance < 2 N log(N)
-      RELAXED		worst adverse performance ~ 1.5 N log(N)
-      AGGRESSIVE	performance penalty ~ 0.1% for random inputs
+    DISABLED    repivot only under extreme circumstances
+    TRANSPARENT (almost) no repivots for random inputs
+    LOOSE       worst adverse sorting performance < 2.0 N log(N)
+    RELAXED     adverse input sorting performance < 1.5 N log(N)
+    AGGRESSIVE  best practical adverse input selection performance
+# define SORTING_TABLE_ENTRIES      AGGRESSIVE
+# define SORTING_TABLE_ENTRIES      LOOSE
 */
-#define TABLE_ENTRIES       AGGRESSIVE
+#ifndef SORTING_TABLE_ENTRIES
+# define SORTING_TABLE_ENTRIES      RELAXED
+#endif
+
+/* Sorting networks vs. insertion sort for small sub-array sizes 3-7:
+   1 for sorting network, 0 for insertion sort.
+   Sizes 2 and 8 are unconditionally better with sorting networks.
+   Size 3 insertion sort uses fewer average comparisons and runs faster than network
+   Size 4 network sort runs 5% faster, has only 1.6% more comparisons, fewer swaps
+   Size 5 insertion sort uses average 15% fewer comparisons than network, but 0.86 N log(N) for reversed input
+   Size 6 insertion sort uses 9.09% fewer comparisons than network, but 0.97 N log(N) for reversed input
+   Size 7 network sort runs 9.5% faster than insertion sort but has 7.4% more comparisons; insertion sort 1.07 N log(N) for reversed input
+*/
+#define NETWORK3 0
+#define NETWORK4 1
+#define NETWORK5 0
+#define NETWORK6 1
+#define NETWORK7 1
 
 /* Nothing to configure below this line. */
 
 /* defaults */
 #ifndef SAVE_PARTIAL
-# define SAVE_PARTIAL       0
+# define SAVE_PARTIAL       1
 #endif
-#ifndef TABLE_ENTRIES
-# define TABLE_ENTRIES AGGRESSIVE
+#ifndef SORTING_TABLE_ENTRIES
+# define SORTING_TABLE_ENTRIES RELAXED
 #endif
 
 /* for assert.h */
@@ -157,8 +178,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.78"
-#define MODULE_DATE "2017-04-03T06:09:05Z"
+#define MODULE_VERSION "1.81"
+#define MODULE_DATE "2017-06-03T15:39:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -186,9 +207,9 @@
 /* repivot tuning */
 #define DISABLED    0
 #define TRANSPARENT 1 /* (almost) no repivots for random inputs */
-#define LOOSE       2 /* adversary < 2 N log N */
-#define RELAXED     3 /* adversary < 1.5 N log N */
-#define AGGRESSIVE  4 /* penalty < 0.1% */
+#define LOOSE       2 /* adversary < 1.5 N log N, 5.2 N */
+#define RELAXED     3 /* penalty ~ 0.08% */
+#define AGGRESSIVE  4 /* penalty < 0.2% */
 
 /* space-saving */
 #undef V
@@ -215,14 +236,14 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 #ifdef SAVE_PARTIAL
     ", SAVE_PARTIAL=" xbuildstr(SAVE_PARTIAL)
 #endif
-    ", TABLE_ENTRIES="
-#if TABLE_ENTRIES == TRANSPARENT
+    ", SORTING_TABLE_ENTRIES="
+#if SORTING_TABLE_ENTRIES == TRANSPARENT
         "transparent"
-#elif TABLE_ENTRIES == LOOSE
+#elif SORTING_TABLE_ENTRIES == LOOSE
         "loose"
-#elif TABLE_ENTRIES == RELAXED
+#elif SORTING_TABLE_ENTRIES == RELAXED
         "relaxed"
-#elif TABLE_ENTRIES == AGGRESSIVE
+#elif SORTING_TABLE_ENTRIES == AGGRESSIVE
         "aggressive"
 #else
         "disabled"
@@ -249,67 +270,351 @@ const char *quickselect_build_options="@(#)quickselect.c: "
 struct sampling_table_struct {
     size_t min_nmemb;    /* smallest subarray for this number of samples */
     size_t samples;      /* the number of samples used for pivot selection */
+};
+struct repivot_table_struct {
     size_t factor1;      /* lopsided ratio for immediate repivoting */
     size_t factor2;      /* lopsided ratio for repivoting on 2nd occurrence */
 };
-#if (SIZE_T_MAX) > 4294967295
-# define SAMPLING_TABLE_SIZE 22
-#else
-# define SAMPLING_TABLE_SIZE 12
-#endif
 /* N.B.: The table's samples member for sampling_table[x] is the x'th power of
           3. Several parts of the code depend on this. Don't add entries for
           sample sizes which are not powers of 3!
+   The min_nmemb value is found to be optimal when rounded from
+      samples*samples*(ln(2)+1)/2. Exceptions are for 3 and fewer samples, where
+      min_nmemb is the minimum feasible size.
+   With 729 or more samples, the ratio of the large region size to the remaining
+      elements is rarely as high as 2:1, so factor2 and factor1 for those table
+      entries can safely be set to 2UL without any noticeable effect on the
+      performance for random and/or frequently encountered structured input
+      sequences.
+   The factor2 member is set by finding the worst-case adversarial performance
+      for sorting and for selection, and reducing the factor2 value at the
+      appropriate min_nmemb entry to eliminate that worst-case performance,
+      repeating the process until some desired absolute worst-case is achieved
+      or the worst-case performance point cannot be eliminated by reducing
+      factor2.
+   When factor2 reduction is no longer able to eliminate a worst-case
+      performance point, factor1 may be reduced to eliminate the worst-case
+      performance point. This may be repeated (after first trying factor2!)
+      until a desired absolute worst-case performance point is reached, no
+      further improvement can be obtained using factor2 and factor1, or the
+      elimination of a worst-case performance point entails too large of a
+      performance penalty for random input sequences.
+   The "disabled" and "transparent" table factor1 and factor2 entries for 243
+      and fewer samples are set such that repivoting 'never' occurs for random
+      input sequences for different variations of 'never', where 'never'
+      represents some very low probability.
+   The "loose" table entries are set to achieve a worst-case sorting comparison
+      complexity of <= 2.0 N log(N) comparisons and as low a selection
+      comparison complexity as possible without further affecting random input
+      sequences.
+   The "relaxed" table entries are set to achieve the minimum comparison
+      complexities possible for sorting and selection using primarily factor2,
+      and only decreasing factor1 when absolutely necessary.
+   The "aggressive" table entries use both factors as far as possible (i.e.
+      until some worst-case performance point cannot be eliminated or the
+      performance penalty becomes too great).
 */
-static struct sampling_table_struct sampling_table[SAMPLING_TABLE_SIZE] = {
-   {                    1UL,           1UL, 2UL,   2UL }, /* single sample */
-#if TABLE_ENTRIES == TRANSPARENT
-   {                    3UL,           3UL, 40UL, 37UL }, /* median-of-3 */ /* transparent */
-   {                   81UL,           9UL, 45UL, 24UL }, /* remedian of samples */ /* transparent */
-   {                  729UL,          27UL, 12UL,  5UL }, /* transparent */
-#elif TABLE_ENTRIES == LOOSE
-   {                    3UL,           3UL, 40UL, 34UL }, /* median-of-3 */ /* loose */
-   {                   81UL,           9UL, 45UL, 20UL }, /* remedian of samples */ /* loose */
-   {                  729UL,          27UL, 12UL,  5UL }, /* loose */
-#elif TABLE_ENTRIES == RELAXED
-   {                    3UL,           3UL, 40UL, 17UL }, /* median-of-3 */ /* relaxed */
-   {                   81UL,           9UL, 23UL, 20UL }, /* remedian of samples */ /* relaxed */
-   {                  729UL,          27UL,  8UL,  5UL }, /* relaxed */
-#elif TABLE_ENTRIES == AGGRESSIVE
-   {                    3UL,           3UL, 24UL,  7UL }, /* median-of-3 */ /* aggressive */
-   {                   81UL,           9UL, 17UL,  9UL }, /* remedian of samples */ /* aggressive */
-   {                  729UL,          27UL,  8UL,  5UL }, /* aggressive */
-#else /* DISABLED */
-   {                    3UL,           3UL, 40UL, 40UL }, /* median-of-3 */ /* disabled */
-   {                   81UL,           9UL,182UL,182UL }, /* disabled */
-   {                  729UL,          27UL,820UL,820UL }, /* disabled */
-#endif
-   {                 6561UL,          81UL,  4UL,  3UL }, /* common */
-   {                59049UL,         243UL,  2UL,  2UL },
-   {               531441UL,         729UL,  2UL,  2UL },
-   {              4782969UL,        2187UL,  2UL,  2UL },
-   {             41701511UL,        6561UL,  2UL,  2UL },
-   {            387420489UL,       19683UL,  2UL,  2UL },
-   {           3486784401UL,       59049UL,  2UL,  2UL },
+/* sampling tables for selection: order statistics grouped near middle of array */
+/* nmemb>=samples^1.5 uses more samples for a given array size than for sorting
+   to provide tighter estimate of median
+*/
+static struct sampling_table_struct middle_sampling_table[] = {
+   {                     1UL,             1UL }, /* single sample */
+   {                     3UL,             3UL }, /* median-of-3 */
+   {                    27UL,             9UL }, /* remedian of samples */
+   {                   140UL,            27UL },
+   {                   729UL,            81UL },
+   {                  3788UL,           243UL },
+   {                 19683UL,           729UL },
+   {                102276UL,          2187UL },
+   {                531441UL,          6561UL },
+   {               2761448UL,         19683UL },
+   {              14348907UL,         59049UL },
+   {              55768465UL,        177147UL },
+   {             387420489UL,        531441UL },
+   {            2013095913UL,       1594323UL },
 #if (SIZE_T_MAX) > 4294967295
-      /* silly to include large sizes?  check again in a decade or two */
-   {          31381059609UL,      177147UL,  2UL,  2UL },
-   {         282429536481UL,      531441UL,  2UL,  2UL },
-   {        2541865828329UL,     1594323UL,  2UL,  2UL },
-   {       22876792454961UL,     4782969UL,  2UL,  2UL },
-   {      205891132094649UL,    14348907UL,  2UL,  2UL },
-   {     1853020188851841UL,    43046721UL,  2UL,  2UL },
-   {    16677181699666569UL,   129140163UL,  2UL,  2UL },
-   {   150094635296999121UL,   387420489UL,  2UL,  2UL },
-   {  1350851717672992089UL,  1162261467UL,  2UL,  2UL },
-   { 12157665459056928801UL,  3486784401UL,  2UL,  2UL },
-   {   (SIZE_T_MAX),         10460353203UL,  2UL,  2UL }
+   /* silly to include large sizes? check again in a decade or two */
+   {           10460353203UL,       4782969UL },
+   {           54353589638UL,      14348907UL },
+   {          282429536481UL,      43046721UL },
+   {         1467546920230UL,     129140163UL },
+   {         7625597484987UL,     387420489UL },
+   {        39623766846201UL,    1162261467UL },
+   {       205891132094649UL,    3486784401UL },
+   {      1069841704847422UL,   10460353203UL },
+   {      5559060566555524UL,   31381059609UL },
+   {     28885726030880400UL,   94143178827UL },
+   {    150094635296999000UL,  282429536481UL },
+   {    779914602833770000UL,  847288609443UL },
+   {   4052555153018980000UL, 2541865828329UL },
+   {   (SIZE_T_MAX),          7625597484987UL }
 #else
-   {   (SIZE_T_MAX),              177147UL,  2UL,  2UL }
+   {   (SIZE_T_MAX),                4782969UL }
+#endif
+};
+/* sampling tables for selection: order statistics separated near ends of array */
+/* nmemb>=0.14*samples^3 uses fewer samples for a given array size than for sorting
+   because estimate of the median is not critically important
+*/
+static struct sampling_table_struct separated_sampling_table[] = {
+   {                     1UL,          1UL }, /* single sample */
+   {                     3UL,          3UL }, /* median-of-3 */
+   {                   102UL,          9UL }, /* remedian of samples */
+   {                  2756UL,         27UL },
+   {                 74402UL,         81UL },
+   {               2008847UL,        243UL },
+   {              54238868UL,        729UL },
+   {            1464449448UL,       2187UL },
+#if (SIZE_T_MAX) > 4294967295
+   /* silly to include large sizes? check again in a decade or two */
+   {           39540135107UL,       6561UL },
+   {         1067583647898UL,      19683UL },
+   {        28824758493251UL,      59049UL },
+   {       778268479317773UL,     177147UL },
+   {     21013248941579900UL,     531441UL },
+   {    567357721422657000UL,    1594323UL },
+   {  15318658478411700000UL,    4782969UL },
+   {   (SIZE_T_MAX),             4782969UL }
+#else
+   {   (SIZE_T_MAX),                6561UL }
+#endif
+};
+/* sampling table for sorting and for selection with distributed order statistic ranks */
+/* sample quantity optimized for sorting is also reasonable for selection with
+   distributed order statistic ranks
+*/
+static struct sampling_table_struct sorting_sampling_table[] = {
+   {                     1UL,          1UL }, /* single sample */
+   {                     3UL,          3UL }, /* median-of-3 */
+   {                    69UL,          9UL }, /* remedian of samples */
+   {                   617UL,         27UL },
+   {                  5554UL,         81UL },
+   {                 49989UL,        243UL },
+   {                449904UL,        729UL },
+   {               4049135UL,       2187UL },
+   {              36442217UL,       6561UL },
+   {             327979954UL,      19683UL },
+   {            2951819589UL,      59049UL },
+#if (SIZE_T_MAX) > 4294967295
+   {           26566376300UL,     177147UL }, /* silly to include large sizes?
+                                              check again in a decade or two */
+   {          239097386700UL,     531441UL },
+   {         2151876480298UL,    1594323UL },
+   {        19366888322686UL,    4782969UL },
+   {       174301994904175UL,   14348907UL },
+   {      1568717954137576UL,   43046721UL },
+   {     14118461587238200UL,  129140163UL },
+   {    127066154285144000UL,  387420489UL },
+   {   1143595388566290000UL, 1162261467UL },
+   {  10292358497096600000UL, 3486784401UL },
+   {   (SIZE_T_MAX),          3486784401UL }
+#else
+   {   (SIZE_T_MAX),               59049UL }
 #endif
 };
 
-/* Element swap/rotation code depends on the size and alignment of elements. */
+#if SORTING_TABLE_ENTRIES == TRANSPARENT
+static struct repivot_table_struct sorting_repivot_table[] = {
+   { 34UL, 30UL }, /* median-of-3 */ /* transparent */
+   { 90UL, 27UL }, /* remedian of samples */
+   { 86UL, 40UL }, /* transparent */
+   {  6UL,  3UL }, /* transparent */
+   {  2UL,  2UL },
+   {  2UL,  2UL },
+};
+#elif SORTING_TABLE_ENTRIES == LOOSE
+static struct repivot_table_struct sorting_repivot_table[] = {
+   { 34UL, 16UL }, /* median-of-3 */ /* loose */
+   { 90UL, 19UL }, /* remedian of samples */
+   { 86UL, 41UL }, /* loose */
+   {  6UL,  3UL }, /* loose */
+   {  3UL,  2UL },
+   {  2UL,  2UL },
+};
+#elif SORTING_TABLE_ENTRIES == RELAXED
+static struct repivot_table_struct sorting_repivot_table[] = {
+   { 19UL,  9UL }, /* median-of-3 */ /* relaxed */
+   { 16UL, 10UL }, /* remedian of samples */
+   { 60UL, 33UL }, /* relaxed */
+   {  6UL,  3UL }, /* relaxed */
+   {  2UL,  2UL },
+   {  2UL,  2UL },
+};
+#elif SORTING_TABLE_ENTRIES == AGGRESSIVE
+static struct repivot_table_struct sorting_repivot_table[] = {
+   { 18UL,  8UL }, /* median-of-3 */ /* aggressive */
+   { 16UL, 10UL }, /* remedian of samples */
+   { 60UL, 33UL }, /* aggressive */
+   {  6UL,  3UL }, /* aggressive */
+   {  2UL,  2UL },
+   {  2UL,  2UL },
+};
+#else /* DISABLED */
+static struct repivot_table_struct sorting_repivot_table[] = {
+   { 34UL, 31UL }, /* disabled */
+   { 90UL, 28UL }, /* disabled */
+   { 86UL, 43UL }, /* disabled */
+   {  6UL,  3UL }, /* disabled */
+   {  3UL,  2UL }, /* disabled */
+   {  2UL,  2UL }, /* disabled */
+};
+#endif
+/* All repivot tables have the same size. */
+static size_t repivot_table_size = sizeof(sorting_repivot_table)/sizeof(sorting_repivot_table[0]);
+
+static struct repivot_table_struct selection_repivot_table[] = {
+   {  7UL,  2UL }, /* median-of-3 */ /* aggressive */
+   {  8UL,  2UL }, /* remedian of samples */
+   { 13UL,  2UL }, /* aggressive */
+   {  6UL,  2UL }, /* aggressive */
+   {  3UL,  2UL },
+   {  2UL,  2UL },
+};
+
+/* Selection breakpoints for nmemb 6 through 261:
+   First index is nmemb-6UL
+   Second index: 0 for distributed order statistics
+                 1 for order statistics grouped in middle of subarray
+                 2 for order statistics grouped away from middle of subarray
+                 3 for order statistics grouped at one end of subarray
+   Value is maximum number of desired order statistics with a certain
+     distribution which can be selected via multiple selection; for more
+     order statistics, sort the subarray.
+*/
+static unsigned char selection_breakpoint[256][4] = {
+    /* d     m     s     l,r     nmemb      d     m     s     l,r    nmemb */
+    {  1U,   2U,   1U,   3U }, /*   6 */ {  0U,   0U,   1U,   2U }, /*   7 */
+    {  1U,   2U,   1U,   4U }, /*   8 */ {  1U,   2U,   1U,   4U }, /*   9 */
+    {  2U,   4U,   4U,   6U }, /*  10 */ {  2U,   2U,   5U,   6U }, /*  11 */
+    {  2U,   6U,   6U,   7U }, /*  12 */ {  3U,   5U,   7U,   8U }, /*  13 */
+    {  3U,   8U,   8U,   9U }, /*  14 */ {  3U,   8U,   8U,  10U }, /*  15 */
+    {  3U,  10U,   9U,  10U }, /*  16 */ {  3U,  10U,   9U,  11U }, /*  17 */
+    {  3U,  12U,   9U,  12U }, /*  18 */ {  3U,  12U,  10U,  13U }, /*  19 */
+    {  3U,  12U,  11U,  13U }, /*  20 */ {  3U,  12U,  12U,  14U }, /*  21 */
+    {  4U,  14U,  13U,  15U }, /*  22 */ {  4U,  14U,  14U,  16U }, /*  23 */
+    {  4U,  14U,  14U,  16U }, /*  24 */ {  4U,  14U,  14U,  17U }, /*  25 */
+    {  4U,  16U,  15U,  18U }, /*  26 */ {  4U,  16U,  16U,  18U }, /*  27 */
+    {  4U,  16U,  17U,  19U }, /*  28 */ {  4U,  16U,  18U,  20U }, /*  29 */
+    {  5U,  18U,  18U,  21U }, /*  30 */ {  5U,  18U,  19U,  22U }, /*  31 */
+    {  5U,  18U,  20U,  22U }, /*  32 */ {  5U,  18U,  20U,  23U }, /*  33 */
+    {  5U,  20U,  20U,  23U }, /*  34 */ {  5U,  20U,  20U,  23U }, /*  35 */
+    {  5U,  20U,  20U,  23U }, /*  36 */ {  5U,  20U,  20U,  23U }, /*  37 */
+    {  5U,  22U,  20U,  23U }, /*  38 */ {  5U,  22U,  20U,  23U }, /*  39 */
+    {  6U,  22U,  28U,  30U }, /*  40 */ {  6U,  22U,  28U,  31U }, /*  41 */
+    {  6U,  24U,  28U,  32U }, /*  42 */ {  6U,  24U,  28U,  32U }, /*  43 */
+    {  6U,  26U,  28U,  32U }, /*  44 */ {  6U,  26U,  28U,  32U }, /*  45 */
+    {  6U,  28U,  28U,  32U }, /*  46 */ {  6U,  28U,  28U,  32U }, /*  47 */
+    {  6U,  30U,  28U,  32U }, /*  48 */ {  6U,  30U,  28U,  32U }, /*  49 */
+    {  7U,  32U,  33U,  37U }, /*  50 */ {  7U,  32U,  33U,  37U }, /*  51 */
+    {  7U,  34U,  33U,  37U }, /*  52 */ {  7U,  34U,  33U,  37U }, /*  53 */
+    {  7U,  36U,  33U,  37U }, /*  54 */ {  7U,  36U,  33U,  37U }, /*  55 */
+    {  7U,  37U,  33U,  37U }, /*  56 */ {  7U,  32U,  33U,  37U }, /*  57 */
+    {  7U,  32U,  33U,  37U }, /*  58 */ {  7U,  32U,  33U,  37U }, /*  59 */
+    {  8U,  42U,  44U,  48U }, /*  60 */ {  8U,  42U,  44U,  48U }, /*  61 */
+    {  8U,  44U,  44U,  48U }, /*  62 */ {  8U,  44U,  44U,  48U }, /*  63 */
+    {  8U,  46U,  44U,  48U }, /*  64 */ {  8U,  46U,  44U,  48U }, /*  65 */
+    {  8U,  48U,  44U,  48U }, /*  66 */ {  8U,  48U,  44U,  48U }, /*  67 */
+    {  8U,  48U,  44U,  48U }, /*  68 */ {  8U,  43U,  44U,  48U }, /*  69 */
+    { 10U,  52U,  54U,  60U }, /*  70 */ { 10U,  52U,  56U,  61U }, /*  71 */
+    { 10U,  54U,  54U,  62U }, /*  72 */ { 10U,  54U,  56U,  63U }, /*  73 */
+    { 10U,  56U,  56U,  64U }, /*  74 */ { 10U,  56U,  58U,  65U }, /*  75 */
+    { 10U,  58U,  58U,  66U }, /*  76 */ { 10U,  58U,  60U,  67U }, /*  77 */
+    { 10U,  60U,  60U,  68U }, /*  78 */ { 10U,  60U,  62U,  69U }, /*  79 */
+    { 19U,  62U,  62U,  70U }, /*  80 */ { 19U,  62U,  62U,  71U }, /*  81 */
+    { 20U,  64U,  62U,  72U }, /*  82 */ { 19U,  64U,  64U,  73U }, /*  83 */
+    { 24U,  66U,  64U,  74U }, /*  84 */ { 20U,  66U,  66U,  75U }, /*  85 */
+    { 20U,  68U,  66U,  76U }, /*  86 */ { 20U,  68U,  68U,  77U }, /*  87 */
+    { 21U,  70U,  68U,  78U }, /*  88 */ { 21U,  70U,  70U,  79U }, /*  89 */
+    { 21U,  72U,  68U,  80U }, /*  90 */ { 21U,  72U,  70U,  81U }, /*  91 */
+    { 21U,  74U,  70U,  80U }, /*  92 */ { 22U,  74U,  72U,  82U }, /*  93 */
+    { 27U,  76U,  72U,  84U }, /*  94 */ { 22U,  76U,  74U,  85U }, /*  95 */
+    { 23U,  78U,  74U,  86U }, /*  96 */ { 23U,  78U,  75U,  86U }, /*  97 */
+    { 24U,  80U,  76U,  88U }, /*  98 */ { 23U,  80U,  78U,  89U }, /*  99 */
+    { 23U,  82U,  78U,  90U }, /* 100 */ { 28U,  82U,  80U,  91U }, /* 101 */
+    { 29U,  84U,  80U,  92U }, /* 102 */ { 26U,  84U,  82U,  93U }, /* 103 */
+    { 24U,  86U,  82U,  94U }, /* 104 */ { 24U,  86U,  84U,  95U }, /* 105 */
+    { 25U,  88U,  84U,  96U }, /* 106 */ { 24U,  88U,  86U,  97U }, /* 107 */
+    { 25U,  90U,  86U,  98U }, /* 108 */ { 25U,  90U,  88U,  99U }, /* 109 */
+    { 26U,  92U,  88U, 100U }, /* 110 */ { 30U,  92U,  90U, 101U }, /* 111 */
+    { 26U,  94U,  90U, 102U }, /* 112 */ { 29U,  94U,  92U, 103U }, /* 113 */
+    { 25U,  96U,  92U, 104U }, /* 114 */ { 27U,  96U,  94U, 105U }, /* 115 */
+    { 28U,  98U,  94U, 106U }, /* 116 */ { 28U,  98U,  96U, 107U }, /* 117 */
+    { 30U, 100U,  96U, 108U }, /* 118 */ { 28U, 100U,  98U, 109U }, /* 119 */
+    { 25U, 102U,  98U, 110U }, /* 120 */ { 29U, 102U, 100U, 111U }, /* 121 */
+    { 29U, 104U, 100U, 112U }, /* 122 */ { 29U, 104U, 102U, 113U }, /* 123 */
+    { 30U, 106U, 102U, 114U }, /* 124 */ { 30U, 106U, 104U, 115U }, /* 125 */
+    { 30U, 108U, 104U, 116U }, /* 126 */ { 30U, 108U, 106U, 117U }, /* 127 */
+    { 30U, 110U, 106U, 118U }, /* 128 */ { 31U, 110U, 108U, 119U }, /* 129 */
+    { 31U, 112U, 108U, 120U }, /* 130 */ { 27U, 112U, 110U, 121U }, /* 131 */
+    { 31U, 114U, 110U, 122U }, /* 132 */ { 25U, 114U, 112U, 123U }, /* 133 */
+    { 25U, 116U, 112U, 124U }, /* 134 */ { 26U, 116U, 114U, 125U }, /* 135 */
+    { 26U, 118U, 114U, 126U }, /* 136 */ { 26U, 118U, 116U, 127U }, /* 137 */
+    { 33U, 120U, 116U, 128U }, /* 138 */ { 24U, 120U, 118U, 129U }, /* 139 */
+    { 26U, 122U, 118U, 130U }, /* 140 */ { 27U, 122U, 120U, 131U }, /* 141 */
+    { 27U, 124U, 120U, 132U }, /* 142 */ { 27U, 124U, 122U, 133U }, /* 143 */
+    { 27U, 126U, 122U, 134U }, /* 144 */ { 27U, 126U, 124U, 135U }, /* 145 */
+    { 25U, 128U, 124U, 136U }, /* 146 */ { 47U, 128U, 126U, 137U }, /* 147 */
+    { 43U, 130U, 126U, 138U }, /* 148 */ { 43U, 130U, 128U, 139U }, /* 149 */
+    { 24U, 132U, 128U, 140U }, /* 150 */ { 44U, 132U, 130U, 141U }, /* 151 */
+    { 39U, 134U, 130U, 142U }, /* 152 */ { 37U, 134U, 132U, 143U }, /* 153 */
+    { 37U, 136U, 132U, 144U }, /* 154 */ { 44U, 136U, 134U, 145U }, /* 155 */
+    { 25U, 138U, 134U, 146U }, /* 156 */ { 38U, 138U, 136U, 147U }, /* 157 */
+    { 25U, 140U, 136U, 148U }, /* 158 */ { 25U, 140U, 138U, 149U }, /* 159 */
+    { 39U, 142U, 138U, 150U }, /* 160 */ { 39U, 142U, 140U, 151U }, /* 161 */
+    { 25U, 144U, 140U, 152U }, /* 162 */ { 24U, 144U, 142U, 153U }, /* 163 */
+    { 46U, 146U, 142U, 154U }, /* 164 */ { 25U, 146U, 144U, 155U }, /* 165 */
+    { 42U, 148U, 144U, 156U }, /* 166 */ { 26U, 148U, 146U, 157U }, /* 167 */
+    { 22U, 150U, 146U, 158U }, /* 168 */ { 27U, 150U, 148U, 159U }, /* 169 */
+    { 55U, 152U, 148U, 160U }, /* 170 */ { 26U, 152U, 150U, 161U }, /* 171 */
+    { 56U, 154U, 150U, 162U }, /* 172 */ { 25U, 154U, 152U, 163U }, /* 173 */
+    { 25U, 156U, 152U, 164U }, /* 174 */ { 27U, 156U, 154U, 165U }, /* 175 */
+    { 26U, 158U, 154U, 166U }, /* 176 */ { 43U, 158U, 156U, 167U }, /* 177 */
+    { 24U, 160U, 156U, 168U }, /* 178 */ { 24U, 160U, 158U, 169U }, /* 179 */
+    { 24U, 162U, 158U, 170U }, /* 180 */ { 50U, 162U, 160U, 171U }, /* 181 */
+    { 27U, 164U, 160U, 172U }, /* 182 */ { 53U, 164U, 162U, 173U }, /* 183 */
+    { 23U, 166U, 162U, 173U }, /* 184 */ { 27U, 166U, 164U, 175U }, /* 185 */
+    { 29U, 168U, 164U, 176U }, /* 186 */ { 25U, 168U, 166U, 177U }, /* 187 */
+    { 25U, 170U, 166U, 178U }, /* 188 */ { 25U, 170U, 168U, 179U }, /* 189 */
+    { 24U, 172U, 168U, 180U }, /* 190 */ { 26U, 172U, 170U, 181U }, /* 191 */
+    { 26U, 174U, 170U, 182U }, /* 192 */ { 26U, 174U, 172U, 183U }, /* 193 */
+    { 24U, 176U, 172U, 184U }, /* 194 */ { 59U, 176U, 174U, 185U }, /* 195 */
+    { 26U, 178U, 174U, 186U }, /* 196 */ { 26U, 178U, 176U, 187U }, /* 197 */
+    { 26U, 180U, 176U, 188U }, /* 198 */ { 27U, 180U, 178U, 188U }, /* 199 */
+    { 27U, 182U, 178U, 190U }, /* 200 */ { 26U, 182U, 180U, 191U }, /* 201 */
+    { 26U, 184U, 180U, 192U }, /* 202 */ { 26U, 184U, 182U, 193U }, /* 203 */
+    { 25U, 186U, 182U, 193U }, /* 204 */ { 27U, 186U, 184U, 195U }, /* 205 */
+    { 24U, 188U, 184U, 194U }, /* 206 */ { 27U, 188U, 186U, 197U }, /* 207 */
+    { 26U, 190U, 186U, 197U }, /* 208 */ { 26U, 190U, 188U, 198U }, /* 209 */
+    { 30U, 192U, 188U, 200U }, /* 210 */ { 27U, 192U, 190U, 200U }, /* 211 */
+    { 26U, 193U, 190U, 201U }, /* 212 */ { 26U, 194U, 192U, 203U }, /* 213 */
+    { 25U, 196U, 192U, 203U }, /* 214 */ { 26U, 196U, 194U, 204U }, /* 215 */
+    { 27U, 198U, 194U, 204U }, /* 216 */ { 28U, 198U, 196U, 207U }, /* 217 */
+    { 27U, 200U, 196U, 207U }, /* 218 */ { 28U, 200U, 198U, 209U }, /* 219 */
+    { 27U, 202U, 198U, 210U }, /* 220 */ { 28U, 202U, 200U, 210U }, /* 221 */
+    { 28U, 204U, 200U, 211U }, /* 222 */ { 27U, 204U, 202U, 211U }, /* 223 */
+    { 27U, 206U, 202U, 213U }, /* 224 */ { 36U, 206U, 204U, 215U }, /* 225 */
+    { 28U, 208U, 204U, 214U }, /* 226 */ { 28U, 208U, 206U, 215U }, /* 227 */
+    { 27U, 210U, 206U, 216U }, /* 228 */ { 28U, 210U, 208U, 218U }, /* 229 */
+    { 37U, 212U, 208U, 219U }, /* 230 */ { 29U, 212U, 210U, 220U }, /* 231 */
+    { 37U, 214U, 210U, 221U }, /* 232 */ { 37U, 214U, 212U, 223U }, /* 233 */
+    { 32U, 216U, 212U, 224U }, /* 234 */ { 28U, 210U, 214U, 223U }, /* 235 */
+    { 38U, 218U, 214U, 226U }, /* 236 */ { 30U, 218U, 216U, 225U }, /* 237 */
+    { 38U, 220U, 216U, 228U }, /* 238 */ { 37U, 220U, 218U, 229U }, /* 239 */
+    { 30U, 222U, 205U, 230U }, /* 240 */ { 39U, 222U, 205U, 229U }, /* 241 */
+    { 29U, 224U, 205U, 230U }, /* 242 */ { 29U, 224U, 205U, 231U }, /* 243 */
+    { 39U, 226U, 205U, 233U }, /* 244 */ { 39U, 226U, 205U, 234U }, /* 245 */
+    { 39U, 226U, 205U, 236U }, /* 246 */ { 40U, 222U, 205U, 237U }, /* 247 */
+    { 34U, 228U, 205U, 235U }, /* 248 */ { 64U, 230U, 205U, 238U }, /* 249 */
+    { 39U, 232U, 205U, 237U }, /* 250 */ { 45U, 232U, 205U, 239U }, /* 251 */
+    { 44U, 234U, 205U, 242U }, /* 252 */ { 30U, 234U, 205U, 242U }, /* 253 */
+    { 40U, 236U, 205U, 243U }, /* 254 */ { 30U, 236U, 205U, 242U }, /* 255 */
+    { 41U, 236U, 205U, 245U }, /* 256 */ { 31U, 238U, 205U, 245U }, /* 257 */
+    { 31U, 240U, 205U, 246U }, /* 258 */ { 41U, 240U, 205U, 247U }, /* 259 */
+    { 40U, 242U, 238U, 247U }, /* 260 */ { 36U, 242U, 240U, 248U }  /* 261 */
+};
+
+/* Element swap code depends on the size and alignment of elements. */
 /* Assume basic types sizeof(foo) etc. are powers of 2. */
 #define NTYPES 6 /* double, pointer, long, int, short, char */
 /* Logarithms of size indexed by sizeof: table in lieu of calculation for speed,
@@ -347,8 +652,252 @@ void initialize_quickselect(V)
         &source_file,s);
 }
 
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+unsigned int do_sort(unsigned int distribution, size_t first, size_t beyond,
+    const size_t *pk, size_t firstk, size_t beyondk
+#if SAVE_PARTIAL
+    , char **ppeq, char **ppgt
+#endif
+    )
+{
+    /* only select if there are requested order statistics */
+    if ((NULL!=pk)&&(beyondk>firstk)) {
+        /* no sort if finding median of medians with SAVE_PARTIAL */
+#if SAVE_PARTIAL
+        if ((NULL==ppeq)&&(NULL==ppgt)) {
+#endif
+            size_t nk=beyondk-firstk, nmemb=beyond-first;
+            if (5UL>=nmemb) { /* sort 5 or fewer elements */
+                return 1U;
+            } else if (261UL>=nmemb) { /* table for 6-261 elements */
+                size_t idx=nmemb-6UL, idx2;
+                switch (distribution) {
+                    case 0U : /*FALLTHROUGH*/
+                    case 7U : /*FALLTHROUGH*/
+                        idx2=0UL; /* distributed ranks */
+                    break;
+                    case 2U : /* middle ranks */
+                        idx2=1UL;
+                    break;
+                    case 5U :
+                        idx2=2UL; /* separated ranks */
+                    break;
+                    default :
+                        idx2=3UL; /* ranks at one end */
+                    break;
+                }
+                if (selection_breakpoint[idx][idx2]<nk) {
+                    return 1U;
+                }
+            } else {
+                size_t t=nmemb/10UL;
+                switch (distribution) {
+                    case 0U : /*FALLTHROUGH*/
+                    case 7U : /*FALLTHROUGH*/
+                        if (nk>t) return 1U; /* distributed ranks */
+                    break;
+                    default :
+                        if (nk>nmemb-t) return 1U; /* middle, separated, ends */
+                    break;
+                }
+            }
+#if SAVE_PARTIAL
+        }
+#endif
+        return 0U;
+    }
+    return 1U;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
+    size_t beyondk, size_t *pfk, size_t *pbk)
+{
+    A(NULL!=pfk);A(NULL!=pbk);A(NULL!=pk);
+    size_t lk, n, r, rk;
+
+    /* binary search through pk to find limits for specified array region */
+    for (n=firstk,r=beyondk,lk=n+((r-n)>>1);(n<r)&&(lk<beyondk);) {
+        if (pk[lk]>=first) { if (0UL<lk) r=lk-1UL; else r=lk; }
+        else n=lk;
+        lk=n+((r+1UL-n)>>1);
+    }
+    if ((lk<beyondk)&&(pk[lk]<first)) lk++;
+    A(lk>=firstk);
+    for (n=lk,r=beyondk,rk=n+((r-n)>>1); (n<r)&&(rk<beyondk);) {
+        if (pk[rk]<beyond) { if (rk<beyondk) n=rk+1UL; else n=rk; }
+        else r=rk;
+        rk=n+((r-n)>>1);
+    }
+    A((lk==beyondk)||(pk[lk]>=first));A((rk==beyondk)||(pk[rk]>=beyond));
+    *pfk=lk; *pbk=rk;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+unsigned int kdistribution(size_t first, size_t beyond, const size_t *pk,
+    size_t firstk, size_t beyondk)
+{
+    if (NULL!=pk) { /* selection, not sorting */
+        size_t nmemb=beyond-first;
+
+        if (5UL<nmemb) { /* sort 5 or fewer elements */
+            size_t f=nmemb>>2 /* /4UL */ ;
+            size_t t=nmemb/9UL;
+            size_t m[2];
+            size_t bk, fk, x=10UL, y=10UL;
+            unsigned int r=0UL;
+
+            m[0]=first+((nmemb-1UL)>>1); m[1]=first+(nmemb>>1);
+            if (f<x) x=f;
+            if (t<y) y=t;
+            if (pk[beyondk-1UL]<m[0]) r|=4U;
+            else {
+                klimits(first,first+x,pk,firstk,beyondk,&fk,&bk);
+                if ((bk>fk)||(pk[beyondk-1UL]<m[0])) r|=4U;
+            }
+            if ((pk[firstk]>=m[0]-y)&&(pk[beyondk-1UL]<=m[1]+y)) r|=2U;
+            else {
+                klimits(m[0]-y,m[1]+1UL+y,pk,firstk,beyondk,&fk,&bk);
+                if (bk>fk) r|=2U;
+            }
+            if (pk[firstk]>m[1]) r|=1U;
+            else {
+                klimits(beyond-x,beyond,pk,firstk,beyondk,&fk,&bk);
+                if ((bk>fk)||(pk[firstk]>m[1])) r|=1U;
+            }
+            return r;
+        }
+        return 7U;
+    }
+    return 7U;
+}
+
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+struct sampling_table_struct *sampling_table(size_t first, size_t beyond,
+    const size_t *pk, size_t firstk, size_t beyondk,
+#if SAVE_PARTIAL
+    char **ppeq, char **ppgt,
+#endif
+    unsigned int *psort, size_t *psz)
+{
+    unsigned int distribution, sort;
+
+    if (beyond>first) {
+        distribution=kdistribution(first,beyond,pk,firstk,beyondk);
+        sort=do_sort(distribution,first,beyond,pk,firstk,beyondk
+#if SAVE_PARTIAL
+            ,ppeq,ppgt
+#endif
+        );
+        if (NULL!=psort) *psort=sort;
+    } else {
+        distribution=2U;
+        if (NULL!=psort) sort=*psort; else sort=0U;
+    }
+    if (0U==sort) {
+        switch (distribution) {
+            case 4U : /*FALLTHROUGH*/
+            case 6U : /* left */
+                if (NULL!=psz)
+                    *psz=sizeof(separated_sampling_table)
+                        /sizeof(separated_sampling_table[0]);
+            return separated_sampling_table;
+            case 1U : /*FALLTHROUGH*/
+            case 3U : /* right */
+                if (NULL!=psz)
+                    *psz=sizeof(separated_sampling_table)
+                        /sizeof(separated_sampling_table[0]);
+            return separated_sampling_table;
+            case 5U : /* separated */
+                if (NULL!=psz)
+                    *psz=sizeof(separated_sampling_table)
+                        /sizeof(separated_sampling_table[0]);
+            return separated_sampling_table;
+            case 2U : /* middle */
+                if (NULL!=psz)
+                    *psz=sizeof(middle_sampling_table)
+                        /sizeof(middle_sampling_table[0]);
+            return middle_sampling_table;
+            default : /* distributed */
+            break;
+        }
+    }
+    if (NULL!=psz)
+        *psz=sizeof(sorting_sampling_table)
+            /sizeof(sorting_sampling_table[0]);
+    return sorting_sampling_table;
+}
+
+/* get repivoting parameters */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void repivot_factors(unsigned int sampling_table_index, size_t *pk, size_t *pf1, size_t *pf2)
+{
+    if (0UL==sampling_table_index) {
+        *pf1 = *pf2 = 2UL;
+        return;
+    }
+    sampling_table_index--; /* repivot table has no entry for single sample */
+    if (sampling_table_index>=repivot_table_size)
+        sampling_table_index = repivot_table_size - 1UL;
+    if (NULL!=pk) { /* selection */
+        *pf1 = selection_repivot_table[sampling_table_index].factor1;
+        *pf2 = selection_repivot_table[sampling_table_index].factor2;
+    } else { /* sorting */
+        *pf1 = sorting_repivot_table[sampling_table_index].factor1;
+        *pf2 = sorting_repivot_table[sampling_table_index].factor2;
+    }
+}
+
+/* Determine and return an integer which is an index into an array of types
+   suitable for swapping functions.
+*/
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+int type_index(char *base, size_t size)
+{
+    int i, t;  /* general integer variables */
+    size_t s;  /* general size_t variable */
+
+    /* Determine size of data chunks to copy for element swapping.  Size is
+       determined by element size and alignment. typsz is an
+       array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
+    */
+    s=typsz[t=0]; /* double */
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+        s=typsz[t=3]; /* int */
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+        ||(!(is_aligned(base,i)))) {
+            s=typsz[t=4]; /* short */
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(base,i))))
+                s=typsz[t=5]; /* char */
+        }
+    }
+    return t;
+}
+
 /* Array element swaps and rotations: */
-/* Called many times from quickselect_loop, medians3. */
+/* Called many times from quickselect_loop. */
 /* count is in chars */
 /* versions to swap/rotate by char, short, int, double */
 static
@@ -359,24 +908,16 @@ void charswap(char *pa, char *pb, size_t count)
 {
     char t;
     A(pa!=pb);A(0UL<count);
-    do {
-        t=*pa, *pa=*pb, *pb=t;
-        if (0UL==--count) break;
-        pa++, pb++;
-    } while (1);
+    do { t=*pa, *pa++=*pb, *pb++=t, count--; } while (0UL<count);
 }
 
 /* Macro for swapping by some type other than char. */
 #undef GENERIC_SWAP
-# define GENERIC_SWAP(type)                  \
-    type *px=(type *)pa, *py=(type *)pb, t; \
-    A(pa!=pb);A(0UL<count);                 \
-    count /= sizeof(type);                  \
-        do {                                \
-            t=*px, *px=*py, *py=t;          \
-            if (0UL==--count) break;        \
-            px++, py++;                     \
-        } while (1) /* terminating semicolon in macro call */
+# define GENERIC_SWAP(type)                              \
+    type *px=(type *)pa, *py=(type *)pb, t;              \
+    A(pa!=pb);A(0UL<count);                              \
+    for (count/=sizeof(type); 0UL<count; t=*px,*px++=*py,*py++=t,count--) \
+    /* terminating semicolon in macro call */
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -403,6 +944,21 @@ inline
 void doubleswap(char *pa, char *pb, size_t count)
 {
     GENERIC_SWAP(double);
+}
+
+/* determine and return a pointer to an appropriate swap function */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void (*whichswap(char *base, size_t size))(char *, char *, size_t)
+{
+    switch (type_index(base,size)) {
+        case 0 :  return doubleswap;
+        case 3 :  return intswap;
+        case 4 :  return shortswap;
+        default : return charswap;
+    }
 }
 
 /* array element moves in blocks */
@@ -470,37 +1026,6 @@ char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *
     return pb;
 }
 
-/* Given base, size, and compar as for qsort, plus a row offset and sample
-   offset, both in chars, find medians of sets of 3 elements where the three
-   elements for each median are taken from three rows starting with base, and
-   each subsequent set of three elements is offset from the previous set by
-   sample_offset. As each median is determined, it is placed in the position of
-   the middle element of the set. As a result, the set medians comprise the
-   middle row, to which a pointer is returned.
-   N.B. base is not necessarily the first element in the array passed to qsort.
-*/
-/* called from select_pivot() and repivot() */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-char *medians3(char *base, size_t size,
-    int(*compar)(const void *, const void *), size_t row_offset,
-    size_t sample_offset, size_t row_samples,
-    void(*swapfunc)(char *,char *,size_t))
-{
-    char *pa, *pb;
-    size_t n, o;
-
-    for (n=o=0UL; n<row_samples; n++,o+=sample_offset) {
-        pa=base+o;
-        pb=pa+row_offset; /* middle element */
-        pa=fmed3(pa,pb,pb+row_offset,compar);
-        if (pa!=pb) swapfunc(pa,pb,size);
-    }
-    return base+row_offset; /* middle row */
-}
-
 /* Remedian of samples, recursive implementation. */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -530,7 +1055,8 @@ inline
 void quickselect_loop(char *base, size_t first, size_t beyond,
     const size_t size, int(*compar)(const void *,const void *),
     const size_t *pk, size_t firstk, size_t beyondk,
-    void(*swapfunc)(char *,char *,size_t), unsigned int table_index
+    void(*swapfunc)(char *,char *,size_t),
+    struct sampling_table_struct *pst, unsigned int table_index
 #if SAVE_PARTIAL
     , char **ppeq, char **ppgt
 #endif
@@ -542,34 +1068,36 @@ void quickselect_loop(char *base, size_t first, size_t beyond,
 
     while (((NULL!=pk)
 #if ! SAVE_PARTIAL
-          &&(nmemb>4UL) /* sorting networks for nmemb <= 4 for selection */
+          &&(nmemb>5UL) /* dedicated sort for nmemb <= 5 for selection */
 #endif
-          )||(nmemb>8UL) /* sorting networks for nmemb <= 8 for sorting */
+          )||(nmemb>8UL) /* dedicated sort for nmemb <= 8 for sorting */
     ) {
         int c, d, do_repivot;
-        size_t n, p, q, r, s, t;
+        size_t n, nk, p, q, r, s, stsz, t;
+        struct sampling_table_struct *npst;
+        unsigned int sort;
 
         A((NULL==pk)||(firstk<beyondk));
         A(first<beyond);
-        A(table_index<(SAMPLING_TABLE_SIZE));
         /* Samples of array elements (quantity). */
-        n=sampling_table[table_index].samples; /* total samples (power of 3) */
+        n=pst[table_index].samples; /* total samples (power of 3) */
 
         /* Select samples (quality=uniform spacing) from array elements. */
         pivot=base+size*(first+(nmemb>>1));      /* [upper-]middle element */
+#if SAVE_PARTIAL
         switch (n) {
             case 1UL :
                 /* only happens for selection w/ 2<=nmemb<3 */
-                s=r=0UL;
+                r=0UL;
             break;
             case 3UL :
-                s=r=(nmemb/n)*size;                /* uniform nmemb/3 spacing */
+                r=(nmemb/n)*size;                /* uniform nmemb/3 spacing */
             break;
             default : /* > 3, power of 3 */
-                t=sampling_table[table_index-1U].samples; /* per row (n/3) */
-                s=nmemb/n;                         /* uniform sample spacing */
-                s*=size;                           /* spacing in chars */
-                r=s*t;                    /* uniform row spacing (also chars) */
+#endif
+                t=pst[table_index-1U].samples; /* per row (n/3) */
+                r=nmemb/n*size*t;           /* uniform row spacing (in chars) */
+#if SAVE_PARTIAL
             break;
         }
 
@@ -577,6 +1105,7 @@ void quickselect_loop(char *base, size_t first, size_t beyond,
            of samples using stack for temporary variables.
         */
         if (1UL<n)
+#endif
             pivot=remedian(pivot,r,r,table_index,compar);
 
         /* partition the array around the pivot element */
@@ -599,7 +1128,7 @@ partition_array: ;
 
 /* Kiwiel's algorithm L (excluding cleanup) as a macro. */
 /* Use S1, S2 for pivot pointer update if required. */
-/* XXX pivot is swapped (fewer comparisons) */
+/* pivot is swapped (fewer comparisons) */
 /* Ref: Kiwiel, K. "Partitioning schemes for quicksort and quickselect" */
 #define KIWIEL_L(S1,S2)                                                  \
     if (pivot==pc) pc+=size;                                             \
@@ -639,25 +1168,6 @@ partition_array: ;
     }                                                                    \
     pg = pc-size /* terminating semicolon after macro call */
 
-/* Bentley&McIlroy partitioning algorithm (excluding canonicalization) w/
-   self-swapping guards as a macro.
-*/
-/* Use S1, S2 for pivot pointer update if required. */
-#define BENTLEY_MCILROY_PARTITION(S1,S2)                                      \
-    if (pivot==pc) pa+=size, pc+=size;                                        \
-    else if (pivot==pg) pg-=size, pf-=size;                                   \
-    for (;;) { /* loop - partitioning */                                      \
-        for (; (pc<=pg)&&(0<=(c=compar(pivot,pc))); pc+=size) {               \
-            if (0==c) { if (pa!=pc) { swapfunc(pa,pc,size); S1; } pa+=size; } \
-        }                                                                     \
-        for (; (pc<=pg)&&(0>=(d=compar(pivot,pg))); pg-=size) {               \
-            if (0==d) { pf-=size; if (pg!=pf) { swapfunc(pg,pf,size); S2; } } \
-        }                                                                     \
-        if (pc>pg) break;                                                     \
-        if (pc!=pg) { swapfunc(pc,pg,size);          }                        \
-        pc+=size; pg-=size;                                                   \
-    }
-
         KIWIEL_L(/**/,/**/);
 
         /* |   =   |   <               |             >   |   =   | */
@@ -680,20 +1190,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
         /* < region indices [first,p), order statistics [firstk,lk) */
         /* > region indices [q,beyond), order statistics [rk,beyondk) */
         if (NULL!=pk) {
-            /* binary search through pk to find limits for each region */
-            for (n=firstk,r=beyondk,lk=n+((r-n)>>1);(n<r)&&(lk<beyondk);) {
-                if (pk[lk]>=p) { if (0UL<lk) r=lk-1UL; else r=lk; }
-                else n=lk;
-                lk=n+((r+1UL-n)>>1);
-            }
-            if ((lk<beyondk)&&(pk[lk]<p)) lk++;
-            A(lk>=firstk);
-            for (n=lk,r=beyondk,rk=n+((r-n)>>1); (n<r)&&(rk<beyondk);) {
-                if (pk[rk]<q) { if (rk<beyondk) n=rk+1UL; else n=rk; }
-                else r=rk;
-                rk=n+((r-n)>>1);
-            }
-            A((lk==beyondk)||(pk[lk]>=p));A((rk==beyondk)||(pk[rk]>=q));
+            klimits(p,q,pk,firstk,beyondk,&lk,&rk);
 #if SAVE_PARTIAL
             /*update = region pointers (only applicable for median-of-medians)*/
             if ((0UL==firstk)&&(1UL==beyondk)&&(NULL!=ppeq)&&(NULL!=ppgt)) {
@@ -713,14 +1210,37 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
             /* recurse on small region, if effective size > 1 */
             if ((1UL<s)&&((NULL==pk)||(lk>firstk))) {
                 unsigned int idx=table_index;
-                while (s<sampling_table[idx].min_nmemb)
-                    idx--;
-                quickselect_loop(base,first,p,size,compar,pk,firstk,lk,swapfunc,
-                    idx
+                npst=sampling_table(first,beyond,pk,firstk,lk,
 #if SAVE_PARTIAL
-                    ,ppeq,ppgt
+                    ppeq,ppgt,
 #endif
-                );
+                    NULL,&stsz);
+                if (idx>=stsz) idx=stsz-1UL;
+                else
+                    while (s>npst[idx].min_nmemb) idx++;
+                while (s<npst[idx].min_nmemb) idx--;
+                nk=lk-firstk;
+                if (
+#if SAVE_PARTIAL
+                    ((NULL==ppeq)&&(NULL==ppgt))
+                    &&
+#endif
+                    (nk>((nmemb-nk)>>2))
+                ) {
+                    quickselect_loop(base,first,p,size,compar,NULL,0UL,0UL,
+                        swapfunc,npst,idx
+#if SAVE_PARTIAL
+                        ,ppeq,ppgt
+#endif
+                    );
+                } else {
+                    quickselect_loop(base,first,p,size,compar,pk,firstk,lk,
+                        swapfunc,npst,idx
+#if SAVE_PARTIAL
+                        ,ppeq,ppgt
+#endif
+                    );
+                }
             }
             /* large region [q,beyond) size t, order statistics [rk,beyondk) */
             first=q, r=t, firstk=rk;
@@ -728,20 +1248,59 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
             /* recurse on small region, if effective size > 1 */
             if ((1UL<t)&&((NULL==pk)||(beyondk>rk))) {
                 unsigned int idx=table_index;
-                while (t<sampling_table[idx].min_nmemb)
-                    idx--;
-                quickselect_loop(base,q,beyond,size,compar,pk,rk,beyondk,
-                    swapfunc,idx
+                npst=sampling_table(first,beyond,pk,rk,beyondk,
 #if SAVE_PARTIAL
-                    ,ppeq,ppgt
+                    ppeq,ppgt,
 #endif
-                );
+                    NULL,&stsz);
+                if (idx>=stsz) idx=stsz-1UL;
+                else
+                    while (t>npst[idx].min_nmemb) idx++;
+                while (t<npst[idx].min_nmemb) idx--;
+                nk=beyondk-rk;
+                if (
+#if SAVE_PARTIAL
+                    ((NULL==ppeq)&&(NULL==ppgt))
+                    &&
+#endif
+                    (nk>((nmemb-nk)>>2))
+                ) {
+                    quickselect_loop(base,q,beyond,size,compar,NULL,0UL,0UL,
+                        swapfunc,npst,idx
+#if SAVE_PARTIAL
+                        ,ppeq,ppgt
+#endif
+                    );
+                } else {
+                    quickselect_loop(base,q,beyond,size,compar,pk,rk,beyondk,
+                        swapfunc,npst,idx
+#if SAVE_PARTIAL
+                        ,ppeq,ppgt
+#endif
+                    );
+                }
             }
             /* large region [first,p) size s, order statistics [firstk,lk) */
             beyond=p, r=s, beyondk=lk;
         }
         /* iterate on large region (size r), if effective size > 1 */
         if ((2UL>r)||((NULL!=pk)&&(firstk>=beyondk))) return;
+        pst=sampling_table(first,beyond,pk,firstk,beyondk,
+#if SAVE_PARTIAL
+            ppeq,ppgt,
+#endif
+            &sort,&stsz);
+        /* Update table index for region size. Updated index is
+           required for sampling if not repivoting, and for next round of
+           repivoting decisions whether or not this region is repivoted.
+        */
+        if (table_index>=stsz) table_index=stsz-1UL;
+        else
+            while (r>pst[table_index].min_nmemb) table_index++;
+        while (r<pst[table_index].min_nmemb) table_index--;
+        if (0U!=sort) {
+            pk=NULL, lk=rk=firstk=beyondk=0UL;
+        }
         /* Should large region be repivoted? */
         /* Determine whether or not to repivot/repartition region of size r
            elements (large region) resulting from a partition of nmemb elements.
@@ -756,25 +1315,20 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
         || (8UL<r)) /* or selection of a sufficiently large region */
         {
             n=nmemb-r;
-            if (r>n) { /* else ratio is zero; avoid division and tests */
+            if (r>=n+n) { /* else ratio is < 2; avoid division and tests */
+                size_t factor1, factor2;
+                repivot_factors(table_index,pk,&factor1,&factor2);
                 q=r/n; /* ratio of large region to others */
                 /* size-dependent count 1 limit test */
-                if (q>=sampling_table[table_index].factor1) {
+                if (q>=factor1) {
                     do_repivot=1;
-                } else if (q>=sampling_table[table_index].factor2) {
+                } else if (q>=factor2) {
                     /* size-dependent count 2 limit test */
                     if (++nl2>=2) do_repivot=1;
                 }
             }
         }
         nmemb=r;
-        /* Update table index for region size (new nmemb). Updated index is
-           required for sampling if not repivoting, and for next round of
-           repivoting decisions whether or not this region is repivoted.
-        */
-        while (nmemb<sampling_table[table_index].min_nmemb)
-            table_index--;
-        A(table_index<(SAMPLING_TABLE_SIZE));
         if (0!=do_repivot) {
 #if SAVE_PARTIAL
             char *ph;
@@ -806,7 +1360,14 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
                    sub-array, preferentially avoiding the first element.
                 */
                 if (nmemb>3UL*n) pb+=size; /* cheap mod 3 test */
-                pb=medians3(pb,size,compar,n*size,size,n,swapfunc);
+                /* medians of sets of 3 moved to middle */
+                for (r=n*size,q=t=0UL; q<n; q++,t+=size) {
+                    pd=pb+t;
+                    pe=pd+r; /* middle element */
+                    pd=fmed3(pd,pe,pe+r,compar);
+                    if (pd!=pe) swapfunc(pd,pe,size);
+                }
+                pb+=r;
             }
             pc=pb;
             if (1UL<n) { /* median of medians */
@@ -816,10 +1377,23 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
                 karray[0]=q+(n>>1); /* upper-median for even size arrays */
                 s=q+n; /* beyond */
                 pf=base+s*size;
-                while (n<sampling_table[idx].min_nmemb)
-                    idx--;
-                quickselect_loop(base,q,s,size,compar,karray,0UL,1UL,swapfunc,
-                    idx
+                npst=sampling_table(
+#if SAVE_PARTIAL
+                    0UL,0UL,
+#else
+                    first,beyond,
+#endif
+                    karray,0UL,1UL,
+#if SAVE_PARTIAL
+                    &pd,&pe,
+#endif
+                    NULL,&stsz);
+                if (idx>=stsz) idx=stsz-1UL;
+                else
+                    while (n>npst[idx].min_nmemb) idx++;
+                while (n<npst[idx].min_nmemb) idx--;
+                quickselect_loop(base,q,s,size,compar,karray,0UL,1UL,
+                    swapfunc,npst,idx
 #if SAVE_PARTIAL
                     ,&pd,&pe
 #endif
@@ -862,7 +1436,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
             pa=pb;
             if ((pb<pc)&&(0<c)) {
                 for (pb+=size; (pb<pc)&&(0<=(c=compar(pivot,pb))); pb+=size) {
-                    if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+                    if (0==c) { if (pa!=pb) swapfunc(pa,pb,size); pa+=size; }
                 }
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
@@ -879,22 +1453,22 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
             while ((pb<=pg)&&((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
-                if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+                if (0==c) { if (pa!=pb) swapfunc(pa,pb,size); pa+=size; }
                 pb+=size;
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=pu);
             while ((pf<=pg)&&(0==(d=compar(pivot,pg)))) { pg-=size; }
             ph=pg+size;
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
-            if ((pf<=pg)&&(0>d)) {
+            if ((pb<=pf)&&(pf<=pg)&&(0>d)) {
                 for (pg-=size; (pf<=pg)&&(0>=(d=compar(pivot,pg))); pg-=size) {
-                    if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+                    if (0==d) { ph-=size; if (pg!=ph) swapfunc(pg,ph,size); }
                 }
             }
             /* check for already-partitioned region here (but no comparisons) */
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
             /* 4. Within partial partition; no recomparisons. */
-            if ((pc<=pg)&&(pg<pf)) { /* partitioned */
+            if ((pb<=pg)&&(pc<=pg)&&(pg<pf)) { /* partitioned */
                 /* First skip over > elements, possibly past pb. */
                 if (pb<pe) { /* If pb didn't, move = block. */
                     if (pd<=pg) { /* move = elements as a block */
@@ -905,7 +1479,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
             while ((pb<=pg)&&((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
-                if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+                if (0==d) { ph-=size; if (pg!=ph) swapfunc(pg,ph,size); }
                 pg-=size;
             }
             A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
@@ -914,7 +1488,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
                 swapfunc(pb,pg,size);
                 pb+=size, pg-=size;
                 while ((pb<=pg)&&((pb<pc)||(pf<=pb))&&(0<=(c=compar(pivot,pb)))) {
-                    if (0==c) { A(pa!=pb); swapfunc(pa,pb,size); pa+=size; }
+                    if (0==c) { if (pa!=pb) swapfunc(pa,pb,size); pa+=size; }
                     pb+=size;
                 }
                 A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
@@ -931,7 +1505,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
                 }
                 A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
                 while ((pb<=pg)&&((pf<=pg)||(pg<pc))&&(0>=(d=compar(pivot,pg)))) {
-                    if (0==d) { ph-=size; A(pg!=ph); swapfunc(pg,ph,size); }
+                    if (0==d) { ph-=size; if (pg!=ph) swapfunc(pg,ph,size); }
                     pg-=size;
                 }
                 A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
@@ -972,133 +1546,112 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
     /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
 #define COMPARE_EXCHANGE(ma,mb) if(0<compar(ma,mb))swapfunc(ma,mb,size)
     pl=base+first*size;
-    pa=pl+size;
     switch (nmemb) {
+        case 0UL : /* FALLTHROUGH*/
+        case 1UL : /* shouldn't happen... */
+        return;
         case 2UL : /* 1 comparison/exchange */
+            pa=pl+size;
             COMPARE_EXCHANGE(pl,pa);
         return;
+        /* insertion sort is better for 3-4 elements */
+#if NETWORK3
         case 3UL : /* 3 comparison/exchanges */
-            pb=pa+size;
-            COMPARE_EXCHANGE(pl,pb);
-            COMPARE_EXCHANGE(pl,pa);
+            pa=pl+size; pb=pa+size;
+            COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pl,pa);
             COMPARE_EXCHANGE(pa,pb);
         return;
+#endif
+#if NETWORK4
         case 4UL : /* 5 comparison/exchanges */
-            pb=pa+size;
-            pc=pb+size;
+            pa=pl+size; pb=pa+size; pc=pb+size;
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pb);
-                COMPARE_EXCHANGE(pa,pc);
+                COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pa,pc);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pa);
-                COMPARE_EXCHANGE(pb,pc);
+                COMPARE_EXCHANGE(pl,pa); COMPARE_EXCHANGE(pb,pc);
             /* parallel group */
                 COMPARE_EXCHANGE(pa,pb);
         return;
-        case 5UL : /* 9 comparison/exchanges */
-            pb=pa+size;
-            pc=pb+size;
-            pd=pc+size;
+#endif
+#if NETWORK5
+        case 5UL : /* 9 comparison/exchanges in 5 parallel operations */
+            pa=pl+size; pb=pa+size; pc=pb+size; pd=pc+size;
             /* parallel group */
                 COMPARE_EXCHANGE(pl,pd);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pb);
-                COMPARE_EXCHANGE(pa,pc);
+                COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pa,pc);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pa);
-                COMPARE_EXCHANGE(pb,pd);
+                COMPARE_EXCHANGE(pl,pa); COMPARE_EXCHANGE(pb,pd);
             /* parallel group */
-                COMPARE_EXCHANGE(pb,pc);
-                COMPARE_EXCHANGE(pa,pd);
+                COMPARE_EXCHANGE(pb,pc); COMPARE_EXCHANGE(pa,pd);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pb);
-                COMPARE_EXCHANGE(pc,pd);
+                COMPARE_EXCHANGE(pa,pb); COMPARE_EXCHANGE(pc,pd);
         return;
-        case 6UL : /* 12 comparison/exchanges */
-            pb=pa+size;
-            pc=pb+size;
-            pd=pc+size;
-            pe=pd+size;
+#endif
+#if NETWORK6
+        case 6UL : /* 12 comparison/exchanges in 6 parallel operations */
+            pa=pl+size; pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size;
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pd);
-                COMPARE_EXCHANGE(pa,pe);
+                COMPARE_EXCHANGE(pl,pd); COMPARE_EXCHANGE(pa,pe);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pb);
-                COMPARE_EXCHANGE(pa,pc);
+                COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pa,pc);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pa);
-                COMPARE_EXCHANGE(pb,pd);
+                COMPARE_EXCHANGE(pl,pa); COMPARE_EXCHANGE(pb,pd);
                 COMPARE_EXCHANGE(pc,pe);
             /* parallel group */
-                COMPARE_EXCHANGE(pb,pc);
-                COMPARE_EXCHANGE(pd,pe);
+                COMPARE_EXCHANGE(pb,pc); COMPARE_EXCHANGE(pd,pe);
             /* parallel group */
                 COMPARE_EXCHANGE(pa,pd);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pb);
-                COMPARE_EXCHANGE(pc,pd);
+                COMPARE_EXCHANGE(pa,pb); COMPARE_EXCHANGE(pc,pd);
         return;
-        case 7UL : /* 16 comparison/exchanges */
-            pb=pa+size;
-            pc=pb+size;
-            pd=pc+size;
-            pe=pd+size;
+#endif
+#if NETWORK7
+        case 7UL : /* 16 comparison/exchanges in 6 parallel operations */
+            pa=pl+size; pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size;
             pf=pe+size;
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pd);
-                COMPARE_EXCHANGE(pa,pe);
+                COMPARE_EXCHANGE(pl,pd); COMPARE_EXCHANGE(pa,pe);
                 COMPARE_EXCHANGE(pb,pf);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pb);
-                COMPARE_EXCHANGE(pa,pc);
+                COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pa,pc);
                 COMPARE_EXCHANGE(pd,pf);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pa);
-                COMPARE_EXCHANGE(pb,pd);
+                COMPARE_EXCHANGE(pl,pa); COMPARE_EXCHANGE(pb,pd);
                 COMPARE_EXCHANGE(pc,pe);
             /* parallel group */
-                COMPARE_EXCHANGE(pb,pc);
-                COMPARE_EXCHANGE(pd,pe);
+                COMPARE_EXCHANGE(pb,pc); COMPARE_EXCHANGE(pd,pe);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pd);
-                COMPARE_EXCHANGE(pc,pf);
+                COMPARE_EXCHANGE(pa,pd); COMPARE_EXCHANGE(pc,pf);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pb);
-                COMPARE_EXCHANGE(pc,pd);
+                COMPARE_EXCHANGE(pa,pb); COMPARE_EXCHANGE(pc,pd);
                 COMPARE_EXCHANGE(pe,pf);
         return;
-        case 8UL : /* 19 comparison/exchanges */
-            pb=pa+size;
-            pc=pb+size;
-            pd=pc+size;
-            pe=pd+size;
-            pf=pe+size;
-            pg=pf+size;
+#endif
+        case 8UL : /* 19 comparison/exchanges in 6 parallel operations */
+            pa=pl+size; pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size;
+            pf=pe+size; pg=pf+size;
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pd);
-                COMPARE_EXCHANGE(pa,pe);
-                COMPARE_EXCHANGE(pb,pf);
-                COMPARE_EXCHANGE(pc,pg);
+                COMPARE_EXCHANGE(pl,pd); COMPARE_EXCHANGE(pa,pe);
+                COMPARE_EXCHANGE(pb,pf); COMPARE_EXCHANGE(pc,pg);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pb);
-                COMPARE_EXCHANGE(pa,pc);
-                COMPARE_EXCHANGE(pd,pf);
-                COMPARE_EXCHANGE(pe,pg);
+                COMPARE_EXCHANGE(pl,pb); COMPARE_EXCHANGE(pa,pc);
+                COMPARE_EXCHANGE(pd,pf); COMPARE_EXCHANGE(pe,pg);
             /* parallel group */
-                COMPARE_EXCHANGE(pl,pa);
-                COMPARE_EXCHANGE(pb,pd);
-                COMPARE_EXCHANGE(pc,pe);
-                COMPARE_EXCHANGE(pf,pg);
+                COMPARE_EXCHANGE(pl,pa); COMPARE_EXCHANGE(pb,pd);
+                COMPARE_EXCHANGE(pc,pe); COMPARE_EXCHANGE(pf,pg);
             /* parallel group */
-                COMPARE_EXCHANGE(pb,pc);
-                COMPARE_EXCHANGE(pd,pe);
+                COMPARE_EXCHANGE(pb,pc); COMPARE_EXCHANGE(pd,pe);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pd);
-                COMPARE_EXCHANGE(pc,pf);
+                COMPARE_EXCHANGE(pa,pd); COMPARE_EXCHANGE(pc,pf);
             /* parallel group */
-                COMPARE_EXCHANGE(pa,pb);
-                COMPARE_EXCHANGE(pc,pd);
+                COMPARE_EXCHANGE(pa,pb); COMPARE_EXCHANGE(pc,pd);
                 COMPARE_EXCHANGE(pe,pf);
+        return;
+        default : /* insertion sort */
+            for (pa=pl,pu=base+(beyond-1UL)*size; pa<pu; pa+=size)
+                for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
+                    swapfunc(pb,pc,size);
         return;
     }
 }
@@ -1119,40 +1672,32 @@ int size_t_cmp(const void *p1, const void *p2)
     return 0;
 }
 
-/* determine and return a pointer to an appropriate swap function */
+/* reverse the order of elements in p between l and r inclusive */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void (*whichswap(char *base, size_t size))(char *, char *, size_t)
+void reverse_size_t(size_t *p, size_t l, size_t r)
 {
-    int i, t;  /* general integer variables */
-    size_t s;  /* general size_t variable */
+    size_t t;
 
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. typsz is an array of type sizes
-       (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Sizes of long and pointer types vary by
-       architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-        ||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
+    for (;l<r; l++,r--) {
+        t=p[l]; p[l]=p[r]; p[r]=t;
     }
-    switch (t) {
-        case 0 :  return doubleswap;
-        case 3 :  return intswap;
-        case 4 :  return shortswap;
-        default : return charswap;
-    }
+}
+
+/* rotate the elements in p (n elements) to the left by i positions */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void rotate_size_t(size_t *p, size_t n, size_t i)
+{
+#if 0 /* no need to rotate duplicates */
+    reverse_size_t(p, 0UL, i-1UL);
+#endif
+    reverse_size_t(p, i, n-1UL);
+    reverse_size_t(p, 0UL, n-1UL);
 }
 
 /* public quickselect definition */
@@ -1160,7 +1705,10 @@ void quickselect(void *base, size_t nmemb, const size_t size,
     int (*compar)(const void *,const void *), size_t *pk, size_t nk)
 {
     unsigned int table_index=2U; /* optimized for small nmemb */
-    size_t s;  /* general size_t variable */
+    size_t onk=nk; /* original nk value */
+    size_t s=0UL;  /* rotation amount */
+    size_t stsz;   /* sampling table size */
+    struct sampling_table_struct *pst;
 
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
@@ -1178,34 +1726,53 @@ void quickselect(void *base, size_t nmemb, const size_t size,
     if ((char)0==quickselect_initialized) initialize_quickselect();
 
     /* Simplify tests for selection vs. sorting by ensuring a NULL pointer when
-       sorting. Ensure consistency between pk and nk. Ensure sorted pk array.
+       sorting. Ensure consistency between pk and nk. Ensure sorted pk array
+       with no duplicated order statistics.
     */
     if (0UL==nk) pk=NULL;
-    else if (NULL==pk) nk=0UL;
+    else if (NULL==pk) onk=nk=0UL;
     else if (1UL<nk) { /* binary search requires nondecreasing pk */
-        for (s=1UL; s<nk; s++) /* verify (linear scan with direct comparison) */
-            if (pk[s-1UL]>pk[s]) break;
-        if (s<nk) /* fix iff broken */
+        size_t p, q;
+        for (p=0UL,q=1UL; q<nk; p++,q++) /* verify (linear scan with direct comparison) */
+            if (pk[p]>pk[q]) break; /* not nondecreasing */
+        if (q<nk) /* fix (sort) iff broken (not nondecreasing) */
             QSORT_FUNCTION_NAME ((void *)pk,nk,sizeof(size_t),size_t_cmp);
+        /* verify, fix uniqueness */
+        for (p=0UL,q=1UL; q<=nk; q++) {
+            if ((q==nk)||(pk[p]!=pk[q])) {
+                p++;
+                if (p!=q) { /* indices [p,q) are duplicates */
+                    s=q-p; rotate_size_t(&(pk[p]),nk-p,s);
+                    nk-=s; q=p;
+                }
+            }
+        }
     }
 
     /* Initialize the sampling table index for the array size. Sub-array
        sizes will be smalller, and this step ensures that the main loop won't
        have to traverse much of the table during recursion and iteration.
     */
-    while ((table_index<(SAMPLING_TABLE_SIZE))
-    &&(nmemb>sampling_table[table_index].min_nmemb))
-        table_index++;
-    while (nmemb<sampling_table[table_index].min_nmemb)
-        table_index--;
-    A(table_index<(SAMPLING_TABLE_SIZE));
+    pst=sampling_table(0UL,nmemb,pk,0UL,nk,
+#if SAVE_PARTIAL
+        NULL,NULL,
+#endif
+        NULL,&stsz);
+    if (table_index>=stsz) table_index=stsz-1UL;
+    else
+        while (nmemb>pst[table_index].min_nmemb) table_index++;
+    while (nmemb<pst[table_index].min_nmemb) table_index--;
+    A(table_index<stsz);
 
     quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,
-        whichswap(base,size),table_index
+        whichswap(base,size),pst,table_index
 #if SAVE_PARTIAL
         ,NULL,NULL
 #endif
     );
+    /* Restore pk to full sorted (non-unique) order for caller convenience. */
+    if (0UL!=s) /* there were duplicates */
+        QSORT_FUNCTION_NAME ((void *)pk,onk,sizeof(size_t),size_t_cmp);
 }
 
 /* Using quickselect to replace qsort: */
@@ -1213,6 +1780,8 @@ void QSORT_FUNCTION_NAME (void *base, size_t nmemb, size_t size,
     int (*compar)(const void *,const void *))
 {
     unsigned int table_index=2U; /* optimized for small nmemb */
+    size_t stsz;   /* sampling table size */
+    struct sampling_table_struct *pst;
 
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
@@ -1233,15 +1802,19 @@ void QSORT_FUNCTION_NAME (void *base, size_t nmemb, size_t size,
        sizes will be smalller, and this step ensures that the main loop won't
        have to traverse much of the table during recursion and iteration.
     */
-    while ((table_index<(SAMPLING_TABLE_SIZE))
-    &&(nmemb>sampling_table[table_index].min_nmemb))
-        table_index++;
-    while (nmemb<sampling_table[table_index].min_nmemb)
-        table_index--;
-    A(table_index<(SAMPLING_TABLE_SIZE));
+    pst=sampling_table(0UL,nmemb,NULL,0UL,0UL,
+#if SAVE_PARTIAL
+        NULL,NULL,
+#endif
+        NULL,&stsz);
+    if (table_index>=stsz) table_index=stsz-1UL;
+    else
+        while (nmemb>pst[table_index].min_nmemb) table_index++;
+    while (nmemb<pst[table_index].min_nmemb) table_index--;
+    A(table_index<stsz);
 
     quickselect_loop(base,0UL,nmemb,size,compar,NULL,0UL,0UL,
-        whichswap(base,size),table_index
+        whichswap(base,size),pst,table_index
 #if SAVE_PARTIAL
         ,NULL,NULL
 #endif

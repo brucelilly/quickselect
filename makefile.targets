@@ -59,14 +59,15 @@ MAKEFILES_READ += makefile.targets
 # some dependencies (e.g. makefile.$(OS)) cannot be listed here as environment has not yet been set
 #  those are listed in makefile.files
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-.PRECIOUS : make_grap median_test lemd thermostatd
-heap_test lemd make_grap median_test numtest thermostatd udp windows linux junk5.ps junk5.pdf junk5.svg\
+.PRECIOUS : make_grap median_test lemd bstest graphingtest swaptest thermostatd
+.PRECIOUS : simple_config
+median_test make_grap simple_config \
  : depend $(LAST_STAGE) $(LAST_INCLUDE) $(MAKEFILES_DIR)/makefile.build # also $(DEPEND) 
 
 # dependencies
 # executable programs depend on depend.awk
 #sunrise : $(AWKSCRIPTSDIR)/depend.awk
-heap_test lemd make_grap median_test numtest thermostatd udp \
+median_test make_grap simple_config \
  : $(AWKSCRIPTSDIR)/depend.awk
 
 # dependencies
@@ -81,47 +82,17 @@ heap_test lemd make_grap median_test numtest thermostatd udp \
 #   below.  Therefore executables depend on ALWAYS.
 #sunrise : ALWAYS
 #make_grap median_test 
+median_test make_grap simple_config \
+ : ALWAYS
 
-# update FAKE_TARGETS list before including makefile.include1
-FAKE_TARGETS += windows linux
-
-# targets with recipes given here depend on this file
-# but exclude raw data files, as they require rebuilding median_test with specific compile-time settings
-bmqsort.grap data4 data4.grap junk5.ps junk5.pdf junk5.svg paper.troff paper.ps paper.pdf \
- : depend $(MAKEFILES_DIR)/makefile.targets
+gprof.out : median_test
+	gprof -A -Q -L -C -p -q -y -r -x -l ./median_test gmon.out > $@
 
 # recipe
 # add environment variables via $(SCRIPTSDIR)/ident.sh to identify host, OS, etc.
 # override environment $SHELL with something sane (defined above)
-make_grap median_test \
+median_test make_grap simple_config \
  :
 	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
 
-targetsclean : ALWAYS
-	rm -f adversary.*ps adversary.pdf bmqsort.*ps bmqsort.pdf \
-		data2.*ps data2.pdf data4.*ps data4.pdf \
-		data5.*ps data5.pdf data6.*ps data6.pdf \
-		data7.*ps data7.pdf data8.*ps data8.pdf \
-		data9.*ps data9.pdf data10.*ps data10.pdf \
-		data11.*ps data11.pdf m3.*ps m3.pdf paper.*ps paper.pdf \
-		random.*ps random.pdf shuffle.*ps shuffle.pdf
-
-targetscleaner : targetsclean
-	rm -f adversary.grap bmqsort.grap data2.grap data4.grap \
-		data5.grap data5t.grap data6.grap data6t.grap \
-		data7.grap data7t.grap data8.grap data8t.grap \
-		data9.grap data9t.grap data10.grap data11.grap m3.grap \
-		random.grap shuffle.grap
-
-targetscleanest : targetscleaner
-	rm -f adversary_comparison data2 data4 data4? data5 data5? \
-		data6 data6?  data7 data7? data8 data8? data9 data9? \
-		m3_comparison random_comparison raw_data shuffle_comparison
-
-FAKE_TARGETS += targetsclean targetscleaner targetscleanest
-
-clean : targetsclean
-
-cleaner : targetscleaner
-
-cleanest : targetscleanest
+$(MAKEFILES_DIR)/lib/libmedian/man/quickselect.pdf $(MAKEFILES_DIR)/lib/libmedian/man/quickselect.txt : $(MAKEFILES_DIR)/lib/libmedian/man/quickselect.3

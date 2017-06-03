@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2016 %Q%. \ makefile.include5 $
+#$Id: ~\|^` @(#)%M% copyright 2016-2017 %Q%. \ makefile.include5 $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -36,24 +36,21 @@
 MAKEFILES_READ += makefile.include5
 
 # gmake fails if some included file doesn't exist (bootstrapping fails)
-#   (reported gmake bug #47399)
+#	  (reported gmake bug #47399)
 #	work-around is multiple runs to build files to be included
 #		this is why there are makefile.stage?, makefile.include? files
 
-# NetBSD /usr/bin/make gets lost easily; it needs the full path to include files
-include $(PRE_DEPEND)
-# 	must be included after makefile.depend, makefile.directories
-#	fake target EMIT_LICENSES may be used as a dependency after both
-#	  makefile.licenses and $(PRE_DEPEND) are included
-#	if makefile.licenses uses macros ALL_SOURCES or ALL_HEADERS
-#	  (defined in $(PRE_DEPEND)), then $(PRE_DEPEND) should be
-#	  included before makefile.licenses
+# NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
+include $(MAKEFILES_DIR)/makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+#	built using recipe in makefile. XXX $(OS)-$(FQDN)
+#	contains host/OS/compiler overrides for things like OPTIMIZE
+#	must be included before makefile.depend, which uses OPTIMIZE via CFLAGS
 
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-include $(MAKEFILES_DIR)/makefile.licenses
-# 	contains target(s) for licenses/foo/emitted
-#	fake target EMIT_LICENSES may be used as a dependency after both
-#	   makefile.licenses and $(PRE_DEPEND) are included
-#	if makefile.licenses uses macros ALL_SOURCES or ALL_HEADERS
-#	  (defined in $(PRE_DEPEND)), then makefile.licenses should be
-#	  included after $(PRE_DEPEND)
+include $(MAKEFILES_DIR)/makefile.depend
+#	has recipes to build $(PRE_DEPEND) and $(DEPEND)
+#	depends on makefile.$(CCBASE)
+#	must be included after makefile.ccbase-$(OS)-$(FQDN), which defines CCBASE
+#	must be included after makefile.$(CCBASE)
+#	builds dependencies based on project files, therefore must be included
+#	  after makefile.files and makefile.imports

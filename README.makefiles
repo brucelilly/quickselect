@@ -7,7 +7,7 @@ Description: makefile structure for fast, portable project builds
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2017 %Q%\ README.makefiles $
+#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%\ README.makefiles $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -113,7 +113,7 @@ makefile.gcc			Compiler-specific macros for gcc.
 makefile.imports		Optionally defines dependencies and recipes
 					for importing files from other projects.
 makefile.include1 through	Ideally, all of the include directives would be
-makefile.include6			in one place to simplify maintenance.
+makefile.include7			in one place to simplify maintenance.
 					However, at least one implementation of
 					make fails to build files to be included
 					even when all dependency and recipe
@@ -137,12 +137,22 @@ makefile.licenses		Contains the license file dependency information
 					emits license information when affected
 					files such as makefile.$(FQDN) are
 					changed, built, or rebuilt.
+makefile.ident-licenses		Similar to makefile.licenses, these boilerplate
+makefile.makefile-licenses		files contain license dependencies
+makefile.scripts-licenses		for boilerplate files themselves.
 makefile.linux			OS-specific macros for generic Linux.
 makefile.linux.gentoo		Distribution-specific macros for Gentoo Linux.
 makefile.linux.opensuse		Distribution-specific macros for OpenSUSE Linux.
 makefile.make			Defines SHELL, MAKE, and initializes several
 					other macros.
 makefile.netbsd			OS-specific macros for NetBSD.
+makefile.overrides		Template for host/OS/compiler-specific version
+					which permits overriding some predefined
+					macros for a specific host/OS/compiler
+					combination.
+makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
+				Overrides for macros for a specific
+					host/OS/compiler combination.
 makefile.pcc			Compiler-specific macros for pcc.
 makefile.platform		Defines macros useful to partition built files
 					into subdirectories based on
@@ -153,7 +163,7 @@ makefile.project		Defines macros specific to the project
 					required, etc.
 makefile.solaris		OS-specific macros for Solaris-like OSes.
 makefile.stage2 through		Provides for generation of files to be
-makefile.stage6				included (e.g. makefile.$(OS)-$(FQDN))
+makefile.stage7				included (e.g. makefile.$(OS)-$(FQDN))
 					which might not exist when make is
 					first run, or which might need to be
 					rebuild after some files are edited,
@@ -251,7 +261,9 @@ makefile.targets is modified by a project to list the targets defined in
 	makefile.files, so they are accessible to makefile.
 makefile.licenses determines which (if any) license files need to be displayed.
 	It should be customized for a project to reflect which licenses apply to
-	the various project files.
+	the various project files. If all sources and header files are covered
+	by a sincle license, the predefined macros $(ALL_SOURCES) and
+	$(ALL_HEADERS) may be used.
 makefile.imports uses macros defined in makefile.directories and makefile.files
 	to import needed files from other projects.
 makefile.depend has dependencies and recipes to build a few files which are
@@ -263,12 +275,13 @@ makefile.depend has dependencies and recipes to build a few files which are
 Most of the files are boilerplate that should not normally require editing.
 Boilerplate files include makefile, makefile.build, makefile.depend,
 makefile.fqdn, makefile.make, makefile.stage*, makefile.include*,
-makefile.suffixes, makefile.suffix_rules, makefile.tools, the compiler-specific
-makefiles, and the OS-specific makefiles. The makefile.$(OS)-$(FQDN) file is
-generated per-host from makefile.tools and information in makefile.project, and
-is typically edited to select the compiler to use.  By putting boilerplate in
-separate files, clutter in the files requiring editing is minimized.  About 60%
-of the total numer of lines in the makefiles is in the boilerplate makefiles.
+makefile.overrides makefile.suffixes, makefile.suffix_rules, makefile.tools,
+the compiler-specific makefiles, and the OS-specific makefiles. The
+makefile.$(OS)-$(FQDN) file is generated per-host from makefile.tools and
+information in makefile.project, and is typically edited to select the
+compiler to use.  By putting boilerplate in separate files, clutter in
+the files requiring editing is minimized.  About 60% of the total numer
+of lines in the makefiles is in the boilerplate makefiles.
 
 That leaves makefile.project, makefile.directories, makefile.files,
 makefile.targets, and makefile.licenses as the files that typically need to be

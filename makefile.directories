@@ -57,11 +57,6 @@ MACROS += MAKEFILES_DIR
 
 # $(PROJECT_DIR) and $(PATH_PREFIX) may be used in makefile.$(OS) for
 #   configuration files, etc.
-PROJECT_DIR = /data/lems
-LEMD_PROJECT_DIR = /data/lems
-THERMOSTATD_PROJECT_DIR = /data/weather
-LEMD_PUBLIC_CONFIGDIR = $(LEMD_PROJECT_DIR)
-THERMOSTATD_PUBLIC_CONFIGDIR = $(THERMOSTATD_PROJECT_DIR)
 PATH_PREFIX = /usr/local
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += PROJECT_DIR LEMD_PROJECT_DIR THERMOSTATD_PROJECT_DIR LEMD_PUBLIC_CONFIGDIR THERMOSTATD_PUBLIC_CONFIGDIR PATH_PREFIX
@@ -432,6 +427,7 @@ RE_CONFIG_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += RE_CONFIG_DESTSRCDIR RE_CONFIG_DESTHDRDIR
 
+SIMPLE_CONFIG_MAIN_DESTSRCDIR = $(SRCDIR)
 SIMPLE_CONFIG_DESTSRCDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17SRCDIR)
 SIMPLE_CONFIG_DESTHDRDIR = $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB17DIR)/$(LIB17HDRDIR)
 # Do not change the following line, which is used for debugging via `make macros`.
