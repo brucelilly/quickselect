@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.81 dated 2017-06-03T15:39:47Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.82 dated 2017-06-10T04:53:53Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -178,8 +178,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.81"
-#define MODULE_DATE "2017-06-03T15:39:47Z"
+#define MODULE_VERSION "1.82"
+#define MODULE_DATE "2017-06-10T04:53:53Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -652,66 +652,10 @@ void initialize_quickselect(V)
         &source_file,s);
 }
 
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-unsigned int do_sort(unsigned int distribution, size_t first, size_t beyond,
-    const size_t *pk, size_t firstk, size_t beyondk
-#if SAVE_PARTIAL
-    , char **ppeq, char **ppgt
-#endif
-    )
-{
-    /* only select if there are requested order statistics */
-    if ((NULL!=pk)&&(beyondk>firstk)) {
-        /* no sort if finding median of medians with SAVE_PARTIAL */
-#if SAVE_PARTIAL
-        if ((NULL==ppeq)&&(NULL==ppgt)) {
-#endif
-            size_t nk=beyondk-firstk, nmemb=beyond-first;
-            if (5UL>=nmemb) { /* sort 5 or fewer elements */
-                return 1U;
-            } else if (261UL>=nmemb) { /* table for 6-261 elements */
-                size_t idx=nmemb-6UL, idx2;
-                switch (distribution) {
-                    case 0U : /*FALLTHROUGH*/
-                    case 7U : /*FALLTHROUGH*/
-                        idx2=0UL; /* distributed ranks */
-                    break;
-                    case 2U : /* middle ranks */
-                        idx2=1UL;
-                    break;
-                    case 5U :
-                        idx2=2UL; /* separated ranks */
-                    break;
-                    default :
-                        idx2=3UL; /* ranks at one end */
-                    break;
-                }
-                if (selection_breakpoint[idx][idx2]<nk) {
-                    return 1U;
-                }
-            } else {
-                size_t t=nmemb/10UL;
-                switch (distribution) {
-                    case 0U : /*FALLTHROUGH*/
-                    case 7U : /*FALLTHROUGH*/
-                        if (nk>t) return 1U; /* distributed ranks */
-                    break;
-                    default :
-                        if (nk>nmemb-t) return 1U; /* middle, separated, ends */
-                    break;
-                }
-            }
-#if SAVE_PARTIAL
-        }
-#endif
-        return 0U;
-    }
-    return 1U;
-}
-
+/* klimits: find range of order statistic ranks corresponding to sub-array
+            limits.
+*/
+/* called from quickselect_loop and sampling_table */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -739,48 +683,8 @@ void klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
     *pfk=lk; *pbk=rk;
 }
 
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-unsigned int kdistribution(size_t first, size_t beyond, const size_t *pk,
-    size_t firstk, size_t beyondk)
-{
-    if (NULL!=pk) { /* selection, not sorting */
-        size_t nmemb=beyond-first;
-
-        if (5UL<nmemb) { /* sort 5 or fewer elements */
-            size_t f=nmemb>>2 /* /4UL */ ;
-            size_t t=nmemb/9UL;
-            size_t m[2];
-            size_t bk, fk, x=10UL, y=10UL;
-            unsigned int r=0UL;
-
-            m[0]=first+((nmemb-1UL)>>1); m[1]=first+(nmemb>>1);
-            if (f<x) x=f;
-            if (t<y) y=t;
-            if (pk[beyondk-1UL]<m[0]) r|=4U;
-            else {
-                klimits(first,first+x,pk,firstk,beyondk,&fk,&bk);
-                if ((bk>fk)||(pk[beyondk-1UL]<m[0])) r|=4U;
-            }
-            if ((pk[firstk]>=m[0]-y)&&(pk[beyondk-1UL]<=m[1]+y)) r|=2U;
-            else {
-                klimits(m[0]-y,m[1]+1UL+y,pk,firstk,beyondk,&fk,&bk);
-                if (bk>fk) r|=2U;
-            }
-            if (pk[firstk]>m[1]) r|=1U;
-            else {
-                klimits(beyond-x,beyond,pk,firstk,beyondk,&fk,&bk);
-                if ((bk>fk)||(pk[firstk]>m[1])) r|=1U;
-            }
-            return r;
-        }
-        return 7U;
-    }
-    return 7U;
-}
-
+/* sampling_table: select a suitable sampling table */
+/* called from quickselect_loop and from each public wrapper function */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -793,19 +697,95 @@ struct sampling_table_struct *sampling_table(size_t first, size_t beyond,
     unsigned int *psort, size_t *psz)
 {
     unsigned int distribution, sort;
+    size_t nmemb;
 
     if (beyond>first) {
-        distribution=kdistribution(first,beyond,pk,firstk,beyondk);
-        sort=do_sort(distribution,first,beyond,pk,firstk,beyondk
+        /* Characterize distribution of desired order statistic ranks */
+        if (NULL!=pk) { /* selection, not sorting */
+            nmemb=beyond-first;
+            if (5UL<nmemb) { /* sort 5 or fewer elements */
+                size_t f=nmemb>>2 /* /4UL */ ;
+                size_t t=nmemb/9UL;
+                size_t m[2];
+                size_t bk, fk, x=10UL, y=10UL;
+                unsigned int r=0UL;
+                m[0]=first+((nmemb-1UL)>>1); m[1]=first+(nmemb>>1);
+                if (f<x) x=f;
+                if (t<y) y=t;
+                if (pk[beyondk-1UL]<m[0]) r|=4U;
+                else {
+                    klimits(first,first+x,pk,firstk,beyondk,&fk,&bk);
+                    if ((bk>fk)||(pk[beyondk-1UL]<m[0])) r|=4U;
+                }
+                if ((pk[firstk]>=m[0]-y)&&(pk[beyondk-1UL]<=m[1]+y)) r|=2U;
+                else {
+                    klimits(m[0]-y,m[1]+1UL+y,pk,firstk,beyondk,&fk,&bk);
+                    if (bk>fk) r|=2U;
+                }
+                if (pk[firstk]>m[1]) r|=1U;
+                else {
+                    klimits(beyond-x,beyond,pk,firstk,beyondk,&fk,&bk);
+                    if ((bk>fk)||(pk[firstk]>m[1])) r|=1U;
+                }
+                distribution=r;
+            } else distribution=7U;
+        } else distribution=7U;
+	/* To sort or not to sort; that is the question. */
+        /* only select if there are requested order statistics */
+        sort=(((NULL==pk)||(beyondk<=firstk))?1U:0U);
+        if (0U==sort) {
+            /* no sort if finding median of medians with SAVE_PARTIAL */
 #if SAVE_PARTIAL
-            ,ppeq,ppgt
+            if ((NULL==ppeq)&&(NULL==ppgt)) {
 #endif
-        );
+                size_t nk=beyondk-firstk;
+                if (5UL>=nmemb) { /* sort 5 or fewer elements */
+                    sort=1U;
+                } else if (261UL>=nmemb) { /* table for 6-261 elements */
+                    size_t idx=nmemb-6UL, idx2;
+                    switch (distribution) {
+                        case 0U : /*FALLTHROUGH*/
+                        case 7U : /*FALLTHROUGH*/
+                            idx2=0UL; /* distributed ranks */
+                        break;
+                        case 2U : /* middle ranks */
+                            idx2=1UL;
+                        break;
+                        case 5U :
+                            idx2=2UL; /* separated ranks */
+                        break;
+                        default :
+                            idx2=3UL; /* ranks at one end */
+                        break;
+                    }
+                    if (selection_breakpoint[idx][idx2]<nk) {
+                        sort=1U;
+                    }
+                } else {
+                    size_t t=nmemb/10UL;
+                    switch (distribution) {
+                        case 0U : /*FALLTHROUGH*/
+                        case 7U : /*FALLTHROUGH*/
+                            if (nk>t) sort=1U; /* distributed ranks */
+                        break;
+                        default :
+                            if (nk>nmemb-t) sort=1U; /* middle, separated, ends */
+                        break;
+                    }
+                }
+#if SAVE_PARTIAL
+            }
+#endif
+        }
+
         if (NULL!=psort) *psort=sort;
     } else {
         distribution=2U;
         if (NULL!=psort) sort=*psort; else sort=0U;
     }
+    /* Select sampling table based on whether sorting or selecting, and if the
+       latter, on the distribution of the desired order statistic ranks.
+    */
     if (0U==sort) {
         switch (distribution) {
             case 4U : /*FALLTHROUGH*/
@@ -838,62 +818,6 @@ struct sampling_table_struct *sampling_table(size_t first, size_t beyond,
         *psz=sizeof(sorting_sampling_table)
             /sizeof(sorting_sampling_table[0]);
     return sorting_sampling_table;
-}
-
-/* get repivoting parameters */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void repivot_factors(unsigned int sampling_table_index, size_t *pk, size_t *pf1, size_t *pf2)
-{
-    if (0UL==sampling_table_index) {
-        *pf1 = *pf2 = 2UL;
-        return;
-    }
-    sampling_table_index--; /* repivot table has no entry for single sample */
-    if (sampling_table_index>=repivot_table_size)
-        sampling_table_index = repivot_table_size - 1UL;
-    if (NULL!=pk) { /* selection */
-        *pf1 = selection_repivot_table[sampling_table_index].factor1;
-        *pf2 = selection_repivot_table[sampling_table_index].factor2;
-    } else { /* sorting */
-        *pf1 = sorting_repivot_table[sampling_table_index].factor1;
-        *pf2 = sorting_repivot_table[sampling_table_index].factor2;
-    }
-}
-
-/* Determine and return an integer which is an index into an array of types
-   suitable for swapping functions.
-*/
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-int type_index(char *base, size_t size)
-{
-    int i, t;  /* general integer variables */
-    size_t s;  /* general size_t variable */
-
-    /* Determine size of data chunks to copy for element swapping.  Size is
-       determined by element size and alignment. typsz is an
-       array of type sizes (double, pointer, long, int, short, char).
-       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
-       32-bit and 64-bit architectures.  Types long and pointer sizes vary
-       by architecture.
-    */
-    s=typsz[t=0]; /* double */
-    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
-        s=typsz[t=3]; /* int */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-        ||(!(is_aligned(base,i)))) {
-            s=typsz[t=4]; /* short */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(base,i))))
-                s=typsz[t=5]; /* char */
-        }
-    }
-    return t;
 }
 
 /* Array element swaps and rotations: */
@@ -947,13 +871,35 @@ void doubleswap(char *pa, char *pb, size_t count)
 }
 
 /* determine and return a pointer to an appropriate swap function */
+/* called one time from each public wrapper function */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 void (*whichswap(char *base, size_t size))(char *, char *, size_t)
 {
-    switch (type_index(base,size)) {
+    int i, t;  /* general integer variables */
+    size_t s;  /* general size_t variable */
+
+    /* Determine size of data chunks to copy for element swapping.  Size is
+       determined by element size and alignment. typsz is an
+       array of type sizes (double, pointer, long, int, short, char).
+       Types char, short, int, double have sizes 1, 2, 4, 8 on most (all?)
+       32-bit and 64-bit architectures.  Types long and pointer sizes vary
+       by architecture.
+    */
+    s=typsz[t=0]; /* double */
+    if ((size<s)||(!(is_aligned(size,i=log2s[s])))||(!(is_aligned(base,i)))) {
+        s=typsz[t=3]; /* int */
+        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+        ||(!(is_aligned(base,i)))) {
+            s=typsz[t=4]; /* short */
+            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
+            ||(!(is_aligned(base,i))))
+                s=typsz[t=5]; /* char */
+        }
+    }
+    switch (t) {
         case 0 :  return doubleswap;
         case 3 :  return intswap;
         case 4 :  return shortswap;
@@ -978,6 +924,7 @@ void (*whichswap(char *base, size_t size))(char *, char *, size_t)
    region, e.g. when it is desirable to consolidate Z and B and/or A and C in
    the above diagram.
 */
+/* called many times from quickselect_loop */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1004,6 +951,7 @@ char *blockmove(char *pa, char *pb, char *pc,
    median may be determined by the first two comparisons, e.g. a < b and b < c.
    In the worst case, 3 comparisons are required.
 */
+/* called from remedian and quickselect_loop */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1027,6 +975,7 @@ char *fmed3(char *pa, char *pb, char *pc, int(*compar)(const void *,const void *
 }
 
 /* Remedian of samples, recursive implementation. */
+/* top-level call from quickselect_loop */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1066,6 +1015,7 @@ void quickselect_loop(char *base, size_t first, size_t beyond,
     size_t lk=beyondk, nmemb=beyond-first, rk=firstk;
     char *pa, *pb, *pc, *pd, *pe, *pf, *pg, *pivot, *pl, *pu;
 
+    A(2UL<=nmemb);
     while (((NULL!=pk)
 #if ! SAVE_PARTIAL
           &&(nmemb>5UL) /* dedicated sort for nmemb <= 5 for selection */
@@ -1316,8 +1266,22 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
         {
             n=nmemb-r;
             if (r>=n+n) { /* else ratio is < 2; avoid division and tests */
-                size_t factor1, factor2;
-                repivot_factors(table_index,pk,&factor1,&factor2);
+                /* determine applicable repivot factors */
+                size_t factor1=2UL, factor2=2UL;
+                unsigned int idx=table_index;
+                if (0UL!=idx) {
+                    /* ensure sane table index */
+                    idx--; /* repivot table has no entry for single sample */
+                    if (idx>=repivot_table_size)
+                        idx = repivot_table_size - 1UL;
+                    if (NULL!=pk) { /* selection */
+                        factor1 = selection_repivot_table[idx].factor1;
+                        factor2 = selection_repivot_table[idx].factor2;
+                    } else { /* sorting */
+                        factor1 = sorting_repivot_table[idx].factor1;
+                        factor2 = sorting_repivot_table[idx].factor2;
+                    }
+                }
                 q=r/n; /* ratio of large region to others */
                 /* size-dependent count 1 limit test */
                 if (q>=factor1) {
@@ -1657,6 +1621,7 @@ check_sizes: ; /* compare partitioned region (effective) sizes */
 }
 
 /* comparison function for sorting order statistic ranks */
+/* used via QSORT_FUNCTION_NAME from quickselect */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1673,6 +1638,7 @@ int size_t_cmp(const void *p1, const void *p2)
 }
 
 /* reverse the order of elements in p between l and r inclusive */
+/* called twice from rotate_size_t */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1687,6 +1653,7 @@ void reverse_size_t(size_t *p, size_t l, size_t r)
 }
 
 /* rotate the elements in p (n elements) to the left by i positions */
+/* called as needed by quickselect to move duplicate order statistic ranks */
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -1775,7 +1742,7 @@ void quickselect(void *base, size_t nmemb, const size_t size,
         QSORT_FUNCTION_NAME ((void *)pk,onk,sizeof(size_t),size_t_cmp);
 }
 
-/* Using quickselect to replace qsort: */
+/* Public interface using quickselect to implement qsort: */
 void QSORT_FUNCTION_NAME (void *base, size_t nmemb, size_t size,
     int (*compar)(const void *,const void *))
 {

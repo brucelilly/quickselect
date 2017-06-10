@@ -180,7 +180,7 @@
 #include "quickselect.h"        /* quickselect qsort_wrapper */
 #include "random64n.h"          /* random64n */
 #include "shuffle.h"            /* fisher_yates_shuffle */
-#include "snn.h"                /* sng snl snlround snul */
+#include "snn.h"                /* snf sng snl snlround snul */
 #include "timespec.h"           /* timespec_subtract timespec_to_double */
 #include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
 
@@ -197,7 +197,7 @@
 #include <regex.h>              /* regcomp regerror regexec regfree */
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>             /* strtol strtoul */
+#include <stdlib.h>             /* free malloc realloc strtol strtoul */
 #include <string.h>             /* memcpy strrchr strstr */
 #include <time.h>               /* CLOCK_* clock_gettime */
 #include <unistd.h>             /* getpid */
@@ -438,7 +438,6 @@ static size_t selection_nk = 1UL;
 static size_t npartitions, nrepivot;
 static size_t repivot_factor = 999UL;
 /* random shuffle @nmemb=80, repivot_factor=39 (lopsided_partition_limit=1, no_aux_repivot=1), ~0.014% repivots */
-static size_t repivot_factor2 = 999UL;
 static size_t repivot_cutoff = 999UL;
 static int lopsided_partition_limit = 9;
 static int no_aux_repivot = 0;
@@ -477,7 +476,6 @@ struct breakpoint_table_struct {
     size_t max_max_nmemb; /* for optimization */
     size_t optimum_bp;    /* for optimization */
 };
-/* XXX N.B. different sampling tables may have different sizes */
 static struct sampling_table_struct middle_sampling_table[] = {
    {                     1UL,             1UL }, /* single sample */
    {                     3UL,             3UL }, /* median-of-3 */
@@ -1404,7 +1402,7 @@ static void write_int_array(char *buf, size_t sz, int *target, size_t l, size_t 
 }
 #endif
 
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 static void fprint_int_array(FILE *f, int *target, size_t l, size_t u)
 {
     size_t i;
@@ -3019,7 +3017,9 @@ static char *fmed5(char *pa, char *pb, char *pc, char *pd, char *pe,
     if (0<compar(pb,pe)) t=pb, pb=pe, pe=t;
     return fmed3(pb,pc,pd,compar);
 #else
+#if DEBUG_CODE
 if (2<debug) (V)fprintf(stderr,"%s line %d: pa=%p, pb=%p, pc=%p, pd=%p, pe=%p\n",__func__,__LINE__,pa,pb,pc,pd,pe);
+#endif
     /* 6 comparisons per set of 5 elements = 1.2 comparisons/element */
     if (0<compar(pa,pb)) t=pa, pa=pb, pb=t;
     if (0<compar(pc,pd)) t=pc, pc=pd, pd=t;
@@ -3219,7 +3219,9 @@ unsigned int do_sort(unsigned int distribution, size_t first, size_t beyond,
 # endif
             size_t nk=beyondk-firstk, nmemb=beyond-first;
             if (5UL>=nmemb) {
+#if DEBUG_CODE
                 if (1<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu: sorting\n",__func__,__LINE__,nmemb);
+#endif
                 return 1U;
             } else if (261UL>=nmemb) {
                 size_t idx=nmemb-6UL, idx2;
@@ -3239,27 +3241,39 @@ unsigned int do_sort(unsigned int distribution, size_t first, size_t beyond,
                     break;
                 }
                 if (selection_breakpoint[idx][idx2]<nk) {
+#if DEBUG_CODE
                     if (1<debug) (V)fprintf(stderr, "// %s line %d: nk=%lu, nmemb=%lu, idx=%lu, distribution=%u, idx2=%lu, selection_breakpoint[%lu][%lu]=%u: sorting\n",__func__,__LINE__,nk,nmemb,idx,distribution,idx2,idx,idx2,selection_breakpoint[idx][idx2]);
+#endif
                     return 1U;
                 }
+#if DEBUG_CODE
                   else if (1<debug) (V)fprintf(stderr, "// %s line %d: nk=%lu, nmemb=%lu, idx=%lu, distribution=%u, idx2=%lu, selection_breakpoint[%lu][%lu]=%u: not sorting\n",__func__,__LINE__,nk,nmemb,idx,distribution,idx2,idx,idx2,selection_breakpoint[idx][idx2]);
+#endif
             } else {
                 size_t t=nmemb/10UL;
                 switch (distribution) {
                     case 0U : /*FALLTHROUGH*/
                     case 7U : /*FALLTHROUGH*/
                         if (nk>t) {
+#if DEBUG_CODE
                             if (1<debug) (V)fprintf(stderr, "// %s line %d: nk=%lu, nmemb=%lu, t=%lu: sorting\n",__func__,__LINE__,nk,nmemb,t);
+#endif
                             return 1U;
                         }
+#if DEBUG_CODE
                           else if (1<debug) (V)fprintf(stderr, "// %s line %d: pk=%p, firstk=%lu beyondk=%lu, nk=%lu, nmemb=%lu, t=%lu: not sorting\n",__func__,__LINE__,pk,firstk,beyondk,nk,nmemb,t);
+#endif
                     break;
                     default :
                         if (nk>nmemb-t) {
+#if DEBUG_CODE
                             if (1<debug) (V)fprintf(stderr, "// %s line %d: nk=%lu, nmemb=%lu, t=%lu: sorting\n",__func__,__LINE__,nk,nmemb,t);
+#endif
                             return 1U;
                         }
+#if DEBUG_CODE
                           else if (1<debug) (V)fprintf(stderr, "// %s line %d: pk=%p, firstk=%lu beyondk=%lu, nk=%lu, nmemb=%lu, t=%lu: not sorting\n",__func__,__LINE__,pk,firstk,beyondk,nk,nmemb,t);
+#endif
                     break;
                 }
             }
@@ -3385,26 +3399,34 @@ struct sampling_table_struct *sampling_table(size_t first, size_t beyond,
                 if (NULL!=psz)
                     *psz=sizeof(separated_sampling_table)
                         /sizeof(separated_sampling_table[0]);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; separated sampling table\n",__func__,__LINE__,*psort,*pd);
+#endif
             return separated_sampling_table;
             case 1U : /*FALLTHROUGH*/
             case 3U : /* right */
                 if (NULL!=psz)
                     *psz=sizeof(separated_sampling_table)
                         /sizeof(separated_sampling_table[0]);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; separated sampling table\n",__func__,__LINE__,*psort,*pd);
+#endif
             return separated_sampling_table;
             case 5U : /* separated */
                 if (NULL!=psz)
                     *psz=sizeof(separated_sampling_table)
                         /sizeof(separated_sampling_table[0]);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; separated sampling table\n",__func__,__LINE__,*psort,*pd);
+#endif
             return separated_sampling_table;
             case 2U : /* middle */
                 if (NULL!=psz)
                     *psz=sizeof(middle_sampling_table)
                         /sizeof(middle_sampling_table[0]);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; middle sampling table\n",__func__,__LINE__,*psort,*pd);
+#endif
             return middle_sampling_table;
             default : /* distributed */
             break;
@@ -3413,7 +3435,9 @@ if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; middle sampling t
     if (NULL!=psz)
         *psz=sizeof(sorting_sampling_table)
             /sizeof(sorting_sampling_table[0]);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: sort=%u, d=%u; sorting sampling table\n",__func__,__LINE__,*psort,*pd);
+#endif
     return sorting_sampling_table;
 }
 
@@ -3508,7 +3532,10 @@ print_int_array(base,first,beyond-1UL);
             ppd,ppe,
 #endif
             &srt,&d,&stsz);
-        A(0U==srt);A(2U==d);
+#if DEBUG_CODE + ASSERT_CODE
+if ((2<debug)&&((0U!=srt)||(2U!=d))) (V)fprintf(stderr, "// %s line %d: first=%lu, beyond=%lu, n=%lu, srt=%u, d=%u\n",__func__,__LINE__,first,beyond,n,srt,d);
+#endif
+        A(0U==srt);A((d&2U)==2U);
         if (table_index>=stsz) table_index=stsz-1UL;
         else
             while (n>pst[table_index].min_nmemb) table_index++;
@@ -3651,7 +3678,7 @@ if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=re
             if (*pn2>=2UL) {
                 if (0<debug) { /* for graphing worst-case partition ratios */
 #if DEBUG_CODE
-if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor2=%lu, *pn2=%d, limit=%d\n",__func__,__LINE__,nmemb,n,ratio,factor2,*pn2,2UL);
+if (2<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=factor2=%lu, *pn2=%d, limit=%d\n",__func__,__LINE__,nmemb,n,ratio,factor2,*pn2,2UL);
 #endif
                     stats_table[table_index].repivots++;
                     stats_table[table_index].repivot_ratio = ratio;
@@ -4030,7 +4057,7 @@ stop at pd-size). Stage 2 loops also need to test for already-partitioned range.
     /* +-----------------------------------------------------+ */
     /*  pl      a       b     c   d e   f   G g       h       u*/
     pb=pl=base+size*first, pu=base+size*beyond, pg=pu-size;
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 logfile=start_log("log");
 fprintf(logfile,"/* +-----------------------------------------------------+ */\n");
@@ -4044,7 +4071,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
     while ((pb<pc)&&(0==(c=compar(pivot,pb)))) { pb+=size; }
     pa=pb;
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over equals at left\n");
 fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4063,7 +4090,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
         }
     }
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over less-than and equals at left\n");
 fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4086,7 +4113,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
                 pb=pe, c=-2;
             }
         } else pb=pg+size; /* < elements */
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over already-partitioned less-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4104,7 +4131,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
         pb+=size;
     }
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over less-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4116,7 +4143,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
     d=3;
     while ((pb<=pg)&&(pf<=pg)&&(0==(d=compar(pivot,pg)))) { pg-=size; }
     ph=pg+size;
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pg over equals at right\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4137,7 +4164,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
         }
     }
     /* check for already-partitioned region here (but no comparisons) */
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 char *px;
 int e;
@@ -4168,7 +4195,7 @@ for (px=pg+size; px<ph; px+=size) {
 #endif
             }
         } else pg=pb-size; /* > elements */
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pg over already-partitioned greater-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4186,7 +4213,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
         pg-=size;
     }
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pg over greater-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4196,7 +4223,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
     A(pl<=pa);A(pa<=pb);A(pc<=pd);A(pd<pe);A(pe<=pf);A(pg<=ph);A(ph<=pu);
     while (pb<pg) {
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (((0<=c)||(0>=d))&&(REPARTITION_DEBUG_LEVEL<=debug)) {
 fprintf(logfile,"\n// ERROR: pb,pg should be ready for swap\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4211,7 +4238,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
         iswap(pb,pg,size,typeindex);
 #endif
         pb+=size, pg-=size;
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// swapped pb,pg and updated pointers\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4227,7 +4254,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
             pb+=size;
         }
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over less-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4250,7 +4277,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
                     pb=pe, c=-2;
                 }
             } else pb=pg+size; /* < elements */
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pb over already-partitioned less-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4268,7 +4295,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
 #endif
             pg-=size;
         }
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pg over greater-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4291,7 +4318,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
                     d=2;
                 }
             } else pg=pb-size; /* > elements */
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) {
 fprintf(logfile,"\n// skipped pg over already-partitioned greater-than and equals\n");
 fprintf(logfile, "// %s line %d: c=%d, d=%d, pl=%lu, pa=%lu, pb=%lu, pc=%lu, pd=%lu, pe=%lu, pf=%lu, pg=%lu, ph=%lu, pu=%lu, pivot=%lu\n// ",__func__,__LINE__,c,d,(pl-base)/size,(pa-base)/size,(pb-base)/size,(pc-base)/size,(pd-base)/size,(pe-base)/size,(pf-base)/size,(pg-base)/size,(ph-base)/size,(pu-base)/size,(pivot-base)/size);
@@ -4305,7 +4332,7 @@ else if (0==typeindex) fprint_double_array(logfile,base,first,beyond-1UL);
     /* pb is start of > region */
     /* |    =  |      <             |             >    |   =    | */
     /*  pl      a                    b                  h        u*/
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if ((pb<pa)||(pb>ph)) {
     (V)fprintf(stderr,
        "// %s line %d: pl=%p[%lu], pa=%p[%lu], pb=%p[%lu], pc=%p[%lu], pd=%p[%lu], pe=%p[%lu], pf=%p[%lu], pg=%p[%lu], ph=%p[%lu], pu=%p[%lu]\n// ",
@@ -4332,7 +4359,7 @@ else if (0==typeindex)
     A(pl<=pc); A(pc<pf); A(pf<=pu);
     /* |       <            |         =           |      >      | */
     /*  pl                   c                     f             u*/
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if ((pf<=pc)||(pc<pl)) {
     (V)fprintf(stderr,
        "// %s line %d: pb=%p[%lu], pc=%p[%lu], pf=%p[%lu], pg=%p[%lu], pl=%p[%lu], pa=%p[%lu], ph=%p[%lu], pu=%p[%lu]\n// ",
@@ -4367,7 +4394,7 @@ else if (0==typeindex)
     print_double_array(base,first,beyond-1UL);
 }
 #endif
-#if ASSERT_CODE /* XXX */
+#if ASSERT_CODE
 if (REPARTITION_DEBUG_LEVEL<=debug) close_log(logfile);
 #endif
     if (NULL!=peq) *peq=(pc-base)/size;
@@ -5333,14 +5360,18 @@ void quickselect_internal(char *base, size_t nmemb,
                 p++;
                 if (p!=q) { /* indices [p,q) are duplicates */
                     r=q-p;
+#if DEBUG_CODE
 if (2<debug) { (V)fprintf(stderr, "%s line %d: %lu duplicate order statistic%s [%lu,%lu):\n",__func__,__LINE__,r,r==1?"":"s",p,q);
 print_size_t_array(pk, 0UL, nk-1UL);
 }
+#endif
                     rotate_size_t(&(pk[p]),nk-p,r);
                     nk-=r;
+#if DEBUG_CODE
 if (2<debug) { (V)fprintf(stderr, "%s line %d: duplicate order statistic%s rotated to end:\n",__func__,__LINE__,r==1?"":"s");
 print_size_t_array(pk, 0UL, nk-1UL);
 }
+#endif
                     q=p;
                 }
             }
@@ -5352,9 +5383,11 @@ print_size_t_array(pk, 0UL, nk-1UL);
         ppeq,ppgt,
 #endif
         &srt,&d,&stsz);
+#if DEBUG_CODE
 if (0<debug) (V)fprintf(stderr, "// %s line %d: d=%u\n",__func__,__LINE__,d);
 if (0<debug) (V)fprintf(stderr, "// %s line %d: %s\n",__func__,__LINE__,0U!=srt?"sort":"select");
 if (0<debug) (V)fprintf(stderr, "// %s line %d: %s sampling table\n",__func__,__LINE__,(pst==middle_sampling_table)?"middle":(pst==separated_sampling_table)?"separated":"sorting");
+#endif
     /* Initialize the sampling table index for the array size. Sub-array
        sizes will be smaller, and this step ensures that the main loop won't
        have to traverse much of the table during recursion and iteration.
@@ -5414,9 +5447,11 @@ if (0<debug) (V)fprintf(stderr, "// %s line %d: nmemb=%lu, min_nmemb=%lu, %lu sa
             ,NULL,NULL
 #endif
         );
+#if DEBUG_CODE
 if (2<debug) { (V)fprintf(stderr, "%s line %d: full order statistics array:\n",__func__,__LINE__);
 print_size_t_array(pk, 0UL, onk-1UL);
 }
+#endif
     }
 }
 
@@ -7993,7 +8028,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                 emin = 0 ; emax = (int)snlround(sqrt((double)u),NULL,NULL);
             break;
             case TEST_SEQUENCE_RANDOM_VALUES :
-                emin = EXPECTED_RANDOM_MIN; emax = EXPECTED_RANDOM_MAX; /* XXX might not work for long */
+                emin = EXPECTED_RANDOM_MIN; emax = EXPECTED_RANDOM_MAX;
             break;
             default:
                 (V)fprintf(stderr, "%s: %s line %d: unrecognized testnum %u\n", __func__, source_file, __LINE__, testnum);
@@ -8257,14 +8292,18 @@ do_test:
                         if (TEST_TYPE_SORT == (TEST_TYPE_SORT & *ptests)) {
                             QSEL(pv,o,o+u,size,comparison_function,NULL,0UL,0UL,rpt);
                         } else {
-                            karray = malloc(selection_nk*sizeof(size_t));
-                            if (NULL==karray) return ++errs;
                             if ((1UL==selection_nk)&&(flags['m']=='m')) { /* special-case: 1 or 2 median(s) */
+                                nk = 2UL;
+                                karray = malloc(nk*sizeof(size_t));
+                                if (NULL==karray) return ++errs;
+if (0<debug) (V)fprintf(stderr, "// %s line %d: karray at %p through %p\n",__func__,__LINE__,(char *)karray, ((char *)karray)+sizeof(double)*nk);
                                 karray[0] = k; /* lower-median */
                                 karray[1] = ((u+1UL)>>1); /* upper-median */
-                                nk = 2UL;
                             } else {
                                 nk = selection_nk;
+                                karray = malloc(nk*sizeof(size_t));
+if (0<debug) (V)fprintf(stderr, "// %s line %d: karray at %p through %p\n",__func__,__LINE__,(char *)karray, ((char *)karray)+sizeof(double)*nk);
+                                if (NULL==karray) return ++errs;
                                 switch (flags['m']) {
                                     case 'b' : /* bottom */ /*FALLTHROUGH*/
                                     case 'l' : /* left or low */
@@ -8672,7 +8711,7 @@ static unsigned int timing_test(int type, size_t size, long *refarray, long *lar
                 emin = 0 ; emax = (int)snlround(sqrt((double)u),NULL,NULL);
             break;
             case TEST_SEQUENCE_RANDOM_VALUES :
-                emin = EXPECTED_RANDOM_MIN; emax = EXPECTED_RANDOM_MAX; /* XXX might not work for long */
+                emin = EXPECTED_RANDOM_MIN; emax = EXPECTED_RANDOM_MAX;
             break;
             case TEST_SEQUENCE_MANY_EQUAL_LEFT :     /*FALLTHROUGH*/
             case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :   /*FALLTHROUGH*/
@@ -8695,7 +8734,9 @@ static unsigned int timing_test(int type, size_t size, long *refarray, long *lar
                 (V)fprintf(stderr, "%s: %s line %d: unrecognized testnum %u\n", __func__, source_file, __LINE__, testnum);
             return ++errs;
         }
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#endif
         if (0U==errs) {
             switch (testnum) {
                 case TEST_SEQUENCE_PERMUTATIONS :
@@ -8714,49 +8755,78 @@ static unsigned int timing_test(int type, size_t size, long *refarray, long *lar
                     if (NULL != fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
                 break;
             }
-            if (100000000000UL<count) return ++errs; /* malloc will probably fail for statistics arrays */
+            /* limit should be compatible with 32-bit machines! */
+            if (400000000UL<count) return ++errs; /* malloc will probably fail for statistics arrays */
             /* preparation */
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u, count=%lu\n",__func__,__LINE__,errs,count);
+#endif
             if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: psarray=%p, *psarray=%p, count=%lu\n",__func__,__LINE__,psarray,NULL==psarray?NULL:*psarray,count);
+#endif
             *psarray=realloc(*psarray, sizeof(double)*count);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: psarray=%p, *psarray=%p\n",__func__,__LINE__,psarray,NULL==psarray?NULL:*psarray);
+#endif
             if (NULL==*psarray) errs++;
             if (0U<errs) {
                 logger(LOG_ERR, log_arg,
                     "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
                 return errs;
             }
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+if (2<debug) (V)fprintf(stderr, "%s line %d: puarray=%p, *puarray=%p, count=%lu\n",__func__,__LINE__,puarray,NULL==puarray?NULL:*puarray,count);
+#endif
             *puarray=realloc(*puarray, sizeof(double)*count);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: puarray=%p, *puarray=%p\n",__func__,__LINE__,puarray,NULL==puarray?NULL:*puarray);
+#endif
             if (NULL==*puarray) errs++;
             if (0U<errs) {
                 logger(LOG_ERR, log_arg,
                     "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
                 return errs;
             }
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+if (2<debug) (V)fprintf(stderr, "%s line %d: pwarray=%p, *pwarray=%p, count=%lu\n",__func__,__LINE__,pwarray,NULL==pwarray?NULL:*pwarray,count);
+#endif
             *pwarray=realloc(*pwarray, sizeof(double)*count);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: pwarray=%p, *pwarray=%p\n",__func__,__LINE__,pwarray,NULL==pwarray?NULL:*pwarray);
+#endif
             if (NULL==*pwarray) errs++;
             if (0U<errs) {
                 logger(LOG_ERR, log_arg,
                     "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
                 return errs;
             }
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
 #if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
             if (2<debug) if (NULL!=f) f(LOG_INFO, log_arg, "%s %s line %d: %s %s %s", __func__, source_file, __LINE__, pcc, typename, pfunc);
 #endif /* DEBUG_CODE */
             /* prepare karray before timing for selection */
             switch (func) {
                 case FUNCTION_QSELECT :
                     if (TEST_TYPE_SORT != (TEST_TYPE_SORT & *ptests)) {
-                        karray = malloc(selection_nk*sizeof(size_t));
-                        if (NULL==karray) return ++errs;
                         if ((1UL==selection_nk)&&(flags['m']=='m')) { /* special-case: 1 or 2 median(s) */
+                            nk = 2UL;
+                            karray = malloc(nk*sizeof(size_t));
+                            if (NULL==karray) return ++errs;
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "// %s line %d: karray at %p through %p\n",__func__,__LINE__,(char *)karray, ((char *)karray)+sizeof(double)*nk);
+#endif
                             karray[0] = k; /* lower-median */
                             karray[1] = ((u+1UL)>>1); /* upper-median */
-                            nk = 2UL;
                         } else {
                             nk = selection_nk;
+                            karray = malloc(nk*sizeof(size_t));
+                            if (NULL==karray) return ++errs;
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "// %s line %d: karray at %p through %p\n",__func__,__LINE__,(char *)karray, ((char *)karray)+sizeof(double)*nk);
+#endif
                             switch (flags['m']) {
                                 case 'b' : /* bottom */ /*FALLTHROUGH*/
                                 case 'l' : /* left or low */
@@ -8788,7 +8858,8 @@ static unsigned int timing_test(int type, size_t size, long *refarray, long *lar
                             }
                         }
 #if DEBUG_CODE
-if (0<debug) {
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+if (2<debug) {
 (V)fprintf(stderr, "order statistic ranks: %lu", karray[0]);
 for (t=1UL; t<nk; t++)
 (V)fprintf(stderr, ", %lu", karray[t]);
@@ -8796,6 +8867,9 @@ for (t=1UL; t<nk; t++)
 }
 #endif
                     }
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#endif
                 break;
             }
             /* run tests */
@@ -8808,10 +8882,6 @@ for (t=1UL; t<nk; t++)
                             /* generate new test sequence */
                             odebug=debug, debug=0;
                             initialize_antiqsort(n, pv, type, size, refarray);
-                            /* run sorting function (even if selection is specified)
-                               against adversary to generate adverse sequence in
-                               refarray, without instrumented comparisons
-                            */
                             switch (func) {
                                 case FUNCTION_QSELECT :
 #if 1
@@ -8821,6 +8891,10 @@ for (t=1UL; t<nk; t++)
                                         QSEL(pv,o,o+u,size,aqcmp,karray,0UL,nk,0U);
                                     }
 #else
+                                    /* run sorting function (even if selection is specified)
+                                       against adversary to generate adverse sequence in
+                                       refarray, without instrumented comparisons
+                                    */
                                     QSEL(pv,o,o+u,size,aqcmp,NULL,0UL,0UL,0U);
 #endif
                                 break;
@@ -9075,18 +9149,24 @@ for (t=1UL; t<nk; t++)
                 tot_w += test_w;
                 if (test_w > worst_w) worst_w = test_w;
                 if (test_w < best_w) best_w = test_w;
-//(V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: errs=%u\n",__func__,__LINE__,errs);
+#endif
                 if (0UL<count) {
-//(V)fprintf(stderr, "%s line %d: test_u=%G, dn=%lu\n",__func__,__LINE__,test_u,*pdn);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: test_u=%G, dn=%lu, m=%lu, count=%lu\n",__func__,__LINE__,test_u,*pdn,m,count);
+#endif
                     A(*pdn<count);
                     (*puarray)[*pdn] = test_u;
                     (*psarray)[*pdn] = test_s;
                     (*pwarray)[*pdn] = test_w;
                     (*pdn)++;
-//(V)fprintf(stderr, "%s line %d: test_u=%G, dn=%lu\n",__func__,__LINE__,test_u,*pdn);
+#if DEBUG_CODE
+if (2<debug) (V)fprintf(stderr, "%s line %d: test_u=%G, dn=%lu\n",__func__,__LINE__,test_u,*pdn);
+#endif
                 }
                 if (0U < errs) break;
-                if ((tot_w > timeout)&&(m+1<count)) count = ++m; /* horrible performance; break out of loop */
+                if ((tot_w > timeout)&&(m+1UL<count)) count = m; /* horrible performance; break out of loop */
             } /* execute test count times */
             /* cleanup */
             if (NULL != karray) {
@@ -9108,7 +9188,9 @@ for (t=1UL; t<nk; t++)
                 b[1] = marray[1] = *pdn/50UL;            /* 2%ile */
                 b[2] = marray[2] = *pdn/11UL;            /* 9%ile */
                 b[3] = marray[3] = (*pdn)>>2;            /* 1st quartile */
+#if DEBUG_CODE
 //(V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, marray[3]=%lu, count=%lu\n", __func__, __LINE__, *pdn, n, u, marray[3], count);
+#endif
                 b[4] = marray[4] = (*pdn-1UL)>>1;        /* lower median */
                 b[5] = marray[5] = (*pdn>>1);            /* upper median */
                 b[6] = marray[6] = *pdn-1UL-((*pdn)>>2); /* 3rd quartile */
@@ -9116,7 +9198,8 @@ for (t=1UL; t<nk; t++)
                 b[8] = marray[8] = *pdn-1UL-(*pdn/50UL); /* 98%ile */
                 b[9] = marray[9] = *pdn-1UL;             /* max */
 #if DEBUG_CODE
-if (3<debug) (V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, marray[4]=%lu, marray[5]=%lu\n", __func__, __LINE__, *pdn, n, u, marray[4], marray[5]);
+if (2<debug) (V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, b[4]=marray[4]=%lu, b[5]=marray[5]=%lu\n", __func__, __LINE__, *pdn, n, u, b[4], b[5]);
+if (2<debug) (V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, b[0]=marray[0]=%lu, b[9]=marray[9]=%lu\n", __func__, __LINE__, *pdn, n, u, b[0], b[9]);
 #endif /* DEBUG_CODE */
 #if 0
                 /* use uninstrumented quickselect with uninstrumented comparison function */
@@ -9129,20 +9212,20 @@ if (3<debug) (V)fprintf(stderr, "%s line %d: dn=%lu, n=%lu, u=%lu, marray[4]=%lu
 #else
                 /* use internal quickselect with uninstrumented comparison function */
                 t=nsw,x=npartitions,y=nrepivot;
-                quickselect_internal((void *)(*puarray),*pdn,sizeof(double),doublecmp,
-                    marray,10UL
+                quickselect_internal((void *)(*puarray),*pdn,sizeof(double),
+                    doublecmp,marray,10UL
 #if SAVE_PARTIAL
                    ,NULL,NULL
 #endif
                     );
-                quickselect_internal((void *)(*psarray), *pdn, sizeof(double), doublecmp,
-                    marray, 10UL
+                quickselect_internal((void *)(*psarray),*pdn,sizeof(double),
+                    doublecmp,marray,10UL
 #if SAVE_PARTIAL
                    ,NULL,NULL
 #endif
                     );
-                quickselect_internal((void *)(*pwarray),*pdn,sizeof(double),doublecmp,
-                    marray, 10UL
+                quickselect_internal((void *)(*pwarray),*pdn,sizeof(double),
+                    doublecmp,marray,10UL
 #if SAVE_PARTIAL
                    ,NULL,NULL
 #endif
@@ -9258,7 +9341,9 @@ if (3<debug) (V)fprintf(stderr, "%s line %d: factor=%G, count=%lu, dn=%lu, media
                         t=nlt+neq+ngt;
                         d = (double)t / (double)count / factor;
                         if (0U!=flags['R']) {
-                            (V)printf("%s%s%*.*s%.6G %s comparisons (%.0f)\n", comment, buf, col-c, col-c, " ", d, psize, (double)t/(double)count);
+                            char buf0[256];
+                            (V)snf(buf0, sizeof(buf0), NULL, NULL, (double)t/(double)count, '0', 1, -15, f, log_arg);
+                            (V)printf("%s%s%*.*s%.6G %s comparisons (%s)\n", comment, buf, col-c, col-c, " ", d, psize, buf0);
                         } else {
                             i = 1 + snprintf(buf3, sizeof(buf3), "%s %s vs. %lu %s %s comparison counts:", pcc, pfunc, n, typename, ptest);
                             (V)printf("%s%s%*.*s%lu < (%.1f%%), %lu == (%.1f%%), %lu > (%.1f%%), total %lu: %.6G %s\n",
@@ -9267,8 +9352,10 @@ if (3<debug) (V)fprintf(stderr, "%s line %d: factor=%G, count=%lu, dn=%lu, media
                                 t, d, psize);
                         }
                         if (0UL<nsw) {
+                            char buf0[256];
                             d = (double)nsw / (double)count / factor;
-                            (V)printf("%s%s%*.*s%.6G %s swaps (%.0f)\n", comment, buf, col-c, col-c, " ", d, psize, (double)nsw/(double)count);
+                            (V)snf(buf0, sizeof(buf0), NULL, NULL, (double)nsw/(double)count, '0', 1, -15, f, log_arg);
+                            (V)printf("%s%s%*.*s%.6G %s swaps (%s)\n", comment, buf, col-c, col-c, " ", d, psize, buf0);
                         }
                         if ('\0'!=buf29[0])
                             (V)printf("%s%s%*.*s%s\n",comment,buf,col-c,col-c," ",buf29);
@@ -10025,9 +10112,13 @@ unsigned long parse_num(char *p, char **pendptr, int base)
 {
     unsigned long n;
 
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: %s(\"%s\", %p, %d)\n", __func__,__LINE__,__func__,p,pendptr,base);
+#endif
     n = strtoul(p, pendptr, base);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__,__LINE__,n,*pendptr);
+#endif
     switch (**pendptr) {
         case 't' : /*FALLTHROUGH*/
         case 'T' :
@@ -10055,7 +10146,9 @@ if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__
         default :
         break;
     }
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__,__LINE__,n,*pendptr);
+#endif
     return n;
 }
 
@@ -10067,50 +10160,68 @@ unsigned long parse_expr(char *p, char **pendptr, int base)
 {
     unsigned long n, n2;
 
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: %s(\"%s\", %p, %d)\n", __func__,__LINE__,__func__,p,pendptr,base);
+#endif
     n = parse_num(p, pendptr, base);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__,__LINE__,n,*pendptr);
+#endif
     while ('\0' != **pendptr) {
         switch (**pendptr) {
             case '+' : 
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n2=%lu\n", __func__,__LINE__,n2);
+#endif
                 n += n2;
             break;
             case '-' : 
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n2=%lu\n", __func__,__LINE__,n2);
+#endif
                 if (n2<n) n -= n2;
                 if (1UL > n) n = 1UL;
             break;
             case '*' : 
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n2=%lu\n", __func__,__LINE__,n2);
+#endif
                 if (0<n2) n *= n2;
             break;
             case '/' : 
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n2=%lu\n", __func__,__LINE__,n2);
+#endif
                 if (0<n2) n /= n2;
                 if (1UL > n) n = 1UL;
             break;
             case '%' : 
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n2=%lu\n", __func__,__LINE__,n2);
+#endif
                 if (0<n2) n %= n2;
                 if (1UL > n) n = 1UL;
             break;
             default :
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__,__LINE__,n,*pendptr);
+#endif
             return n;
         }
     }
+#if DEBUG_CODE
 if (3<debug) (V)fprintf(stderr, "%s line %d: n=%lu, *pendptr=\"%s\"\n", __func__,__LINE__,n,*pendptr);
+#endif
     return n;
 }
 
@@ -10424,7 +10535,8 @@ int main(int argc, const char * const *argv)
                     d = strtod(pcc, NULL);
                     if (0.0<d) {
                         double e, g;
-                        for (x=2UL; x<22UL; x++) {
+                        y = sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]);
+                        for (x=2UL; x<y; x++) {
                             e=(double)(sorting_sampling_table[x].samples-1UL);
                             g=d*e*e;
                             if (g<(double)(SIZE_T_MAX))
@@ -10561,7 +10673,8 @@ int main(int argc, const char * const *argv)
                     d = strtod(pcc, NULL);
                     if (0.0<d) {
                         double e, g;
-                        for (x=2UL; x<22UL; x++) {
+                        y = sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]);
+                        for (x=2UL; x<y; x++) {
                             e=(double)(sorting_sampling_table[x].samples);
                             g=d*e*e;
                             if (g<(double)(SIZE_T_MAX))
@@ -11027,7 +11140,8 @@ usage:
                                 (V)fprintf(stdout,"sorting sampling table:\n%s\n",
                                     "                  min_nmemb,     samples"
                                     );
-                                for (x=1UL,y=sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]); x<y; x++) {
+                                y = sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]);
+                                for (x=1UL; x<y; x++) {
                                     i = snul(buf,sizeof(buf),NULL,"UL,",sorting_sampling_table[x].min_nmemb, 10, ' ', 24, f, log_arg);
                                     i = snul(buf2,sizeof(buf2),NULL,"UL",sorting_sampling_table[x].samples, 10, ' ', 11, f, log_arg);
                                     (V)fprintf(stdout,"   { %s %s },\n",buf,buf2);
@@ -11035,7 +11149,8 @@ usage:
                                 (V)fprintf(stdout,"middle selection sampling table:\n%s\n",
                                     "                  min_nmemb,     samples"
                                     );
-                                for (x=1UL,y=sizeof(middle_sampling_table)/sizeof(middle_sampling_table[0]); x<y; x++) {
+                                y = sizeof(middle_sampling_table)/sizeof(middle_sampling_table[0]);
+                                for (x=1UL; x<y; x++) {
                                     i = snul(buf,sizeof(buf),NULL,"UL,",middle_sampling_table[x].min_nmemb, 10, ' ', 24, f, log_arg);
                                     i = snul(buf2,sizeof(buf2),NULL,"UL",middle_sampling_table[x].samples, 10, ' ', 13, f, log_arg);
                                     (V)fprintf(stdout,"   { %s %s },\n",buf,buf2);
@@ -11043,7 +11158,8 @@ usage:
                                 (V)fprintf(stdout,"separated selection sampling table:\n%s\n",
                                     "                  min_nmemb,     samples"
                                     );
-                                for (x=1UL,y=sizeof(separated_sampling_table)/sizeof(separated_sampling_table[0]); x<y; x++) {
+                                y = sizeof(separated_sampling_table)/sizeof(separated_sampling_table[0]);
+                                for (x=1UL; x<y; x++) {
                                     i = snul(buf,sizeof(buf),NULL,"UL,",separated_sampling_table[x].min_nmemb, 10, ' ', 24, f, log_arg);
                                     i = snul(buf2,sizeof(buf2),NULL,"UL",separated_sampling_table[x].samples, 10, ' ', 11, f, log_arg);
                                     (V)fprintf(stdout,"   { %s %s },\n",buf,buf2);
@@ -11405,6 +11521,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
                 "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
             return errs;
         }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: array at %p through %p\n",__func__,__LINE__,(char *)array, ((char *)array)+sizeof(int)*sz);
     }
     p = (0x01U << TEST_SEQUENCE_STDIN);
     if ((0U!=(csequences&p))||(0U!=(tsequences&p))||(0U!=flags['A'])||(0U!=flags['S'])||(0U!=flags['P'])) {
@@ -11415,6 +11532,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
                 "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
             if (NULL!=array) { free(array); array=NULL; }
             return errs;
+if (2<debug) (V)fprintf(stderr, "// %s line %d: big_array at %p through %p\n",__func__,__LINE__,(char *)big_array, ((char *)big_array)+sizeof(struct big_struct)*sz);
         }
         if (0UL!=flags['P']) {
             parray=malloc(sizeof(struct big_struct *)*sz);
@@ -11430,6 +11548,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
             for (q=0UL; q<sz; q++)
                 parray[q]=&(big_array[q]);
         }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: parray at %p through %p\n",__func__,__LINE__,(char *)parray, ((char *)parray)+sizeof(struct big_struct *)*sz);
     }
     if (0UL!=flags['F']) {
         darray=malloc(sizeof(double)*sz);
@@ -11442,6 +11561,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
             if (NULL!=parray) { free(parray); parray=NULL; }
             return errs;
         }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: darray at %p through %p\n",__func__,__LINE__,(char *)darray, ((char *)darray)+sizeof(double)*sz);
     }
     if (0U!=flags['L']) {
         larray=malloc(sizeof(long)*sz);
@@ -11455,6 +11575,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
             if (NULL!=darray) { free(darray); darray=NULL; }
             return errs;
         }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: larray at %p through %p\n",__func__,__LINE__,(char *)larray, ((char *)larray)+sizeof(long)*sz);
     }
     /* refarray is the basis for all types */
     refarray=malloc(sizeof(long)*sz);
@@ -11469,6 +11590,7 @@ if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s: ar
         if (NULL!=larray) { free(larray); larray=NULL; }
         return errs;
     }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: refarray at %p through %p\n",__func__,__LINE__,(char *)refarray, ((char *)refarray)+sizeof(long)*sz);
 
 #if DEBUG_CODE
 if (3<debug)     if ((0U==flags['h'])&&(NULL!=f)) f(LOG_INFO, log_arg, "%s%s %s: %s line %d: arrays allocated, sz=%lu", comment, prog, __func__, source_file, __LINE__, sz);
@@ -11523,6 +11645,7 @@ if (3<debug) if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \
             if (NULL!=refarray) { free(refarray); refarray=NULL; }
             return errs;
         }
+if (2<debug) (V)fprintf(stderr, "// %s line %d: input_data at %p through %p\n",__func__,__LINE__,(char *)input_data, ((char *)input_data)+sizeof(struct big_struct)*i);
         /* save input data for reuse */
         /* reset counts to correspond to number of data read */
         for (ul=0UL; ul<(size_t)i; ul++)
@@ -11555,7 +11678,8 @@ if (3<debug) if (0==i) (V)fprintf(stderr, "// %s line %d: val %d, d %G, string \
         breakpoint_table[1].min_min_bp=breakpoint_table[1].max_min_bp=3UL;
         breakpoint_table[1].min_max_bp=breakpoint_table[1].max_max_bp=3UL;
         breakpoint_table[1].optimum_bp=sorting_sampling_table[1].min_nmemb;
-        for (x=2UL; x<22UL; x++) {
+        y = sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]);
+        for (x=2UL; x<y; x++) {
             n=sorting_sampling_table[x].samples;
             breakpoint_table[x].min_min_bp=breakpoint_table[x].min_max_bp=n*n;
             breakpoint_table[x].max_min_bp=breakpoint_table[x].max_max_bp=n;
@@ -11900,7 +12024,8 @@ trying breakpoint 813 for 27 samples, from nmemb=1219 through 1219 by 1
                 sorting_sampling_table[x].min_nmemb = breakpoint_table[x].optimum_bp;
                 if (1<debug) sleep(8);
             }
-            for (x=1UL; x<22UL; x++) {
+            y = sizeof(sorting_sampling_table)/sizeof(sorting_sampling_table[0]);
+            for (x=1UL; x<y; x++) {
                 if (((SIZE_T_MAX)==sorting_sampling_table[x].min_nmemb)
                 && ((SIZE_T_MAX) / sorting_sampling_table[x].samples > sorting_sampling_table[x].samples))
                     sorting_sampling_table[x].min_nmemb = sorting_sampling_table[x].samples * sorting_sampling_table[x].samples;
@@ -11911,20 +12036,6 @@ trying breakpoint 813 for 27 samples, from nmemb=1219 through 1219 by 1
             if (0U!=flags['Y']) flags['Y']=0U;
             else if (0U!=flags['Z']) flags['Z']=0U;
         }
-#if 0
-        if (breakpoint_table[2].max_min_bp!=sorting_sampling_table[2].samples) {
-            for (x=2UL; x<22UL; x++) {
-                if (breakpoint_table[x].max_min_bp==sorting_sampling_table[x].samples) break;
-                (V)fprintf(stdout,
-                    "%lu samples, breakpoint ranges: wide %lu@%lu-%lu@%lu, narrow %lu@%lu-%lu@%lu\n",
-                    sorting_sampling_table[x].samples,
-                    breakpoint_table[x].min_min_bp,breakpoint_table[x].min_min_nmemb,
-                    breakpoint_table[x].max_max_bp,breakpoint_table[x].max_max_nmemb,
-                    breakpoint_table[x].max_min_bp,breakpoint_table[x].max_min_nmemb,
-                    breakpoint_table[x].min_max_bp,breakpoint_table[x].min_max_nmemb);
-            }
-        }
-#endif
         flags['i']=oldi;
         flags[':']=0U; /* turn off magic silence flag */
 
@@ -12333,8 +12444,8 @@ trying breakpoint 813 for 27 samples, from nmemb=1219 through 1219 by 1
 
     if (NULL!=input_data) free(input_data);
     if (NULL!=warray) { free(warray); warray=NULL; }
-    if (NULL!=warray) { free(uarray); uarray=NULL; }
-    if (NULL!=warray) { free(sarray); sarray=NULL; }
+    if (NULL!=uarray) { free(uarray); uarray=NULL; }
+    if (NULL!=sarray) { free(sarray); sarray=NULL; }
     free(parray);
     free(larray);
     free(darray);
