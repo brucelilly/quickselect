@@ -124,21 +124,22 @@ start : NO_FAKE_TARGETS \
 host : start \
  $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
  $(MAKEFILES_DIR)/makefile.project $(MAKEFILES_DIR)/makefile.fqdn # also makefile.$(OS), but environment is not yet set
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2"
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2"
+	# $${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2 2>&1 | egrep -v ' recipe for target | given more than once in the same |ing directory ' | cat"
 
 # combined dependencies and recipe
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
 ccbase : host \
  $(MAKEFILES_DIR)/makefile.stage3 $(MAKEFILES_DIR)/makefile.include3 \
  $(MAKEFILES_DIR)/makefile.tools # also makefile.$(OS)-$(FQDN), but environment is not yet set
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage3"
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage3"
 
 # combined dependencies and recipe
 overrides : ccbase \
  $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
  $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.overrides \
  # also makefile.$(OS)-$(FQDN), but environment is not yet set
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage4"
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage4"
 
 # combined dependencies and recipe
 # dependencies also include makefile.ccbase-$(OS)-$(FQDN) [stage4], \
@@ -155,8 +156,8 @@ depend : overrides \
  $(MAKEFILES_DIR)/makefile.suffix_rules $(MAKEFILES_DIR)/makefile.files \
  $(MAKEFILES_DIR)/makefile.licenses $(MAKEFILES_DIR)/makefile.imports \
  $(MAKEFILES_DIR)/makefile.depend
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage5"
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage6"
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage5"
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage6"
 
 # dependencies for primary targets
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
@@ -164,8 +165,10 @@ all test install macros clean cleaner cleanest : depend \
  $(LAST_STAGE) $(LAST_INCLUDE) $(MAKEFILES_DIR)/makefile.build # also $(DEPEND) [stage6]
 
 # recipe for primary targets
-all analyses cflow.out cflow_i.out clean cleaner cleanest cxref.out flawfinder.out indent install lint.out macros rats.out sparse.out splint.out test uno.out :
-	$(SHELL) -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$(SHELL) MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
+all analyses cflow.out cflow_i.out clean cleaner cleanest \
+cscope.files cscope.out cxref.out flawfinder.out indent install lint.out \
+macros rats.out sparse.out splint.out test uno.out :
+	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
 
 # Because of gmake bug #47399, make runs in stages to build files which
 # must be included.  As a result, targets in the main project makefile.files

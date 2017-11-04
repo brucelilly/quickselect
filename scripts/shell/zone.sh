@@ -63,10 +63,7 @@ do
 	eval arg=\$${i}
 	case "${arg}" in
 		-d)	debug=`expr ${debug} + 1`
-			debugflag="${debugflag} $1"
-		;;
-		-*n*)	debug=`expr ${debug} + 1`
-			debugflag="${debugflag} $1"
+			debugflag="${debugflag} ${arg}"
 		;;
 		-p)	i=`expr ${i} + 1`
 			eval arg=\$${i}

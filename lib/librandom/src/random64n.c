@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    random64n.c copyright 2016 Bruce Lilly.   \ random64n.c $
+* $Id: ~|^` @(#)    random64n.c copyright 2016-2017 Bruce Lilly.   \ random64n.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is random64n.c version 1.5 dated 2016-12-22T19:17:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is random64n.c version 1.6 dated 2017-09-01T02:24:35Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "random64n" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/weather/lib/librandom/src/s.random64n.c */
@@ -49,15 +49,37 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: random64n.c ~|^` @(#)"
 #define SOURCE_MODULE "random64n.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2016-12-22T19:17:16Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2017-09-01T02:24:35Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016"
+#define COPYRIGHT_DATE "2016-2017"
 
-/* feature test macros must appear before any header file inclusion */
-#ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+/* feature test macros defined before any header files are included */
+/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
+#else
+# define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
 #endif
+
+#ifndef _XOPEN_SOURCE
+# ifdef MIN_XOPEN_SOURCE_VERSION
+#  define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+# else
+#  ifdef MAX_XOPEN_SOURCE_VERSION
+#   define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#  endif
+# endif
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#endif
+
 #ifndef __EXTENSIONS__
 # define __EXTENSIONS__ 1
 #endif

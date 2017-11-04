@@ -786,7 +786,7 @@ $(PRE_DEPEND) :
 				echo '		$$(GREP) -h -i '"'send bug report'"' $$? | $$(GREP) -v "$$(GREP) -h -i " | $$(AWK) -f $(AWKSCRIPTSDIR)/decomment.awk | $$(SORT) -u >> $$@ ;\' >> $@.$${PPID}.temp ;\
 				echo '	fi' >> $@.$${PPID}.temp ;\
 				echo '	echo "press q to accept" >> $$@' >> $@.$${PPID}.temp ;\
-				echo '	$(LESS) $$@' >> $@.$${PPID}.temp ;\
+				echo '	$(PAGER) $$@' >> $@.$${PPID}.temp ;\
 				echo '$$(DEPEND) : '"$${dir}" >> $@.$${PPID}.temp ;\
 			fi ;\
 		done ;\

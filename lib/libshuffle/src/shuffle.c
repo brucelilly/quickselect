@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is shuffle.c version 1.7 dated 2017-02-12T15:20:35Z. \ $ */
+/* $Id: ~|^` @(#)   This is shuffle.c version 1.8 dated 2017-09-07T08:57:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "shuffle" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/weather/lib/libshuffle/src/s.shuffle.c */
@@ -49,8 +49,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: shuffle.c ~|^` @(#)"
 #define SOURCE_MODULE "shuffle.c"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2017-02-12T15:20:35Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2017-09-07T08:57:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -77,6 +77,7 @@
 /* *INDENT-ON* */
 
 /* local header files needed */
+#include "exchange.h"           /* alignment_size swapn */
 #include "shuffle.h"            /* header file for public definitions and declarations */
 #include "zz_build_str.h"       /* build_id build_strings_registered copyright_id register_build_strings */
 
@@ -96,23 +97,6 @@
 static char shuffle_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
-
-/* assume sizeof(foo) etc. are powers of 2 */
-/* logarithms of two for index as sizeof */
-/* table in lieu of calculation for speed */
-/* valid up to sizeof(foo) = 32 */
-static const
-int log2s[]={0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,5};
-/* Type sizes. It is assumed that sizeof(double)>=sizeof(char *)... */
-static const size_t typsz[6] = {
-    sizeof(double),sizeof(char *),sizeof(long),sizeof(int),sizeof(short),1UL
-};
-/* mask off low-order bits */
-static const unsigned long bitmask[6] = {
-    0x0UL, 0x01UL, 0x03UL, 0x07UL, 0x0fUL, 0x01fUL
-};
-
-#define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
 
 static void initialize_shuffle(void)
 {
@@ -175,23 +159,8 @@ int fisher_yates_shuffle(void *array, size_t n, size_t size,
         ret = -1;
     }
     if (0 == ret) { /* arguments are sane */
-        int swaptype; /* index into array of type sizes for swapping size */
-        size_t s;  /* typsz[swaptype] */
-        int i;     /* log2s[s] */
+        void (*swapf)(char *, char *, size_t)=swapn(alignment_size(array,size));
 
-        /* determine optimum size for swapping */
-        s=typsz[swaptype=0]; /* double */
-        if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-        ||(!(is_aligned(array,i)))) {
-            s=typsz[swaptype=3]; /* int */
-            if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-            ||(!(is_aligned(array,i)))) {
-                s=typsz[swaptype=4]; /* short */
-                if ((size<s)||(!(is_aligned(size,i=log2s[s])))
-                ||(!(is_aligned(array,i))))
-                    swaptype=5; /* char */
-            }
-        }
         /* the following lines of code implement the actual shuffle */
         while (1UL<n) {
             size_t count, m;
@@ -199,35 +168,7 @@ int fisher_yates_shuffle(void *array, size_t n, size_t size,
             m=(size_t)randf(n--);
             /* swap elements at indices n and m */
             if (n!=m) { /* else nothing to do */
-                /* size-aligned swap */
-                char *pa=(char *)array+size*n, *pb=(char *)array+size*m;
-                if (5==swaptype) { /* char */
-                    char t;
-                    for (count=size; 0UL<count; pa++,pb++,count--)
-                        t=*pa, *pa=*pb, *pb=t;
-                } else {
-                    count = size>>i;
-                    switch (swaptype) {
-                        case 0 : /* double */
-                            {   double *px=(double *)pa, *py=(double *)pb, t;
-                                for (;0UL<count; px++,py++,count--)
-                                    t=*px, *px=*py, *py=t;
-                            }
-                        break;
-                        case 3 : /* int */
-                            {   int *px=(int *)pa, *py=(int *)pb, t;
-                                for (;0UL<count; px++,py++,count--)
-                                    t=*px, *px=*py, *py=t;
-                            }
-                        break;
-                        case 4 : /* short */
-                            {   short *px=(short *)pa, *py=(short *)pb, t;
-                                for (;0UL<count; px++,py++,count--)
-                                    t=*px, *px=*py, *py=t;
-                            }
-                        break;
-                    }
-                }
+                swapf(array+size*m,array+size*n,size);
             }
         }
     }

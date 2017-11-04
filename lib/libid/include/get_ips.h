@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    get_ips.h copyright 2010 - 2016 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    get_ips.h copyright 2010-2017 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,21 +30,38 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is get_ips.h version 1.5 2016-10-04T15:53:27Z. \ $ */
+/* $Id: ~|^` @(#)   This is get_ips.h version 1.7 2017-09-01T02:01:09Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "get_ips" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libid/include/s.get_ips.h */
 
 /* version-controlled header file version information */
-#define GET_IPS_H_VERSION "get_ips.h 1.5 2016-10-04T15:53:27Z"
+#define GET_IPS_H_VERSION "get_ips.h 1.7 2017-09-01T02:01:09Z"
 
-/* feature test macros must appear before any header file inclusion */
-#define GET_IPS_H_XOPEN_SOURCE 500
-#if ! defined(_XOPEN_SOURCE) || (GET_IPS_H_XOPEN_SOURCE > _XOPEN_SOURCE)
-# ifdef _XOPEN_SOURCE
-#  undef _XOPEN_SOURCE
+/* feature test macros defined before any header files are included */
+/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
+#else
+# define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
+#endif
+
+#ifndef _XOPEN_SOURCE
+# ifdef MIN_XOPEN_SOURCE_VERSION
+#  define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+# else
+#  ifdef MAX_XOPEN_SOURCE_VERSION
+#   define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#  endif
 # endif
-# define _XOPEN_SOURCE GET_IPS_H_XOPEN_SOURCE
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
 #endif
 
 #define GET_IPS_H_POSIX_C_SOURCE 200112L
@@ -57,7 +74,7 @@
 
 #include <sys/socket.h>         /* AF_... freeaddrinfo getaddrinfo SOCK_... */
 #include <netdb.h>              /* AI_... EAI_* getaddrinfo struct hostent hstrerror
-                                   Linux: _BSD_SOURCE || _SVID_SOURCE || _GNU_SOURCE || _USE_POSIX (_POSIX_C_SOURCE >= 1 || POSIX_C_SOURCE || _XOPEN_SOURCE)
+                                   Linux: _BSD_SOURCE || _SVID_SOURCE || _GNU_SOURCE || _USE_POSIX (_POSIX_C_SOURCE >= 1 || POSIX_C_SOURCE || _XOPEN_SOURCE >= 600)
                                    NetBSD: _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 520 || _NETBSD_SOURCE,
                                    Solaris: _XPG4_2 (_XOPEN_SOURCE >= 500) || _XPG6 (_XOPEN_SOURCE >= 600) || __EXTENSIONS__
                                 */

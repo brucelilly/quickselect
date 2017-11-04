@@ -55,13 +55,22 @@ MAKEFILES_READ += makefile.files
 # This group defines C99 vs. earlier compilation per main-program object file.
 # Corresponding executable file targets should be added to makefile.targets
 #   to support independent executable builds.
-# median_test is C99 to use inline exchange (except illumos pukes all over that)
+# median_test is C99 to use inline exchange
 C99OBJS =\
+ bstest.o\
  make_grap.o\
  median_test.o\
+ swaptest.o\
+ graphingtest.o\
  simple_config.o\
+ generate_cutoff_table.o\
 # 
 OBJS =\
+ heap_test.o\
+ lemd.o\
+ numtest.o\
+ thermostatd.o\
+# udp.o\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += C99OBJS OBJS
@@ -69,7 +78,9 @@ MACROS += C99OBJS OBJS
 # Header files used by main program source files, located in $(HDRDIR).
 HDRS =\
  compare.h\
+ conform.h\
  exchange.h\
+ lemd.h\
  zz_build_str.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -89,7 +100,7 @@ MACROS += RESOURCEFILES
 
 # Configuration files.
 CONFIGFILES =\
-# (PROJECT).conf\
+ $(PROJECT).conf\
 # $(PROJECT)2.conf\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -99,26 +110,46 @@ MACROS += CONFIGFILES
 # Library archive names and archive member object files (leave unused ones empty)
 #  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
 # C99-compiled object files are listed separately
-LIB1ARCH = # liblemd.a
+LIB1ARCH = liblemd.a
 C99LIB1OBJS =\
+ lemd_graph.o\
 #
 LIB1OBJS =\
+ lemd_config.o\
+ lemd_data.o\
+ lemd_recv.o\
 #
 # Header files associated with library, and residing in LIB1HDRDIR.
 LIB1HDRS =\
+ lemd.h\
+ lemd_config.h\
+ lemd_data.h\
+ lemd_graph.h\
+ lemd_recv.h\
 #
 LIB1MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB1ARCH C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
 
-LIB2ARCH = # libthermostatd.a
+LIB2ARCH = libthermostatd.a
 C99LIB2OBJS =\
+ thermostatd_recv.o\
 #
 LIB2OBJS =\
+ thermostatd_config.o\
+ thermostatd_data.o\
+ thermostatd_graph.o\
+ thermostatd_poll.o\
 #
 # Header files associated with library, and residing in LIB2HDRDIR.
 LIB2HDRS =\
+ thermostatd.h\
+ thermostatd_config.h\
+ thermostatd_data.h\
+ thermostatd_graph.h\
+ thermostatd_poll.h\
+ thermostatd_recv.h\
 #
 LIB2MAN =\
 #
@@ -127,10 +158,28 @@ MACROS += LIB2ARCH C99LIB2OBJS LIB2OBJS LIB2HDRS LIB2MAN
 
 LIB3ARCH = # libradioclk.a
 C99LIB3OBJS =\
+ config_thread.o\
+ nmea_thread.o\
 #
 LIB3OBJS =\
+ circular_buffer.o\
+ pps_thread.o\
+ version.o\
 #
 LIB3HDRS =\
+ circular_buffer.h\
+ config_thread.h\
+ conform.h\
+ configure.h\
+ functions.h\
+ name_value.h\
+ nmea.h\
+ nmea_thread.h\
+ ports.h\
+ pps_thread.h\
+ private.h\
+ serial_pins.h\
+ transition.h\
 #
 LIB3MAN =\
 #
@@ -139,10 +188,25 @@ MACROS += LIB3ARCH C99LIB3OBJS LIB3OBJS LIB3HDRS LIB3MAN
 
 LIB4ARCH = # libautobaud.a
 C99LIB4OBJS =\
+ autobaud.o\
+ baud.o\
+ bits.o\
+ cflag_to_parity.o\
+ cflag_to_stopb.o\
+ fd_fcntl_flags.o\
+ fd_flags_state.o\
+ fd_modem_state.o\
+ fd_set_termios.o\
+ fd_termios_settings.o\
+ parity_name.o\
+ parity_to_cflag.o\
+ stopb_to_cflag.o\
+ test_communications.o\
 #
 LIB4OBJS =\
 #
 LIB4HDRS =\
+ autobaud.h\
 #
 LIB4MAN =\
 #
@@ -153,8 +217,11 @@ LIB5ARCH = # librefclock_fifo.a
 C99LIB5OBJS =\
 #
 LIB5OBJS =\
+ refclock_fifo.o\
+ refclock_fifo_utils.o\
 #
 LIB5HDRS =\
+ refclock_fifo.h\
 #
 LIB5MAN =\
 #
@@ -251,7 +318,6 @@ LIB11HDRS =\
  utc_mktime.h\
 #
 LIB11MAN =\
- utc_mktime.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB11ARCH C99LIB11OBJS LIB11OBJS LIB11HDRS LIB11MAN
@@ -306,22 +372,32 @@ MACROS += LIB14ARCH C99LIB14OBJS LIB14OBJS LIB14HDRS LIB14MAN
 
 LIB15ARCH = # libastro.a
 C99LIB15OBJS =\
+ altitude.o\
+ azimuth.o\
+ sunrise.o\
+ sunset.o\
 #
 LIB15OBJS =\
 #
 LIB15HDRS =\
+ astro.h\
+ jd.h\
+ mjd.h\
 #
 LIB15MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB15ARCH C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
 
-LIB16ARCH = # libangle.a
+LIB16ARCH = libangle.a
 C99LIB16OBJS =\
 #
 LIB16OBJS =\
+ pi.o\
 #
 LIB16HDRS =\
+ angle.h\
+ pi.h\
 #
 LIB16MAN =\
 #
@@ -395,15 +471,50 @@ LIB19MAN =\
 MACROS += LIB19ARCH C99LIB19OBJS LIB19OBJS LIB19HDRS LIB19MAN
 
 LIB20ARCH = libmedian.a
+# order matters!
 C99LIB20OBJS =\
- quickselect.o\
  repeated_median.o\
+ quickselect_s.o\
+ qsort_s.o\
+ quickselect_lib_s.o\
+ quickselect.o\
+ qsort.o\
+ quickselect_lib.o\
+ tables.o\
+ cutoff_value.o\
+ cutoff_table.o\
 #
 LIB20OBJS =\
 #
 LIB20HDRS =\
+ cutoff_table.h\
+ cutoff_value_decl.h\
+ dedicated_sort_decl.h\
+ dedicated_sort_src.h\
+ initialize_src.h\
+ klimits_decl.h\
+ klimits_src.h\
+ partition_decl.h\
+ partition_src.h\
+ pivot_src.h\
+ qsort_src.h\
+ quickselect_loop_decl.h\
+ quickselect_loop_src.h\
+ quickselect_src.h\
+ quickselect_swap.h\
  quickselect.h\
+ quickselect_config.h\
+ quicksort_loop_decl.h\
+ quicksort_loop_src.h\
  repeated_median.h\
+ repivot_src.h\
+ sample_index_decl.h\
+ sampling_table.h\
+ sampling_table_decl.h\
+ sampling_table_src.h\
+ select_pivot_decl.h\
+ should_repivot_decl.h\
+ tables.h\
 #
 LIB20MAN =\
  quickselect.3\
@@ -415,20 +526,26 @@ LIB21ARCH = # libstring.a
 C99LIB21OBJS =\
 #
 LIB21OBJS =\
+ string.o\
 #
 LIB21HDRS =\
+ string_decl.h\
 #
 LIB21MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB21ARCH C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
 
-LIB22ARCH = # libpool.a
+LIB22ARCH = libpool.a
 C99LIB22OBJS =\
 #
 LIB22OBJS =\
+ pool.o\
+ queue.o\
 #
 LIB22HDRS =\
+ pool.h\
+ queue.h\
 #
 LIB22MAN =\
 #
@@ -638,12 +755,64 @@ LIB38MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB38ARCH C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
 
-LIB39ARCH = #
+LIB39ARCH = libmedian_test.a
 C99LIB39OBJS =\
+ functions.o\
+ correctness.o\
+ timing.o\
+ aqsort.o\
+ bmqsort.o\
+ glibc.o\
+ ibmqsort.o\
+ mbmqsort.o\
+ mergesort.o\
+ introsort.o\
+ heapsort.o\
+ heap.o\
+ logsort.o\
+ minmaxsort.o\
+ netbsd.o\
+ plan9.o\
+ quickselect_s.o\
+ quickselect.o\
+ minmax.o\
+ selsort.o\
+ smoothsort.o\
+ sqrtsort.o\
+ sqsort.o\
+ wqsort.o\
+ yaroslavskiy.o\
+ shellsort.o\
+ network.o\
+ isort.o\
+ partition.o\
+ select_pivot.o\
+ fmed3.o\
+ sequences.o\
+ debug.o\
+ dedicated_sort.o\
+ dual.o\
+ duplicate.o\
+ sort5.o\
+ operations.o\
+ compare.o\
+ sizes.o\
+ swap.o\
+ test_factor.o\
+ test_size.o\
+ factorial.o\
+ floor_lg.o\
+ is_even.o\
+ ulsqrt.o\
+ valid.o\
+ parse.o\
+ print.o\
+ globals.o\
 #
 LIB39OBJS =\
 #
 LIB39HDRS =\
+median_test_config.h\
 #
 LIB39MAN =\
 #
@@ -719,9 +888,19 @@ MACROS += HELP_FILES
 #   Dependencies should be specified for these.
 #   If default rules are not used, recipes should also be provided.
 BUILTC =\
+ functions.c\
+ $(NMEA_PREFIX_UNDERSCORE)ragel_lex.c\
+ $(NMEA_PREFIX_UNDERSCORE)lemon_parse.c\
+ ports.c\
+ sentences.c\
+ serial_pins.c\
+ transition.c\
+ version.c\
 #
 # Some header files are built.
 BUILTH =\
+ nmea.h\
+ $(NMEA_PREFIX_UNDERSCORE)lemon_parse.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += BUILTC BUILTH
@@ -743,6 +922,7 @@ AWKSCRIPTS =\
  decomment.awk\
  depend.awk\
  fix_switch.awk\
+ lems-summary.awk\
 #
 
 # Shorthand for all scripts (for .PRECIOUS).
@@ -755,8 +935,7 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 # Note that overriding here affects the project for all hosts.
 
 # It is possible to override compilation option macros (e.g. OPTIMIZE) here.
-# Note that overriding here affects the project for all hosts, but may itself
-#   be overridden by makefile.overrides.$(CCBASE)-$(OS)-$(FQDN).
+# Note that overriding here affects the project for all hosts.
 #OPTIMIZE = -O0
 #OPTIMIZE = -O1
 #OPTIMIZE = -O2
@@ -799,6 +978,28 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 # dependencies which could not be specified in makefile.targets
 
 # XXX rules to make built files need to go here; they need to be translated from old-makefiles/makefile.files
+
+# windows/linux sync
+DATADIR = /data
+PROJECTSDIR = $(DATADIR)/projects
+AUTOMATIONDIR = $(PROJECTSDIR)/automation
+DIR940 = $(AUTOMATIONDIR)/940
+WINDOWS940 = /windows/D/misc/940
+# Do not change the following line, which is used for debugging via `make macros`.
+MACROS += DATADIR PROJECTSDIR AUTOMATIONDIR DIR940 WINDOWS940
+
+windows : $(WINDOWS940) $(DIR940) 
+	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(DIR940)/ $(WINDOWS940)/
+	rm -f $(WINDOWS940)/lemd $(WINDOWS940)/queuetest $(WINDOWS940)/rmtest $(WINDOWS940)/sort $(WINDOWS940)/zctest $(WINDOWS940)/*.o $(WINDOWS940)/thermostatd 
+	rm -f $(WINDOWS940)/core $(WINDOWS940)/junk* 
+	rm -f $(WINDOWS940)/[lpz].*
+	rm -f $(WINDOWS940)/.~lock.*.ods*
+
+linux : $(DIR940) $(WINDOWS940) 
+	$(RSYNC) $(RSYNC_ARCHIVE) $(RSYNC_OPTS) $(RSYNC_UPDATE) $(RSYNC_VERBOSE) $(WINDOWS940)/ $(DIR940)/
+	chown bruce:users $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940) $(DIR940)/*.ods
+	chmod u+rws,g+rws $(PROJECTSDIR) $(AUTOMATIONDIR) $(DIR940)
+	chmod a+rw $(DIR940)/*.ods
 
 # hints
 # admin -i$$base -r$(SID) -fq"$(MAINTAINER)" -ft$(ADDRESS) $$file

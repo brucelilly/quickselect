@@ -27,7 +27,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is graphing.c version 2.11 2017-04-08T23:37:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is graphing.c version 2.12 2017-09-01T03:44:46Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "graphing" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/projects/automation/940/lib/libgraphing/src/s.graphing.c */
@@ -47,8 +47,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: graphing.c ~|^` @(#)"
 #define SOURCE_MODULE "graphing.c"
-#define MODULE_VERSION "2.11"
-#define MODULE_DATE "2017-04-08T23:37:52Z"
+#define MODULE_VERSION "2.12"
+#define MODULE_DATE "2017-09-01T03:44:46Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2014-2017"
 
@@ -58,21 +58,32 @@
 # define TESTING 0
 #endif
 
+/* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-# define MIN_XOPEN_SOURCE_VERSION 600
+# define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
-# define MIN_XOPEN_SOURCE_VERSION 500
+# define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
 #endif
 
-/* feature test macros defined before any header files are included */
 #ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 600  /* code uses C99 'inline', XOPEN 'LONG_BIT' */
+# ifdef MIN_XOPEN_SOURCE_VERSION
+#  define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+# else
+#  ifdef MAX_XOPEN_SOURCE_VERSION
+#   define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#  endif
+# endif
 #endif
-#if defined(_XOPEN_SOURCE) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
+#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#endif
+
 #ifndef __EXTENSIONS__
 # define __EXTENSIONS__ 1
 #endif

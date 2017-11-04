@@ -1,4 +1,4 @@
-.\" Description: quickselect.3 version 1.2 man page 2017-02-09T17:27:04Z
+.\" Description: quickselect.3 version 1.5 man page 2017-11-04T01:23:38Z
 .\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
 .\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
 .\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
@@ -22,6 +22,9 @@
 .\" \*S			change to default type size
 .lg 0	\" avoid groff's butt-ugly ligatures
 .nh	\" no hyphenation
+.EQ
+delim $$
+.EN
 .ds ]W \" no 7th Edition designation
 .\" package name in string xx
 .ds xx quickselect
@@ -35,11 +38,16 @@
 .nh	\" no hyphenation
 \fB#include <quickselect.h>\fP
 .PP
-.B void quickselect(void *base, size_t nmemb, const size_t size, int (*compar)(const void *, const void *), size_t *pk, const size_t nk);
-'\" QUICKSELECT_EXTERN void quickselect(void *, size_t, const size_t, int (*)(const void *, const void *), size_t *, const size_t);
+.B void quickselect(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), void (*swapf)(void *, void *, size_t), size_t *pk, size_t nk, unsigned int options);
+.PP
+.B errno_t quickselect_s(void *base, rsize_t nmemb, rsize_t size, int (*compar)(const void *, const void *, void *), void *context, void (*swapf)(void *, void *, size_t), size_t *pk, size_t nk, unsigned int options);
+'\" QUICKSELECT_EXTERN void quickselect(/*const*/ void *, size_t, /*const*/ size_t, int (*)(const void *, const void *), void (*)(void *, void *, size_t), /*const*/ size_t /*const*/ *, /*const*/ size_t, unsigned int);
 '\" QUICKSELECT_EXTERN void QSORT_FUNCTION_NAME(void *, size_t, size_t, int (*)(const void *, const void *));
 .PP
-.B void QSORT_FUNCTION_NAME(void *base, size_t nmemb, const size_t size, int (*compar)(const void , const void *));
+.B void QSORT_FUNCTION_NAME(void *base, size_t nmemb, size_t size, int (*compar)(const void , const void *));
+.PP
+.B errno_t QSORT_S_FUNCTION_NAME(void *base, rsize_t nmemb, rsize_t size, int (*compar)(const void *, const void *, void *), void *context);
+'\" QUICKSELECT_EXTERN errno_t QSORT_S_FUNCTION_NAME(/*const*/ void *, rsize_t, /*const*/ rsize_t, int (*)(const void *, const void *, void *), /*const*/ void *);
 .PP
 .SH DESCRIPTION
 The
@@ -54,10 +62,14 @@ of
 .I size_t
 elements representing
 0\-based
-order statistic indices,
+order statistic ranks,
 .B \*(xx
 partially orders the array
 .B base
+(having
+.B nmemb
+elements of size
+.BR size )
 such that the
 specified order statistics are
 in\-place
@@ -70,8 +82,96 @@ or
 .B nk
 is 0UL,
 a full sort of the array is performed.
+.PP
+Function
+.B compar
+is provided by the caller,
+and should return a value
+less than zero,
+equal to zero,
+or
+greater than zero
+when the array element pointed to by the first argument is
+less than, equal to, or greater than
+the array element pointed to by the second argument.
+.PP
+The
+.B swapf
+pointer points to a caller\-supplied
+function which swaps two array elements.
+If
+.B swapf
+is
+.IR NULL ,
+a suitable default function is provided.
+.PP
+The
+.B options
+argument
+affects operation by bitwise or'ing
+any of the following components:
+.IP QUICKSELECT_STABLE 0.5i
+causes sorting or selection to preserve partial order present in the input.
+There is a substantial performance penalty; the default operation
+does not guarantee preservation of partial order.
+.IP QUICKSELECT_OPTIMIZE_COMPARISONS 0.5i
+uses minimum-comparison methods
+and is suitable if the comparison function
+.B compar
+is known to be relatively expensive.
+The default operation attempts to minimize
+run\-time for simple comparisons.
+.IP QUICKSELECT_RESTRICT_RANK 0.5i
+is used internally and should not be set by the caller.
+.IP "bits in 0x01FF8U" 0.5i
+specify the ability to use sorting networks for
+arrays of size 3 through 12 elements, corresponding
+to bit 0x01\ <<\ size.
+A sorting network is always used to sort
+sub\-arrays of size 2.
+Sorting networks for arrays of size 7 or larger
+are not applicable when
+.B QUICKSELECT_STABLE
+is set, and are silently ignored.
+When
+.B QUICKSELECT_OPTIMIZE_COMPARISONS
+is set, only the size 2 sorting network is used;
+all others are silently ignored.
+Sorting networks are fast due to low overhead,
+but are unable to take advantage of pre\-existing
+order in the input (e.g. already-sorted input).
+.PP
 .SH RETURN VALUES
 none
+for quickselect and QSORT_FUNCTION_NAME.
+If 
+.B __STDC_WANT_LIB_EXT1__
+is defined with non-zero value when
+.I \*(xx.h
+is included,
+quickselect_s
+and
+QSORT_S_FUNCTION_NAME
+are provided, which
+return zero on normal exection
+and non-zero if there is an argument error.
+Arguments
+.B nmemb
+and
+.B size
+are compared to
+.BR RSIZE_MAX ,
+and
+.B compar
+is compared to
+.BR NULL .
+In addition,
+the comparison function
+.B compar
+is expected to take a third argument,
+which is provided by the
+.B contect
+argument.
 .SH ERRORS
 If
 .B base
@@ -99,7 +199,7 @@ karray[0] = (nmemb-1UL)/2UL;
 .br
 karray[1] = nmemb/2UL;
 .br
-\*(xx(base, nmemb, size, compar, karray, 2UL);
+\*(xx(base, nmemb, size, compar, NULL, karray, 2UL, 0x07F8U);
 .br
 
 .br
@@ -111,23 +211,29 @@ in the middle
 element(s) of the array
 pointed to by
 .BR base.
+Refer to the BUGS and CAVEATS section
+regarding duplicated order statistic ranks.
 .br
 
 .br
-\*(xx(base, nmemb, size, compar, NULL, 0UL);
+\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, 0x07F8U);
 .br
 
 .br
-sorts the array.
+sorts the array, and is equivalent to
+.br
+QSORT_FUNCTION_NAME(base, nmemb, size, compar);
+.br
 .PP
 .SH APPLICATION USAGE
 If the macro
 .B QSORT_FUNCTION_NAME
 is defined before
-\*(xx.h
+.I \*(xx.h
 is included
 when compiling the
-\*(xx.c source,
+.I \*(xx.c
+source,
 a sorting function with the same semantics as
 .B qsort
 is generated,
@@ -142,34 +248,84 @@ as
 While many libraries include a standard
 .B qsort
 function,
-the
+those
 .B qsort
-implementation may tend to
+implementations may tend to
 quadratic performance on adverse inputs.
+Many implementations exhibit poor performance for
+some types of structured input sequences,
+such as reverse-sorted
+or
+rotated
+sequences.
+Most
+.B qsort
+implementations provide
+no guarantee of stablilty
+(in the sense of preservation of partial order),
+and there is no means of providing an
+optimized element swapping function
+or means to adjust the algorithm to
+compensate for expensive comparisons.
 Few libraries provide a function for selection of order statistics.
+Those libraries that do provide a selection function
+usually only permit selection of a single order statistic per function call.
 .SH BUGS and CAVEATS
 Array
 .B pk
 may be sorted by
-\*(xx
+.B \*(xx
 and therefore initially unsorted order statistic ranks may be permuted
-by a call to \*(xx.
+by a call to
+.BR \*(xx .
 It is recommended
 (but not required)
 that the order statistics array
 .B pk
 be supplied in sorted order.
 .PP
-\*(xx 
+If array
+.B pk
+contains duplicated ranks,
+those duplicates will be ignored
+during processing and will be
+grouped together by sorting after
+processing.
+This may be expensive if a large
+number of order statistics are specified
+and there is at least one duplicate.
+It is recommended
+(but not required)
+that the order statistics array
+.B pk
+contain no duplicates.
+.PP
+.B \*(xx 
 has expected and worst\-case linear complexity for finding a single order statistic.
-\*(xx 
-has expected and worst\-case lineararithmic complexity for sorting.
+Worst\-case non-stable selection of multiple order statistics is linearithmic.
+.B \*(xx 
+has expected and worst\-case linearithmic complexity for non-stable sorting.
+.PP
+When stable sorting or selection is specified by setting
+.BR QUICKSELECT_STABLE ,
+selection becomes linearithmic and
+sorting becomes $O(N log sup 2 N)$
+due to additional data movement
+(the complexity of comparisons is unchanged).
+Sorting and selection remain in\-place;
+no additional size\-related memory is required.
+However, if stable sorting is required and additional memory is available,
+an alternative means of sorting may be faster.
 .SH FUTURE DIRECTIONS
 none
 .SH SEE ALSO
 qsort
 .SH CHANGE HISTORY
-Initial version January 2107.
+Function implementation initial version June 2016.
+Implementation backward\-compatible updates through October 2017.
+.PP
+Manual page initial version January 2017.
+Latest manual page update October 2017.
 .SH AUTHOR
 Bruce Lilly <bruce.lilly@gmail.com>
 .SH LICENSE
@@ -190,7 +346,7 @@ Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 .po
 .lt
 .br
-@(#)quickselect.3 1.2 2017-02-09T17:27:04Z copyright \*(xy Bruce Lilly
+@(#)quickselect.3 1.5 2017-11-04T01:23:38Z copyright \*(xy Bruce Lilly
 .br
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the

@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    simple_config.c copyright 2011 - 2016 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    simple_config.c copyright 2011-2017 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is simple_config.c version 2.5 2016-05-31T14:22:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is simple_config.c version 2.6 2017-09-21T16:32:45Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "simple_config" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libconfig/src/s.simple_config.c */
@@ -50,10 +50,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: simple_config.c ~|^` @(#)"
 #define SOURCE_MODULE "simple_config.c"
-#define MODULE_VERSION "2.5"
-#define MODULE_DATE "2016-05-31T14:22:59Z"
+#define MODULE_VERSION "2.6"
+#define MODULE_DATE "2017-09-21T16:32:45Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2011 - 2016"
+#define COPYRIGHT_DATE "2011-2017"
 
 /* configuration (which might affect feature test macros) */
 /* to include a main entry point for testing, compile with -DTESTING=1 */
@@ -526,7 +526,8 @@ int configcmp(const void *p1, const void *p2)
    on success, return a pointer to the matching entry
 */
 struct config_entry *find_config_entry(struct config_entry *root,
-    const char **names, int nnames, int (*compar)(const void *, const void *),
+    char * const names[] /* like getopt(), see XPG getopt() and exec() */,
+    int nnames, int (*compar)(const void *, const void *),
     void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     struct config_entry *pc = NULL;

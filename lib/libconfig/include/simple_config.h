@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    simple_config.h copyright 2011 - 2015 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    simple_config.h copyright 2011-2017 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is simple_config.h version 1.12 2015-10-05T20:27:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is simple_config.h version 1.13 2017-09-21T16:32:27Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "simple_config" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libconfig/include/s.simple_config.h */
 
 /* version-controlled header file version information */
-#define SIMPLE_CONFIG_H_VERSION "simple_config.h 1.12 2015-10-05T20:27:37Z"
+#define SIMPLE_CONFIG_H_VERSION "simple_config.h 1.13 2017-09-21T16:32:27Z"
 
 /*INDENT ON*/
 /* *INDENT-ON* */
@@ -74,7 +74,7 @@ struct config_entry {
 #endif
 
 SIMPLE_CONFIG_EXTERN int configcmp(const void *, const void *);
-SIMPLE_CONFIG_EXTERN struct config_entry *find_config_entry(struct config_entry *, const char **, int, int (*)(const void *, const void *), void (*)(int, void *, const char *, ...), void *);
+SIMPLE_CONFIG_EXTERN struct config_entry *find_config_entry(struct config_entry *, char *const[], int, int (*)(const void *, const void *), void (*)(int, void *, const char *, ...), void *);
 SIMPLE_CONFIG_EXTERN int top_down_config_walk(struct config_entry *, int (*)(struct config_entry *, void (*)(int, void *, const char *, ...), void *), void (*)(int, void *, const char *, ...), void *);
 SIMPLE_CONFIG_EXTERN int free_config(struct config_entry *, void (*)(int, void *, const char *, ...), void *);
 

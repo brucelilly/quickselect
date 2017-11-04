@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is simple_config.c version 1.5 dated 2016-12-03T15:29:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is simple_config.c version 1.6 dated 2017-09-21T16:10:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "simple_config" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/src/s.simple_config.c */
@@ -52,8 +52,8 @@ command-line arguments.
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: simple_config.c ~|^` @(#)"
 #define SOURCE_MODULE "simple_config.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2016-12-03T15:29:05Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2017-09-21T16:10:30Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016"
 
@@ -129,7 +129,7 @@ command-line arguments.
 "
 
 /* static data and function definitions */
-static char simple_config_version_string[] = "$Id: ~|^` @(#) simple_config version 1.5\\ $";
+static char simple_config_version_string[] = "$Id: ~|^` @(#) simple_config version 1.6\\ $";
 static char simple_config_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *simple_config_version = NULL;
@@ -159,7 +159,7 @@ static void initialize_simple_config(void)
         *p = '\0';
 }
 
-int main(int argc, const char **argv)
+int main(int argc, char *argv[]) /* XPG (see exec()) */
 {
     char cf[PATH_MAX + 1];      /* RATS: ignore (it's big enough) */
     char prog[PATH_MAX + 1];    /* RATS: ignore (it's big enough) */
@@ -207,7 +207,7 @@ int main(int argc, const char **argv)
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = "simple_config main";
-    ls.swVersion = "1.5";       /* maintained by version control system */
+    ls.swVersion = "1.6";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;

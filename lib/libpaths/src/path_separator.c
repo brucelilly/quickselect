@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    path_separator.c copyright 2010 - 2016 Bruce Lilly.   \ path_separator.c $
+* $Id: ~|^` @(#)    path_separator.c copyright 2010-2017 Bruce Lilly.   \ path_separator.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is path_separator.c version 1.6 dated 2016-04-07T00:32:35Z. \ $ */
+/* $Id: ~|^` @(#)   This is path_separator.c version 1.7 dated 2017-09-01T02:22:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "paths" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libpaths/src/s.path_separator.c */
@@ -60,17 +60,39 @@ const char *path_separator(const char *path)
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: path_separator.c ~|^` @(#)"
 #define SOURCE_MODULE "path_separator.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2016-04-07T00:32:35Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2017-09-01T02:22:30Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2010 - 2016"
+#define COPYRIGHT_DATE "2010-2017"
 
 /* configuration (which might affect feature test macros) */
 
-/* feature test macros must appear before any header file inclusion */
-#ifndef _XOPEN_SOURCE
-# define _XOPEN_SOURCE 500
+/* feature test macros defined before any header files are included */
+/* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
+#else
+# define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
 #endif
+
+#ifndef _XOPEN_SOURCE
+# ifdef MIN_XOPEN_SOURCE_VERSION
+#  define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+# else
+#  ifdef MAX_XOPEN_SOURCE_VERSION
+#   define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#  endif
+# endif
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
+#endif
+#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+# undef _XOPEN_SOURCE
+# define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
+#endif
+
 #ifndef __EXTENSIONS__
 # define __EXTENSIONS__ 1
 #endif

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repeated_median.c version 1.6 dated 2017-01-25T03:21:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is repeated_median.c version 1.9 dated 2017-11-03T20:58:18Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "repeated_median" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repeated_median.c */
@@ -45,8 +45,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repeated_median.c ~|^` @(#)"
 #define SOURCE_MODULE "repeated_median.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2017-01-25T03:21:28Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2017-11-03T20:58:18Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016 - 2017"
 
@@ -108,18 +108,23 @@ static char repeated_median_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
 
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define MEDIAN_INLINE inline
+#else
+# define MEDIAN_INLINE /**/
+#endif /* C99 */
 /* forward references */
-static inline void initialize_repeated_median(void);
-static inline size_t slope_number(size_t, size_t, size_t);
-static inline size_t window_start(size_t, size_t, size_t, unsigned int);
-static inline size_t window_end(size_t, size_t, size_t, unsigned int);
-static inline double slope(double *, double *, size_t, size_t, size_t);
-static inline size_t pair_slopes(double *, double *, size_t, size_t, double *, size_t, size_t, unsigned int);
-static inline size_t compute_window_slopes(double *, size_t, size_t, double *, unsigned int);
-static inline size_t intercepts(double *, double *, size_t, size_t, double, size_t, unsigned int);
+static MEDIAN_INLINE void initialize_repeated_median(void);
+static MEDIAN_INLINE size_t slope_number(size_t, size_t, size_t);
+static MEDIAN_INLINE size_t window_start(size_t, size_t, size_t, unsigned int);
+static MEDIAN_INLINE size_t window_end(size_t, size_t, size_t, unsigned int);
+static MEDIAN_INLINE double slope(double *, double *, size_t, size_t, size_t);
+static MEDIAN_INLINE size_t pair_slopes(double *, double *, size_t, size_t, double *, size_t, size_t, unsigned int);
+static MEDIAN_INLINE size_t compute_window_slopes(double *, size_t, size_t, double *, unsigned int);
+static MEDIAN_INLINE size_t intercepts(double *, double *, size_t, size_t, double, size_t, unsigned int);
 
 /* initialize at run-time */
-static inline void initialize_repeated_median(void)
+static MEDIAN_INLINE void initialize_repeated_median(void)
 {
     const char *s;
 
@@ -147,7 +152,7 @@ static void print_double_array(double *array, size_t l, size_t u)
    where i!=j and i and j are within w of each other (modulo n).
    Returned value is associative w.r.t. i and j.
 */
-static inline size_t slope_number(size_t n, size_t i, size_t j)
+static MEDIAN_INLINE size_t slope_number(size_t n, size_t i, size_t j)
 {
     size_t d, minimum, maximum, r;
 
@@ -158,7 +163,7 @@ static inline size_t slope_number(size_t n, size_t i, size_t j)
     return r;
 }
 
-static inline size_t window_start(size_t n, size_t i, size_t w, unsigned int wrap)
+static MEDIAN_INLINE size_t window_start(size_t n, size_t i, size_t w, unsigned int wrap)
 {
     size_t h = w>>1, s;
 
@@ -174,7 +179,7 @@ static inline size_t window_start(size_t n, size_t i, size_t w, unsigned int wra
     return s;
 }
 
-static inline size_t window_end(size_t n, size_t i, size_t w, unsigned int wrap)
+static MEDIAN_INLINE size_t window_end(size_t n, size_t i, size_t w, unsigned int wrap)
 {
     size_t e, h = w>>1;
 
@@ -195,7 +200,7 @@ static inline size_t window_end(size_t n, size_t i, size_t w, unsigned int wrap)
    parametric slope for points j,y [j,y in 0..n-1; j != y]
    (parametric slope is difference in value divided by difference in index)
 */
-static inline double slope(double *pd, double *pz, size_t n, size_t j, size_t y)
+static MEDIAN_INLINE double slope(double *pd, double *pz, size_t n, size_t j, size_t y)
 {
     double m;
 
@@ -213,7 +218,7 @@ static inline double slope(double *pd, double *pz, size_t n, size_t j, size_t y)
 /* put w-1 pairwise slopes for point x (relative to window start) in window around point i in array ps */
 /* slopes are between point (i+n+x-h)%n and points (i+n-h)%n..(i+h)%n where h=w/2 (if wrapped) */
 /* caller provides arrays (array pz, size at least n*w, is optional) */
-static inline size_t pair_slopes(double *pd, double *ps, size_t n, size_t w, double *pz, size_t i, size_t x, unsigned int wrap)
+static MEDIAN_INLINE size_t pair_slopes(double *pd, double *ps, size_t n, size_t w, double *pz, size_t i, size_t x, unsigned int wrap)
 {
     size_t e, h, j, k=0UL, s, y;
 
@@ -254,7 +259,7 @@ static inline size_t pair_slopes(double *pd, double *ps, size_t n, size_t w, dou
 /* Compute all pairwise slopes for window size w for points in array pd, size n.
    Place results in array pz, size at least n*w.
 */
-static inline size_t compute_window_slopes(double *pd, size_t n, size_t w, double *pz, unsigned int wrap)
+static MEDIAN_INLINE size_t compute_window_slopes(double *pd, size_t n, size_t w, double *pz, unsigned int wrap)
 {
     size_t k = 0UL;
 
@@ -284,7 +289,7 @@ static inline size_t compute_window_slopes(double *pd, size_t n, size_t w, doubl
 }
 
 /* place w intercepts for window w around point i, based on slope m, in array pintercepts */
-static inline size_t intercepts(double *pd, double *pintercepts, size_t n, size_t w, double m, size_t i, unsigned int wrap)
+static MEDIAN_INLINE size_t intercepts(double *pd, double *pintercepts, size_t n, size_t w, double m, size_t i, unsigned int wrap)
 {
     size_t e, h, j, k=0UL, s;
     double x;
@@ -377,7 +382,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes, size_
             if (k != w-1UL) { (void) fprintf(stderr, "%s line %d: i=%lu, j=%lu, k=%lu, w=%lu\n", __func__, __LINE__, i, j, k, w); fflush(stderr); return 1; }
 #endif
             /* (inner) median slope for this point */
-            quickselect(px, k, sizeof(double), doublecmp, karray, 2UL);
+            quickselect(px,k,sizeof(double),doublecmp,NULL,karray,2UL,0x07F8U);
             py[j] = (px[karray[0]]+px[karray[1]])/2.0;
 #if DEBUG_CODE
             if (px[karray[1]] < px[karray[0]] - 1.0e-5) {
@@ -391,7 +396,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes, size_
 #endif
         }
         /* (outer) median slope of w inner median slopes for this point = slope for this point */
-        quickselect(py, w, sizeof(double), doublecmp, marray, 1UL);
+        quickselect(py,w,sizeof(double),doublecmp,NULL,marray,1UL,0x07F8U);
         m = py[marray[0]];
         if (NULL != pslopes) pslopes[i] = m;
 #if DEBUG_CODE
@@ -403,7 +408,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes, size_
         if (k != w) { (void) fprintf(stderr, "%s line %d: i=%lu, j=%lu, k=%lu, w=%lu\n", __func__, __LINE__, i, j, k, w); fflush(stderr); return 1; }
 #endif
         /* median intercept = filtered value */
-        quickselect(py, k, sizeof(double), doublecmp, marray, 1UL);
+        quickselect(py,k,sizeof(double),doublecmp,NULL,marray,1UL,0x07F8U);
         b = py[marray[0]];
         if (NULL != pfiltered) pfiltered[i] = b;
     }

@@ -71,3 +71,6 @@ SCCS_OUTPUT_OPTION =
 
 # run-time directory for BIND
 NAMED_DIR = /var/named
+
+# workaround for lack of mergesort -- use libmedian_test version
+OS_DEFS = -Dmergesort=xmergesort

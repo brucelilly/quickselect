@@ -86,10 +86,7 @@ do
 	eval arg=\$${i}
 	case "${arg}" in
 		-d)	debug=`expr ${debug} + 1`
-			debugflag="${debugflag} $1"
-		;;
-		-*n*)	debug=`expr ${debug} + 1`
-			debugflag="${debugflag} $1"
+			debugflag="${debugflag} ${arg}"
 		;;
 		-p)	i=`expr ${i} + 1`
 			eval arg=\$${i}
@@ -140,12 +137,35 @@ then
 			thisfile=${foo}
 			if test ${debug} -gt 0
 			then
-				echo thisfile ${thisfile}
+				echo thisfile "(from realpath)" ${thisfile}
+			fi
+			if test -z "${dir}"
+			then
+				if test ${debug} -gt 0
+				then
+					echo about to execute dirname ${thisfile}
+				fi
+				dir=`dirname ${thisfile}`
+			fi
+		fi
+	else
+		if test ${debug} -gt 0
+		then
+			echo realpath ${thisfile} failed:
+			realpath ${thisfile}
+		fi
+		if test -z "${dir}"
+		then
+			if test ${debug} -gt 0
+			then
+				echo about to execute dirname ${thisfile}
 			fi
 			dir=`dirname ${thisfile}`
 		fi
-	else
-		dir=`dirname ${thisfile}`
+	fi
+	if test ${debug} -gt 0
+	then
+		echo dir ${dir}
 	fi
 fi
 if test -z "${dir}"
@@ -171,9 +191,21 @@ then
 			then
 				echo thisfile ${thisfile}
 			fi
+			if test ${debug} -gt 0
+			then
+				echo about to execute dirname ${thisfile}
+			fi
 			dir=`dirname ${thisfile}`
 		fi
 	fi
+	if test ${debug} -gt 0
+	then
+		echo dir ${dir}
+	fi
+fi
+if test ${debug} -gt 0
+then
+	echo dir ${dir}
 fi
 
 do=""
@@ -187,13 +219,22 @@ fi
 if test ${debug} -gt 0
 then
 	echo thisfile ${thisfile}
+	echo dir ${dir}
 fi
-dir=`dirname ${thisfile}`
+if test -z "${dir}"
+then
+	if test ${debug} -gt 0
+	then
+		echo about to execute dirname ${thisfile}
+	fi
+	dir=`dirname ${thisfile}`
+fi
 
 if test ${debug} -gt 0
 then
 	echo thisfile ${thisfile}
 	echo dir ${dir}
+	echo debugflag ${debugflag}
 fi
 
 if test -f ${dir}/network.sh
