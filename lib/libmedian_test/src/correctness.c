@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.3 dated 2017-11-03T20:01:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.4 dated 2017-11-05T22:15:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T20:01:20Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-11-05T22:15:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -687,7 +687,6 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                     case TEST_SEQUENCE_DUAL_PIVOT_KILLER :       /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MEDIAN3KILLER :           /*FALLTHROUGH*/
                     case TEST_SEQUENCE_ANTIQUICKSELECT :
-                    case TEST_SEQUENCE_COMBINATIONS :            /*FALLTHROUGH*/
                     case TEST_SEQUENCE_ADVERSARY :               /*FALLTHROUGH*/
                         distinct=1U;
 #if GENERATOR_TEST
@@ -709,6 +708,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                     case TEST_SEQUENCE_SAWTOOTH :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_BINARY :                  /*FALLTHROUGH*/
                     case TEST_SEQUENCE_TERNARY :                 /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_COMBINATIONS :            /*FALLTHROUGH*/
                     case TEST_SEQUENCE_CONSTANT :                /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES :           /*FALLTHROUGH*/
                     case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :   /*FALLTHROUGH*/

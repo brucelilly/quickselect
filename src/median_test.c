@@ -60,7 +60,7 @@
 /* getopt treats ? and : specially (: is used as a magic silence flag) */
 /* available characters: &*()={}[]\;'">`  plus control characters and whitespace */
 #define OPTSTRING "aAb:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsStT:U:uvVwW:xXy:Y:zZ:0:1:2:3:4:56:7:8:9!@#:%+,.|:/:~_<"
-#define USAGE_STRING     "[-a] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [m3,n]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-y [n]] [-z] [-0 name] [-1 f,f,f...] -2 [f,f,f...] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-6 name] [-7 [f,f,f...]] [-8 [f,f,f...]] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n\ [-/ n] [-~] [-<] -- [[start incr]] [size [count]]\n\
+#define USAGE_STRING     "[-a] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [m3,n]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-y [n]] [-z] [-0 name] [-1 f,f,f...] -2 [f,f,f...] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-6 name] [-7 [f,f,f...]] [-8 [f,f,f...]] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] -- [[start incr]] [size [count]]\n\
 -a\ttest with McIlroy quicksort adversary\n\
 -A\talphabetic (string) data type tests\n\
 -b [0]\ttest Bentley&McIlroy qsort optionally w/o instrumentation\n\
@@ -101,7 +101,7 @@
 -S\tstructure (basically struct tm) data type tests\n\
 -t\tthorough tests\n\
 -T sequences\tinclude timing tests for specified sequences\n\
--u\ttest prelininary 9899:201x draft N1570 qsort_s implementation based on quickselect\n\
+-u\ttest preliminary 9899:201x draft N1570 qsort_s implementation based on quickselect\n\
 -U n\tset sampling nmemb breakpoints according to factor n\n\
 -v\ttest sorting networks for small arrays\n\
 -V\tuse sorting networks instead of insertion sort for small arrays\n\
@@ -248,32 +248,38 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
     ) {
         case 0U :
         break;
+#if QUICKSELECT_STABLE
         case QUICKSELECT_STABLE :
             partition_method = QUICKSELECT_PARTITION_STABLE;
-            pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
-        break;
-        case QUICKSELECT_OPTIMIZE_COMPARISONS :
-            partition_method = QUICKSELECT_PARTITION_FAST;
             pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
         break;
         case ((QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE)) :
             partition_method = QUICKSELECT_PARTITION_STABLE;
             pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
         break;
-        case QUICKSELECT_RESTRICT_RANK :
-            partition_method = QUICKSELECT_PARTITION_FAST;
-            pivot_method = QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS;
-        break;
         case ((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE)) :
             partition_method = QUICKSELECT_PARTITION_STABLE;
             pivot_method = QUICKSELECT_PIVOT_REMEDIAN_FULL;
+        break;
+#endif /* QUICKSELECT_STABLE  */
+        case QUICKSELECT_OPTIMIZE_COMPARISONS :
+            partition_method = QUICKSELECT_PARTITION_FAST;
+            pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
+        break;
+        case QUICKSELECT_RESTRICT_RANK :
+            partition_method = QUICKSELECT_PARTITION_FAST;
+            pivot_method = QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS;
         break;
         case ((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_OPTIMIZE_COMPARISONS)) :
             partition_method = QUICKSELECT_PARTITION_FAST;
             pivot_method = QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS;
         break;
         default : /* all bits */
+#if QUICKSELECT_STABLE
             partition_method = QUICKSELECT_PARTITION_STABLE;
+#else
+            partition_method = QUICKSELECT_PARTITION_FAST;
+#endif /* QUICKSELECT_STABLE  */
             pivot_method = QUICKSELECT_PIVOT_REMEDIAN_FULL;
         break;
     }
@@ -1175,11 +1181,13 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                             sorting_repivot_table
                                 = sorting_repivot_table_aggressive;
                         break;
+#if 0
                         case 'c' : /* constrained */
                             sorting_repivot_table_name = "constrained";
                             sorting_repivot_table
                                 = sorting_repivot_table_constrained;
                         break;
+#endif
                         case 'd' : /* disabled */
                             sorting_repivot_table_name = "disabled";
                             sorting_repivot_table
@@ -1365,59 +1373,31 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     switch (flags[c]) {
                         case 'a' : /* aggressive */
                             selection_repivot_table_name = "aggressive";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_aggressive;
-#endif
                         break;
+#if 0
                         case 'c' : /* constrained */
                             selection_repivot_table_name = "constrained";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_constrained;
-#endif
                         break;
+#endif
                         case 'd' : /* disabled */
                             selection_repivot_table_name = "disabled";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_disabled;
-#endif
                         break;
 #if 0
                         case 'e' : /* experimental */
                             selection_repivot_table_name = "experimental";
-                            selection_repivot_table
-                                = selection_repivot_table_experimental;
                         break;
 #endif
                         case 'l' : /* loose */
                             selection_repivot_table_name = "loose";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_loose;
-#endif
                         break;
                         case 'r' : /* relaxed */
                             selection_repivot_table_name = "relaxed";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_relaxed;
-#endif
                         break;
                         case 't' : /* transparent */
                             selection_repivot_table_name = "transparent";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_transparent;
-#endif
                         break;
                         default : /* no match */
                             selection_repivot_table_name = "experimental";
-#if 0
-                            selection_repivot_table
-                                = selection_repivot_table_experimental;
-#endif
                         break;
                     }
                     if ((0U!=flags['7'])||(0U!=flags['8']))
@@ -1581,13 +1561,14 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind];
                     network_mask = (unsigned int)strtoul(pcc, &endptr, 0);
                     network_mask &= 0x01FF8U;
+                    options &= 0x07U;
                     options |= network_mask;
                     if (0U!=(0x01F80U&network_mask)) {
+                        /* cannot have stable sort with networks >= size 7 */
                         options &= ~(QUICKSELECT_STABLE);
-                    } else {
-                        options |= (QUICKSELECT_STABLE);
                     }
                     if (0U!=(0x01FF8U&network_mask)) {
+                        /* network sort incompatible with optimized comparisons (in-place merge sort) */
                         options &= ~(QUICKSELECT_OPTIMIZE_COMPARISONS);
                     }
                     /* pass over arg to satisfy loop conditions */
@@ -1651,12 +1632,12 @@ usage:
             }
         }
     }
+    /* command line */
+    (V)fprintf(stdout, "%s%s", comment, prog);
+    for (i = 1; i < argc; i++) { (V)fprintf(stdout, " %s", argv[i]); }
+    (V)fprintf(stdout, ":\n");
     /* print configured parameters in header */
     if (0U==flags['h']) {
-        /* command line */
-        (V)fprintf(stdout, "%s%s", comment, prog);
-        for (i = 1; i < argc; i++) { (V)fprintf(stdout, " %s", argv[i]); }
-        (V)fprintf(stdout, ":\n");
         /* now output settings made by options */
         for (q=z=n=0U,ul=sizeof(flags); n<ul; n++) {
             if (0U!=flags[n]) {
@@ -3004,9 +2985,13 @@ trying breakpoint 813 for 27 samples, from nmemb=1219 through 1219 by 1
                             errs++;
                         } else {
                             uint64_t max_val;
-                            int(*compar[])(const struct data_struct *,const struct data_struct *) = {
-                                secondscmp, minutescmp, hourscmp, daycmp, monthcmp,
-                                yearcmp
+                            int(*compar[])(const void *,const void *) = {
+                                (int(*)(const void *,const void *))secondscmp,
+                                (int(*)(const void *,const void *))minutescmp,
+                                (int(*)(const void *,const void *))hourscmp,
+                                (int(*)(const void *,const void *))daycmp,
+                                (int(*)(const void *,const void *))monthcmp,
+                                (int(*)(const void *,const void *))yearcmp
                             };
                             const char *fname = function_name(v);
                             switch (v) {

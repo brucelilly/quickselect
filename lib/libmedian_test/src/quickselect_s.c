@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    %M% copyright 2016-2017 %Q%.   \ quickselect_s.c $
+* $Id: ~|^` @(#)    quickselect_s.c copyright 2016-2017 Bruce Lilly.   \ quickselect_s.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,10 +28,10 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is %M% version %I% dated %O%. \ $ */
-/* You may send bug reports to %Y% with subject "median_test" */
+/* $Id: ~|^` @(#)   This is quickselect_s.c version 1.2 dated 2017-11-07T18:52:02Z. \ $ */
+/* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
-/* maintenance note: master file %P% */
+/* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect_s.c */
 
 /********************** Long description and rationale: ***********************
 * starting point for select/median implementation
@@ -45,10 +45,10 @@
 #undef COPYRIGHT_HOLDER
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_s.c ~|^` @(#)"
-#define SOURCE_MODULE "%M%"
-#define MODULE_VERSION "%I%"
-#define MODULE_DATE "%O%"
-#define COPYRIGHT_HOLDER "%Q%"
+#define SOURCE_MODULE "quickselect_s.c"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2017-11-07T18:52:02Z"
+#define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
 #define __STDC_WANT_LIB_EXT1__ 1
@@ -170,8 +170,7 @@ errno_t quickselect_loop_s(char *base, size_t first, size_t beyond,
     const size_t size, int(*compar)(const void *,const void *,void *),
     void *context, const size_t *pk, size_t firstk, size_t beyondk,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t cutoff, unsigned int options, struct sampling_table_struct *pst,
-    unsigned int table_index, char **ppeq, char **ppgt);
+    size_t cutoff, unsigned int options, char **ppeq, char **ppgt);
 
 /* select_pivot_s using remedian_s or median-of-medians */
 /* Called from both loop functions. */
@@ -193,6 +192,7 @@ if (DEBUGGING(PIVOT_SELECTION_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) fprintf(stderr, 
 __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,table_index,options);
 #endif
     switch (options&((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE))) {
+#if QUICKSELECT_STABLE
         case ((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE)) :
             /* almost full remedian */
             while (table_index<(SAMPLING_TABLE_SIZE)-1U) {
@@ -208,6 +208,7 @@ __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,table_index,option
                 if (n>r) table_index--;
             }
         /*FALLTHROUGH*/
+#endif /* QUICKSELECT_STABLE */
         default: /* remedian of samples */
             /*Fast pivot selection:1 sample, median-of-3, remedian of samples.*/
             pivot=base+size*(first+(nmemb>>1));     /* [upper-]middle element */
@@ -267,11 +268,11 @@ __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,table_index,option
                 if (0U!=save_partial)
                     (V)quickselect_loop_s(base,first,first+r,size,compar,
                         context,karray,0UL,1UL,swapf,alignsize,size_ratio,5UL,
-                        0x07F8U,pst,table_index,ppd,ppe);
+                        0x07F8U,ppd,ppe);
                 else
                     (V)quickselect_loop_s(base,first,first+r,size,compar,
                         context,karray,0UL,1UL,swapf,alignsize,size_ratio,5UL,
-                        0x07F8U,pst,table_index,NULL,NULL);
+                        0x07F8U,NULL,NULL);
                 pivot=base+karray[0]*size; /* pointer to median of medians */
                 /* First third of array (medians) is partitioned. */
                 if (0U==save_partial) *ppe=(*ppd=pivot)+size;
@@ -292,7 +293,7 @@ static inline errno_t dedicated_sort_s(char *base, size_t first, size_t beyond,
         size_t n=beyond-first, na;
         char *pa, *pb, *pu;
 
-        if ((12UL<n)||((2UL<n)&&(0U==(options&(0x01U<<n))))) {
+        if ((12UL<n)||((2UL<n)&&(0U==(options&((QUICKSELECT_STABLE)<<n))))) {
             /* split array into two (nearly) equal-size pieces */
             na=(n>>1);
             n=0UL; /* force merge sort */
@@ -564,7 +565,7 @@ done: ;
                             peq,pgt);
                         A(*peq<=*pgt);A(ipf<=*peq);A(*pgt<=beyond);
                         merge_partitions(base,first,ipd,ipe,ipf,*peq,*pgt,
-                            beyond,size,swapf,alignsize,size_ratio,peq,pgt);
+                            beyond,size,swapf,alignsize,size_ratio,options,peq,pgt);
                     } else if (pu==pf) { /* already-partitioned at right end */
                         /* partition unpartitioned left region and merge */
                         A(pl<pc);
@@ -573,7 +574,7 @@ done: ;
                             peq,pgt);
                         A(*peq<=*pgt);A(first<=*peq);A(*pgt<=ipc);
                         merge_partitions(base,first,*peq,*pgt,ipc,ipd,ipe,
-                            beyond,size,swapf,alignsize,size_ratio,peq,pgt);
+                            beyond,size,swapf,alignsize,size_ratio,options,peq,pgt);
                     } else { /* already-partitioned in middle */
                         /* partition unpartitioned regions and merge */
                         size_t eq2, gt2;
@@ -583,7 +584,7 @@ done: ;
                             peq,pgt);
                         A(*peq<=*pgt);A(first<=*peq);A(*pgt<=ipc);
                         merge_partitions(base,first,*peq,*pgt,ipc,ipd,ipe,ipf,
-                            size,swapf,alignsize,size_ratio,peq,pgt);
+                            size,swapf,alignsize,size_ratio,options,peq,pgt);
                         A(*peq<=*pgt);A(first<=*peq);A(*pgt<=ipf);
                         A(pf<pu);
                         partition_s(base,ipf,beyond,pl,base+*peq*size,
@@ -592,7 +593,7 @@ done: ;
                             &eq2,&gt2);
                         A(eq2<=gt2);A(ipf<=eq2);A(gt2<=beyond);
                         merge_partitions(base,first,*peq,*pgt,ipf,eq2,gt2,
-                            beyond,size,swapf,alignsize,size_ratio,peq,pgt);
+                            beyond,size,swapf,alignsize,size_ratio,options,peq,pgt);
                     }
                 } else { /* external pivot; split, partition, & merge */
                     /* External pivot arises whenpartitioning a part of an
@@ -606,7 +607,7 @@ done: ;
                             context,swapf,alignsize,size_ratio,options,
                             &eq2,&gt2);
                     merge_partitions(base,first,*peq,*pgt,mid,eq2,gt2,beyond,
-                            size,swapf,alignsize,size_ratio,peq,pgt);
+                            size,swapf,alignsize,size_ratio,options,peq,pgt);
                 }
             }
         break;
@@ -622,7 +623,8 @@ static
 inline
 errno_t select_min_s(char *base,size_t first,size_t beyond,size_t size,
     int(*compar)(const void *,const void *,void *), void *context,
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, char **ppeq, char **ppgt)
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options, char **ppeq, char **ppgt)
 {
     errno_t ret=0;
     if (beyond>first+1UL) {
@@ -633,9 +635,14 @@ errno_t select_min_s(char *base,size_t first,size_t beyond,size_t size,
         if (NULL==ppeq) { /* non-partitioning */
             for (; q<r; q+=size)
                 if (0<compar(mn,q,context)) mn=q;
-    /* XXX stability requires rotation rather than swaps */
-    /* XXX some argument indicating stability requirement is needed */
-            if (mn!=p) EXCHANGE_SWAP(swapf,p,mn,size,alignsize,size_ratio,nsw++);
+            if (mn!=p) {
+                if (0U==((QUICKSELECT_STABLE)&options)) {
+                    EXCHANGE_SWAP(swapf,p,mn,size,alignsize,size_ratio,nsw++);
+                } else {
+                    /* |      mn      | */
+                    protate(p,mn-size,mn,size,swapf,alignsize,size_ratio);
+                }
+            }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
             for (; q<r; q+=size) {
@@ -663,7 +670,8 @@ static
 inline
 errno_t select_max_s(char *base,size_t first,size_t beyond,size_t size,
     int(*compar)(const void *,const void *,void *), void *context,
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, char **ppeq, char **ppgt)
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options, char **ppeq, char **ppgt)
 {
     errno_t ret=0;
     if (beyond>first+1UL) {
@@ -674,9 +682,14 @@ errno_t select_max_s(char *base,size_t first,size_t beyond,size_t size,
         if ((NULL==ppeq)&&(NULL==ppgt)) { /* non-partitioning */
             for (; p<r; p+=size)
                 if (0>compar(mx,p,context)) mx=p;
-    /* XXX stability requires rotation rather than swaps */
-    /* XXX some argument indicating stability requirement is needed */
-            if (mx!=r) EXCHANGE_SWAP(swapf,r,mx,size,alignsize,size_ratio,nsw++);
+            if (mx!=r) {
+                if (0U==((QUICKSELECT_STABLE)&options)) {
+                    EXCHANGE_SWAP(swapf,r,mx,size,alignsize,size_ratio,nsw++);
+                } else {
+                    /* |      mx      | */
+                    protate(mx,mx+size,r,size,swapf,alignsize,size_ratio);
+                }
+            }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
             char *q=r-size;
@@ -749,7 +762,8 @@ static
 inline
 errno_t select_minmax_s(char *base,size_t first,size_t beyond,size_t size,
     int(*compar)(const void *,const void *,void *), void *context,
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
 {
     errno_t ret=0;
     char *mn, *mx, *a, *z;
@@ -759,16 +773,26 @@ errno_t select_minmax_s(char *base,size_t first,size_t beyond,size_t size,
     ret=find_minmax_s(base,first,beyond,size,compar,context,&mn,&mx);
     if (0!=ret) return ret; /* shouldn't happen */
     /* put min and max in place with at most 2 swaps */
-    if (mx==a) {
-        A(mx!=z);
-    /* XXX stability requires rotation rather than swaps */
-    /* XXX some argument indicating stability requirement is needed */
-        EXCHANGE_SWAP(swapf,a/*mx*/,z,size,alignsize,size_ratio,nsw++);
-        A(mn!=a);
-        if (mn!=z) EXCHANGE_SWAP(swapf,a,mn,size,alignsize,size_ratio,nsw++);
-    } else {
-        if (mn!=a) EXCHANGE_SWAP(swapf,a,mn,size,alignsize,size_ratio,nsw++);
-        if (mx!=z) EXCHANGE_SWAP(swapf,z,mx,size,alignsize,size_ratio,nsw++);
+    if ((mn!=a)||(mx!=z)) {
+        /* special case: mx==a and mn==z */
+        if ((mx==a)&&(mn==z)) {
+            EXCHANGE_SWAP(swapf,a,z,size,alignsize,size_ratio,nsw++);
+        } else { /* rotations required to preserve stability */
+            if (0U!=((QUICKSELECT_STABLE)&options)) {
+                if (a!=mn) {
+                    protate(a,mn,mn+size,size,swapf,alignsize,size_ratio);
+                    if (mx<mn) mx+=size; /* mx was moved by rotation */
+                }
+                if (z!=mx)
+                    protate(mx,mx+size,z+size,size,swapf,alignsize,size_ratio);
+            } else {
+                if (a!=mn)
+                    EXCHANGE_SWAP(swapf,a,mn,size,alignsize,size_ratio,nsw++);
+                if (z!=mx) /* beware case where a was mx before above swap! */
+                    EXCHANGE_SWAP(swapf,z,a==mx?mn:mx,size,alignsize,size_ratio,
+                        nsw++);
+            }
+        }
     }
     A(0==ret); /* shouldn't get an error for internal calls! */
     return ret;
@@ -784,10 +808,9 @@ int special_cases_s(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void*,const void*,void*), void *context,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
     size_t cutoff, size_t nmemb, const size_t *pk, size_t firstk,
-    size_t beyondk, char **ppeq, char **ppgt,
+    size_t beyondk, unsigned int options, char **ppeq, char **ppgt,
     struct sampling_table_struct **ppst, unsigned int *psort,
     unsigned int *pindex)
-    /* XXX some argument indicating stability requirement is needed */
 {
     int ret=0; /* caller continues */
     if (NULL!=pk) { /* selection */
@@ -805,10 +828,10 @@ int special_cases_s(char *base, size_t first, size_t beyond, size_t size,
                 case 1UL : /* any of smallest 2 or largest 2 */
                     if ((fk==first)||(fk==sp)) {
                         select_min_s(base,first,beyond,size,compar,context,
-                            swapf,alignsize,size_ratio,ppeq,ppgt);
+                            swapf,alignsize,size_ratio,options,ppeq,ppgt);
                         if (fk==sp) {
                             select_min_s(base,sp,beyond,size,compar,context,
-                                swapf,alignsize,size_ratio,ppeq,ppgt);
+                                swapf,alignsize,size_ratio,options,ppeq,ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
                             &&(0==compar(*ppeq-size,*ppeq,context)))
                                 (*ppeq)-=size;
@@ -816,10 +839,10 @@ int special_cases_s(char *base, size_t first, size_t beyond, size_t size,
                         return 1 ;
                     } else if ((ek==lp)||(ek==pp)) {
                         select_max_s(base,first,beyond,size,compar,context,
-                            swapf,alignsize,size_ratio,ppeq,ppgt);
+                            swapf,alignsize,size_ratio,options,ppeq,ppgt);
                         if (ek==pp) {
                             select_max_s(base,first,lp,size,compar,context,
-                                swapf,alignsize,size_ratio,ppeq,ppgt);
+                                swapf,alignsize,size_ratio,options,ppeq,ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
                             &&(0==compar(*ppeq,*ppgt,context)))
                                 (*ppgt)+=size;
@@ -832,20 +855,20 @@ int special_cases_s(char *base, size_t first, size_t beyond, size_t size,
                     if (fk==first) {
                         if (ek==lp) { /* smallest & largest */
                             select_minmax_s(base,first,beyond,size,compar,
-                                context,swapf,alignsize,size_ratio);
+                                context,swapf,alignsize,size_ratio,options);
                             return 1 ;
                         } else if (ek==sp) { /* 2 smallest */
                             select_min_s(base,first,beyond,size,compar,context,
-                                swapf,alignsize,size_ratio,NULL,NULL);
+                                swapf,alignsize,size_ratio,options,NULL,NULL);
                             select_min_s(base,sp,beyond,size,compar,context,
-                                swapf,alignsize,size_ratio,NULL,NULL);
+                                swapf,alignsize,size_ratio,options,NULL,NULL);
                             return 1 ;
                         }
                     } else if ((fk==pp)&&(ek==lp)) { /* 2 largest */
                         select_max_s(base,first,beyond,size,compar,context,
-                            swapf,alignsize,size_ratio,NULL,NULL);
+                            swapf,alignsize,size_ratio,options,NULL,NULL);
                         select_max_s(base,first,lp,size,compar,context,swapf,
-                            alignsize,size_ratio,NULL,NULL);
+                            alignsize,size_ratio,options,NULL,NULL);
                         return 1 ;
                     }
                 break;
@@ -858,116 +881,45 @@ int special_cases_s(char *base, size_t first, size_t beyond, size_t size,
     return ret;
 }
 
-/* macro for handling special-case selection (used 4 times) */
-/* Special cases (on average more efficient than quickselect
-      divide-and-conquer, which on average costs slightly more than 2N
-      comparisons for a single order statistic and about 3N for two
-      order statistics):
-      Selection of smallest (minimum) and/or second-smallest element(s).
-         Cost: N-1 (smallest only) or 2N-3 (two smallest) comparisons.
-      Selection of largest (maximum) and/or second-largest element(s).
-         Cost: N-1 (largest only) or 2N-3 (two largest) comparisons.
-      Selection of both smallest (minimum and largest (maximum) elements.
-         Cost: on average a bit more than 1.5N comparisons.
-*/
-/* statement mST is executed after special-case selection (only) */
-#undef MINMAX_S
-    /* XXX some argument indicating stability requirement is needed */
-    /* XXX or use special_cases_s function analogous to special_cases() */
-#define MINMAX_S(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,mas,msr,mppeq,mppgt, \
- mret,mST)                                                                     \
-    A(1UL<mb);  /* must be able to subtract 2UL */                             \
-    A(0UL<mbk);  /* must be able to subtract 1UL */                            \
-    {                                                                          \
-        /* first&last desired ranks, second,last,&penultimate indices */       \
-        size_t fk=mpk[mfk], ek=mpk[mbk-1UL], sp=mf+1UL, lp=mb-1UL, pp=mb-2UL;  \
-        A(fk>=mf);A(ek<mb); /* arg sanity check */                             \
-        A((mbk==mfk+1UL)||(fk!=ek)); /* no duplicate rank requests! */         \
-        switch (mbk-mfk) {                                                     \
-            case 1UL : /* any of smallest 2 or largest 2 */                    \
-                if ((fk==mf)||(fk==sp)) {                                      \
-                    mret=select_min_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,    \
-                        mppeq,mppgt);                                          \
-                    A(0==mret);/* shouldn't get an error for internal calls! */\
-                    if (fk==sp) {                                              \
-                        mret=select_min_s(mbase,sp,mb,msize,mcf,mc,msf,mas,msr,\
-                            mppeq,mppgt);                                      \
-                        A(0==mret);/* no error for internal calls! */          \
-                        if ((NULL!=mppeq)&&(NULL!=mppgt)                       \
-                        &&(0!=compar(*(mppeq),(*(mppgt))-size,mc)))            \
-                            (*(mppeq))+=size;                                  \
-                    }                                                          \
-                    A(0==mret);/* shouldn't get an error for internal calls! */\
-                    mST;                                                       \
-                } else if ((ek==lp)||(ek==pp)) {                               \
-                    mret=select_max_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,    \
-                        mppeq,mppgt);                                          \
-                    A(0==mret);/* shouldn't get an error for internal calls! */\
-                    if (ek==pp) {                                              \
-                        mret=select_max_s(mbase,mf,lp,msize,mcf,mc,msf,mas,msr,\
-                            mppeq,mppgt);                                      \
-                        A(0==mret);/* no error for internal calls! */          \
-                        if ((NULL!=mppeq)&&(NULL!=mppgt)                       \
-                        &&(0==compar(*(mppeq),*(mppgt),mc))) (*(mppgt))+=size; \
-                    }                                                          \
-                    A(0==mret);/* shouldn't get an error for internal calls! */\
-                    mST;                                                       \
-                }                                                              \
-            break;                                                             \
-            case 2UL : /* min&max, smallest 2, or largest 2 */                 \
-                if ((fk==mf)||(fk==sp)) {                                      \
-                    if ((fk==mf)&&(ek==lp)) {                                  \
-                        mret=select_minmax_s(mbase,mf,mb,msize,mcf,mc,msf,mas, \
-                            msr);                                              \
-                        A(0==mret);/* no error for internal calls! */          \
-                        mST;                                                   \
-                    } else if (/*(fk==mf)&&*/(ek==sp)) {                       \
-                        mret=select_min_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,\
-                            NULL,NULL);                                        \
-                        A(0==mret);/* no error for internal calls! */          \
-                        mret=select_min_s(mbase,sp,mb,msize,mcf,mc,msf,mas,msr,\
-                            NULL,NULL);                                        \
-                        A(0==mret);/* no error for internal calls! */          \
-                        mST;                                                   \
-                    }                                                          \
-                } else if ((fk==pp)&&(ek==lp)) {                               \
-                    mret=select_max_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,    \
-                        NULL,NULL);                                            \
-                    A(0==mret);/* no error for internal calls! */              \
-                    mret=select_max_s(mbase,mf,lp,msize,mcf,mc,msf,mas,msr,    \
-                        NULL,NULL);                                            \
-                    A(0==mret);/* no error for internal calls! */              \
-                    mST;                                                       \
-                }                                                              \
-            break;                                                             \
-        }                                                                      \
-    }
-
 static inline errno_t quickselect_loop_s(char *base,size_t first,size_t beyond,
     const size_t size, int(*compar)(const void *,const void *,void *),
     void *context, const size_t *pk, size_t firstk, size_t beyondk,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t cutoff, unsigned int options, struct sampling_table_struct *pst,
-    unsigned int table_index, char **ppeq, char **ppgt)
+    size_t cutoff, unsigned int options, char **ppeq, char **ppgt)
 {
     errno_t ret=0;
     size_t lk=beyondk, nmemb=beyond-first, rk=firstk;
     auto int c=0; /* repivot factor2 count */
+    unsigned int table_index=2U;
 
     A(2UL<=nmemb);
     A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
     /* both or neither NULL */
     for (;;) {
         size_t p, q, r, s, t;
-        struct sampling_table_struct *npst;
+        struct sampling_table_struct *pst;
+        struct region_struct lt_region, gt_region, *ps_region, *pl_region;
         unsigned int sort;
-        unsigned int idx;
         char *pc, *pd, *pe, *pf, *pivot;
 
-        A(NULL!=pk);A(firstk<beyondk);
         A(first<beyond);
+        A(table_index < (SAMPLING_TABLE_SIZE));
+        if (0!=special_cases_s(base,first,beyond,size,compar,context,swapf,
+           alignsize,size_ratio,cutoff,nmemb,pk,firstk,beyondk,options,ppeq,
+           ppgt,&pst,&sort,&table_index))
+           return ret;
         A((SAMPLING_TABLE_SIZE)>table_index);
-        if ((QUICKSELECT_PIVOT_REMEDIAN_SAMPLES)!=options/*XXX*/) c=0; /* reset factor2 count */
+        if (0U!=sort) { /* switch to sorting */
+            if (nmemb<=cutoff) {
+                A(1UL<nmemb);
+                ret=dedicated_sort_s(base,first,beyond,size,compar,context,
+                    swapf,alignsize,size_ratio,options);
+                return ret; /* done */
+            }
+            pk=NULL; /* sorting */ A(pst==sorting_sampling_table);
+            /* proceed with pivot selection */
+        }
+
         pivot=select_pivot_s(base,first,beyond,size,compar,context,swapf,
             alignsize,size_ratio,pst,table_index,pk,options,&pc,
             &pd,&pe,&pf);
@@ -979,185 +931,80 @@ static inline errno_t quickselect_loop_s(char *base,size_t first,size_t beyond,
         A(pd<=pivot);A(pivot<pe);
 
         /* partition the array around the pivot element */
-        partition_s(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,context,
-            swapf,alignsize,size_ratio,options,&p,&q);
+        lt_region.first=first, gt_region.beyond=beyond;
+        partition_s(base,first,beyond,pc,pd,pivot,pe,pf,size,
+            compar,context,swapf,alignsize,size_ratio,options,
+            &(lt_region.beyond),&(gt_region.first));
 
-        /* sizes of < and > regions (elements) */
-        s=p-first, t=beyond-q;
-        /* revised range of order statistic ranks */
-        /* < region indices [first,p), order statistics [firstk,lk) */
-        /* > region indices [q,beyond), order statistics [rk,beyondk) */
-        d_klimits(p,q,pk,firstk,beyondk,&lk,&rk);
-        /* Only applicable for median-of-medians (one order statistic (the
-           median) with non-NULL ppeq and ppgt pointers); extents of region
-           containing median.
-        */
-        if ((0UL==firstk)&&(1UL==beyondk)&&(NULL!=ppeq)) {
-            A(p<q);
-            /*Update range pointers if median (of medians) is [in] one of
-               3 regions. This is the only place where the extents (ppeq and
-               ppgt) are updated; when the desired (median of medians) rank
-               is in the = region or is the only element in the < or >
-               region.
+        if (NULL!=pk) { /* selection only */
+            rank_tests(base,first,lt_region.beyond,gt_region.first,beyond,size,
+                pk,firstk,beyondk,&(lt_region.beyondk),&(gt_region.firstk),ppeq,
+                ppgt);
+            lt_region.firstk=firstk, gt_region.beyondk=beyondk;
+        } else lt_region.firstk=lt_region.beyondk=gt_region.firstk
+            =gt_region.beyondk=0UL;
+
+        /* Which region(s) should be processed? */
+        lt_region.process=(((lt_region.first+1UL<lt_region.beyond)
+            &&((NULL==pk)||(lt_region.firstk<lt_region.beyondk)))?1U:0U);
+        gt_region.process=(((gt_region.first+1UL<gt_region.beyond)
+            &&((NULL==pk)||(gt_region.firstk<gt_region.beyondk)))?1U:0U);
+
+        /* Categorize less-than and greater-than regions as small and large. */
+        if (lt_region.beyond-lt_region.first<gt_region.beyond-gt_region.first) {
+            ps_region=&lt_region, pl_region=&gt_region;
+        } else {
+            ps_region=&gt_region, pl_region=&lt_region;
+        }
+
+        if (0U!=((QUICKSELECT_RESTRICT_RANK)&options))
+            c=0; /* reset factor2 count if pivot was median-of-medians */
+        options&=~(QUICKSELECT_RESTRICT_RANK); /* default is array samples */
+
+        /* Process less-than and/or greater-than regions by relative size. */
+        if (0U!=pl_region->process) { /* Process large region. */
+            if (0U!=ps_region->process) { /* Recurse on small region. */
+                nrecursions++;
+                (V)quickselect_loop_s(base,ps_region->first,ps_region->beyond,
+                    size,compar,context,pk,ps_region->firstk,ps_region->beyondk,
+                    swapf,alignsize,size_ratio,cutoff,options,ppeq,ppgt);
+            }
+            /* Dedicated sort for large region? */
+            if ((NULL==pk)&&(pl_region->beyond<=pl_region->first+cutoff)) {
+                A(pl_region->first+1UL<pl_region->beyond);
+                ret=dedicated_sort_s(base,pl_region->first,pl_region->beyond,
+                    size,compar,context,swapf,alignsize,size_ratio,options);
+                return ret; /* done */
+            }
+            /* Iterate on large region. */
+            /* Should large region be repivoted? */
+            /* Determine whether or not to repivot/repartition region of size r
+               elements (large region) resulting from a partition of nmemb
+               elements.  Assumed that continued processing of the region w/o
+               repivoting will yield a similarly poor split.  Repivot if the
+               cost of repivoting plus processing the resulting regions is
+               expected to be less than the cost of processing the region w/o
+               repivoting.
             */
-            r=pk[0]; /* desired rank */
-            if ((p<=r)&&(r<q)) /* in = region */
-                *ppeq=base+p*size, *ppgt=base+q*size;
-            else if ((1UL==s)&&(first<=r)&&(r<p)) /* < region only element */
-                *ppeq=base+first*size, *ppgt=base+p*size;
-            else if ((1UL==t)&&(q<=r)&&(r<beyond)) /* > region only element */
-                *ppeq=base+q*size, *ppgt=base+beyond*size;
-            /* If the extents are set, none of the regions from this
-               partition need be (and will not be) further partitioned.
-               Otherwise, only the region containing the median's (of
-               medians) rank will be processed.
-            */
-        }
-        A(lk>=firstk);A(rk<=beyondk);A(lk<=rk);
-
-        /* process smaller region (unless no processing required) first */
-        if (s<t) { /* > region is larger */
-            /* recurse on small region, if effective size > 1 */
-
-/* macro for handling small region (used twice) */
-#undef SMALL_REGION_S
-    /* XXX some argument indicating stability requirement is needed */
-    /* XXX or use special_cases_s function analogous to special_cases() */
-#define SMALL_REGION_S(msz,mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,mas,msr,   \
- mcu,mnpst,msort,midx,mppeq,mppgt,mlabel,mret)                                 \
-    if ((1UL<msz)&&(mbk>mfk)) {                                                \
-        if (NULL==mppeq) { /* no extents from MINMAX_S */                      \
-            size_t nk=mbk-mfk;                                                 \
-            if ((3UL>msz)||((5UL>msz)&&(1UL<nk))) {                            \
-                mret=dedicated_sort_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,options);   \
-                A(0==mret); /* no errors for internal calls! */                \
-                goto mlabel;                                                   \
-            }                                                                  \
-            if (3UL>nk) {                                                      \
-                /* N.B. gcc pukes if NULL is used for mppeq or mppgt */        \
-                MINMAX_S(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,mas,msr,     \
-                    mppeq,mppgt,mret,goto mlabel)                              \
-            }                                                                  \
-            if (5UL>msz) {                                                     \
-                mret=dedicated_sort_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,options);   \
-                A(0==mret); /* no errors for internal calls! */                \
-                goto mlabel;                                                   \
-            }                                                                  \
-            A(midx < (SAMPLING_TABLE_SIZE));                                   \
-            mnpst=d_sampling_table(mf,mb,mpk,mfk,mbk,NULL,&msort,&midx,msz);   \
-            if (0U!=msort) {                                                   \
-                if (mcu<msz)                                                   \
-                    mret=quickselect_loop_s(mbase,mf,mb,msize,mcf,mc,NULL,0UL,0UL,msf,mas,msr,\
-                        mcu,options,mnpst,midx,mppeq,mppgt);                                       \
-                else                                                           \
-                   mret=dedicated_sort_s(mbase,mf,mb,msize,mcf,mc,msf,mas,msr,options);\
-                A(0==mret); /* no errors for internal calls! */                \
-	    } else                                                             \
-                mret=quickselect_loop_s(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,  \
-                    msf,mas,msr,mcu,options,mnpst,midx,NULL,NULL);                     \
-                A(0==mret); /* no errors for internal calls! */                \
-        } else { /* need extents; nk==1 */                                     \
-            A(mbk==mfk+1UL);                                                   \
-            if ((4UL<msz)||(mpk[mfk]==mf)||(mpk[mfk]==mb-1UL)) {               \
-                MINMAX_S(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,mas,msr,     \
-                    mppeq,mppgt,mret,goto mlabel)                              \
-            }                                                                  \
-            MINMAX_S(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,mas,msr,mppeq,   \
-                mppgt,mret,goto mlabel)                                        \
-            A(midx < (SAMPLING_TABLE_SIZE));                                   \
-            mnpst=d_sampling_table(mf,mb,mpk,mfk,mbk,mppeq,NULL,&midx,msz);    \
-            mret=quickselect_loop_s(mbase,mf,mb,msize,mcf,mc,mpk,mfk,mbk,msf,  \
-                mas,msr,mcu,options,mnpst,midx,mppeq,mppgt);                           \
-            A(0==mret); /* no errors for internal calls! */                    \
-        }                                                                      \
-    }                                                                          \
-    A(0==ret); /* shouldn't get an error for internal calls! */                \
-mlabel : /* caller can optionally supply terminating semicolon */
-
-            A(0==ret);
-            SMALL_REGION_S(s,base,first,p,size,compar,context,pk,firstk,lk,swapf,
-                alignsize,size_ratio,cutoff,npst,sort,idx,ppeq,ppgt,sdone,ret);
-            A(0==ret); /* shouldn't get an error for internal calls! */
-            if (0!=ret) return ret;
-            /* large region [q,beyond) size t, order statistics [rk,beyondk) */
-            first=q, r=t, firstk=rk;
-        } else { /* < region is larger, or regions are same size */
-            /* recurse on small region, if effective size > 1 */
-            A(0==ret);
-            SMALL_REGION_S(t,base,q,beyond,size,compar,context,pk,rk,beyondk,swapf,
-                alignsize,size_ratio,cutoff,npst,sort,idx,ppeq,ppgt,tdone,ret);
-            A(0==ret); /* shouldn't get an error for internal calls! */
-            if (0!=ret) return ret;
-            /* large region [first,p) size s, order statistics [firstk,lk) */
-            beyond=p, r=s, beyondk=lk;
-        }
-        /* iterate on large region (size r), if effective size > 1 */
-        if ((2UL>r)||((firstk>=beyondk))) return ret; /* nothing to select */
-        A(idx < (SAMPLING_TABLE_SIZE));
-        if (NULL==ppeq) { /* extents not required */
-            /* consider dedicated select or sort iff extents are not required */
-            size_t nk=beyondk-firstk;
-            A(0UL!=nk);
-            if ((3UL>r)||((5UL>r)&&(1UL<nk))) {
-                /* use dedicated sort for 2 elements, 3-4 w/ 2 or more ranks */
-                ret=dedicated_sort_s(base,first,beyond,size,compar,context,
-                    swapf,alignsize,size_ratio,options);
-                A(0==ret); /* shouldn't get an error for internal calls! */
-                return ret;
+            first=pl_region->first, beyond=pl_region->beyond,
+                firstk=pl_region->firstk, beyondk=pl_region->beyondk;
+            if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
             }
-            if (3UL>nk) {
-                /* MINMAX_S only supports 1-2 ranks */
-                MINMAX_S(base,first,beyond,size,compar,context,pk,firstk,beyondk,swapf,
-                    alignsize,size_ratio,ppeq,ppgt,ret,return ret)
+            sort=
+                d_should_repivot(nmemb,beyond-first,cutoff,pst,table_index,
+                pk,&c,ppeq);
+            options |= sort;
+            if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
+                nrepivot++;
             }
-            if (5UL>r) {
-                /* dedicated sort for 2-4 elements (in case MINMAX_S couldn't) */
-                ret=dedicated_sort_s(base,first,beyond,size,compar,context,
-                    swapf,alignsize,size_ratio,options);
-                A(0==ret); /* shouldn't get an error for internal calls! */
-                return ret;
+        } else { /* large region to be ignored; maybe iterate small region */
+            if (0U!=ps_region->process) { /* Iterate on small region. */
+                first=ps_region->first, beyond=ps_region->beyond,
+                    firstk=ps_region->firstk, beyondk=ps_region->beyondk;
+            } else {
+                return ret; /* Process neither; nothing left to do. */
             }
-            pst=d_sampling_table(first,beyond,pk,firstk,beyondk,NULL,&sort,&idx,
-                r);
-            if (0U!=sort) {
-                if ((1UL<nk)||(4UL<nmemb)||(pk[firstk]==first)
-                ||(pk[firstk]==beyond-1UL))
-                    /* N.B. gcc pukes if NULL is used instead of ppeq or ppgt */
-                    MINMAX_S(base,first,beyond,size,compar,context,pk,firstk,beyondk,
-                        swapf,alignsize,size_ratio,ppeq,ppgt,ret,return ret)
-                if (cutoff<r)
-                    ret=quickselect_loop_s(base,first,beyond,size,compar,
-                        context,NULL,0UL,0UL,swapf,alignsize,size_ratio,cutoff,
-                        options,pst,idx,ppeq,ppgt);
-                else
-                    ret=dedicated_sort_s(base,first,beyond,size,compar,context,swapf,
-                        alignsize,size_ratio,options);
-                A(0==ret); /* shouldn't get an error for internal calls! */
-                return ret;
-            } /* else continue selection */
-        } else pst=d_sampling_table(first,beyond,pk,firstk,beyondk,ppeq,NULL,&idx,
-            r);
-        A((SAMPLING_TABLE_SIZE)>idx);
-        table_index=idx;
-        /* Should large region be repivoted? */
-        /* Determine whether or not to repivot/repartition region of size r
-           elements (large region) resulting from a partition of nmemb elements.
-           Assumed that continued processing of the region w/o repivoting will
-           yield a similarly poor split.  Repivot if the cost of repivoting plus
-           processing the resulting regions is expected to be less than the cost
-           of processing the region w/o repivoting.  Tuning parameters used here
-           are defined near the top of this file.
-        */
-        /* should large region be repivoted? */
-        options|=d_should_repivot(nmemb,r,cutoff,pst,table_index,pk,&c,ppeq);
-        if (QUICKSELECT_PIVOT_REMEDIAN_SAMPLES!=options/*XXX*/) {
-            if (QUICKSELECT_PARTITION_FAST==options/*XXX*/)
-                options/*XXX*/=QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS;/*!stable*/
-            else
-                options/*XXX*/=QUICKSELECT_PIVOT_REMEDIAN_FULL; /* stable */
-            nrepivot++;
         }
-        nmemb=r;
     }
     A(0==ret); /* shouldn't get an error for internal calls! */
     return ret;
@@ -1229,13 +1076,6 @@ errno_t quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size
     if ((char)0==file_initialized) initialize_file(__FILE__);
     if (2UL>nmemb) return ret; /* Return early if there's nothing to do. */
 
-#if 0
-    /* Initialization of strings is performed here (rather than in
-       quickselect_loop) so that quickselect_loop can be made inline.
-    */
-    if ((char)0==quickselect_initialized) initialize_quickselect();
-#endif
-
     /* Simplify tests for selection vs. sorting by ensuring a NULL pointer when
        sorting. Ensure consistency between pk and nk. Ensure sorted pk array
        with no duplicated order statistics.
@@ -1268,30 +1108,6 @@ errno_t quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size
     size_ratio=size/alignsize;
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
-#if 0
-    options=((QUICKSELECT_OPTIMIZE_COMPARISONS)
-        ==((QUICKSELECT_OPTIMIZE_COMPARISONS)&options))?0x0U
-        :((QUICKSELECT_STABLE)==((QUICKSELECT_STABLE)&options))?0x08U:0x017D0U;
-#endif
-
-    /* Special-cases: selection of minimum, maximum, or both (and no others) */
-    if ((NULL!=pk)&&(3UL>nk)) {
-        if ((3UL>nmemb)||((5UL>nmemb)&&(1UL<nk))) {
-            ret=dedicated_sort_s(base,0UL,nmemb,size,compar,context,swapf,
-                alignsize,size_ratio,options);
-            goto restore_s;
-        }
-        if ((1UL<nk)||(4UL<nmemb)||(pk[0]==0UL)||(pk[0]==nmemb-1UL))
-            /* N.B. gcc pukes if NULL is used instead of ppeq or ppgt */
-            MINMAX_S(base,0UL,nmemb,size,compar,context,pk,0UL,nk,swapf,
-                alignsize,size_ratio,ppeq,ppgt,ret,goto restore_s)
-        if (5UL>nmemb) {
-            ret=dedicated_sort_s(base,0UL,nmemb,size,compar,context,swapf,
-                alignsize,size_ratio,options);
-            goto restore_s;
-        }
-    }
-
     /* Initialize the sampling table index for the array size. Sub-array
        sizes will be smaller, and this step ensures that the main loop won't
        have to traverse much of the table during recursion and iteration.
@@ -1302,21 +1118,8 @@ errno_t quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size
         cutoff=quickselect_small_array_cutoff;
     else cutoff=cutoff_value(size_ratio,options);
 
-#if 0
-    options/*XXX*/ =
-        ((QUICKSELECT_STABLE)==((QUICKSELECT_STABLE)&options))?
-        QUICKSELECT_PARTITION_STABLE:QUICKSELECT_PARTITION_FAST;
-#endif
-
-    if (0U!=sort) {
-        ret=quickselect_loop_s(base,0UL,nmemb,size,compar,context,NULL,0UL,0UL,
-            swapf,alignsize,size_ratio,cutoff,options,pst,table_index,NULL,
-            NULL);
-    } else {
-        ret=quickselect_loop_s(base,0UL,nmemb,size,compar,context,pk,0UL,nk,
-            swapf,alignsize,size_ratio,cutoff,options,pst,table_index,NULL,
-            NULL);
-    }
+    ret=quickselect_loop_s(base,0UL,nmemb,size,compar,context,pk,0UL,nk,
+        swapf,alignsize,size_ratio,cutoff,options,NULL,NULL);
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
     /* This may be expensive if the caller supplied a large number of duplicate
@@ -1413,7 +1216,7 @@ errno_t qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
             else cutoff=cutoff_value(size_ratio,0x07F8U);
 
             ret=quickselect_loop_s(base,0UL,nmemb,size,compar,context,NULL,0UL,0UL,swapf,
-                alignsize,size_ratio,cutoff,0x07F8U,pst,table_index,NULL,NULL);
+                alignsize,size_ratio,cutoff,0x07F8U,NULL,NULL);
         } else
             ret=dedicated_sort_s(base,0UL,nmemb,size,compar,context,swapf,
                 alignsize,size_ratio,0x07F8U);

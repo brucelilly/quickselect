@@ -1,4 +1,4 @@
-.\" Description: quickselect.3 version 1.5 man page 2017-11-04T01:23:38Z
+.\" Description: quickselect.3 version 1.7 man page 2017-11-06T16:51:49Z
 .\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
 .\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
 .\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
@@ -123,7 +123,7 @@ The default operation attempts to minimize
 run\-time for simple comparisons.
 .IP QUICKSELECT_RESTRICT_RANK 0.5i
 is used internally and should not be set by the caller.
-.IP "bits in 0x01FF8U" 0.5i
+.IP "bits in QUICKSELECT_NETWORK_MASK" 0.5i
 specify the ability to use sorting networks for
 arrays of size 3 through 12 elements, corresponding
 to bit 0x01\ <<\ size.
@@ -316,16 +316,47 @@ Sorting and selection remain in\-place;
 no additional size\-related memory is required.
 However, if stable sorting is required and additional memory is available,
 an alternative means of sorting may be faster.
+.PP
+Compiled library code might have been built with
+.B QUICKSELECT_STABLE
+and/or
+.B QUICKSELECT_NETWORK_MASK
+set to values other than those which appear in
+.IR \*(xx.h .
+If the library was built without the option
+to sort or select while maintaining partial order
+stability, specifying
+.B QUICKSELECT_STABLE
+in
+.I options
+will not be effective.
+Consult local documentation if available
+or examine the build options used to create the library object files
+using
+.I what
+or
+.IR ident .
+Similarly, support for sorting network sizes may have been
+limited when the library object files were built.
+Specifying bits from
+.B QUICKSELECT_NETWORK_MASK
+in
+.I options
+which are not supported in the library object code
+will result in the use of insertion sort
+for small sub\-arrays of those sizes.
 .SH FUTURE DIRECTIONS
 none
 .SH SEE ALSO
-qsort
+qsort,
+what,
+ident
 .SH CHANGE HISTORY
 Function implementation initial version June 2016.
-Implementation backward\-compatible updates through October 2017.
+Implementation backward\-compatible updates through November 2017.
 .PP
 Manual page initial version January 2017.
-Latest manual page update October 2017.
+Latest manual page update November 2017.
 .SH AUTHOR
 Bruce Lilly <bruce.lilly@gmail.com>
 .SH LICENSE
@@ -346,7 +377,7 @@ Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 .po
 .lt
 .br
-@(#)quickselect.3 1.5 2017-11-04T01:23:38Z copyright \*(xy Bruce Lilly
+@(#)quickselect.3 1.7 2017-11-06T16:51:49Z copyright \*(xy Bruce Lilly
 .br
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the

@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    %M% copyright 2016-2017 %Q%. \ exchange.h $
+* $Id: ~|^` @(#)    exchange.h copyright 2016-2017 Bruce Lilly. \ exchange.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,10 +30,10 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is %M% version %I% dated %O%. \ $ */
-/* You may send bug reports to %Y% with subject "exchange" */
+/* $Id: ~|^` @(#)   This is exchange.h version 1.16 dated 2017-11-06T00:20:37Z. \ $ */
+/* You may send bug reports to bruce.lilly@gmail.com with subject "exchange" */
 /*****************************************************************************/
-/* maintenance note: master file %P% */
+/* maintenance note: master file /data/projects/automation/940/include/s.exchange.h */
 /* Long description and rationale:
    Swapping data is a fundamental operation. Swapping depends on size and
    alignment of basic types. Swapping can be performed using types with sizes
@@ -52,7 +52,7 @@
 */
 
 /* version-controlled header file version information */
-#define EXCHANGE_H_VERSION "%M% %I% %O%"
+#define EXCHANGE_H_VERSION "exchange.h 1.16 2017-11-06T00:20:37Z"
 
 #include <sys/types.h>          /* *_t (size_t) */
 #include <limits.h>             /* *_MAX */
@@ -174,6 +174,8 @@ static const size_t typsz[EXCHANGE_NTYPES] = { 1UL,2UL,4UL,8UL };
 static const unsigned long bitmask[EXCHANGE_NTYPES] = {
     0x0UL, 0x01UL, 0x03UL, 0x07UL
 };
+
+/* *INDENT-ON* */
 
 #define is_aligned(var,shift) (0U==(((unsigned long)(var))&bitmask[(shift)]))
 

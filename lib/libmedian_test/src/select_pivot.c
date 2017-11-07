@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is select_pivot.c version 1.4 dated 2017-11-03T21:29:35Z. \ $ */
+/* $Id: ~|^` @(#)   This is select_pivot.c version 1.5 dated 2017-11-05T22:16:45Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.select_pivot.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: select_pivot.c ~|^` @(#)"
 #define SOURCE_MODULE "select_pivot.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T21:29:35Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-11-05T22:16:45Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -116,10 +116,7 @@ __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,table_index,option
 #endif
     A((SAMPLING_TABLE_SIZE)>table_index);
     switch (options&((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE))) {
-#if 0
-        case 0U : /*FALLTHROUGH*/
-        case (QUICKSELECT_STABLE) : /*FALLTHROUGH*/
-#endif
+#if QUICKSELECT_STABLE
         case ((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE)) :
             /* almost full remedian */
             while (table_index<(SAMPLING_TABLE_SIZE)-1U) {
@@ -135,6 +132,7 @@ __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,table_index,option
                 if (n>r) table_index--;
             }
         /*FALLTHROUGH*/
+#endif /* QUICKSELECT_STABLE */
         default: /* remedian of samples */
             /*Fast pivot selection:1 sample, median-of-3, remedian of samples.*/
             pivot=base+size*(first+(nmemb>>1));     /* [upper-]middle element */

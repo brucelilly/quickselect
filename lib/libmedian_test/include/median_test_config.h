@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.6 dated 2017-11-03T21:03:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.9 dated 2017-11-07T18:51:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -102,37 +102,6 @@
 */
 #define COMPARE1                 0
 
-/* Dedicated sort for 3 elements can be arranged to favor already-sorted and
-   reverse-sorted inputs, or to favor bitonic inputs.
-*/
-#define FAVOR_SORTED             1
-
-/* default repivot table */
-/* Repivoting parameters control the tradeoff between minimal effect on random
-   inputs and effective repivoting of adverse inputs.
-   Choices are (defined by macros later):
-    DISABLED    repivot only under extreme circumstances
-    TRANSPARENT (almost) no repivots for random inputs
-    LOOSE       worst adverse sorting performance < 2.0 N log(N)
-    RELAXED     adverse input sorting performance < 1.5 N log(N)
-    AGGRESSIVE  best practical adverse input selection performance
-# define SORTING_TABLE_ENTRIES      DISABLED
-# define SORTING_TABLE_ENTRIES      TRANSPARENT
-# define SORTING_TABLE_ENTRIES      LOOSE
-# define SORTING_TABLE_ENTRIES      RELAXED
-# define SORTING_TABLE_ENTRIES      AGGRESSIVE
-# define SORTING_TABLE_ENTRIES      EXPERIMENTAL
-*/
-#undef DISABLED
-#undef TRANSPARENT
-#undef LOOSE
-#undef RELAXED
-#undef AGGRESSIVE
-#undef EXPERIMENTAL
-#ifndef SORTING_TABLE_ENTRIES
-# define SORTING_TABLE_ENTRIES      RELAXED
-#endif
-
 /* 0 to use separate sampling tables for sorting, middle, ends, distributed,
       extended, separated rank distributions.  Selection vs. sorting for
       separated, ends, middle, distributed.
@@ -144,18 +113,6 @@
 #define CONSOLIDATED_TABLES     2
 
 /* nothing (much) to configure below this line */
-
-#ifndef FAVOR_SORTED
-# define FAVOR_SORTED                    1
-#endif
-
-#ifndef SORTING_TABLE_ENTRIES
-# define SORTING_TABLE_ENTRIES RELAXED
-#endif
-
-#ifndef SELECTION_MIN_REPIVOT
-# define SELECTION_MIN_REPIVOT            9UL
-#endif
 
 /* for assertions */
 #if ! DEBUG_CODE
@@ -233,7 +190,6 @@ extern size_t nsw;
 #include "get_ips.h"            /* get_ips */
 #include "logger.h"             /* logger */
 #include "paths_decl.h"         /* path_basename */
-#include "quickselect.h"        /* quickselect qsort_wrapper */
 #include "quickselect_config.h" 
 #include "random64n.h"          /* random64n */
 #include "shuffle.h"            /* fisher_yates_shuffle */
@@ -806,7 +762,6 @@ extern struct repivot_table_struct sorting_repivot_table_transparent[];
 extern struct repivot_table_struct sorting_repivot_table_loose[];
 extern struct repivot_table_struct sorting_repivot_table_relaxed[];
 extern struct repivot_table_struct sorting_repivot_table_aggressive[];
-extern struct repivot_table_struct sorting_repivot_table_constrained[];
 extern struct repivot_table_struct sorting_repivot_table_disabled[];
 
 /* aqsort.c */
@@ -985,7 +940,8 @@ extern double parse_num(const char *p, char **pendptr, int base);
 extern void merge_partitions(char *base, size_t first, size_t eq1,
     size_t gt1, size_t mid, size_t eq2, size_t gt2,
     size_t beyond, size_t size, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio, size_t *peq, size_t *pgt);
+    size_t alignsize, size_t size_ratio, unsigned int options, size_t *peq,
+    size_t *pgt);
 extern void d_partition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     register char *pivot, char *pe, char *pf, register size_t size,
     int(*compar)(const void *,const void*),
@@ -1014,6 +970,9 @@ extern unsigned int d_sample_index(struct sampling_table_struct *psts,
     unsigned int idx, size_t nmemb);
 extern void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
     size_t beyondk, size_t *pfk, size_t *pbk);
+extern void rank_tests(char *base, size_t first, size_t p, size_t q,
+    size_t beyond, size_t size, const size_t *pk, size_t firstk,
+    size_t beyondk, size_t *plk, size_t *prk, char **ppeq, char **ppgt);
 extern struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
     const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
     unsigned int *psort, unsigned int *pindex, size_t nmemb);

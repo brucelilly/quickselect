@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.14 dated 2017-11-03T20:33:53Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.16 dated 2017-11-06T16:37:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.14 2017-11-03T20:33:53Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.16 2017-11-06T16:37:36Z"
 
 #include <stddef.h>             /* size_t (maybe rsize_t [N1570 K3.3]) */
 /* preliminary support for 9899:201x draft N1570 */
@@ -86,6 +86,10 @@
 #ifndef QUICKSELECT_STABLE
 # define QUICKSELECT_STABLE              0x01U
 #endif
+/* sanity check for override */
+#if ((QUICKSELECT_STABLE) != 0) && ((QUICKSELECT_STABLE) != 0x01U)
+# error "unreasonable definition for QUICKSELECT_STABLE"
+#endif
   /* minimize comparisons vs. minimize run-time for simple comparisons */
     /* optimize for speed with simple comparisons if bit is not set */
 #define QUICKSELECT_OPTIMIZE_COMPARISONS 0x02U
@@ -93,6 +97,13 @@
     /* use only a sample of array elements for pivot selection if not set */
 #define QUICKSELECT_RESTRICT_RANK        0x04U
   /* bits 0x01FF8U are reserved for network sort size mask */
+#ifndef QUICKSELECT_NETWORK_MASK
+# define QUICKSELECT_NETWORK_MASK        0x01FF8U
+#endif
+/* sanity check */
+#if QUICKSELECT_NETWORK_MASK & ( QUICKSELECT_STABLE | QUICKSELECT_OPTIMIZE_COMPARISONS | QUICKSELECT_RESTRICT_RANK | ~(0x1FFFU))
+# error "options bitmap conflict"
+#endif
 
 /* quickselect.c */
 QUICKSELECT_EXTERN void quickselect(/*const*/ void *, size_t, /*const*/ size_t, int (*)(const void *, const void *), void (*)(void *, void *, size_t), /*const*/ size_t /*const*/ *, /*const*/ size_t, unsigned int);

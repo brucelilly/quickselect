@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.3 dated 2017-11-03T20:31:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.4 dated 2017-11-06T16:37:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -84,16 +84,18 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.3 2017-11-03T20:31:57Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.4 2017-11-06T16:37:36Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
-#define ASSERT_CODE                      0 /* Adds size & cost to aid debugging.
+#ifndef ASSERT_CODE
+# define ASSERT_CODE                     0 /* Adds size & cost to aid debugging.
                                               0 for tested production code. */
                                            /* If ASSERT_CODE > 1, assertions
                                               might also affect the number of
                                               comparisons used.
                                            */
+#endif
 
 /* tuning */
 /* static inline or separate major functions */
@@ -114,7 +116,6 @@
 # define SORTING_TABLE_ENTRIES           AGGRESSIVE
 */
 #ifndef SORTING_TABLE_ENTRIES
-# undef CONSTRAINED
 # undef DISABLED
 # undef TRANSPARENT
 # undef LOOSE
@@ -123,10 +124,32 @@
 # define SORTING_TABLE_ENTRIES           RELAXED
 #endif
 
-/* Dedicated sort for 3 elements can be arranged to favor already-sorted and
-   reverse-sorted inputs, or to favor bitonic inputs.
+/* Sorting network for 3 elements can be arranged to favor already-sorted and
+   reverse-sorted inputs (1), or to favor bitonic inputs (0).
 */
-#define FAVOR_SORTED                     1
+#define FAVOR_SORTED                     0
+
+/* It is possible to override configuration in quickselect.h here.
+   Command-line compilation arguments can override this.
+*/
+#ifndef QUICKSELECT_STABLE
+# if 1
+#  define QUICKSELECT_STABLE             0x01U
+# else
+#  define QUICKSELECT_STABLE             0
+# endif
+#endif
+#ifndef QUICKSELECT_NETWORK_MASK
+# if 0
+#  define QUICKSELECT_NETWORK_MASK       0x01FF8U /* 3-12 */
+# else
+#  if 1
+#   define QUICKSELECT_NETWORK_MASK      0x08U /* 3 only */
+#  else
+#   define QUICKSELECT_NETWORK_MASK      0x0U
+#  endif
+# endif
+#endif
 
 /* Nothing to configure below this line. */
 

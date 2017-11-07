@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is network.c version 1.3 dated 2017-11-03T19:56:32Z. \ $ */
+/* $Id: ~|^` @(#)   This is network.c version 1.5 dated 2017-11-06T16:32:56Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.network.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: network.c ~|^` @(#)"
 #define SOURCE_MODULE "network.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:56:32Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-11-06T16:32:56Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -78,20 +78,22 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
 #endif
         return;
         case 3UL : /* 3 comparisons */
-            if (0U!=(network_map&0x01U)) { /* request stable sort */
+# if QUICKSELECT_STABLE
+            if (0U!=(network_map&(QUICKSELECT_STABLE))) { /* request stable sort */
                 char *pc=pb+size;
                 /* stable, but always 3 comparisons, cannot be parallelized */
                 COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
                 COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                 COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
             } else
+# endif /* QUICKSELECT_STABLE */
             { char *pc=pb+size;
             /* optimized: */
             /* not stable */
             /* compare/exchange first,last elements */
             COMPARE_EXCHANGE(pa,pc,cx,size,swapf,alignsize,size_ratio);
             COMPARE_EXCHANGE(pa,pb,cx,size,swapf,alignsize,size_ratio);
-#if 0 /* 0 (no optimization) for pure sorting network comparison count mesaurements */
+#if 1 /* 0 (no optimization) for pure sorting network comparison count measurements */
             else /* if middle element is <= first, it cannot be > last */
 #endif
                  COMPARE_EXCHANGE(pb,pc,cx,size,swapf,alignsize,size_ratio);
@@ -102,7 +104,8 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
             }
         return;
         case 4UL : /* 5 comparisons in 3 parallel groups */
-            if (0U!=(network_map&0x01U)) { /* request stable sort */
+# if QUICKSELECT_STABLE
+            if (0U!=(network_map&(QUICKSELECT_STABLE))) { /* request stable sort */
                 char *pc, *pd;
                 pc=pb+size; pd=pc+size;
                 /* 6 comparisons, 5 groups (only one of which contains more than one comparison) */
@@ -115,6 +118,7 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
                 COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                 COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
             } else
+# endif /* QUICKSELECT_STABLE */
             { char *pc=pb+size, *pd=pc+size;
             /* parallel group 1 */
                 COMPARE_EXCHANGE(pa,pc,cx,size,swapf,alignsize,size_ratio);
@@ -132,7 +136,8 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
             }
         return;
         case 5UL : /* 9 comparisons in 5 parallel groups */
-            if (0U!=(network_map&0x01U)) { /* request stable sort */
+# if QUICKSELECT_STABLE
+            if (0U!=(network_map&(QUICKSELECT_STABLE))) { /* request stable sort */
                 char *pc, *pd, *pe;
                 pc=pb+size; pd=pc+size; pe=pd+size;
                 /* 10 comparisons, 3 opportunities for parallelism */
@@ -153,6 +158,7 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
                 COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                 COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
             } else
+# endif /* QUICKSELECT_STABLE */
             { char *pc=pb+size, *pd=pc+size, *pe=pd+size;
             /* parallel group 1 */
                 COMPARE_EXCHANGE(pa,pe,cx,size,swapf,alignsize,size_ratio);
@@ -177,7 +183,8 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
             }
         return;
         case 6UL : /* 12 comparisons in 6 parallel groups */
-            if (0U!=(network_map&0x01U)) { /* request stable sort */
+# if QUICKSELECT_STABLE
+            if (0U!=(network_map&(QUICKSELECT_STABLE))) { /* request stable sort */
                 char *pc, *pd, *pe, *pf;
                 pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size;
                 /* 15 comparisons (more than average quicksort), 5 opportunities for parallelism */
@@ -208,6 +215,7 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
                 COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                 COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
             } else
+# endif /* QUICKSELECT_STABLE */
             { char *pc=pb+size, *pd=pc+size, *pe=pd+size, *pf=pe+size;
             /* parallel group 1 */
                 COMPARE_EXCHANGE(pa,pe,cx,size,swapf,alignsize,size_ratio);
@@ -413,54 +421,54 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
 #endif
             }
         return;
-        case 11UL : /* 35 comparisons in 9 groups (not optimal) */
+        case 11UL : /* 35 comparisons in 8 groups (might not be not optimal comparators, but has minimum depth) */
+            /* source: http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
             { char *pc=pb+size, *pd=pc+size, *pe=pd+size, *pf=pe+size,
                    *pg=pf+size, *ph=pg+size, *pj=ph+size, *pk=pj+size,
                    *pl=pk+size;
             /* parallel group 1 */
+                COMPARE_EXCHANGE(pb,pl,cx,size,swapf,alignsize,size_ratio); /* 1,10 */
+                COMPARE_EXCHANGE(pc,pk,cx,size,swapf,alignsize,size_ratio); /* 2,9 */
+                COMPARE_EXCHANGE(pd,pj,cx,size,swapf,alignsize,size_ratio); /* 3,8 */
+                COMPARE_EXCHANGE(pe,ph,cx,size,swapf,alignsize,size_ratio); /* 4,7 */
+                COMPARE_EXCHANGE(pf,pg,cx,size,swapf,alignsize,size_ratio); /* 5,6 */
+            /* parallel group 2 */
+                COMPARE_EXCHANGE(pa,pg,cx,size,swapf,alignsize,size_ratio); /* 0,6 */
+                COMPARE_EXCHANGE(pb,pe,cx,size,swapf,alignsize,size_ratio); /* 1,4 */
+                COMPARE_EXCHANGE(pc,pd,cx,size,swapf,alignsize,size_ratio); /* 2,3 */
+                COMPARE_EXCHANGE(ph,pl,cx,size,swapf,alignsize,size_ratio); /* 7,10 */
+                COMPARE_EXCHANGE(pj,pk,cx,size,swapf,alignsize,size_ratio); /* 8,9 */
+            /* parallel group 3 */
                 COMPARE_EXCHANGE(pa,pb,cx,size,swapf,alignsize,size_ratio); /* 0,1 */
+                COMPARE_EXCHANGE(pc,pf,cx,size,swapf,alignsize,size_ratio); /* 2,5 */
+                COMPARE_EXCHANGE(pd,pe,cx,size,swapf,alignsize,size_ratio); /* 3,4 */
+                COMPARE_EXCHANGE(ph,pj,cx,size,swapf,alignsize,size_ratio); /* 7,8 */
+                COMPARE_EXCHANGE(pk,pl,cx,size,swapf,alignsize,size_ratio); /* 9,10 */
+            /* parallel group 4 */
+                COMPARE_EXCHANGE(pa,pc,cx,size,swapf,alignsize,size_ratio); /* 0,2 */
+                COMPARE_EXCHANGE(pb,pf,cx,size,swapf,alignsize,size_ratio); /* 1,5 */
+                COMPARE_EXCHANGE(pe,pg,cx,size,swapf,alignsize,size_ratio); /* 4,6 */
+                COMPARE_EXCHANGE(pj,pk,cx,size,swapf,alignsize,size_ratio); /* 8,9 */
+            /* parallel group 5 */
+                COMPARE_EXCHANGE(pb,pj,cx,size,swapf,alignsize,size_ratio); /* 1,8 */
+                COMPARE_EXCHANGE(pc,pd,cx,size,swapf,alignsize,size_ratio); /* 2,3 */
+                COMPARE_EXCHANGE(pe,ph,cx,size,swapf,alignsize,size_ratio); /* 4,7 */
+                COMPARE_EXCHANGE(pf,pk,cx,size,swapf,alignsize,size_ratio); /* 5,9 */
+                COMPARE_EXCHANGE(pg,pl,cx,size,swapf,alignsize,size_ratio); /* 6,10 */
+            /* parallel group 6 */
+                COMPARE_EXCHANGE(pb,pe,cx,size,swapf,alignsize,size_ratio); /* 1,4 */
+                COMPARE_EXCHANGE(pd,pf,cx,size,swapf,alignsize,size_ratio); /* 3,5 */
+                COMPARE_EXCHANGE(pg,pk,cx,size,swapf,alignsize,size_ratio); /* 6,9 */
+                COMPARE_EXCHANGE(ph,pj,cx,size,swapf,alignsize,size_ratio); /* 7,8 */
+            /* parallel group 7 */
+                COMPARE_EXCHANGE(pb,pc,cx,size,swapf,alignsize,size_ratio); /* 1,2 */
+                COMPARE_EXCHANGE(pd,pe,cx,size,swapf,alignsize,size_ratio); /* 3,4 */
+                COMPARE_EXCHANGE(pf,ph,cx,size,swapf,alignsize,size_ratio); /* 5,7 */
+                COMPARE_EXCHANGE(pg,pj,cx,size,swapf,alignsize,size_ratio); /* 6,8 */
+            /* parallel group 8 */
                 COMPARE_EXCHANGE(pc,pd,cx,size,swapf,alignsize,size_ratio); /* 2,3 */
                 COMPARE_EXCHANGE(pe,pf,cx,size,swapf,alignsize,size_ratio); /* 4,5 */
                 COMPARE_EXCHANGE(pg,ph,cx,size,swapf,alignsize,size_ratio); /* 6,7 */
-                COMPARE_EXCHANGE(pj,pk,cx,size,swapf,alignsize,size_ratio); /* 8,9 */
-            /* parallel group 2 */
-                COMPARE_EXCHANGE(pa,pc,cx,size,swapf,alignsize,size_ratio); /* 0,2 */
-                COMPARE_EXCHANGE(pb,pd,cx,size,swapf,alignsize,size_ratio); /* 1,3 */
-                COMPARE_EXCHANGE(pe,pg,cx,size,swapf,alignsize,size_ratio); /* 4,6 */
-                COMPARE_EXCHANGE(pf,ph,cx,size,swapf,alignsize,size_ratio); /* 5,7 */
-                COMPARE_EXCHANGE(pj,pl,cx,size,swapf,alignsize,size_ratio); /* 8,10 */
-            /* parallel group 3 */
-                COMPARE_EXCHANGE(pa,pe,cx,size,swapf,alignsize,size_ratio); /* 0,4 */
-                COMPARE_EXCHANGE(pb,pc,cx,size,swapf,alignsize,size_ratio); /* 1,2 */
-                COMPARE_EXCHANGE(pd,ph,cx,size,swapf,alignsize,size_ratio); /* 3,7 */
-                COMPARE_EXCHANGE(pf,pg,cx,size,swapf,alignsize,size_ratio); /* 5,6 */
-                COMPARE_EXCHANGE(pk,pl,cx,size,swapf,alignsize,size_ratio); /* 9,10 */
-            /* parallel group 4 */
-                COMPARE_EXCHANGE(pb,pf,cx,size,swapf,alignsize,size_ratio); /* 1,5 */
-                COMPARE_EXCHANGE(pe,pj,cx,size,swapf,alignsize,size_ratio); /* 4,8 */
-                COMPARE_EXCHANGE(pg,pl,cx,size,swapf,alignsize,size_ratio); /* 6,10 */
-            /* parallel group 5 */
-                COMPARE_EXCHANGE(pa,pe,cx,size,swapf,alignsize,size_ratio); /* 0,4 */
-                COMPARE_EXCHANGE(pc,pg,cx,size,swapf,alignsize,size_ratio); /* 2,6 */
-                COMPARE_EXCHANGE(pd,pj,cx,size,swapf,alignsize,size_ratio); /* 3,8 */
-                COMPARE_EXCHANGE(pf,pk,cx,size,swapf,alignsize,size_ratio); /* 5,9 */
-            /* parallel group 6 */
-                COMPARE_EXCHANGE(pb,pf,cx,size,swapf,alignsize,size_ratio); /* 1,5 */
-                COMPARE_EXCHANGE(pc,pd,cx,size,swapf,alignsize,size_ratio); /* 2,3 */
-                COMPARE_EXCHANGE(pg,pl,cx,size,swapf,alignsize,size_ratio); /* 6,10 */
-                COMPARE_EXCHANGE(pj,pk,cx,size,swapf,alignsize,size_ratio); /* 8,9 */
-            /* parallel group 7 */
-                COMPARE_EXCHANGE(pb,pe,cx,size,swapf,alignsize,size_ratio); /* 1,4 */
-                COMPARE_EXCHANGE(pd,pf,cx,size,swapf,alignsize,size_ratio); /* 3,5 */
-                COMPARE_EXCHANGE(pg,pj,cx,size,swapf,alignsize,size_ratio); /* 6,8 */
-                COMPARE_EXCHANGE(ph,pl,cx,size,swapf,alignsize,size_ratio); /* 7,10 */
-            /* parallel group 8 */
-                COMPARE_EXCHANGE(pc,pe,cx,size,swapf,alignsize,size_ratio); /* 2,4 */
-                COMPARE_EXCHANGE(pf,pg,cx,size,swapf,alignsize,size_ratio); /* 5,6 */
-                COMPARE_EXCHANGE(ph,pk,cx,size,swapf,alignsize,size_ratio); /* 7,9 */
-            /* parallel group 9 */
-                COMPARE_EXCHANGE(pd,pe,cx,size,swapf,alignsize,size_ratio); /* 3,4 */
-                COMPARE_EXCHANGE(ph,pj,cx,size,swapf,alignsize,size_ratio); /* 7,8 */
 #if ASSERT_CODE > 1
             A(0>=compar(pa,pb));
             A(0>=compar(pb,pc));

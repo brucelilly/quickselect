@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.4 dated 2017-11-03T19:29:22Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.6 dated 2017-11-06T16:32:56Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dedicated_sort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort.c ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T19:29:22Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2017-11-06T16:32:56Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -94,7 +94,7 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
         if ((12UL<n)
         ||((2UL<n)
           &&((0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
-             ||(0U==(options&(0x01U<<n)))
+             ||(0U==(options&(0x01U<<n)&(QUICKSELECT_NETWORK_MASK)))
             )
           )
         ) {
@@ -252,7 +252,9 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
 }
 #endif
             break;
+#if QUICKSELECT_NETWORK_MASK & 0x08U
             case 3UL : /* optimized sort of 3 */
+# if QUICKSELECT_STABLE
                 if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
                     char *pc;
                     pa=base+first*size; pb=pa+size; pc=pb+size;
@@ -261,7 +263,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                     COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
                 } else
-#if NETWORK3
+# endif /* QUICKSELECT_STABLE */
+# if NETWORK3
                     /* The optimization is the "else", which avoids extraneous
                        comparisons. Average over all distinct-valued permutations:
                        8/3 comparisons and 7/6 swaps, which is 1/3 comparison less
@@ -286,8 +289,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                         COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,
                             size_ratio); /* 1,2 */
                 }
-#else /* decision-tree comparison-exchange sorting (not stable) */
-# if FAVOR_SORTED /* favor already-sorted, reverse-sorted for merge sort */
+# else /* decision-tree comparison-exchange sorting (not stable) */
+#  if FAVOR_SORTED /* favor already-sorted, reverse-sorted for merge sort */
                 {   /* Optimized comparison-based sort:
                        average 2+6/13 comparisons and 11/13 swaps over all
                        possible inputs (including duplicate and all-equal
@@ -327,7 +330,7 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                         }
                     }
                 }
-# else
+#  else
                 {   /* Optimized comparison-based sort:
                        average 2+6/13 comparisons and 11/13 swaps over all
                        possible inputs (including duplicate and all-equal
@@ -364,21 +367,24 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                             nsw++); /* 0,2 */
                     }
                 }
-#if DEBUG_CODE
+#   if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) {
 (V) fprintf(stderr,"/* %s: %s line %d: dedicated 3-element sort: first=%lu, beyond=%lu, neq+nlt+ngt=%lu, nsw=%lu */\n",__func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,(unsigned long)neq+(unsigned long)nlt+(unsigned long)ngt,(unsigned long)nsw);
 print_some_array(base,first,beyond-1UL, "/* "," */");
 }
-#endif
+#   endif
+#  endif
 # endif
-#endif
             break;
+#endif
             /* optional network sort for small subarrays */
             /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
             /* stable variants (through size 6) are insertion/bubble sort
                unrolled and parallelized
             */
+#if QUICKSELECT_NETWORK_MASK & 0x010U
             case 4UL : /* 6 or 5 comparisons with 1 or 2 parallelizable groups */
+# if QUICKSELECT_STABLE
                 if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
                     char *pc, *pd;
                     pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
@@ -391,7 +397,9 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     /* end of group */
                     COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                     COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
-                } else {
+                } else
+# endif /* QUICKSELECT_STABLE */
+                {
                     char *pc, *pd;
                     pa=base+first*size;
                     pb=pa+size; pc=pb+size; pd=pc+size;
@@ -406,7 +414,10 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x010U */
+#if QUICKSELECT_NETWORK_MASK & 0x020U
             case 5UL : /* 10 or 9 comparisons with 3 or 4 parallelizable groups */
+# if QUICKSELECT_STABLE
                 if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
                     char *pc, *pd, *pe;
                     pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
@@ -428,7 +439,9 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     /* end of group */
                     COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                     COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
-                } else {
+                } else
+# endif /* QUICKSELECT_STABLE */
+                {
                     char *pc, *pd, *pe;
                     pa=base+first*size;
                     pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size;
@@ -449,7 +462,10 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pd,pe,context,size,swapf,alignsize,size_ratio); /* 3,4 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x020U */
+#if QUICKSELECT_NETWORK_MASK & 0x040U
             case 6UL : /* 15 or 12 comparisons with 5 or 6 parallelizable groups */
+# if QUICKSELECT_STABLE
                 if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
                     char *pc, *pd, *pe, *pf;
                     pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
@@ -481,7 +497,9 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     /* end of group */
                     COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
                     COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
-                } else {
+                } else
+# endif /* QUICKSELECT_STABLE */
+                {
                     char *pc, *pd, *pe, *pf;
                     pa=base+first*size;
                     pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size;
@@ -506,6 +524,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pd,pe,context,size,swapf,alignsize,size_ratio); /* 3,4 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x040U */
+#if QUICKSELECT_NETWORK_MASK & 0x080U
             case 7UL : /* 16 comparisons in 6 parallel groups */
                 { char *pc, *pd, *pe, *pf, *pg;
                     pa=base+first*size;
@@ -536,6 +556,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pf,pg,context,size,swapf,alignsize,size_ratio); /* 5,6 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x080U */
+#if QUICKSELECT_NETWORK_MASK & 0x0100U
             case 8UL : /* 19 comparisons in 6 parallel groups */
                 { char *pc, *pd, *pe, *pf, *pg, *ph;
                     pa=base+first*size;
@@ -569,6 +591,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pf,pg,context,size,swapf,alignsize,size_ratio); /* 5,6 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x0100U */
+#if QUICKSELECT_NETWORK_MASK & 0x0200U
             case 9UL : /* 25 comparisons in 9 parallel groups */
                 { char *pc, *pd, *pe, *pf, *pg, *ph,
                       /* no English names for Greek characters... */
@@ -613,6 +637,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pc,pd,context,size,swapf,alignsize,size_ratio); /* 2,3 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x0200U */
+#if QUICKSELECT_NETWORK_MASK & 0x0400U
             case 10UL : /* 29 comparisons in 9 parallel groups */
                 { char *pc, *pd, *pe, *pf, *pg, *ph,
                       /* no English names for Greek characters... */
@@ -661,60 +687,63 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(pe,pf,context,size,swapf,alignsize,size_ratio); /* 4,5 */
                 }
             break;
-            case 11UL : /* 35 comparisons in 9 groups (not optimal) */
+#endif /* QUICKSELECT_NETWORK_MASK & 0x0400U */
+#if QUICKSELECT_NETWORK_MASK & 0x0800U
+            case 11UL : /* 35 comparisons in 8 groups (optimal depth, maybe not # comparators) */
+                /* source: http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
                 { char *pc, *pd, *pe, *pf, *pg, *ph,
                       /* no English names for Greek characters... */
                        *pj, *pk, *pl;
                     pa=base+first*size;
                     pb=pa+size; pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size;
                     pg=pf+size; ph=pg+size; pj=ph+size; pk=pj+size; pl=pk+size;
-                /* not stable */ /* Batcher merge-exchange network uses 37 comparators */
-                    /* parallel group 1 */
+                /* parallel group 1 */
+                    COMPARE_EXCHANGE(pb,pl,context,size,swapf,alignsize,size_ratio); /* 1,10 */
+                    COMPARE_EXCHANGE(pc,pk,context,size,swapf,alignsize,size_ratio); /* 2,9 */
+                    COMPARE_EXCHANGE(pd,pj,context,size,swapf,alignsize,size_ratio); /* 3,8 */
+                    COMPARE_EXCHANGE(pe,ph,context,size,swapf,alignsize,size_ratio); /* 4,7 */
+                    COMPARE_EXCHANGE(pf,pg,context,size,swapf,alignsize,size_ratio); /* 5,6 */
+                /* parallel group 2 */
+                    COMPARE_EXCHANGE(pa,pg,context,size,swapf,alignsize,size_ratio); /* 0,6 */
+                    COMPARE_EXCHANGE(pb,pe,context,size,swapf,alignsize,size_ratio); /* 1,4 */
+                    COMPARE_EXCHANGE(pc,pd,context,size,swapf,alignsize,size_ratio); /* 2,3 */
+                    COMPARE_EXCHANGE(ph,pl,context,size,swapf,alignsize,size_ratio); /* 7,10 */
+                    COMPARE_EXCHANGE(pj,pk,context,size,swapf,alignsize,size_ratio); /* 8,9 */
+                /* parallel group 3 */
                     COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio); /* 0,1 */
+                    COMPARE_EXCHANGE(pc,pf,context,size,swapf,alignsize,size_ratio); /* 2,5 */
+                    COMPARE_EXCHANGE(pd,pe,context,size,swapf,alignsize,size_ratio); /* 3,4 */
+                    COMPARE_EXCHANGE(ph,pj,context,size,swapf,alignsize,size_ratio); /* 7,8 */
+                    COMPARE_EXCHANGE(pk,pl,context,size,swapf,alignsize,size_ratio); /* 9,10 */
+                /* parallel group 4 */
+                    COMPARE_EXCHANGE(pa,pc,context,size,swapf,alignsize,size_ratio); /* 0,2 */
+                    COMPARE_EXCHANGE(pb,pf,context,size,swapf,alignsize,size_ratio); /* 1,5 */
+                    COMPARE_EXCHANGE(pe,pg,context,size,swapf,alignsize,size_ratio); /* 4,6 */
+                    COMPARE_EXCHANGE(pj,pk,context,size,swapf,alignsize,size_ratio); /* 8,9 */
+                /* parallel group 5 */
+                    COMPARE_EXCHANGE(pb,pj,context,size,swapf,alignsize,size_ratio); /* 1,8 */
+                    COMPARE_EXCHANGE(pc,pd,context,size,swapf,alignsize,size_ratio); /* 2,3 */
+                    COMPARE_EXCHANGE(pe,ph,context,size,swapf,alignsize,size_ratio); /* 4,7 */
+                    COMPARE_EXCHANGE(pf,pk,context,size,swapf,alignsize,size_ratio); /* 5,9 */
+                    COMPARE_EXCHANGE(pg,pl,context,size,swapf,alignsize,size_ratio); /* 6,10 */
+                /* parallel group 6 */
+                    COMPARE_EXCHANGE(pb,pe,context,size,swapf,alignsize,size_ratio); /* 1,4 */
+                    COMPARE_EXCHANGE(pd,pf,context,size,swapf,alignsize,size_ratio); /* 3,5 */
+                    COMPARE_EXCHANGE(pg,pk,context,size,swapf,alignsize,size_ratio); /* 6,9 */
+                    COMPARE_EXCHANGE(ph,pj,context,size,swapf,alignsize,size_ratio); /* 7,8 */
+                /* parallel group 7 */
+                    COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
+                    COMPARE_EXCHANGE(pd,pe,context,size,swapf,alignsize,size_ratio); /* 3,4 */
+                    COMPARE_EXCHANGE(pf,ph,context,size,swapf,alignsize,size_ratio); /* 5,7 */
+                    COMPARE_EXCHANGE(pg,pj,context,size,swapf,alignsize,size_ratio); /* 6,8 */
+                /* parallel group 8 */
                     COMPARE_EXCHANGE(pc,pd,context,size,swapf,alignsize,size_ratio); /* 2,3 */
                     COMPARE_EXCHANGE(pe,pf,context,size,swapf,alignsize,size_ratio); /* 4,5 */
                     COMPARE_EXCHANGE(pg,ph,context,size,swapf,alignsize,size_ratio); /* 6,7 */
-                    COMPARE_EXCHANGE(pj,pk,context,size,swapf,alignsize,size_ratio); /* 8,9 */
-                    /* parallel group 2 */
-                    COMPARE_EXCHANGE(pa,pc,context,size,swapf,alignsize,size_ratio); /* 0,2 */
-                    COMPARE_EXCHANGE(pb,pd,context,size,swapf,alignsize,size_ratio); /* 1,3 */
-                    COMPARE_EXCHANGE(pe,pg,context,size,swapf,alignsize,size_ratio); /* 4,6 */
-                    COMPARE_EXCHANGE(pf,ph,context,size,swapf,alignsize,size_ratio); /* 5,7 */
-                    COMPARE_EXCHANGE(pj,pl,context,size,swapf,alignsize,size_ratio); /* 8,10 */
-                    /* parallel group 3 */
-                    COMPARE_EXCHANGE(pa,pe,context,size,swapf,alignsize,size_ratio); /* 0,4 */
-                    COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,size_ratio); /* 1,2 */
-                    COMPARE_EXCHANGE(pd,ph,context,size,swapf,alignsize,size_ratio); /* 3,7 */
-                    COMPARE_EXCHANGE(pf,pg,context,size,swapf,alignsize,size_ratio); /* 5,6 */
-                    COMPARE_EXCHANGE(pk,pl,context,size,swapf,alignsize,size_ratio); /* 9,10 */
-                    /* parallel group 4 */
-                    COMPARE_EXCHANGE(pb,pf,context,size,swapf,alignsize,size_ratio); /* 1,5 */
-                    COMPARE_EXCHANGE(pe,pj,context,size,swapf,alignsize,size_ratio); /* 4,8 */
-                    COMPARE_EXCHANGE(pg,pl,context,size,swapf,alignsize,size_ratio); /* 6,10 */
-                    /* parallel group 5 */
-                    COMPARE_EXCHANGE(pa,pe,context,size,swapf,alignsize,size_ratio); /* 0,4 */
-                    COMPARE_EXCHANGE(pc,pg,context,size,swapf,alignsize,size_ratio); /* 2,6 */
-                    COMPARE_EXCHANGE(pd,pj,context,size,swapf,alignsize,size_ratio); /* 3,8 */
-                    COMPARE_EXCHANGE(pf,pk,context,size,swapf,alignsize,size_ratio); /* 5,9 */
-                    /* parallel group 6 */
-                    COMPARE_EXCHANGE(pb,pf,context,size,swapf,alignsize,size_ratio); /* 1,5 */
-                    COMPARE_EXCHANGE(pc,pd,context,size,swapf,alignsize,size_ratio); /* 2,3 */
-                    COMPARE_EXCHANGE(pg,pl,context,size,swapf,alignsize,size_ratio); /* 6,10 */
-                    COMPARE_EXCHANGE(pj,pk,context,size,swapf,alignsize,size_ratio); /* 8,9 */
-                    /* parallel group 7 */
-                    COMPARE_EXCHANGE(pb,pe,context,size,swapf,alignsize,size_ratio); /* 1,4 */
-                    COMPARE_EXCHANGE(pd,pf,context,size,swapf,alignsize,size_ratio); /* 3,5 */
-                    COMPARE_EXCHANGE(pg,pj,context,size,swapf,alignsize,size_ratio); /* 6,8 */
-                    COMPARE_EXCHANGE(ph,pl,context,size,swapf,alignsize,size_ratio); /* 7,10 */
-                    /* parallel group 8 */
-                    COMPARE_EXCHANGE(pc,pe,context,size,swapf,alignsize,size_ratio); /* 2,4 */
-                    COMPARE_EXCHANGE(pf,pg,context,size,swapf,alignsize,size_ratio); /* 5,6 */
-                    COMPARE_EXCHANGE(ph,pk,context,size,swapf,alignsize,size_ratio); /* 7,9 */
-                    /* parallel group 9 */
-                    COMPARE_EXCHANGE(pd,pe,context,size,swapf,alignsize,size_ratio); /* 3,4 */
-                    COMPARE_EXCHANGE(ph,pj,context,size,swapf,alignsize,size_ratio); /* 7,8 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x0800U */
+#if QUICKSELECT_NETWORK_MASK & 0x01000U
             case 12UL : /* 39 comparisons in 9 parallel groups (not optimal) */
                 { char *pc, *pd, *pe, *pf, *pg, *ph,
                       /* no English names for Greek characters... */
@@ -773,6 +802,7 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     COMPARE_EXCHANGE(ph,pj,context,size,swapf,alignsize,size_ratio); /* 7,8 */
                 }
             break;
+#endif /* QUICKSELECT_NETWORK_MASK & 0x01000U */
             default :
                 A(0==1); /* logic error */
             break;

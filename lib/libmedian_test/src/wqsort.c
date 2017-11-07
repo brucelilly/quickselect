@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.4 dated 2017-11-03T20:04:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.5 dated 2017-11-05T22:16:45Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T20:04:26Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-11-05T22:16:45Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -127,6 +127,7 @@ char *freeze_some_samples(register char *base, register size_t first,
             __func__,source_file,__LINE__,first,beyond,table_index,options);
 #endif
     switch (options&((QUICKSELECT_STABLE)|(QUICKSELECT_RESTRICT_RANK))) {
+#if QUICKSELECT_STABLE
         case ((QUICKSELECT_RESTRICT_RANK)|(QUICKSELECT_STABLE)) :
             /* almost full remedian */
             while (table_index<(SAMPLING_TABLE_SIZE)-1U) {
@@ -142,6 +143,7 @@ char *freeze_some_samples(register char *base, register size_t first,
                 if (s>r) table_index--;
             }
         /*FALLTHROUGH*/
+#endif /* QUICKSELECT_STABLE */
         default : /* remedian of samples */
             nfrozen=0UL, pivot_minrank=minimum_remedian_rank(table_index);
 #if DEBUG_CODE

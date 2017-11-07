@@ -1,6 +1,6 @@
 %!PS-Adobe-3.0
 %%Creator: groff version 1.22.3
-%%CreationDate: Fri Nov  3 21:24:18 2017
+%%CreationDate: Mon Nov  6 11:51:54 2017
 %%DocumentNeededResources: font Times-Roman
 %%+ font Times-Bold
 %%+ font Times-Italic
@@ -298,7 +298,7 @@ arison function)144 472.8 R F2(compar)3.254 E F0 .754(is kno)3.254 F(wn)
 (ault operation attempts to minimize run\255time for simple)-.1 F
 (comparisons.)144 496.8 Q -.1(QU)108 513.6 S(ICKSELECT_RESTRICT_RANK).1
 E(is used internally and should not be set by the caller)144 525.6 Q(.)
--.55 E(bits in 0x01FF8U)108 542.4 Q .337
+-.55 E(bits in Q)108 542.4 Q(UICKSELECT_NETW)-.1 E(ORK_MASK)-.1 E .337
 (specify the ability to use sorting netw)144 554.4 R .336
 (orks for arrays of size 3 through 12 elements, corresponding)-.1 F
 2.201(to bit 0x01)144 566.4 R(<< size.)2.5 E 4.701(As)7.201 G 2.201
@@ -426,58 +426,83 @@ emain in\255place; no additional size\255related memory is)5.851 F 2.71
 2.71(fs).4 G .21(table sorting is required and additional memory is a)
 -2.71 F -.25(va)-.2 G .21(ilable, an alternati).25 F .51 -.15(ve m)-.25
 H .21(eans of).15 F(sorting may be f)108 646.032 Q(aster)-.1 E(.)-.55 E
-F1(FUTURE DIRECTIONS)72 662.832 Q F0(none)108 674.832 Q F1(SEE ALSO)72
-691.632 Q F0(qsort)108 703.632 Q(2)535 768 Q 0 Cg EP
+9.497(Compiled library code might ha)108 662.832 R 9.798 -.15(ve b)-.2 H
+9.498(een b).15 F 9.498(uilt with)-.2 F F2 -.1(QU)11.998 G(ICKSELECT_ST)
+.1 E(ABLE)-.9 E F0(and/or)11.998 E F2 -.1(QU)108 674.832 S
+(ICKSELECT_NETW).1 E(ORK_MASK)-.1 E F0 1.128(set to v)3.628 F 1.127
+(alues other than those which appear in)-.25 F F3(quic)3.627 E
+(kselect.h)-.2 E F0 6.127(.I).28 G(f)-6.127 E .307(the library w)108
+686.832 R .307(as b)-.1 F .308(uilt without the option to sort or selec\
+t while maintaining partial order stability)-.2 F 2.808(,s)-.65 G
+(pecifying)-2.808 E F2 -.1(QU)108 698.832 S(ICKSELECT_ST).1 E(ABLE)-.9 E
+F0(in)3.355 E F3(options)3.585 E F0 .855(will not be ef)3.625 F(fecti)
+-.25 E -.15(ve)-.25 G 5.855(.C).15 G .855
+(onsult local documentation if a)-5.855 F -.25(va)-.2 G .855(ilable or)
+.25 F -.15(ex)108 710.832 S .384(amine the b).15 F .384
+(uild options used to create the library object f)-.2 F .384(iles using)
+-.2 F F3(what)3.224 E F0(or)3.564 E F3(ident)2.884 E F0 5.384(.S).68 G
+(imilarly)-5.384 E 2.885(,s)-.65 G .385(upport for)-2.885 F .46
+(sorting netw)108 722.832 R .46(ork sizes may ha)-.1 F .76 -.15(ve b)-.2
+H .459(een limited when the library object f).15 F .459(iles were b)-.2
+F 2.959(uilt. Specifying)-.2 F .459(bits from)2.959 F(2)535 768 Q 0 Cg
+EP
 %%Page: 3 3
 %%BeginPageSetup
 BP
 %%EndPageSetup
 /F0 10/Times-Roman@0 SF 122.355(quickselect\(3\) Library)72 48 R
-(Functions Manual)2.5 E(quickselect\(3\))124.855 E/F1 10.95/Times-Bold@0
-SF(CHANGE HIST)72 84 Q(OR)-.197 E(Y)-.383 E F0 .151
-(Function implementation initial v)108 96 R .151(ersion June 2016.)-.15
-F .151(Implementation backw)5.151 F .151
-(ard\255compatible updates through)-.1 F(October 2017.)108 108 Q
-(Manual page initial v)108 124.8 Q(ersion January 2017.)-.15 E
-(Latest manual page update October 2017.)5 E F1 -.548(AU)72 141.6 S
-(THOR).548 E F0(Bruce Lilly <bruce.lilly@gmail.com>)108 153.6 Q F1
-(LICENSE)72 170.4 Q F0(The follo)108 182.4 Q(wing license co)-.25 E -.15
-(ve)-.15 G(rs this softw).15 E(are, including mak)-.1 E(ef)-.1 E
-(iles and documentation:)-.2 E(This softw)108 199.2 Q(are is co)-.1 E
+(Functions Manual)2.5 E(quickselect\(3\))124.855 E/F1 10/Times-Bold@0 SF
+-.1(QU)108 84 S(ICKSELECT_NETW).1 E(ORK_MASK)-.1 E F0(in)2.78 E/F2 10
+/Times-Italic@0 SF(options)3.01 E F0 .281
+(which are not supported in the library object code will)3.051 F(result\
+ in the use of insertion sort for small sub\255arrays of those sizes.)
+108 96 Q/F3 10.95/Times-Bold@0 SF(FUTURE DIRECTIONS)72 112.8 Q F0(none)
+108 124.8 Q F3(SEE ALSO)72 141.6 Q F0(qsort, what, ident)108 153.6 Q F3
+(CHANGE HIST)72 170.4 Q(OR)-.197 E(Y)-.383 E F0 .151
+(Function implementation initial v)108 182.4 R .151(ersion June 2016.)
+-.15 F .151(Implementation backw)5.151 F .151
+(ard\255compatible updates through)-.1 F(No)108 194.4 Q -.15(ve)-.15 G
+(mber 2017.).15 E(Manual page initial v)108 211.2 Q
+(ersion January 2017.)-.15 E(Latest manual page update No)5 E -.15(ve)
+-.15 G(mber 2017.).15 E F3 -.548(AU)72 228 S(THOR).548 E F0
+(Bruce Lilly <bruce.lilly@gmail.com>)108 240 Q F3(LICENSE)72 256.8 Q F0
+(The follo)108 268.8 Q(wing license co)-.25 E -.15(ve)-.15 G
+(rs this softw).15 E(are, including mak)-.1 E(ef)-.1 E
+(iles and documentation:)-.2 E(This softw)108 285.6 Q(are is co)-.1 E
 -.15(ve)-.15 G(red by the zlib/libpng license.).15 E 5.724(The zlib/lib\
 png license is a recognized open source license by the Open Source Init\
-iati)108 211.2 R -.15(ve)-.25 G(:).15 E(http://opensource.or)108 223.2 Q
+iati)108 297.6 R -.15(ve)-.25 G(:).15 E(http://opensource.or)108 309.6 Q
 (g/licenses/Zlib)-.18 E 3.683
-(The zlib/libpng license is a recognized "free" softw)108 235.2 R 3.683
-(are license by the Free Softw)-.1 F 3.684(are F)-.1 F(oundation:)-.15 E
-(https://directory)108 247.2 Q(.fsf.or)-.65 E(g/wiki/License:Zlib)-.18 E
-104.135(*************** Cop)50.4 259.2 R
+(The zlib/libpng license is a recognized "free" softw)108 321.6 R 3.683
+(are license by the Free Softw)-.1 F 3.683(are F)-.1 F(oundation:)-.15 E
+(https://directory)108 333.6 Q(.fsf.or)-.65 E(g/wiki/License:Zlib)-.18 E
+104.135(*************** Cop)50.4 345.6 R
 (yright notice \(part of the license\))-.1 E(***************)106.635 E
-(@\(#\)quickselect.3 1.5 2017-11-04T01:23:38Z cop)108 271.2 Q
-(yright 2016-2017 Bruce Lilly)-.1 E .483(This softw)108 283.2 R .483
+(@\(#\)quickselect.3 1.7 2017-11-06T16:51:49Z cop)108 357.6 Q
+(yright 2016-2017 Bruce Lilly)-.1 E .482(This softw)108 369.6 R .483
 (are is pro)-.1 F .483(vided 'as-is', without an)-.15 F 2.983(ye)-.15 G
 .483(xpress or implied w)-3.133 F(arranty)-.1 E 5.483(.I)-.65 G 2.983
 (nn)-5.483 G 2.983(oe)-2.983 G -.15(ve)-3.233 G .483
-(nt will the authors be).15 F(held liable for an)108 295.2 Q 2.5(yd)-.15
-G(amages arising from the use of this softw)-2.5 E(are.)-.1 E .968
-(Permission is granted to an)108 312 R .968(yone to use this softw)-.15
-F .969(are for an)-.1 F 3.469(yp)-.15 G .969
-(urpose, including commercial applications,)-3.469 F
-(and to alter it and redistrib)108 324 Q(ute it freely)-.2 E 2.5(,s)-.65
-G(ubject to the follo)-2.5 E(wing restrictions:)-.25 E(1.)108 340.8 Q
-.048(The origin of this softw)129.6 340.8 R .048(are must not be misrep\
-resented; you must not claim that you wrote the original)-.1 F(softw)
-129.6 352.8 Q 1.573(are. If you use this softw)-.1 F 1.574
-(are in a product, an ackno)-.1 F 1.574
-(wledgment in the product documentation)-.25 F -.1(wo)129.6 364.8 S
-(uld be appreciated b).1 E(ut is not required.)-.2 E(2.)108 381.6 Q .375
-(Altered source v)129.6 381.6 R .375(ersions must be plainly mark)-.15 F
-.374(ed as such, and must not be misrepresented as being the)-.1 F
-(original softw)129.6 393.6 Q(are.)-.1 E(3.)108 410.4 Q
-(This notice may not be remo)129.6 410.4 Q -.15(ve)-.15 G 2.5(do).15 G
+(nt will the authors be).15 F(held liable for an)108 381.6 Q 2.5(yd)-.15
+G(amages arising from the use of this softw)-2.5 E(are.)-.1 E .969
+(Permission is granted to an)108 398.4 R .969(yone to use this softw)
+-.15 F .968(are for an)-.1 F 3.468(yp)-.15 G .968
+(urpose, including commercial applications,)-3.468 F
+(and to alter it and redistrib)108 410.4 Q(ute it freely)-.2 E 2.5(,s)
+-.65 G(ubject to the follo)-2.5 E(wing restrictions:)-.25 E(1.)108 427.2
+Q .047(The origin of this softw)129.6 427.2 R .048(are must not be misr\
+epresented; you must not claim that you wrote the original)-.1 F(softw)
+129.6 439.2 Q 1.574(are. If you use this softw)-.1 F 1.574
+(are in a product, an ackno)-.1 F 1.573
+(wledgment in the product documentation)-.25 F -.1(wo)129.6 451.2 S
+(uld be appreciated b).1 E(ut is not required.)-.2 E(2.)108 468 Q .374
+(Altered source v)129.6 468 R .374(ersions must be plainly mark)-.15 F
+.375(ed as such, and must not be misrepresented as being the)-.1 F
+(original softw)129.6 480 Q(are.)-.1 E(3.)108 496.8 Q
+(This notice may not be remo)129.6 496.8 Q -.15(ve)-.15 G 2.5(do).15 G
 2.5(ra)-2.5 G(ltered from an)-2.5 E 2.5(ys)-.15 G(ource distrib)-2.5 E
-(ution.)-.2 E 97(************************* \(end)50.4 422.4 R
-(of license\))2.5 E(*************************)99.5 E -1.1(Yo)108 439.2 S
+(ution.)-.2 E 97(************************* \(end)50.4 508.8 R
+(of license\))2.5 E(*************************)99.5 E -1.1(Yo)108 525.6 S
 2.5(um)1.1 G(ay send b)-2.5 E
 (ug reports to bruce.lilly@gmail.com with subject "quickselect".)-.2 E
 (3)535 768 Q 0 Cg EP

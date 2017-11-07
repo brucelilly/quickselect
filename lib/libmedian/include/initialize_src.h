@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is initialize_src.h version 1.2 dated 2017-09-23T05:00:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is initialize_src.h version 1.3 dated 2017-11-06T16:35:27Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.initialize_src.h */
@@ -118,6 +118,8 @@ static const char *file_build_options= ID_STRING_PREFIX
 #ifdef FAVOR_SORTED
     ", FAVOR_SORTED=" xbuildstr(FAVOR_SORTED)
 #endif
+    ", QUICKSELECT_NETWORK_MASK=" xbuildstr(QUICKSELECT_NETWORK_MASK)
+    ", QUICKSELECT_STABLE=" xbuildstr(QUICKSELECT_STABLE)
 #ifdef SORTING_DEDICATED_SORT_CUTOFF
     ", SORTING_DEDICATED_SORT_CUTOFF=" xbuildstr(SORTING_DEDICATED_SORT_CUTOFF)
 #endif

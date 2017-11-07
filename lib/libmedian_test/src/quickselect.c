@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.4 dated 2017-11-03T20:15:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.5 dated 2017-11-07T18:52:02Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T20:15:16Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-11-07T18:52:02Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -734,7 +734,6 @@ __func__,source_file,__LINE__,first,beyond,pk,firstk,beyondk,fk,ek);
     return ret;
 }
 
-static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
@@ -993,23 +992,23 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
             */
             first=pl_region->first, beyond=pl_region->beyond,
                 firstk=pl_region->firstk, beyondk=pl_region->beyondk;
-            if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
 #if DEBUG_CODE
+            if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V) fprintf(stderr,
 "/* %s: %s line %d: restricted rank flag not reset: first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, options=0x%x */\n",
 __func__,source_file, __LINE__,first,beyond,firstk,beyondk,options);
-#endif
             }
+#endif
             sort=
                 d_should_repivot(nmemb,beyond-first,cutoff,pst,table_index,
                 pk,&c,ppeq);
-            if (0U!=sort) {
 #if DEBUG_CODE
+            if (0U!=sort) {
 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V) fprintf(stderr,
 "/* %s: %s line %d: d_should_repivot returned %u: nmemb=%lu, first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, options=0x%x */\n",
 __func__,source_file, __LINE__,sort,nmemb,first,beyond,firstk,beyondk,options);
-#endif
             }
+#endif
             options |= sort;
             if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
                 nrepivot++;
