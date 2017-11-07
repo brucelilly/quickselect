@@ -57,19 +57,19 @@ MAKEFILES_READ += makefile.files
 #   to support independent executable builds.
 # median_test is C99 to use inline exchange
 C99OBJS =\
- bstest.o\
  make_grap.o\
  median_test.o\
- swaptest.o\
- graphingtest.o\
  simple_config.o\
- generate_cutoff_table.o\
+# bstest.o\
+# swaptest.o\
+# graphingtest.o\
+# generate_cutoff_table.o\
 # 
 OBJS =\
- heap_test.o\
- lemd.o\
- numtest.o\
- thermostatd.o\
+# heap_test.o\
+# lemd.o\
+# numtest.o\
+# thermostatd.o\
 # udp.o\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -78,10 +78,10 @@ MACROS += C99OBJS OBJS
 # Header files used by main program source files, located in $(HDRDIR).
 HDRS =\
  compare.h\
- conform.h\
  exchange.h\
- lemd.h\
  zz_build_str.h\
+# conform.h\
+# lemd.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += HDRS
@@ -100,7 +100,7 @@ MACROS += RESOURCEFILES
 
 # Configuration files.
 CONFIGFILES =\
- $(PROJECT).conf\
+# $(PROJECT).conf\
 # $(PROJECT)2.conf\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -110,7 +110,7 @@ MACROS += CONFIGFILES
 # Library archive names and archive member object files (leave unused ones empty)
 #  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
 # C99-compiled object files are listed separately
-LIB1ARCH = liblemd.a
+LIB1ARCH = # liblemd.a
 C99LIB1OBJS =\
  lemd_graph.o\
 #
@@ -132,7 +132,7 @@ LIB1MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB1ARCH C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
 
-LIB2ARCH = libthermostatd.a
+LIB2ARCH = # libthermostatd.a
 C99LIB2OBJS =\
  thermostatd_recv.o\
 #
@@ -389,7 +389,7 @@ LIB15MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB15ARCH C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
 
-LIB16ARCH = libangle.a
+LIB16ARCH = # libangle.a
 C99LIB16OBJS =\
 #
 LIB16OBJS =\
@@ -501,7 +501,6 @@ LIB20HDRS =\
  quickselect_loop_decl.h\
  quickselect_loop_src.h\
  quickselect_src.h\
- quickselect_swap.h\
  quickselect.h\
  quickselect_config.h\
  quicksort_loop_decl.h\
@@ -536,7 +535,7 @@ LIB21MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB21ARCH C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
 
-LIB22ARCH = libpool.a
+LIB22ARCH = # libpool.a
 C99LIB22OBJS =\
 #
 LIB22OBJS =\
