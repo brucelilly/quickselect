@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.5 dated 2017-11-05T22:16:45Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.8 dated 2017-12-15T21:35:32Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-11-05T22:16:45Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2017-12-15T21:35:32Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -82,7 +82,7 @@ __func__,source_file,__LINE__,(const void *)middle,(middle-base)/size,(unsigned 
 #endif
     A((SAMPLING_TABLE_SIZE)>idx);
     if ((0U<idx)&&(0U < --idx)) {
-        char *pa, *pb, *pc;
+        char *pa, *pb;
         register size_t s=sample_spacing/3UL;
 
         o=s*size;
@@ -112,7 +112,7 @@ char *freeze_some_samples(register char *base, register size_t first,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
     register unsigned int table_index, unsigned int options)
 {
-    size_t m, nmemb=beyond-first, o, p, q, s, t, u, v, w, x;
+    size_t m, nmemb=beyond-first, o, p, q, s, t, u, w, x;
     register size_t r=nmemb/3UL;     /* 1/3 #elements */
     register char *pb, *pc, *pivot, *pl, *pu;
 
@@ -167,14 +167,11 @@ char *freeze_some_samples(register char *base, register size_t first,
 #endif
             /* freeze low-address samples which will be used for pivot selection */
             /* mandatory elements (corresponding to minimum possible pivot rank) */
-#if 0
-            if (0U<table_index)
-#endif
-                (V)low_remedian(pivot,r,r,size,table_index,compar,base);
+            (V)low_remedian(pivot,r,r,size,table_index,compar,base);
             /* optional pivot selection samples if needed */
             /* first row */
             if (0UL<w) {
-                for (o=(s>>1)*w,x=m-r-o,u=m-r+o,v=r*size; x<=u; x+=w) {
+                for (o=(s>>1)*w,x=m-r-o,u=m-r+o; x<=u; x+=w) {
                     if (nfrozen<pivot_minrank) {
 #if DEBUG_CODE
                         if (DEBUGGING(WQSORT_DEBUG))
@@ -209,13 +206,6 @@ char *freeze_some_samples(register char *base, register size_t first,
 #endif
             /* freeze middle pivot selection sample */
             (V)freeze(aqindex(pivot,base,size));
-#if 0
-            /* reverse element order to increase swapping during partitioning */
-            q=nsw;
-            for (pb=pivot-size,pc=pivot+size; (pb>=pl)&&(pc<pu); pb-=size,pc+=size)
-                EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,/**/);
-            nsw=q;
-#endif
             p=count_frozen(base,first,beyond,size);
             q=pivot_rank(base,first,beyond,size,pivot);
             x=m-r-o,u=m+r+o+1UL;
@@ -242,30 +232,12 @@ char *freeze_some_samples(register char *base, register size_t first,
     return pivot;
 }
 
-static unsigned long ulfloor(unsigned long numerator, unsigned long denominator)
-{
-    return numerator/denominator;
-}
-
-static unsigned long ulceil(unsigned long numerator, unsigned long denominator)
-{
-    unsigned long r=ulfloor(numerator,denominator);
-    if (r*denominator<numerator) r++;
-    return r;
-}
-
 size_t minimum_remedian_rank(unsigned int table_index)
 {
     /* samples=3^table_index, minimum 0-based rank is 2^table_index-1 */
     size_t r;
     for (r=1UL; 0U<table_index; table_index--,r<<=1) ;
     return --r;
-}
-
-static size_t minimum_median_of_medians_rank(unsigned int nmemb)
-{
-    size_t n=nmemb/3UL;
-    return n;
 }
 
 /* modified quickselect sort; always get worst-case pivot for given
@@ -279,11 +251,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
 {
     char *pc, *pd, *pe, *pf, *pivot;
     size_t nmemb, r, ratio=0, s, samples, t;
-#if 0
-    size_t u, v, w, x, y, karray[1];
-#endif
     auto size_t lk=firstk, p, q, rk=beyondk;
-    auto unsigned char f1, f2;
     auto unsigned int sort, table_index=2U;
     struct sampling_table_struct *psts;
         
@@ -297,7 +265,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
         if (nmemb<=cutoff) {
             if (1UL<nmemb) {
                 nfrozen=0UL, pivot_minrank=nmemb;
-                dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
+                d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
                     size_ratio,options);
             }
             return;
@@ -317,17 +285,15 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
             size_ratio,table_index,NULL,options,&pc,&pd,&pe,&pf);
 t=pivot_minrank;
         pivot_minrank=nmemb;
+        /* XXX no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
-            alignsize,size_ratio,options,&p,&q);
+            alignsize,size_ratio,options,NULL,NULL,NULL,&p,&q);
 #if DEBUG_CODE
 if (p+1UL!=q) {
 (V)fprintf(stderr, "/* %s: %s line %d: nmemb=%lu, first=%lu, p=%lu, q=%lu, beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), nfrozen=%lu */\n",
 __func__,source_file,__LINE__,nmemb,first,p,q,beyond,samples,pivot_minrank,t,nfrozen);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
-#endif
-#if 0
-        A((9UL>nmemb)||(p+2UL>=q));
 #endif
         if (p>first) s=p-first; else s=0UL; /* size of the < region */
         if (beyond>q) r=beyond-q; else r=0UL;  /* size of the > region */
@@ -336,7 +302,6 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
         } else { /* < region is larger, or regions are the same size */
             ratio=s/(nmemb-s);
         }
-        if (ratio>=(size_t)f2) c++;
 #if DEBUG_CODE
         if (DEBUGGING(WQSORT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: p=%lu, q=%lu, pivot rank=s=%lu, r=%lu, ratio=%lu */\n",
@@ -377,14 +342,10 @@ void wqsort(void *base, size_t nmemb, size_t size,
     size_t alignsize=alignment_size((char *)base,size);
     size_t size_ratio=size/alignsize;
     void (*swapf)(char *, char *, size_t);
-    size_t cutoff;
+    size_t cutoff=2UL;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
-
-    if (0UL!=quickselect_small_array_cutoff)
-        cutoff=quickselect_small_array_cutoff;
-    else cutoff=cutoff_value(size_ratio,options);
 
 #if DEBUG_CODE
     if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */

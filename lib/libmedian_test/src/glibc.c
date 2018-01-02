@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is glibc.c version 1.2 dated 2017-11-03T19:35:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is glibc.c version 1.3 dated 2017-12-30T02:32:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.glibc.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: glibc.c ~|^` @(#)"
 #define SOURCE_MODULE "glibc.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:35:12Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2017-12-30T02:32:29Z"
 #define COPYRIGHT_HOLDER "Free Software Foundation, Inc."
 #define COPYRIGHT_DATE "1996-2016"
 
@@ -175,6 +175,8 @@ the while loops. */
 
           char *mid = lo + size * ((hi - lo) / size >> 1);
 
+          nfrozen=0UL, pivot_minrank=1UL; /* BL: for antiqsort */
+
           if ((compar) ((void *) mid, (void *) lo) < 0)
             SWAP (mid, lo, size);
           if ((compar) ((void *) hi, (void *) mid) < 0)
@@ -282,6 +284,8 @@ the array (*not* one beyond it!). */
     char *tmp_ptr = base_ptr;
     char *thresh = glmin (end_ptr, base_ptr + max_thresh);
     char *run_ptr;
+
+    nfrozen=0UL, pivot_minrank=total_elems; /* BL: for antiqsort */
 
 /* Find smallest element in first threshold and place it at the
 array's beginning. This is the smallest array element,

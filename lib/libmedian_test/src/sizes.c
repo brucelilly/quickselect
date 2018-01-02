@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sizes.c version 1.1 dated 2017-09-29T14:34:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is sizes.c version 1.4 dated 2017-12-28T22:44:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sizes.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sizes.c ~|^` @(#)"
 #define SOURCE_MODULE "sizes.c"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2017-09-29T14:34:10Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-28T22:44:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -172,4 +172,11 @@ void print_sizes(const char *prefix, const char *prog)
     PT(size_t,&xsize_t);
     /* structure specific to this test program */
     PT(struct data_struct,&xstruct);
+
+    /* print maximum date string */
+    xl=LONG_MAX;
+    duplicate_test_data(&xl,(char *)(&xstruct),DATA_TYPE_STRUCT,0UL,1UL);
+    (V)fprintf(stdout,
+        "latest date-time string for %ld is %s\n",
+        xl, xstruct.string);
 }

@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.2 dated 2017-11-03T19:25:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.5 dated 2017-12-30T02:32:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,8 +15,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:25:19Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-30T02:32:29Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
 
@@ -78,17 +78,16 @@
 /* first two are global for statistics reporting */
 size_t antiqsort_ncmp; /* number of comparisons */
 size_t antiqsort_nsolid; /* number of solid items */
-size_t antiqsort_lsolid; /* next low solid value */ /* BL */
-size_t antiqsort_hsolid; /* next high solid value */ /* BL */
-int antiqsort_dir=1; /* BL */
+
+static size_t antiqsort_lsolid; /* next low solid value */ /* BL */
+static size_t antiqsort_hsolid; /* next high solid value */ /* BL */
+static int antiqsort_dir=1; /* BL */
 
 static size_t pivot_candidate; /* pivot candidate */
 static size_t antiqsort_gas; /* gas value */
 static size_t antiqsort_n;
 /* qsort uses one array, antiqsort another */
 static long *antiqsort_base;
-static char *qsort_base;
-static size_t qsort_typsz;
 static size_t qsort_type;
 static FILE *fp = NULL;
 
@@ -190,9 +189,15 @@ inline
 #endif /* C99 */
 long aqindex(const void *pv, void *base, size_t size)
 {
-    long v;
+    int i;
+    long f=FRACTION_COUNT, v
+#if SILENCE_WHINEY_COMPILERS
+        =0L
+#endif
+        ;
     const struct data_struct *pds;
     struct civil_time_struct cts; /* for specific string format used in structured data */
+
     if ((char)0==file_initialized) initialize_file(__FILE__);
     switch (qsort_type) {
         case DATA_TYPE_LONG :
@@ -205,19 +210,34 @@ long aqindex(const void *pv, void *base, size_t size)
             v = (long)(*((const double *)pv));
         break;
         case DATA_TYPE_POINTER :
-            pds = *((struct data_struct * const *)pv);
-            (void)parse_civil_time_text(pds->string,&cts,NULL,-1,NULL,NULL,NULL);
-            v = (long)utc_mktime(&(cts.tm), NULL, NULL);
-        break;
+        /*FALLTHROUGH*/
         case DATA_TYPE_STRUCT : 
-            pds = (const struct data_struct *)pv;
-            (void)parse_civil_time_text(pds->string,&cts,NULL,-1,NULL,NULL,NULL);
-            v = (long)utc_mktime(&(cts.tm), NULL, NULL);
-        break;
+        /*FALLTHROUGH*/
         case DATA_TYPE_STRING :
-            pds = (const struct data_struct *)pv;
-            (void)parse_civil_time_text(pds->string,&cts,NULL,-1,NULL,NULL,NULL);
-            v = (long)utc_mktime(&(cts.tm), NULL, NULL);
+            switch (qsort_type) {
+                case DATA_TYPE_POINTER :
+                    pds = *((struct data_struct * const *)pv);
+                break;
+                default :
+                    pds = (const struct data_struct *)pv;
+                break;
+            }
+            (V)parse_civil_time_text(pds->string,&cts,NULL,-1,NULL,NULL,NULL);
+            v = f * (long)utc_mktime(&(cts.tm), NULL, NULL);
+            for (i=0; (6>i)&&(0UL<f); i++,f/=100L) {
+                v+=pds->fractional[i]*f/100L;
+                if (DEBUGGING(AQCMP_DEBUG))
+                    (V)fprintf(stderr,
+                       "%s: %s line %d: i=%d, fractional=%u, f=%ld, v=%ld\n",
+                       __func__,source_file,__LINE__,i,pds->fractional[i],f,v);
+            }
+            if (DEBUGGING(AQCMP_DEBUG)) {
+                (V)fprintf(stderr,
+                   "%s: %s line %d: pv=%p, global_data_array=%p,"
+                   " string \"%s\", v=%ld\n",
+                   __func__,source_file,__LINE__,
+                   pv,(void *)global_data_array,pds->string,v);
+            }
         break;
         case DATA_TYPE_UINT_LEAST8_T :
             v = (long)(*((const uint_least8_t *)pv));
@@ -231,11 +251,17 @@ long aqindex(const void *pv, void *base, size_t size)
         case DATA_TYPE_UINT_LEAST64_T :
             v = (long)(*((const uint_least64_t *)pv));
         break;
+        default:
+            v = -1L;
+        break;
     }
+    /* v is guaranteed to have been assigned in the above switch statement,
+       whether or not (:-/) gcc's authors realize it...
+    */
 #if DEBUG_CODE
     if (DEBUGGING(AQCMP_DEBUG)&&(NULL!=base)&&(0UL<size))
         (V)fprintf(stderr,"/* %s: %s line %d: %s(%p[%lu])=%ld */\n",
-            __func__,source_file,__LINE__,__func__,pv,(pv-base)/size,v);
+            __func__,source_file,__LINE__,__func__,base,((const char *)pv-(char *)base)/size,v);
 #endif
     return v;
 }
@@ -304,7 +330,6 @@ __func__,source_file,__LINE__,(const void *)middle,(middle-base)/size,(unsigned 
 #endif
     A((SAMPLING_TABLE_SIZE)>idx);
     if ((0U<idx)&&(0U < --idx)) {
-        char *pa, *pb, *pc;
         register size_t s=sample_spacing/3UL;
 
         o=s*size;
@@ -357,8 +382,6 @@ __func__,source_file,__LINE__,(const void *)(middle+o),((middle+o)-base)/size,l)
 int aqcmp(const void *px, const void *py) /* per C standard */
 {
     long a, b, x, y;
-    const struct data_struct *pds;
-    struct civil_time_struct cts; /* for specific string format used in structured data */
 
     antiqsort_ncmp++;
     x = aqindex(px,NULL,0UL);
@@ -395,7 +418,11 @@ if ((0L>y)||(y>=antiqsort_n)) (V)fprintf(stderr,"/* %s: %s line %d: y (%ld) is o
                     if (x==y) b=a;
                 }
             }
-        }
+        } else if (DEBUGGING(AQCMP_DEBUG))
+            (V)fprintf(stderr,
+               "%s: %s line %d: nfrozen(%lu) > pivot_minrank(%lu): no freeze\n",
+               __func__, source_file,__LINE__,(unsigned long)nfrozen,
+               (unsigned long)pivot_minrank);
     }
     if (0<antiqsort_dir) {
         if (a==antiqsort_gas) {
@@ -429,6 +456,12 @@ cmp(const void *px, const void *py)  /* per C standard */
         return val[x] - val[y];
 }
 #endif
+#if DEBUG_CODE
+    if (DEBUGGING(AQCMP_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: x=%ld, y=%ld, a=%ld, b=%ld, pivot_candidate=%ld */\n",
+            __func__,source_file,__LINE__,x,y,a,b,pivot_candidate);
+#endif
     if (a > b) return 1; else if (a < b) return -1; return 0;
 }
 /* ********** modified into a separate function for intitalization ************ */
@@ -439,9 +472,7 @@ void initialize_antiqsort(size_t n, char *pv, int type, const size_t sz, long *a
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     A(NULL!=pv);A(NULL!=alt);A(pv!=(char *)alt);
-    qsort_base = pv;
     qsort_type = type;
-    qsort_typsz = sz;
     antiqsort_n = n;
     antiqsort_base = alt;
     antiqsort_lsolid=0UL; /* BL */
@@ -453,7 +484,8 @@ void initialize_antiqsort(size_t n, char *pv, int type, const size_t sz, long *a
     if (NULL==fp) fp = fopen("/dev/tty", "w");
     if (NULL != fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
     i=(size_t)d_sample_index(sorting_sampling_table,2U,n);
-    nfrozen=0UL, pivot_minrank=minimum_remedian_rank(i);
+    nfrozen=0UL,
+        pivot_minrank=minimum_remedian_rank(i); /* for remedian */
     if (4UL>n) antiqsort_gas=n-1UL; else antiqsort_gas=(n>>1)-pivot_minrank;
 #if DEBUG_CODE
     if (DEBUGGING(AQCMP_DEBUG))
@@ -463,142 +495,18 @@ void initialize_antiqsort(size_t n, char *pv, int type, const size_t sz, long *a
             (const unsigned long)sz,(void *)alt,antiqsort_gas,antiqsort_lsolid,
             antiqsort_hsolid,i,pivot_minrank);
 #endif
-    for(i=0UL; i<n; i++) {
-        /* initialize the array that qsort uses; values 0 to n-1 */
-        switch (qsort_type) {
-            case DATA_TYPE_UINT_LEAST8_T :
-                {
-                    uint_least8_t *p1;
-                    p1 = (uint_least8_t *)(qsort_base + qsort_typsz*i);
-                    *p1 = (uint_least8_t)(i&0x0FFUL);
-                }
-            break;
-            case DATA_TYPE_UINT_LEAST16_T :
-                {
-                    uint_least16_t *p2;
-                    p2 = (uint_least16_t *)(qsort_base + qsort_typsz*i);
-                    *p2 = (uint_least16_t)(i&0x0FFFFUL);
-                }
-            break;
-            case DATA_TYPE_UINT_LEAST32_T :
-                {
-                    uint_least32_t *p4;
-                    p4 = (uint_least32_t *)(qsort_base + qsort_typsz*i);
-                    *p4 = (uint_least32_t)(i&0x07FFFFFFFUL);
-                }
-            break;
-            case DATA_TYPE_UINT_LEAST64_T :
-                {
-                    uint_least64_t *p8;
-                    p8 = (uint_least64_t *)(qsort_base + qsort_typsz*i);
-                    *p8 = (uint_least64_t)i;
-                }
-            break;
-            case DATA_TYPE_LONG :
-                {
-                    long *plong;
-                    plong = (long *)(qsort_base + qsort_typsz*i);
-                    *plong = (long)i;
-                }
-            break;
-            case DATA_TYPE_INT :
-                {
-                    int *pint;
-                    pint = (int *)(qsort_base + qsort_typsz*i);
-                    *pint = (int)i;
-                }
-            break;
-            case DATA_TYPE_DOUBLE :
-                {
-                    double *pd;
-                    pd = (double *)(qsort_base + qsort_typsz*i);
-                    *pd = (double)i;
-                }
-            break;
-            case DATA_TYPE_POINTER :
-                {
-                    struct data_struct *pds;
-                    struct civil_time_struct cts;
-                    unsigned long ul;
-                    ul = (unsigned long)i; /* unsigned long may differ from size_t on 32-bit *BSD */
-                    time_t t; /* time_t might have greater range than unsigned long on 32-bit *BSD */
-
-#if ULONG_MAX > 0xffffffffUL
-                    ul %= 253402300800UL; /* max. 9999-12-31T23:59:59 */
-#endif
-                    t = (time_t)ul;
-                    gmtime_r(&t, &(cts.tm));
-                    cts.fraction=cts.offset=0.0;
-                    pds = *((struct data_struct **)(qsort_base + qsort_typsz*i));
-                    (V)sn_civil_time(pds->string, STRING_SIZE, &cts, 0, 1, 0, NULL, NULL);
-#if ASSERT_CODE
-                    t = utc_mktime(&(cts.tm),NULL,NULL);
-                    if (t != (time_t)ul) (V)fprintf(stderr, "/* %s: %s line %d: %ld -> %s (%04d-%02d-%02dT%02d:%02d:%02dZ) -> %ld */\n",__func__,source_file,__LINE__,ul,pds->string,cts.tm.tm_year+1900,cts.tm.tm_mon+1,cts.tm.tm_mday,cts.tm.tm_hour,cts.tm.tm_min,cts.tm.tm_sec,(long)t);
-                    A(t==(time_t)ul);
-#endif /* ASSERT_CODE */
-                    pds->year=cts.tm.tm_year+1900,pds->month=cts.tm.tm_mon+1;
-//                    pds->yday=cts.tm.tm_yday+1,pds->wday=cts.tm.tm_wday;
-                    pds->mday=cts.tm.tm_mday,pds->hour=cts.tm.tm_hour;
-                    pds->minute=cts.tm.tm_min,pds->second=cts.tm.tm_sec;
-                }
-            break;
-            case DATA_TYPE_STRUCT :
-                {
-                    struct data_struct *pds;
-                    struct civil_time_struct cts;
-                    unsigned long ul;
-                    ul = (unsigned long)i; /* unsigned long may differ from size_t on 32-bit *BSD */
-                    time_t t; /* time_t might have greater range than unsigned long on 32-bit *BSD */
-
-#if ULONG_MAX > 0xffffffffUL
-                    ul %= 253402300800UL; /* max. 9999-12-31T23:59:59 */
-#endif
-                    t = (time_t)ul;
-                    gmtime_r(&t, &(cts.tm));
-                    cts.fraction=cts.offset=0.0;
-                    pds = (struct data_struct *)(qsort_base + qsort_typsz*i);
-                    (V)sn_civil_time(pds->string, STRING_SIZE, &cts, 0, 1, 0, NULL, NULL);
-#if ASSERT_CODE
-                    t = utc_mktime(&(cts.tm),NULL,NULL);
-                    if (t != (time_t)ul) (V)fprintf(stderr, "/* %s: %s line %d: %ld -> %s (%04d-%02d-%02dT%02d:%02d:%02dZ) -> %ld */\n",__func__,source_file,__LINE__,ul,pds->string,cts.tm.tm_year+1900,cts.tm.tm_mon+1,cts.tm.tm_mday,cts.tm.tm_hour,cts.tm.tm_min,cts.tm.tm_sec,(long)t);
-                    A(t==(time_t)ul);
-#endif /* ASSERT_CODE */
-                    pds->year=cts.tm.tm_year+1900,pds->month=cts.tm.tm_mon+1;
-//                    pds->yday=cts.tm.tm_yday+1,pds->wday=cts.tm.tm_wday;
-                    pds->mday=cts.tm.tm_mday,pds->hour=cts.tm.tm_hour;
-                    pds->minute=cts.tm.tm_min,pds->second=cts.tm.tm_sec;
-                }
-            break;
-            case DATA_TYPE_STRING :
-                {
-                    struct data_struct *pds;
-                    struct civil_time_struct cts;
-                    unsigned long ul;
-                    ul = (unsigned long)i; /* unsigned long may differ from size_t on 32-bit *BSD */
-                    time_t t; /* time_t might have greater range than unsigned long on 32-bit *BSD */
-
-#if ULONG_MAX > 0xffffffffUL
-                    ul %= 253402300800UL; /* max. 9999-12-31T23:59:59 */
-#endif
-                    t = (time_t)ul;
-                    gmtime_r(&t, &(cts.tm));
-                    cts.fraction=cts.offset=0.0;
-                    pds = (struct data_struct *)(qsort_base + qsort_typsz*i);
-                    (V)sn_civil_time(pds->string, STRING_SIZE, &cts, 0, 1, 0, NULL, NULL);
-#if ASSERT_CODE
-                    t = utc_mktime(&(cts.tm),NULL,NULL);
-                    if (t != (time_t)ul) (V)fprintf(stderr, "/* %s: %s line %d: %ld -> %s (%04d-%02d-%02dT%02d:%02d:%02dZ) -> %ld */\n",__func__,source_file,__LINE__,ul,pds->string,cts.tm.tm_year+1900,cts.tm.tm_mon+1,cts.tm.tm_mday,cts.tm.tm_hour,cts.tm.tm_min,cts.tm.tm_sec,(long)t);
-                    A(t==(time_t)ul);
-#endif /* ASSERT_CODE */
-                    pds->year=cts.tm.tm_year+1900,pds->month=cts.tm.tm_mon+1;
-//                    pds->yday=cts.tm.tm_yday+1,pds->wday=cts.tm.tm_wday;
-                    pds->mday=cts.tm.tm_mday,pds->hour=cts.tm.tm_hour;
-                    pds->minute=cts.tm.tm_min,pds->second=cts.tm.tm_sec;
-                }
-            break;
-        }
-        /* initialize the array that antiqsort uses; all "gas" */
-        antiqsort_base[i] = (long)antiqsort_gas;
-    }
+    /* Initialize in two passes:
+         1st pass: initialize antiqsort_base to long integers [0,n-1]
+            then convert to qsort_type data type using duplicate_test_data
+            (for consistency with other generation methods)
+         2nd pass: seta all elements of antiqsort_base to ``gas''
+    */
+    /* initialize the array that qsort uses; values 0 to n-1 */
+    for(i=0UL; i<n; i++)
+        alt[i] = (long)i;
+    duplicate_test_data(alt, pv, type, 0UL, n);
+    /* initialize the array that antiqsort uses; all "gas" */
+    for(i=0UL; i<n; i++)
+        alt[i] = (long)antiqsort_gas;
 }
 /* ***************************************************************************** */

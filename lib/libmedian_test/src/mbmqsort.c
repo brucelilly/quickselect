@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.4 dated 2017-11-03T19:59:07Z. \ $ */
+/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.6 dated 2017-12-15T21:50:26Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mbmqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mbmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "mbmqsort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T19:59:07Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2017-12-15T21:50:26Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -60,14 +60,14 @@
       ternary median-of-3
       optional type-independent deferred pivot swap
       improved sampling quality for median-of-3, ninther
+      improved sampling quantity beyond ninther via remedian of samples
       recurse on small region, iterate large region
-      avoid self-swapping pb,pc
+      avoid self-swapping
       improved swapping sizes
       don't repeat initialization during iteration
       uses quickselect_small_array_cutoff rather than BM_INSERTION_CUTOFF
       uses hybrid of network sort or insertion sort or in-place merge sort
       options support stable sorting
-   Maybe no remedian of samples (except equivalent to ninther)
    No break-glass mechanism to prevent quadratic behavior
    No order statistic selection
 */
@@ -81,11 +81,11 @@ static void mbmqsort_internal(char *a, size_t n, size_t es,
 {
 
     for (;;) {
-        char *pb, *pc, *pd, *pe, *pf, *pm;
+        char *pc, *pd, *pe, *pf, *pm;
         size_t p, q, r;
 
         if (n <= cutoff) {
-            dedicated_sort(a,0UL,n,es,compar,swapf,alignsize,size_ratio,options);
+            d_dedicated_sort(a,0UL,n,es,compar,swapf,alignsize,size_ratio,options);
             return;
         }
         /* freeze low-address samples which will be used for pivot selection */
@@ -96,8 +96,9 @@ static void mbmqsort_internal(char *a, size_t n, size_t es,
         pm=d_select_pivot(a,0UL,n,es,compar,swapf,alignsize,size_ratio,
             table_index,NULL,options,&pc,&pd,&pe,&pf);
         pivot_minrank=n;
+        /* no provision for efficient stable sorting */
         d_partition(a,0UL,n,pc,pd,pm,pe,pf,es,compar,swapf,alignsize,size_ratio,
-            options,&q,&p);
+            options,NULL,NULL,NULL,&q,&p);
         pe=a+p*es;
         if (n>p) r=n-p; else r=0UL;  /* size of the > region */
         if (q<r) { /* > region is larger */

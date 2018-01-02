@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.1 dated 2017-09-29T14:34:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.3 dated 2017-12-28T22:17:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,21 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2017-09-29T14:34:10Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2017-12-28T22:17:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
-
-static const char *build_options = "$Id: ~|^` @(#)median_test.c: " "built with configuration options: "
-    "ASSERT_CODE=" xbuildstr(ASSERT_CODE)
-    ", DEBUG_CODE=" xbuildstr(DEBUG_CODE)
-    ", STRING_SIZE=" xbuildstr(STRING_SIZE)
-    ", TEST_TIMEOUT=" xbuildstr(TEST_TIMEOUT)
-    "\\ $"
-                  ;
 
 #include "initialize_src.h"
 
@@ -192,8 +184,21 @@ int timecmp(const void *p1, const void *p2)
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct data_struct *pa = (const struct data_struct *)p1,
             *pb = (const struct data_struct *)p2;
+        int i;
 
-if (DEBUGGING(COMPARE_DEBUG)) fprintf(stderr, "%s %04d-%02d-%02dT%02d:%02d:%02d vs. %s %04d-%02d-%02dT%02d:%02d:%02d\n",pa->string,pa->year,pa->month,pa->mday,pa->hour,pa->minute,pa->second,pb->string,pb->year,pb->month,pb->mday,pb->hour,pb->minute,pb->second);
+        if (DEBUGGING(COMPARE_DEBUG)) {
+            (V)fprintf(stderr,
+                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d vs. "
+                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d\n",
+                pa->string,pa->year,pa->month,pa->mday,pa->hour,pa->minute,
+                pa->second,pa->fractional[0],pa->fractional[1],
+                pa->fractional[2],pa->fractional[3],pa->fractional[4],
+                pa->fractional[5],
+                pb->string,pb->year,pb->month,pb->mday,pb->hour,pb->minute,
+                pb->second,pb->fractional[0],pb->fractional[1],
+                pb->fractional[2],pb->fractional[3],pb->fractional[4],
+                pb->fractional[5]);
+        }
         if (pa->year>pb->year) return 1; else if (pa->year<pb->year) return -1;
         if (pa->month>pb->month) return 1;
         else if (pa->month<pb->month) return -1;
@@ -203,6 +208,10 @@ if (DEBUGGING(COMPARE_DEBUG)) fprintf(stderr, "%s %04d-%02d-%02dT%02d:%02d:%02d 
         else if (pa->minute<pb->minute) return -1;
         if (pa->second>pb->second) return 1;
         else if (pa->second<pb->second) return -1;
+        for (i=0; i<6; i++) {
+            if (pa->fractional[i]>pb->fractional[i]) return 1;
+            else if (pa->fractional[i]<pb->fractional[i]) return -1;
+        }
     }
     return 0;
 }
@@ -239,17 +248,7 @@ int indcmp(const void *p1, const void *p2)
         const struct data_struct *pb
             = *((const struct data_struct * const *)p2);
 
-        /* compare as times (intentionally slow) */
-        /* but avoiding another function call to timecmp */
-        if (pa->year>pb->year) return 1; else if (pa->year<pb->year) return -1;
-        if (pa->month>pb->month) return 1;
-        else if (pa->month<pb->month) return -1;
-        if (pa->mday>pb->mday) return 1; else if (pa->mday<pb->mday) return -1;
-        if (pa->hour>pb->hour) return 1; else if (pa->hour<pb->hour) return -1;
-        if (pa->minute>pb->minute) return 1;
-        else if (pa->minute<pb->minute) return -1;
-        if (pa->second>pb->second) return 1;
-        else if (pa->second<pb->second) return -1;
+        return timecmp((const void *)pa, (const void *)pb);
     }
     return 0;
 }

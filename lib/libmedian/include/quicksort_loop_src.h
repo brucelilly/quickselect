@@ -1,4 +1,5 @@
 /*INDENT OFF*/
+# error "obsolete source"
 
 /* Description: C source code for quicksort_loop */
 /******************************************************************************
@@ -241,17 +242,11 @@
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-/* dedicated_sort declaration */
-#include "dedicated_sort_decl.h"
-;
 /* klimits declaration */
 #include "klimits_decl.h"
 ;
 /* partition declaration */
 #include "partition_decl.h"
-;
-/* quickselect_loop declaration */
-#include "quickselect_loop_decl.h"
 ;
 /* sample_index declaration */
 #include "sample_index_decl.h"
@@ -261,10 +256,6 @@
 ;
 /* should_repivot declaration */
 #include "should_repivot_decl.h"
-;
-
-/* declaration */
-#include "quicksort_loop_decl.h"
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
@@ -285,8 +276,16 @@
 # define SUFFIX3 /**/
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
+#ifndef BUFSIZ
+# include <stdio.h>
+#endif
+
 /* definition */
-#include "quicksort_loop_decl.h"
+#if __STDC_WANT_LIB_EXT1__
+# include "quicksort_loop_s_decl.h"
+#else
+# include "quicksort_loop_decl.h"
+#endif /* __STDC_WANT_LIB_EXT1__ */
 {
 #if __STDC_WANT_LIB_EXT1__
     QSORT_RETURN_TYPE ret=0;
@@ -308,11 +307,15 @@
         A((SAMPLING_TABLE_SIZE)>table_index);
         A(0U<table_index);
         A(nmemb>sorting_sampling_table[table_index-1U].max_nmemb);
+# error "obsolete source"
+// XXX fprintf(stderr,"%s line %d: nmemb=%lu, table_index=%u, max_nmemb=%lu, samples=%lu\n",__func__,__LINE__,nmemb,table_index,sorting_sampling_table[table_index].max_nmemb,sorting_sampling_table[table_index].samples);
         pivot=SELECT_PIVOT_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
             swapf,alignsize,table_index,NULL,pivot_selection_method,
             &pc,&pd,&pe,&pf); SUFFIX1
         A(base+first*size<=pivot);A(pivot<base+beyond*size);
         A(pc<=pd);A(pd<pe);A(pe<=pf);A(pd<=pivot);A(pivot<pe);
+# error "obsolete source"
+// XXX fprintf(stderr,"%s line %d: pc@%lu, pd@%lu, pivot@%lu, pe@%lu, pf@%lu, method=%d\n",__func__,__LINE__,(pc-base)/size,(pd-base)/size,(pivot-base)/size,(pe-base)/size,(pf-base)/size,pivot_selection_method);
 
         /* Partition the array around the pivot element. */
         PARTITION_FUNCTION_NAME(base,first,beyond,pc,pd,pivot,pe,pf,size,
@@ -320,12 +323,13 @@
         /* sizes of < and > regions (elements) */
         s=p-first, t=beyond-q;
         A(q-p+s+t==nmemb);
+# error "obsolete source"
+// XXX fprintf(stderr,"%s line %d: partitioned: p=%lu, q=%lu, s=%lu, t=%lu\n",__func__,__LINE__,p,q,s,t);
         if (s<t) { /* > region is larger */
             /* recurse on small region, if size > 1 */
             if (1UL<s) {
                 PREFIX QUICKSORT_LOOP(base,first,p,size,COMPAR_ARGS,swapf,
-                    alignsize,cutoff,QUICKSELECT_PIVOT_REMEDIAN_SAMPLES,partition_method,network_map);
-                SUFFIX2
+                    alignsize,cutoff,REMEDIAN); SUFFIX2
             }
             /* large region [q,beyond) size t */
             first=q, r=t;
@@ -333,8 +337,7 @@
             /* recurse on small region, if size > 1 */
             if (1UL<t) {
                 PREFIX QUICKSORT_LOOP(base,q,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,cutoff,QUICKSELECT_PIVOT_REMEDIAN_SAMPLES,partition_method,network_map);
-                SUFFIX2
+                    alignsize,cutoff,REMEDIAN); SUFFIX2
             }
             /* large region [first,p) size s */
             beyond=p, r=s;
@@ -344,7 +347,7 @@
         if (cutoff>=r) { nmemb=r; break; }
 
         /* should large region be repivoted? */
-        if ((QUICKSELECT_PIVOT_REMEDIAN_SAMPLES)!=pivot_selection_method) c=0; /* reset factor2 count */
+        if ((REMEDIAN)!=pivot_selection_method) c=0; /* reset factor2 count */
         pivot_selection_method=should_repivot(nmemb,r,cutoff,table_index,NULL,
             &c);
         nmemb=r;

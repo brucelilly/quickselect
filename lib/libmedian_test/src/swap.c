@@ -54,6 +54,12 @@
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
+#define USE_CILK 0 /* too damned slow... */ /* non-portable */
+
+#if USE_CILK
+# include <cilk/cilk.h>
+#endif
+
 #include "initialize_src.h"
 
 /* Array element swaps: */
@@ -131,14 +137,33 @@ void iswapd(void * restrict p1, void * restrict p2, register size_t size)
 
 void swapstruct(register struct data_struct *p1, register struct data_struct *p2, register size_t count)
 {
+#if ! USE_CILK
     struct data_struct t;
+#endif
     count /= sizeof(struct data_struct);
+#if USE_CILK
+    cilk_for (size_t foo=0UL; foo<count; foo++) {
+        struct data_struct t;
+        t=p1[foo],p1[foo]=p2[foo],p2[foo]=t;
+    }
+#else
     for (; 0UL<count; t=*p1,*p1++=*p2,*p2++=t,count--);
+#endif
 }
 
 void iswapstruct(register struct data_struct *p1, register struct data_struct *p2, register size_t count)
 {
+#if ! USE_CILK
     struct data_struct t;
+#endif
     count /= sizeof(struct data_struct);
-    for (nsw+=count; 0UL<count; t=*p1,*p1++=*p2,*p2++=t,count--);
+    nsw+=count;
+#if USE_CILK
+    cilk_for (size_t foo=0UL; foo<count; foo++) {
+        struct data_struct t;
+        t=p1[foo],p1[foo]=p2[foo],p2[foo]=t;
+    }
+#else
+    for (; 0UL<count; t=*p1,*p1++=*p2,*p2++=t,count--);
+#endif
 }

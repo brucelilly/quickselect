@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.11 dated 2017-11-03T20:35:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.13 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -102,11 +102,15 @@
 #  endif
 # endif
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MIN_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MAX_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
 #endif
@@ -128,8 +132,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2017-11-03T20:35:38Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2017-12-22T04:14:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -140,14 +144,12 @@
 */
 
 /* local header files needed */
-#include "quickselect_config.h"
+#include "quickselect_config.h" /* QUICKSELECT_INLINE */
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-#include "tables.h"     /* sampling_table_struct SAMPLING_TABLE_SIZE */
+#include "tables.h"             /* sampling_table_struct SAMPLING_TABLE_SIZE */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "zz_build_str.h"       /* build_id build_strings_registered
-                                   copyright_id register_build_strings */
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -170,20 +172,11 @@
 #endif /* C99 or later */
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-/* dedicated_sort declaration */
-#include "dedicated_sort_decl.h"
-;
 /* klimits declaration */
 #include "klimits_decl.h"
 ;
-/* select_pivot declaration */
-#include "select_pivot_decl.h"
-;
 /* partition declaration */
 #include "partition_decl.h"
-;
-/* quickselect_loop declaration */
-#include "quickselect_loop_decl.h"
 ;
 /* sampling_table declaration */
 #include "sampling_table_decl.h"
@@ -191,17 +184,27 @@
 /* should_repivot declaration */
 #include "should_repivot_decl.h"
 ;
+/* select_pivot declaration */
+#include "select_pivot_decl.h"
+;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
+
+/* structures */
+/* regions resulting from partitioning */
+struct region_struct {
+    size_t first;  /* base array */
+    size_t beyond;
+    size_t firstk; /* order statistics */
+    size_t beyondk;
+    unsigned char process; /* 0=false */
+};
 
 /* Special-case selection of minimum, maximum, or both. */
 /* called from quickselect_loop */
 /* Keeps track of (and relocates if necessary) elements comparing equal to the
    desired (minimum or maximum) element if ppeq,ppgt are not NULL.
 */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
@@ -212,29 +215,65 @@ void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
         /* both ppeq and ppgt are NULL, or both are non-NULL */
         A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
         if (NULL==ppeq) { /* non-partitioning */
-            for (; q<r; q+=size)
-                if (0<COMPAR(mn,q,context)) mn=q;
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mn
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mn);
+                for (; q<r; q+=size)
+                    if (0<COMPAR(x,*((char **)q),context)) x=*((char **)(mn=q));
+            } else
+#else
+                for (; q<r; q+=size)
+                    if (0<COMPAR(mn,q,context)) mn=q;
+#endif /* QUICKSELECT_INDIRECT */
             if (mn!=p) {
+#if QUICKSELECT_STABLE
                 /* stability requires rotation rather than swaps */
                 if (0U==((QUICKSELECT_STABLE)&options)) {
+#endif /* QUICKSELECT_STABLE */
                     EXCHANGE_SWAP(swapf,p,mn,size,alignsize,size_ratio,/**/);
+#if QUICKSELECT_STABLE
                 } else {
                     /* |      mn      | */
                     protate(p,mn-size,mn,size,swapf,alignsize,size_ratio);
                 }
+#endif /* QUICKSELECT_STABLE */
             }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
-            for (; q<r; q+=size) {
-                int c=COMPAR(mn,q,context);
-                if (0>c) continue;
-                if (0==c) {
-                    mn+=size;
-                    if (q==mn) continue;
-                } else /* 0<c */ mn=p; /* new min */
-                A(mn!=q);
-                EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,/**/);
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mn
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mn);
+                for (; q<r; q+=size) {
+                    int c=COMPAR(x,*((char **)q),context);
+                    if (0>c) continue;
+                    if (0==c) {
+                        mn+=size, x=*((char **)mn);
+                        if (q==mn) continue;
+                    } else /* 0<c */ x=*((char **)(mn=p)); /* new min */
+                    A(mn!=q);
+                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,/**/);
+                }
+            } else {
+#endif /* QUICKSELECT_INDIRECT */
+                for (; q<r; q+=size) {
+                    int c=COMPAR(mn,q,context);
+                    if (0>c) continue;
+                    if (0==c) {
+                        mn+=size;
+                        if (q==mn) continue;
+                    } else /* 0<c */ mn=p; /* new min */
+                    A(mn!=q);
+                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,/**/);
+                }
+#if QUICKSELECT_INDIRECT
             }
+#endif /* QUICKSELECT_INDIRECT */
             if (NULL!=ppeq) *ppeq=p; /* leftmost min */
             if (NULL!=ppgt) *ppgt=mn+size; /* beyond rightmost min */
         }
@@ -244,10 +283,7 @@ void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     }
 }
 
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
@@ -258,30 +294,65 @@ void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
         /* both ppeq and ppgt are NULL, or both are non-NULL */
         A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
         if ((NULL==ppeq)&&(NULL==ppgt)) { /* non-partitioning */
-            for (; p<r; p+=size)
-                if (0>COMPAR(mx,p,context)) mx=p;
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mx
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mx);
+                for (; p<r; p+=size)
+                    if (0>COMPAR(x,*((char **)p),context)) x=*((char **)(mx=p));
+            } else
+#endif /* QUICKSELECT_INDIRECT */
+                for (; p<r; p+=size)
+                    if (0>COMPAR(mx,p,context)) mx=p;
             if (mx!=r) {
+#if QUICKSELECT_STABLE
                 /* stability requires rotation rather than swaps */
                 if (0U==((QUICKSELECT_STABLE)&options)) {
+#endif /* QUICKSELECT_STABLE */
                     EXCHANGE_SWAP(swapf,r,mx,size,alignsize,size_ratio,/**/);
+#if QUICKSELECT_STABLE
                 } else {
                     /* |      mx      | */
                     protate(mx,mx+size,r,size,swapf,alignsize,size_ratio);
                 }
+#endif /* QUICKSELECT_STABLE */
             }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
             char *q;
-            for (q=r-size; q>=p; q-=size) {
-                int c=COMPAR(mx,q,context);
-                if (0<c) continue;
-                if (0==c) {
-                    mx-=size;
-                    if (q==mx) continue;
-                } else /* 0>c */ mx=r; /* new max */
-                A(mx!=q);
-                EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,/**/);
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mx
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mx);
+                for (q=r-size; q>=p; q-=size) {
+                    int c=COMPAR(x,*((char **)q),context);
+                    if (0<c) continue;
+                    if (0==c) {
+                        mx-=size, x=*((char **)mx);
+                        if (q==mx) continue;
+                    } else /* 0>c */ x=*((char **)(mx=r)); /* new max */
+                    A(mx!=q);
+                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,/**/);
+                }
+            } else {
+#endif /* QUICKSELECT_INDIRECT */
+                for (q=r-size; q>=p; q-=size) {
+                    int c=COMPAR(mx,q,context);
+                    if (0<c) continue;
+                    if (0==c) {
+                        mx-=size;
+                        if (q==mx) continue;
+                    } else /* 0>c */ mx=r; /* new max */
+                    A(mx!=q);
+                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,/**/);
+                }
+#if QUICKSELECT_INDIRECT
             }
+#endif /* QUICKSELECT_INDIRECT */
             if (NULL!=ppeq) *ppeq=mx; /* leftmost max */
             if (NULL!=ppgt) *ppgt=r+size; /* beyond rightmost max */
         }
@@ -296,12 +367,9 @@ void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
    Overall minimum is the smaller of the two minima; overall maximum is the
    larger of the two maxima.
 */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond, size_t size,
-    COMPAR_DECL, char **pmn, char **pmx)
+    COMPAR_DECL, unsigned int options, char **pmn, char **pmx)
 {
     A(beyond>first);
     {
@@ -313,18 +381,18 @@ void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond, size_t s
                 size_t na=(nmemb>>1);
                 char *mna, *mnb, *mxa, *mxb;
                 /* find min and max of both parts */
-                FIND_MINMAX_FUNCTION_NAME(base,first,first+na,size,COMPAR_ARGS,&mna,&mxa);
-                FIND_MINMAX_FUNCTION_NAME(base,first+na,beyond,size,COMPAR_ARGS,&mnb,&mxb);
+                FIND_MINMAX_FUNCTION_NAME(base,first,first+na,size,COMPAR_ARGS,options,&mna,&mxa);
+                FIND_MINMAX_FUNCTION_NAME(base,first+na,beyond,size,COMPAR_ARGS,options,&mnb,&mxb);
                 /* overall min is smaller of *mna, *mnb; similarly for max */
                 /* stability requires choosing mna if mna compares equal to mnb */
-                if (0<COMPAR(mna,mnb,context)) mn=mnb; else mn=mna;
+                if (0<OPT_COMPAR(mna,mnb,options,context)) mn=mnb; else mn=mna;
                 /* stability requires choosing mxb if mxa compares equal to mxb */
-                if (0<COMPAR(mxa,mxb,context)) mx=mxa; else mx=mxb;
+                if (0<OPT_COMPAR(mxa,mxb,options,context)) mx=mxa; else mx=mxb;
             } else { /* nmemb==2UL */
                 char *a, *z;
                 /* first and last (i.e. second) elements */
                 a=base+first*size,z=a+size;
-                if (0<COMPAR(a,z,context)) mn=z,mx=a; else mn=a,mx=z; /* stable */
+                if (0<OPT_COMPAR(a,z,options,context)) mn=z,mx=a; else mn=a,mx=z; /* stable */
             }
             *pmn=mn, *pmx=mx;
         } else /* 1 element; min==max */
@@ -333,10 +401,7 @@ void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond, size_t s
 }
 
 /* Selection of both minimum and maximum using recursive find_minmax. */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, unsigned int options)
@@ -345,7 +410,7 @@ void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t si
     A(beyond>first);
     /* first and last elements */
     a=base+first*size,z=base+(beyond-1UL)*size;
-    FIND_MINMAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,&mn,&mx);
+    FIND_MINMAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,options,&mn,&mx);
     /* put min and max in place with at most 2 swaps */
     /* stability requires rotation rather than swaps */
     /* +----------------------------------+ */
@@ -358,6 +423,7 @@ void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t si
         if ((mx==a)&&(mn==z)) {
             EXCHANGE_SWAP(swapf,a,z,size,alignsize,size_ratio,/**/);
         } else { /* rotations required to preserve stability */
+#if QUICKSELECT_STABLE
             if (0U!=((QUICKSELECT_STABLE)&options)) {
                 if (a!=mn) {
                     protate(a,mn,mn+size,size,swapf,alignsize,size_ratio);
@@ -366,22 +432,24 @@ void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t si
                 if (z!=mx)
                     protate(mx,mx+size,z+size,size,swapf,alignsize,size_ratio);
             } else {
-                if (a!=mn)
+#endif /* QUICKSELECT_STABLE */
+                if (a!=mn) {
                     EXCHANGE_SWAP(swapf,a,mn,size,alignsize,size_ratio,/**/);
-                if (z!=mx) /* beware case where a was mx before above swap! */
+                }
+                if (z!=mx) { /* beware case where a was mx before above swap! */
                     EXCHANGE_SWAP(swapf,z,a==mx?mn:mx,size,alignsize,size_ratio,
                         /**/);
+                }
+#if QUICKSELECT_STABLE
             }
+#endif /* QUICKSELECT_STABLE */
         }
     }
 }
 
 /* function to consolidate logic and calls to special-case selection functions */
 /* also sets sampling table and index, determines whether to sort */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 int special_cases(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, size_t cutoff, size_t nmemb, const size_t *pk,
@@ -411,7 +479,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
                                 COMPAR_ARGS,swapf,alignsize,size_ratio,options,ppeq,
                                 ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                            &&(0==COMPAR(*ppeq-size,*ppeq,context)))
+                            &&(0==OPT_COMPAR(*ppeq-size,*ppeq,options,context)))
                                 (*ppeq)-=size;
                         }
                         return 1 ;
@@ -423,7 +491,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
                                 COMPAR_ARGS,swapf,alignsize,size_ratio,options,ppeq,
                                 ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                            &&(0==COMPAR(*ppeq,*ppgt,context)))
+                            &&(0==OPT_COMPAR(*ppeq,*ppgt,options,context)))
                                 (*ppgt)+=size;
                         }
                         return 1 ;
@@ -462,10 +530,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
     return ret;
 }
 
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void rank_tests(char *base, size_t first, size_t p, size_t q,
     size_t beyond, size_t size, const size_t *pk, size_t firstk,
     size_t beyondk, size_t *plk, size_t *prk, char **ppeq, char **ppgt)
@@ -571,10 +636,6 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 */
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
-/* declaration */
-#include "quickselect_loop_decl.h"
-;
-
 /* clutter removal */
 #undef PREFIX
 #undef RETURN
@@ -599,7 +660,11 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* definition */
-#include "quickselect_loop_decl.h"
+#if __STDC_WANT_LIB_EXT1__
+# include "quickselect_loop_s_decl.h"
+#else /* __STDC_WANT_LIB_EXT1__ */
+# include "quickselect_loop_decl.h"
+#endif /* __STDC_WANT_LIB_EXT1__ */
 {
 #if __STDC_WANT_LIB_EXT1__
     QSORT_RETURN_TYPE ret=0;
@@ -625,7 +690,7 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         A(2UL<=nmemb);
 #else
         A(1UL<=nmemb);
-#endif`
+#endif
 
         /* Check for special-case selection: 1-2 order statistic ranks */
         A(table_index < (SAMPLING_TABLE_SIZE));
@@ -661,8 +726,8 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         */
         lt_region.first=first, gt_region.beyond=beyond;
         PARTITION_FUNCTION_NAME(base,first,beyond,pc,pd,pivot,pe,pf,size,
-            COMPAR_ARGS,swapf,alignsize,size_ratio,options,
-            &(lt_region.beyond),&(gt_region.first));
+            COMPAR_ARGS,swapf,alignsize,size_ratio,options,conditions,
+            indices,element,&(lt_region.beyond),&(gt_region.first));
         /* regions: < [first,p)
                     > [q,beyond)
         */
@@ -701,7 +766,8 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
                 TEST ; PREFIX
                 QUICKSELECT_LOOP(base,ps_region->first,ps_region->beyond,size,
                     COMPAR_ARGS,pk,ps_region->firstk,ps_region->beyondk,swapf,
-                    alignsize,size_ratio,cutoff,options,ppeq,ppgt);
+                    alignsize,size_ratio,cutoff,options,conditions,
+                    indices,element,ppeq,ppgt);
             } SUFFIX2
             /* Dedicated sort for large region? */
             if ((NULL==pk)&&(pl_region->beyond<=pl_region->first+cutoff)) {

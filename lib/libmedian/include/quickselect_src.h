@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.9 dated 2017-11-03T20:55:51Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.14 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_src.h */
@@ -103,11 +103,15 @@
 #  endif
 # endif
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MIN_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MAX_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
 #endif
@@ -129,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_src.h"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2017-11-03T20:55:51Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2017-12-22T04:14:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -143,11 +147,22 @@
 /* local header files needed */
 #include "quickselect_config.h"
 #include "compare.h"            /* size_tcmp */
-#include "exchange.h"           /* alignment_size blockmove reverse rotate swapn */
+#include "exchange.h"           /* alignment_size blockmove reverse rotate
+                                   swapn */
+#include "indirect.h"           /* set_array_pointers rearrange_array */
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-#include "initialize_src.h"
-#include "zz_build_str.h"       /* build_id build_strings_registered
-                                   copyright_id register_build_strings */
+/* if building a _s variant, declare dedicated_sort_s and quickselect_loop_s */
+#if __STDC_WANT_LIB_EXT1__
+/* dedicated_sort_s declaration */
+QUICKSELECT_EXTERN
+# include "dedicated_sort_s_decl.h"
+;
+/* quickselect_loop_s declaration */
+QUICKSELECT_EXTERN
+# include "quickselect_loop_s_decl.h"
+;
+#endif /* __STDC_WANT_LIB_EXT1__ */
+#include "initialize_src.h"     /* last local header file */
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -164,10 +179,10 @@
 # if __STDC_VERSION__ >= 201001L
     /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
 #  include <stdio.h>            /* (maybe errno_t rsize_t [N1570 K3.5]) */
-#  include <stdlib.h>           /* (maybe errno_t rsize_t constraint_handler_t
-                                   [N1570 K3.6]) */
 # endif /* N1570 */
 #endif /* C99 or later */
+#include <stdlib.h>             /* free (maybe errno_t rsize_t
+                                   constraint_handler_t [N1570 K3.6]) */
 
 #if  __STDC_WANT_LIB_EXT1__
 /* Preliminary support for 9899:201x draft N1570 qsort_s w/ "context".
@@ -255,14 +270,6 @@ static void default_handler(const char * restrict msg, void * restrict ptr,
     errno=error;
 }
 static constraint_handler_t the_handler = default_handler;
-#if 0
-static constraint_handler_t set_constraint_handler_s(constraint_handler_t handler)
-{
-    constraint_handler_t old_handler=the_handler;
-    if (NULL==handler) the_handler=default_handler; else the_handler=handler;
-    return old_handler;
-}
-#endif
 /* Partial workaround for the poorly-defined constraint handler issue... */
 static constraint_handler_t get_constraint_handler_s(void)
 {
@@ -271,16 +278,20 @@ static constraint_handler_t get_constraint_handler_s(void)
 # undef QUICKSELECT_HANDLER_PROVIDED
 # define QUICKSELECT_HANDLER_PROVIDED 1
 # endif /* QUICKSELECT_PROVIDE_HANDLER */
+# if 0
+static constraint_handler_t set_constraint_handler_s(
+    constraint_handler_t handler)
+{
+    constraint_handler_t old_handler=the_handler;
+    if (NULL==handler) the_handler=default_handler; else the_handler=handler;
+    return old_handler;
+}
+# endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
-/* cutoff_value declaration */
-extern
-#include "cutoff_value_decl.h"
-;
-/* quickselect_loop declaration */
-#include "quickselect_loop_decl.h"
-;
-/* This file also needs a declaration for quickselect_loop if using quickselect_loop_s */
+/* This file also needs a declaration for quickselect_loop if using
+   quickselect_loop_s
+*/
 #if __STDC_WANT_LIB_EXT1__
 # undef QSORT_RETURN_TYPE
 # define QSORT_RETURN_TYPE void
@@ -290,21 +301,15 @@ extern
 # define COMPAR_DECL int(*compar)(const void *,const void *)
 # undef NMEMB_SIZE_TYPE
 # define NMEMB_SIZE_TYPE size_t
-/* quickselect_loop declaration */
-#include "quickselect_loop_decl.h"
-;
 # undef QSORT_RETURN_TYPE
 # define QSORT_RETURN_TYPE errno_t
 # undef QUICKSELECT_LOOP
 # define QUICKSELECT_LOOP quickselect_loop_s
 # undef COMPAR_DECL
-# define COMPAR_DECL int(*compar)(const void *,const void *,void *),void *context
+# define COMPAR_DECL int(*compar)(const void*,const void*,void*),void*context
 # undef NMEMB_SIZE_TYPE
 # define NMEMB_SIZE_TYPE rsize_t
 #endif /* __STDC_WANT_LIB_EXT1__ */
-/* sampling_table declaration */
-#include "sampling_table_decl.h"
-;
 
 /* clutter removal */
 #undef PREFIX
@@ -325,8 +330,7 @@ extern
 
 QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
     /*const*/ NMEMB_SIZE_TYPE size, COMPAR_DECL,
-    void (*swapf)(void *, void *, size_t), size_t *pk, size_t nk,
-    unsigned int options)
+    size_t *pk, size_t nk, unsigned int options)
 {
 #if __STDC_WANT_LIB_EXT1__
     QSORT_RETURN_TYPE ret=0;
@@ -334,7 +338,19 @@ QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
     size_t onk=nk; /* original nk value */
     size_t s=0UL;  /* rotation amount */
     size_t alignsize, salignsize, cutoff, scutoff, size_ratio, sratio, sz;
+    void (*swapf)(char *, char *, size_t)=NULL;
     void (*sswapf)(char *, char *, size_t);
+#if QUICKSELECT_LINEAR_STABLE
+    char *conditions = NULL;
+#endif /* QUICKSELECT_LINEAR_STABLE */
+#if QUICKSELECT_INDIRECT + QUICKSELECT_LINEAR_STABLE
+    char *element = NULL;
+    size_t *indices = NULL;
+#endif
+#if QUICKSELECT_INDIRECT
+    char **pointers = NULL;
+    void (*pswapf)(char *, char *, size_t);
+#endif /* QUICKSELECT_INDIRECT */
 
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
@@ -344,6 +360,7 @@ QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
 #if __STDC_WANT_LIB_EXT1__
     || (RSIZE_MAX<nmemb) || (RSIZE_MAX<size) || (RSIZE_MAX<nk)
 #endif /* __STDC_WANT_LIB_EXT1__ */
+    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK)))
     ) {
 #if __STDC_WANT_LIB_EXT1__
         constraint_handler_t foo;
@@ -418,11 +435,12 @@ QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
         sz=sizeof(size_t);
         sswapf=swapn(salignsize=alignment_size((char *)pk,sz));
         sratio=sz/salignsize;
-        scutoff=cutoff_value(sratio,0x07F8U);
+        scutoff=cutoff_value(sratio,QUICKSELECT_NETWORK_MASK);
 
         if (q<nk) { /* fix (sort) iff broken (not nondecreasing) */
             quickselect_loop((char *)pk,0UL,nk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-                salignsize,sratio,scutoff,0x07F8U,NULL,NULL);
+                salignsize,sratio,scutoff,QUICKSELECT_NETWORK_MASK,NULL,NULL,
+                NULL,NULL,NULL);
         }
         /* verify, fix uniqueness */
         for (p=0UL,q=1UL; q<=nk; q++) {
@@ -436,20 +454,151 @@ QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
         }
     }
 
-    /* base array alignment size and swap function */
+    /* base array alignment size and size_ratio */
+    alignsize=alignment_size(base,size);
+    size_ratio=size/alignsize;
+
     /* Initialize the dedicated sorting cutoff based on array element size
        and alignment (swapping cost relative to comparisons).
     */
-    alignsize=alignment_size(base,size);
-    size_ratio=size/alignsize;
-    if (NULL==swapf) {
-        swapf=swapn(alignsize);
-        cutoff=cutoff_value(size_ratio,options);
-    } else cutoff=cutoff_value(1UL,options);
+    cutoff=cutoff_value(size_ratio,options);
 
-    /* Special-case selection and sorting are handled in quickselect_loop. */
-    PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,swapf,
-        alignsize,size_ratio,cutoff,options,NULL,NULL);
+    /* swap function for direct sorting/selection */
+    if (NULL==swapf) swapf=swapn(alignsize);
+
+#if QUICKSELECT_INDIRECT > QUICKSELECT_NETWORK_MASK
+# error "some reasonable heuristic for deciding when to sort indirectly is needed"
+    /* (N.B. Unreliable) example: Direct or indirect sorting based on nmemb and
+       size_ratio.
+    */
+    if ((1UL<size_ratio)&&(7UL<nmemb+size_ratio))
+        options|=(QUICKSELECT_INDIRECT);
+#endif /* QUICKSELECT_INDIRECT */
+
+#if QUICKSELECT_INDIRECT
+    /* Don't use indirection if size_ratio==1UL (it would be inefficient). */
+    if (1UL==size_ratio) options&=~(QUICKSELECT_INDIRECT);
+    /* If indirect sorting, alignment size and size_ratio are reset to
+       appropriate values for pointers.
+    */
+    if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+        pointers=set_array_pointers(pointers,nmemb,base,nmemb,size,0UL,nmemb);
+        if (NULL==pointers) {
+            free(pointers);
+            pointers=NULL;
+            options&=~(QUICKSELECT_INDIRECT);
+        } else {
+            if (size>=sizeof(char *))
+                element=malloc(size);
+            else
+                element=malloc(sizeof(char *));
+            if (NULL==element) {
+                free(pointers);
+                pointers=NULL;
+                options&=~(QUICKSELECT_INDIRECT);
+            } else {
+                alignsize=alignment_size((char *)pointers,sizeof(char *));
+                pswapf=swapn(alignsize);
+                A(pointers[0]==base);
+                cutoff=cutoff_value(1UL,options);
+            }
+        }
+    }
+#endif /* QUICKSELECT_INDIRECT */
+
+#if QUICKSELECT_LINEAR_STABLE
+    if (0U!=(options&(QUICKSELECT_STABLE))) {
+        conditions=malloc(nmemb);
+        if (NULL!=conditions) indices=malloc(sizeof(size_t)*nmemb);
+        if ((NULL!=conditions)&&(NULL==element)) element=malloc(size);
+    }
+#endif /* QUICKSELECT_LINEAR_STABLE */
+
+    /* For sorting (but not selection), use dedicated sort if nmemb<=cutoff. */
+    if ((NULL==pk)&&(nmemb<=cutoff)) {
+#if QUICKSELECT_INDIRECT
+        if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+            PREFIX DEDICATED_SORT((char *)pointers,0UL,nmemb,sizeof(char *),
+                COMPAR_ARGS,pswapf,alignsize,size_ratio,options);
+            if (NULL==indices) indices=(size_t *)pointers;
+            indices=convert_pointers_to_indices(base,nmemb,size,pointers,
+                nmemb,indices,0UL,nmemb);
+            A(NULL!=indices);
+            size_ratio=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,
+                element);
+            free(element); element=NULL;
+            free(pointers);
+            if ((void *)indices==(void *)pointers) indices=NULL;
+            if (nmemb<(size_ratio>>1)) { /* indirection failed; use direct sort */
+                options&=~(QUICKSELECT_INDIRECT);
+                alignsize=alignment_size(base,size);
+                size_ratio=size/alignsize;
+                swapf=swapn(alignsize);
+                PREFIX DEDICATED_SORT(base,0UL,nmemb,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,options);
+            }
+        } else
+#endif /* QUICKSELECT_INDIRECT */
+            PREFIX DEDICATED_SORT(base,0UL,nmemb,size,COMPAR_ARGS,swapf,
+                alignsize,size_ratio,options);
+    } else {
+        /* Special-case selection and sorting are handled in quickselect_loop. */
+#if QUICKSELECT_INDIRECT
+        if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+#if QUICKSELECT_LINEAR_STABLE
+            PREFIX QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
+                COMPAR_ARGS,pk,0UL,nk,pswapf,alignsize,size_ratio,cutoff,
+                options,conditions,indices,element,NULL,NULL);
+#else
+            PREFIX QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
+                COMPAR_ARGS,pk,0UL,nk,pswapf,alignsize,size_ratio,cutoff,
+                options,NULL,NULL,NULL,NULL,NULL);
+#endif /* QUICKSELECT_LINEAR_STABLE */
+            if (NULL==indices) indices=(size_t *)pointers;
+            indices=convert_pointers_to_indices(base,nmemb,size,pointers,
+                nmemb,indices,0UL,nmemb);
+            A(NULL!=indices);
+            size_ratio=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,
+                element);
+            free(element); element=NULL;
+            free(pointers);
+            if ((void *)indices==(void *)pointers) indices=NULL;
+            if (nmemb<(size_ratio>>1)) { /*indirection NG; direct sort/select*/
+                options&=~(QUICKSELECT_INDIRECT);
+                alignsize=alignment_size(base,size);
+                size_ratio=size/alignsize;
+                swapf=swapn(alignsize);
+                cutoff=cutoff_value(size_ratio,options);
+#if QUICKSELECT_LINEAR_STABLE
+                PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
+                    nk,swapf,alignsize,size_ratio,cutoff,options,conditions,
+                    indices,element,NULL,NULL);
+#else
+                PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
+                    nk,swapf,alignsize,size_ratio,cutoff,options,NULL,
+                    NULL,NULL,NULL,NULL);
+#endif /* QUICKSELECT_LINEAR_STABLE */
+            }
+        } else
+#endif /* QUICKSELECT_INDIRECT */
+#if QUICKSELECT_LINEAR_STABLE
+            PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
+                swapf,alignsize,size_ratio,cutoff,options,conditions,
+                indices,element,NULL,NULL);
+#else
+            PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
+                swapf,alignsize,size_ratio,cutoff,options,NULL,
+                NULL,NULL,NULL,NULL);
+#endif /* QUICKSELECT_LINEAR_STABLE */
+    }
+
+#if QUICKSELECT_LINEAR_STABLE
+    if (0U!=(options&(QUICKSELECT_STABLE))) {
+        if (NULL!=element) free(element);
+        if (NULL!=conditions) free(conditions);
+        if (NULL!=indices) free(indices);
+    }
+#endif /* QUICKSELECT_LINEAR_STABLE */
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
     /* This may be expensive if the caller supplied a large number of duplicate
@@ -457,7 +606,8 @@ QSORT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
     */
     if (0UL!=s) { /* there were duplicates */
         quickselect_loop((char *)pk,0UL,onk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-            salignsize,sratio,scutoff,0x07F8U,NULL,NULL);
+            salignsize,sratio,scutoff,QUICKSELECT_NETWORK_MASK,NULL,NULL,NULL,
+            NULL,NULL);
     }
     SUFFIX3
 }

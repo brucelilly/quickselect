@@ -59,16 +59,16 @@ MAKEFILES_READ += makefile.targets
 # some dependencies (e.g. makefile.$(OS)) cannot be listed here as environment has not yet been set
 #  those are listed in makefile.files
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-.PRECIOUS : make_grap median_test lemd bstest generate_cutoff_table graphingtest swaptest thermostatd
+.PRECIOUS : make_grap median_test lemd bstest malloc_test generate_cutoff_table graphingtest swaptest thermostatd
 .PRECIOUS : simple_config
-heap_test lemd make_grap median_test numtest bstest generate_cutoff_table graphingtest swaptest \
+heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest swaptest \
  simple_config thermostatd udp windows linux junk5.ps junk5.pdf junk5.svg\
  : depend $(LAST_STAGE) $(LAST_INCLUDE) $(MAKEFILES_DIR)/makefile.build # also $(DEPEND) 
 
 # dependencies
 # executable programs depend on depend.awk
 #sunrise : $(AWKSCRIPTSDIR)/depend.awk
-heap_test lemd make_grap median_test numtest bstest generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
+heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
  : $(AWKSCRIPTSDIR)/depend.awk
 
 # dependencies
@@ -83,7 +83,7 @@ heap_test lemd make_grap median_test numtest bstest generate_cutoff_table graphi
 #   below.  Therefore executables depend on ALWAYS.
 #sunrise : ALWAYS
 #make_grap median_test 
-heap_test lemd make_grap median_test numtest bstest generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
+heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
  : ALWAYS
 
 gprof.out : median_test
@@ -100,7 +100,7 @@ bmqsort.grap data4 data4.grap junk5.ps junk5.pdf junk5.svg paper.troff paper.ps 
 # recipe
 # add environment variables via $(SCRIPTSDIR)/ident.sh to identify host, OS, etc.
 # override environment $SHELL with something sane (defined above)
-heap_test lemd make_grap median_test numtest bstest generate_cutoff_table graphingtest simple_config swaptest thermostatd udp windows linux \
+heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp windows linux \
  :
 	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
 

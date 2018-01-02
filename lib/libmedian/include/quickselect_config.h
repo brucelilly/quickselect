@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.4 dated 2017-11-06T16:37:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.7 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -84,7 +84,10 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.4 2017-11-06T16:37:36Z"
+/* If you edit this file, you might wish to append something to the version
+   string to indicate so...
+*/
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.7 2017-12-22T04:14:04Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -96,19 +99,22 @@
                                               comparisons used.
                                            */
 #endif
+#ifndef SILENCE_WHINEY_COMPILERS
+# define SILENCE_WHINEY_COMPILERS        1 /* >0 whiney compilers STFU */
+#endif
 
 /* tuning */
-/* static inline or separate major functions */
+/* static inline (1) or separate major functions (0) */
 #define QUICKSELECT_BUILD_FOR_SPEED      1
 
-/* Repivoting parameters control the tradeoff between minimal effect on random
-   inputs and effective repivoting of adverse inputs.
+/* Repivoting parameters (for sorting) control the tradeoff between minimal
+   effect on random inputs and effective repivoting of adverse inputs.
    Choices are (defined by macros later):
     DISABLED    repivot only under extreme circumstances
     TRANSPARENT (almost) no repivots for random inputs
     LOOSE       worst adverse sorting performance < 2.0 N log(N)
     RELAXED     adverse input sorting performance < 1.5 N log(N)
-    AGGRESSIVE  best practical adverse input selection performance
+    AGGRESSIVE  best practical adverse input sorting performance
 # define SORTING_TABLE_ENTRIES           DISABLED
 # define SORTING_TABLE_ENTRIES           TRANSPARENT
 # define SORTING_TABLE_ENTRIES           LOOSE
@@ -121,44 +127,143 @@
 # undef LOOSE
 # undef RELAXED
 # undef AGGRESSIVE
+  /* Configure by copying one of the commented lines (above) below this line. */
 # define SORTING_TABLE_ENTRIES           RELAXED
+  /* FYI: selection is more sensitive to lopsided partitions and always uses
+     very aggressive repivoting (not configurable).
+  */
 #endif
 
-/* Sorting network for 3 elements can be arranged to favor already-sorted and
-   reverse-sorted inputs (1), or to favor bitonic inputs (0).
+/* The sorting network for 3 elements can be arranged to favor already-sorted
+   and reverse-sorted inputs (1), or to favor bitonic inputs (0). Already-sorted
+   and reverse-sorted inputs are handled quickly, so favoring bitonic inputs
+   here (define FAVOR_SORTED as 0) is recommended.  FAVOR_SORTED only matters
+   if the size 3 sorting network is used (see below for configuration of
+   sorting network sizes).
 */
-#define FAVOR_SORTED                     0
+#define FAVOR_SORTED                     0 /* configure me */
 
-/* It is possible to override configuration in quickselect.h here.
+/* It is possible to override defined constants in quickselect.h here.
    Command-line compilation arguments can override this.
 */
+/* Quickselect can sort or select preserving partial order stability.  However,
+   code size approximately doubles, and there is a significant run-time cost.
+   Partial order stability is a non-issue for scalar data, and multivariate
+   data is most efficiently sorted using multivariate comparisons.  It is
+   therefore recommended to define QUICKSELECT_STABLE as 0 (zero) for general-
+   purpose use.
+*/
 #ifndef QUICKSELECT_STABLE
-# if 1
+# if 1 /* configure me: 1 to support stable sort/select, 0 to disable */
 #  define QUICKSELECT_STABLE             0x01U
 # else
-#  define QUICKSELECT_STABLE             0
+#  define QUICKSELECT_STABLE             0 /* don't change this! */
 # endif
 #endif
-#ifndef QUICKSELECT_NETWORK_MASK
-# if 0
-#  define QUICKSELECT_NETWORK_MASK       0x01FF8U /* 3-12 */
+
+/* If QUICKSELECT_INDIRECT is pre-defined as zero, sorting will be direct
+   unless arranged externally by the caller and object code size will be
+   reduced slightly.  Internal indirection uses O(N) + O(1) additional space for
+   an array of pointers and a memory block to hold a temporary base array
+   element.  For non-trivial base array element size, it reduces data
+   movement cost by rearranging (permuting) base array elements after
+   indirectly sorting by low-cost pointer movement.  However, rearranging
+   base array elements has poor locality of access, and therfore suffers
+   from machine-dependent (cache-related) performance issues when the
+   base array (product of element size and number of elements) becomes
+   large relative to memory cache size.  The caller can of course arrange
+   for explicit indirect sorting by allocating and initializing an array of
+   pointers, providing a comparison function which indirectly accesses the
+   base elements for comparisons, and optionally rearranging base data
+   elements after indirect sorting of pointers (or accessing base elements
+   indirectly via the sorted pointers) [see header file indirect.h].  Such a
+   method is fully compatible with the internal indirect sorting (the internal
+   method never uses additional indirection when sorting trivial types such as
+   pointers), but the internal method can provide some performance tweaks by
+   caching dereferenced pointers e.g. for pivot comparisons during
+   partitioning.  Because of the cache-related performance degradation and the
+   difficulty of efficiently determining cache sizes at run-time, internal
+   indirection is not recommended for general-purpose use (the performance
+   tweaks may be useful for application-specific cases).
+*/
+#ifndef QUICKSELECT_INDIRECT
+# if 1 /* configure me: 1 to support internal indirection, 0 to disable */
+   /* 0x04U for user-visible, 0x04000U for internal flag */
+   /* N.B. for internal flag, you'll need to provide some heuristic for deciding
+      when to use indirect vs. direct sorting/selection in qsort_src.h, 
+      quickselect_src.h
+   */
+#  define QUICKSELECT_INDIRECT           0x04U /* configure me too */
 # else
-#  if 1
+#  define QUICKSELECT_INDIRECT           0 /* don't change this! */
+# endif
+#endif
+
+/* Sorting networks are data-oblivious; the same number of comparisons are
+   made regardless of the input sequence.  Optimal (but non-stable) sorting
+   networks have low overhead. Stable variants (through size 6) operate as
+   unrolled insertion sort.  However, sorting networks can theoretically
+   take advantage of parallel operations, unlike insertion sort. As each
+   sorting network (for a particular sub-array size) is distinct from the
+   networks used for other sizes, the code size increases with each additional
+   sorting network included.  Size 2 is a simple, efficient compare-exchange
+   network which is always used for sorting 2 elements.  Larger sizes may be
+   included, through size 12, by setting appropriate bits in
+   QUICKSELECT_NETWORK_MASK.  Size 3 is implemented as a decision tree, which
+   is slightly more general, and which can be futher configured (near the top
+   of the configuration options in this file) to favor certain input sequences.
+*/
+#ifndef QUICKSELECT_NETWORK_MASK
+# if 0 /* configure me: 1 for network sort sizes 2-12 */
+   /* If you change this, also change the relevant comments! */
+#  define QUICKSELECT_NETWORK_MASK       0x01FF8U /* 2-12 */
+# else
+#  if 1 /* configure me: 1 for network sort sizes 2-3 */
+   /* If you change this, also change the relevant comments! */
 #   define QUICKSELECT_NETWORK_MASK      0x08U /* 3 only */
 #  else
-#   define QUICKSELECT_NETWORK_MASK      0x0U
+#   define QUICKSELECT_NETWORK_MASK      0x0U /* 2 only */
 #  endif
 # endif
 #endif
 
-/* Nothing to configure below this line. */
+/* Stable (w.r.t. partial order) partitioning is available in two varieties:
+   1. An in-place recursive method based on merging partitions, with expected
+      complexity O(N log N) [leading to O(N log ^2 (N)) stable sorting and
+      O(N log N) stable selection]
+   2. A method using O(N) additional space for condition variables and indices
+      with expected linear complexity, but suffering from relatively poor
+      locality of access (cache effects for large data arrays, where "large" is
+      dependent on cache size vs. the product of the number of data elements and
+      element size)).
+   QUICKSELECT_LINEAR_STABLE can be defined as 0 to exclude the second method if
+   stable sorting and selection is configured.  Nothing to do here if
+   QUICKSELECT_STABLE is not configured (i.e. defined as 0).
+*/
+#if QUICKSELECT_STABLE
+# if 1 /* configure me: 1 to include O(N) space method, 0 to exclude */
+# define QUICKSELECT_LINEAR_STABLE QUICKSELECT_STABLE /* don't change this! */
+# else
+# define QUICKSELECT_LINEAR_STABLE 0 /* don't change this! */
+# endif
+#else /* no O(N) space method w/o in-place method (fallback for ENOMEM) */
+# define QUICKSELECT_LINEAR_STABLE QUICKSELECT_STABLE /* don't change this! */
+#endif /* QUICKSELECT_STABLE */
 
-/* defaults */
-#ifndef SORTING_TABLE_ENTRIES
-# define SORTING_TABLE_ENTRIES RELAXED
-#endif
+/*******************************************************************************
+   Nothing to configure below this line. The remainder of this file contains
+   internal definitions excluded from the public header file quickselect.h.
+*******************************************************************************/
 
+/* Don't use median-of-medians or "full" remedian if there are fewer than 3 sets
+   of 3 elements available.
+*/
 #define SELECTION_MIN_REPIVOT            9UL
+
+/* In-place merge sort is slower than insertion sort for small sub-arrays, but
+   is faster for larger sub-arrays.
+*/
+#define INPLACE_MERGE_CUTOFF             155UL
 
 /* repivot tuning */
 #define DISABLED    0
@@ -167,18 +272,42 @@
 #define RELAXED     3 /* adversary < 1.5 N log N */
 #define AGGRESSIVE  4 /* minimum adversary comparison complexity < 1.4 N log N */
 
+/* defaults */
+ /* in case not defined above */
+#ifndef SORTING_TABLE_ENTRIES
+# define SORTING_TABLE_ENTRIES RELAXED
+#endif
+ /* in case of bogus definition above */
+#if (( SORTING_TABLE_ENTRIES != DISABLED ) \
+  && ( SORTING_TABLE_ENTRIES != TRANSPARENT ) \
+  && ( SORTING_TABLE_ENTRIES != LOOSE ) \
+  && ( SORTING_TABLE_ENTRIES != RELAXED ) \
+  && ( SORTING_TABLE_ENTRIES != AGGRESSIVE ) \
+)
+# undef SORTING_TABLE_ENTRIES
+# define SORTING_TABLE_ENTRIES RELAXED
+#endif
+
 /* space-saving abbreviations */
 #undef V
 #define V void
 #undef A
 #define A(me) assert(me)
 
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+# define QUICKSELECT_INLINE inline
+#else
+# define QUICKSELECT_INLINE /**/
+#endif /* C99 */
+
 /* need defined names for qsort and qsort_s implementations */
 /* also provides declarations for quickselect and quickselect_s */
-#if !defined(QSORT_FUNCTION_NAME) || !defined(QUICKSELECT_PIVOT_REMEDIAN_FULL)
+#if ! defined(QSORT_FUNCTION_NAME) \
+|| ! defined(QUICKSELECT_OPTIMIZE_COMPARISONS) \
+|| ! defined(QUICKSELECT_RESTRICT_RANK) \
+|| ! defined(QUICKSELECT_INDIRECT)
 # include "quickselect.h"
 #endif
-#include "exchange.h"           /* irotate protate alignment_size swapn EXCHANGE_SWAP */
 
 /* regular vs. _s variations: */
 #if __STDC_WANT_LIB_EXT1__
@@ -189,11 +318,17 @@
 /* nmemb,size argument type variation */
 # define NMEMB_SIZE_TYPE rsize_t
 /* comparison argument(s) variation */
-# define COMPAR_DECL int(*compar)(const void *,const void *,void *),void *context
+# define COMPAR_DECL int(*compar)(const void*,const void*,void*),void*context
 /* support function comparison arg(s) */
 # define COMPAR_ARGS compar,context
 /* comparison function call variation */
 # define COMPAR(ma,mb,mc) compar(ma,mb,mc)
+# if QUICKSELECT_INDIRECT
+#  define OPT_COMPAR(ma,mb,mopts,mc) ((0U==(mopts&(QUICKSELECT_INDIRECT)))?\
+     compar(ma,mb,mc):compar(*((char *const *)(ma)),*((char *const *)(mb)),mc))
+# else
+#  define OPT_COMPAR(ma,mb,mopts,mc) COMPAR(ma,mb,mc)
+# endif /* QUICKSELECT_INDIRECT */
 /* support functions */
 # define DEDICATED_SORT dedicated_sort_s
 # define FIND_MINMAX_FUNCTION_NAME find_minmax_s
@@ -214,6 +349,12 @@
 # define COMPAR_DECL int(*compar)(const void *,const void *)
 # define COMPAR_ARGS compar
 # define COMPAR(ma,mb,mc) compar(ma,mb)
+# if QUICKSELECT_INDIRECT
+#  define OPT_COMPAR(ma,mb,mopts,mc) ((0U==(mopts&(QUICKSELECT_INDIRECT)))?\
+      compar(ma,mb):compar(*((char *const *)(ma)),*((char *const *)(mb))))
+# else
+#  define OPT_COMPAR(ma,mb,mopts,mc) COMPAR(ma,mb,mc)
+#endif /* QUICKSELECT_INDIRECT */
 # define DEDICATED_SORT dedicated_sort
 # define FMED3_FUNCTION_NAME fmed3
 # define FIND_MINMAX_FUNCTION_NAME find_minmax
@@ -228,6 +369,20 @@
 # define QUICKSORT_LOOP quicksort_loop
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
+/* declarations for internal publicly-visible functions */
+/* cutoff_value declaration */
+QUICKSELECT_EXTERN
+#include "cutoff_value_decl.h"
+;
+/* dedicated_sort declaration */
+QUICKSELECT_EXTERN
+#include "dedicated_sort_decl.h"
+;
+/* quickselect_loop declaration */
+QUICKSELECT_EXTERN
+#include "quickselect_loop_decl.h"
+;
+
 /* defined values for pivot_method */
   /* no data movement */
 #define QUICKSELECT_PIVOT_REMEDIAN_SAMPLES  0
@@ -240,16 +395,6 @@
 #define QUICKSELECT_PARTITION_FAST   0
   /* partial order preserved */
 #define QUICKSELECT_PARTITION_STABLE 1
-
-/* structures */
-/* regions resulting from partitioning */
-struct region_struct {
-    size_t first;  /* base array */
-    size_t beyond;
-    size_t firstk; /* order statistics */
-    size_t beyondk;
-    unsigned char process; /* 0=false */
-};
 
 #define	QUICKSELECT_CONFIG_H_INCLUDED
 #endif

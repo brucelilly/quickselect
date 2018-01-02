@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is klimits_src.h version 1.2 dated 2017-09-23T04:59:51Z. \ $ */
+/* $Id: ~|^` @(#)   This is klimits_src.h version 1.3 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.klimits_src.h */
@@ -101,19 +101,12 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: klimits_src.h ~|^` @(#)"
 #define SOURCE_MODULE "klimits_src.h"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-09-23T04:59:51Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2017-12-22T04:14:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
 /* local header files needed */
-#include "quickselect_config.h"
-#include "compare.h"            /* size_tcmp */
-#include "exchange.h"           /* alignment_size blockmove reverse rotate swapn */
-#include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-#include "initialize_src.h"
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "zz_build_str.h"       /* build_id build_strings_registered
                                    copyright_id register_build_strings */
 
@@ -124,7 +117,15 @@
 
 /* system header files */
 #include <assert.h>             /* assert */
-#include <stddef.h>             /* size_t NULL (maybe rsize_t) */
+#include <stddef.h>             /* size_t NULL */
+#include <string.h>             /* strrchr */
+
+/* macros */
+/* space-saving abbreviations */
+#undef V
+#define V void
+#undef A
+#define A(me) assert(me)
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 /* declaration */
@@ -132,17 +133,39 @@
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
+/* static data */
+static char klimits_initialized = (char)0;
+static const char *filenamebuf = __FILE__ ;
+static const char *source_file = NULL;
+
+/* initialize at run-time */
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void initialize_klimits(void)
+{
+    const char *s;
+
+    s = strrchr(filenamebuf, '/');
+    if (NULL == s) s = filenamebuf; else s++;
+    klimits_initialized = register_build_strings(NULL, &source_file, s);
+}
+
 /* klimits: find range of order statistic ranks corresponding to sub-array
             limits.
 */
 /* called from quickselect_loop and sampling_table */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif
 #include "klimits_decl.h"
 {
     size_t s, l, lk, rk;
 
     A(NULL!=pfk);A(NULL!=pbk);A(NULL!=pk);
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-    if ((char)0==file_initialized) initialize_file(__FILE__);
+    if ((char)0==file_initialized) initialize_klimits();
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
     /* binary search through pk to find limits for each region */
     for (s=firstk,l=beyondk,lk=s+((l-s)>>1); s<l; lk=s+((l-s)>>1)) {

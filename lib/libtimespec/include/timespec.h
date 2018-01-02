@@ -30,18 +30,19 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timespec.h version 1.7 2016-06-29T20:40:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is timespec.h version 1.8 2017-12-02T03:31:03Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "timespec" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libtimespec/include/s.timespec.h */
 
 /* version-controlled header file version information */
-#define TIMESPEC_H_VERSION "timespec.h 1.7 2016-06-29T20:40:44Z"
+#define TIMESPEC_H_VERSION "timespec.h 1.8 2017-12-02T03:31:03Z"
 
 /*INDENT ON*/
 /* *INDENT-ON* */
 
 /* local and system header files needed for declarations */
+#include <sys/time.h>           /* time_t struct timespec */
 #include <time.h>               /* time_t struct timespec */
 
 #if defined(__cplusplus)

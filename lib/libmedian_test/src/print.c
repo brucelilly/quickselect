@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is print.c version 1.3 dated 2017-11-03T19:46:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is print.c version 1.5 dated 2017-12-28T22:17:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.print.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: print.c ~|^` @(#)"
 #define SOURCE_MODULE "print.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:46:10Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-28T22:17:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -96,6 +96,19 @@ static void fprint_data_array(FILE *f, struct data_struct *target, size_t l, siz
     (V)fprintf(f, "%s\n",suffix);
 }
 
+static void fprint_data_via_pointer(FILE *f, struct data_struct **pointers, size_t l, size_t u, const char *prefix, const char *suffix)
+{
+    size_t i;
+
+    if (NULL!=prefix) (V)fprintf(f, "%s", prefix);
+    for (i=l; i<=u; i++) {
+        if (i != l)
+            (V)fprintf(f, ", ");
+        (V)fprintf(f, "%lu:%s", (unsigned long)i, pointers[i]->string);
+    }
+    (V)fprintf(f, "%s\n",suffix);
+}
+
 static void fprint_double_array(FILE *f, double *target, size_t l, size_t u, const char *prefix, const char *suffix)
 {
     size_t i;
@@ -122,11 +135,14 @@ static void fprint_float_array(FILE *f, float *target, size_t l, size_t u, const
     (V)fprintf(f, "%s\n",suffix);
 }
 
-void fprint_some_array(FILE *f, void *target, size_t l, size_t u, const char *prefix, const char *suffix)
+void fprint_some_array(FILE *f, void *target, size_t l, size_t u, const char *prefix, const char *suffix, unsigned int options)
 {
+#if QUICKSELECT_INDIRECT
+    if (0U!=(options&(QUICKSELECT_INDIRECT))) target=(void *)(*((char **)target));
+#endif /* QUICKSELECT_INDIRECT */
     if (target == (void *)global_iarray) fprint_int_array(f,global_iarray,l,u,prefix,suffix);
     else if (target == (void *)global_darray) fprint_double_array(f,global_darray,l,u,prefix,suffix);
-    else if (target == (void *)global_parray) fprint_data_array(f,*global_parray,l,u,prefix,suffix);
+    else if (target == (void *)global_parray) fprint_data_via_pointer(f,target,l,u,prefix,suffix);
     else if (target == (void *)global_data_array) fprint_data_array(f,global_data_array,l,u,prefix,suffix);
     else if ((target == (void *)global_larray)||(target == (void *)global_refarray))
         fprint_long_array(f,target,l,u,prefix,suffix);
@@ -168,10 +184,10 @@ void print_double_array(char *target, size_t l, size_t u, const char *prefix, co
     fprint_double_array(stderr,(double *)target,l,u,prefix,suffix);
 }
 
-void print_some_array(void *target, size_t l, size_t u, const char *prefix, const char *suffix)
+void print_some_array(void *target, size_t l, size_t u, const char *prefix, const char *suffix, unsigned int options)
 {
     if ((char)0==file_initialized) initialize_file(__FILE__);
-    fprint_some_array(stderr,target,l,u,prefix,suffix);
+    fprint_some_array(stderr,target,l,u,prefix,suffix,options);
 }
 
 #if 1

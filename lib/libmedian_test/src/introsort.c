@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is introsort.c version 1.4 dated 2017-11-03T19:51:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is introsort.c version 1.5 dated 2017-12-06T23:01:09Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.introsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: introsort.c ~|^` @(#)"
 #define SOURCE_MODULE "introsort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T19:51:34Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-06T23:01:09Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -56,50 +56,151 @@
 
 #include "initialize_src.h"
 
-/* Insertion sort using linear search for insertion point followed by
-   insertion via rotation.
-   Binary search doesn't work well for large, nearly-sorted arrays.
-   Linear-search-only insertion sort:
-      preset mtype, mbase, mn, mfirst, ma, mb, msize, msize_ratio, mu, mpu, mcf
-      modifies mn, ma, mb
+/* Insertion sort using binary search to locate insertion position for
+   out-of-order element, followed by rotation to insert the element in position.
 */
-#define ISORT_LS(mtype,mbase,mn,mfirst,ma,mb,msize,msize_ratio,mu,mpu,mcf)     \
-    while (mn>mfirst) {                                                        \
-        --mn;                                                                  \
-        if (0<mcf(ma,mb)) {                                                    \
-            register mtype *px, *py, *pz, t;                                   \
-            register size_t l=mn+2UL;                                          \
-            register char *pc, *pd;                                            \
-            if (l>mu) {                                                        \
-                pd=mb+msize; /* a simple swap */                               \
-            } else { /* linear search */                                       \
-                for (pd=mb+msize; pd<=mpu; pd+=size)                           \
-                    if (0>=mcf(pa,pd)) break;                                  \
-            }                                                                  \
-            /* Insertion by rotating elements [n,l) left by 1.  Same number of \
-               swaps as ripple/bubble swapping.  Rotation by 1 position could  \
-               be implemented by reversals as for general rotation, but the    \
-               specific case of 1 position can be implemented more efficiently \
-               using the temporary variable once per iteration of the basic    \
-               type size rather than swapping, which uses the temporary        \
-               variable multiple times (unless the element size is exactly the \
-               same size as the basic type and the rotation distance is 1 (i.e.\
-               a simple swap)).                                                \
-            */                                                                 \
-            pc=ma, px=(mtype *)pc, pc+=msize;                                  \
-            if (0U!=instrumented) { size_t r=(pd-pc)/msize+1UL;                \
-                if (MAXROTATION<=r) r=0UL;                                     \
-                nrotations[r]+=msize_ratio;                                    \
-            }                                                                  \
-            while ((char *)px<pc) {                                            \
-                py=px,t=*py,pz=py+msize_ratio;                                 \
-                while ((char *)pz<pd)                                          \
-                    *py=*pz,py=pz,pz+=msize_ratio;                             \
-                *py=t,px++;                                                    \
-            }                                                                  \
-        }                                                                      \
-        mb=ma,ma-=msize;                                                       \
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void isort_bs(char *base, size_t first, size_t beyond, size_t size,
+    int (*compar)(const void *,const void *),
+    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
+{
+    register size_t l, m, h, n, u=beyond-1UL;
+    char *pa, *pu=base+u*size;
+
+/* separate direct, indirect versions to avoid options checks in loops,
+   also cache dereferenced pa in inner loop
+*/
+#if QUICKSELECT_INDIRECT
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+#endif /* QUICKSELECT_INDIRECT */
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            if (0<COMPAR(pa,pa+size,/**/)) { /* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* binary search for insertion position */
+                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
+                        if (0>=COMPAR(pa,base+m*size,/**/)) h=m-1UL;
+                        else l=m+1UL;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
+#if QUICKSELECT_INDIRECT
+    } else { /* indirect */
+        register char *p;
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            p=*((char **)pa);
+            if (0<COMPAR(p,*((char**)(pa+size)),/**/)) {/* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* binary search for insertion position */
+                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
+                        if (0>=COMPAR(p,*((char**)(base+m*size)),/**/)) h=m-1UL;
+                        else l=m+1UL;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
     }
+#endif /* QUICKSELECT_INDIRECT */
+}
+
+/* Insertion sort using linear search to locate insertion position for
+   out-of-order element, followed by rotation to insert the element in position.
+*/
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void isort_ls(char *base, size_t first, size_t beyond, size_t size,
+    int (*compar)(const void *,const void *),
+    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
+{
+    register size_t l, h, n, u=beyond-1UL;
+    char *pa, *pu=base+u*size;
+
+/* separate direct, indirect versions to avoid options checks in loops,
+   also cache dereferenced pa in inner loop
+*/
+#if QUICKSELECT_INDIRECT
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+#endif /* QUICKSELECT_INDIRECT */
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            if (0<COMPAR(pa,pa+size,/**/)) { /* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(pa,pd,/**/)) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
+#if QUICKSELECT_INDIRECT
+    } else { /* indirect */
+        register char *p;
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            p=*((char **)pa);
+            if (0<COMPAR(p,*((char**)(pa+size)),/**/)) {/* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(p,*((char**)pd),/**/)) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
+    }
+#endif /* QUICKSELECT_INDIRECT */
+}
 
 static
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
@@ -134,8 +235,9 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
            causes issues with some input sequences (median-of-3 killer,
            rotated, organ-pipe, etc.). It does however use ternary median-of-3.
         */
+        /* XXX internal indirection not handled here */
         pivot=fmed3(base+size*first,base+size*(first+(beyond-first)>>1),
-            base+size*(beyond-1UL),compar);
+            base+size*(beyond-1UL),compar,options,base,size);
 #else
         /* adaptive sampling for pivot selection as in quickselect */
         /* freeze low-address samples which will be used for pivot selection */
@@ -152,8 +254,9 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
            partition function also avoids further processing of elements
            comparing equal to the pivot.
         */
+        /* Stable sorting not supported (heapsort is not stable) */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
-            alignsize,size_ratio,options,&eq,&gt);
+            alignsize,size_ratio,options,NULL,NULL,NULL,&eq,&gt);
         /* This processes the > region recursively, < region iteratively as
            described by Musser.  Could process smaller region recursively,
            larger iteratively, but Musser says it's not necessary due to
@@ -185,13 +288,8 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
             shellsort_internal(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio);
         else
-#if 0
-            isort_internal(base,first,beyond,size,compar,swapf,alignsize,
-                size_ratio);
-#else
-            if (first+1UL<beyond) dedicated_sort(base,first,beyond,size,compar,
-                swapf,alignsize,size_ratio,options);
-#endif
+            if (first+1UL<beyond) isort_bs(base,first,beyond,size,compar,swapf,
+                alignsize,size_ratio,options);
     }
 }
 
@@ -228,32 +326,7 @@ void introsort(char *base, size_t nmemb, size_t size,
     introsort_loop(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
         table_index,depth_limit,options);
     if (0U!=introsort_final_insertion_sort) {
-        char *pa, *pb, *pu;
-#if 1
-        /* insertion sort with linear search (only) for insertion position */
-        register size_t n, u;
-        nfrozen=0UL, pivot_minrank=nmemb;
-        n=u=nmemb-1UL, pu=pb=base+u*size, pa=pb-size;
-        switch (alignsize) {
-            case 8UL : /* uint64_t */
-                ISORT_LS(uint64_t,base,n,0UL,pa,pb,size,size_ratio,u,pu,compar)
-            break;
-            case 4UL : /* uint32_t */
-                ISORT_LS(uint32_t,base,n,0UL,pa,pb,size,size_ratio,u,pu,compar)
-            break;
-            case 2UL : /* uint16_t */
-                ISORT_LS(uint16_t,base,n,0UL,pa,pb,size,size_ratio,u,pu,compar)
-            break;
-            default : /* uint8_t */
-                ISORT_LS(uint8_t,base,n,0UL,pa,pb,size,size_ratio,u,pu,compar)
-            break;
-        }
-#else
-        /* Loop-based alternate compare/swap waltzing insertion sort */
-        char *pc, *pl;
-        for (pa=pl=base,pu=base+(nmemb-1UL)*size; pa<pu; pa+=size)
-            for (pb=pa; (pb>=pl)&&(0<compar(pb,pc=pb+size)); pb-=size)
-                EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,nsw++);
-#endif
+        isort_ls(base,0UL,nmemb,size,compar,swapf,alignsize,
+            size_ratio,options);
     }
 }

@@ -119,7 +119,7 @@ void     arc4random_addrandom(u_char *, int);
 #include <ctype.h>              /* isdigit */
 #include <errno.h>
 #include <limits.h>             /* *_MAX */
-#include <math.h>               /* ceil exp2 floor log2 */
+#include <math.h>               /* exp2 floor log2 */
 #include <stdio.h>
 #include <stdlib.h>             /* strtoul */
 #include <string.h>             /* strncpy strrchr */

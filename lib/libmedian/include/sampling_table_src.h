@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.3 dated 2017-09-23T04:59:51Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.4 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-09-23T04:59:51Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-22T04:14:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -108,8 +108,6 @@
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "zz_build_str.h"       /* build_id build_strings_registered
-                                   copyright_id register_build_strings */
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -135,13 +133,16 @@
    nmemb
 */
 /* called from sampling_table and quicksort */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "sample_index_decl.h"
 {
     if (3UL>nmemb) idx=0U;
     else {
         A((psts==sorting_sampling_table) ||(psts==ends_sampling_table)
         ||(psts==middle_sampling_table));
-        A(idx < (SAMPLING_TABLE_SIZE));
+        if (idx>=(SAMPLING_TABLE_SIZE)-1U) idx=(SAMPLING_TABLE_SIZE)-2U;
         while (nmemb>psts[idx].max_nmemb) idx++;
         A((SAMPLING_TABLE_SIZE)>idx);
         while (nmemb<=psts[idx-1U].max_nmemb) idx--;
@@ -160,6 +161,9 @@
 /* called from select_pivot, quickselect_loop and quickselect public wrapper
    function
 */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "sampling_table_decl.h"
 {
     unsigned char distribution, raw, sort=1U;
@@ -237,7 +241,6 @@
     */
     A((0U!=sort)||((SAMPLING_TABLES)>distribution));
     if (0U==sort) psts=sampling_tables[distribution];
-    A(*pindex < (SAMPLING_TABLE_SIZE));
     *pindex=sample_index(psts, *pindex, nmemb);
     return psts;
 }

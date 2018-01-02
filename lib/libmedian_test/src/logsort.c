@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is logsort.c version 1.3 dated 2017-11-03T19:33:29Z. \ $ */
+/* $Id: ~|^` @(#)   This is logsort.c version 1.4 dated 2017-12-06T23:04:02Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.logsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: logsort.c ~|^` @(#)"
 #define SOURCE_MODULE "logsort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:33:29Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-06T23:04:02Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -89,8 +89,9 @@ __func__,source_file,__LINE__,first,beyond,xnk,o,xpk[0],xnk-1UL,xpk[xnk-1UL]);
 #endif
         A(xpk[0]>first);A(xpk[xnk-1UL]<beyond-1UL);
 
+        /* efficient stable partition is not supported */
         d_quickselect_loop(base,first,beyond,size,compar,xpk,0UL,xnk,
-            swapf,alignsize,size_ratio,cutoff,options,NULL,NULL);
+            swapf,alignsize,size_ratio,cutoff,options,NULL,NULL,NULL,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
 /* XXX for selection (future), check for desired order statistic ranks for each region */
         for (idx=table_index;
@@ -133,7 +134,7 @@ __func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
             isort_internal(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio);
 #else
-            dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
+            d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio,options);
 #endif
     }

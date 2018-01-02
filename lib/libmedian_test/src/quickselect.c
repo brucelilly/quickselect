@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.5 dated 2017-11-07T18:52:02Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.10 dated 2017-12-19T02:32:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-11-07T18:52:02Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2017-12-19T02:32:12Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -55,6 +55,16 @@
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+/* structures */
+/* regions resulting from partitioning */
+struct region_struct {
+    size_t first;  /* base array */
+    size_t beyond;
+    size_t firstk; /* order statistics */
+    size_t beyondk;
+    unsigned char process; /* 0=false */
+};
 
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
@@ -111,28 +121,60 @@ void select_min(char *base,size_t first,size_t beyond,size_t size,
         char *mn, *p, *q, *r;
         mn=p=base+first*size,q=p+size,r=base+beyond*size;
         if ((NULL==ppeq)&&(NULL==ppgt)) { /* non-partitioning */
-            for (; q<r; q+=size)
-                if (0<compar(mn,q)) mn=q;
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mn
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mn);
+                for (; q<r; q+=size)
+                    if (0<COMPAR(x,*((char **)q),/**/)) x=*((char **)(mn=q));
+            } else
+#endif /* QUICKSELECT_INDIRECT */
+                for (; q<r; q+=size)
+                    if (0<COMPAR(mn,q,/**/)) mn=q;
             if (mn!=p) {
+#if QUICKSELECT_STABLE
                 if (0U==((QUICKSELECT_STABLE)&options)) {
+#endif /* QUICKSELECT_STABLE */
                     EXCHANGE_SWAP(swapf,p,mn,size,alignsize,size_ratio,nsw++);
+#if QUICKSELECT_STABLE
                 } else {
                     /* |      mn      | */
                     protate(p,mn-size,mn,size,swapf,alignsize,size_ratio);
                 }
+#endif /* QUICKSELECT_STABLE */
             }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
-            for (; q<r; q+=size) {
-                int c=compar(mn,q);
-                if (0>c) continue;
-                if (0==c) {
-                    mn+=size;
-                    if (q==mn) continue;
-                } else /* 0<c */ mn=p; /* new min */
-                A(mn!=q);
-                EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,nsw++);
-            }
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mx
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mn);
+                for (; q<r; q+=size) {
+                    int c=COMPAR(x,*((char **)q),/**/);
+                    if (0>c) continue;
+                    if (0==c) {
+                        mn+=size, x=*((char **)mn);
+                        if (q==mn) continue;
+                    } else /* 0<c */ x=*((char **)(mn=p)); /* new min */
+                    A(mn!=q);
+                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,nsw++);
+                }
+            } else
+#endif /* QUICKSELECT_INDIRECT */
+                for (; q<r; q+=size) {
+                    int c=COMPAR(mn,q,/**/);
+                    if (0>c) continue;
+                    if (0==c) {
+                        mn+=size;
+                        if (q==mn) continue;
+                    } else /* 0<c */ mn=p; /* new min */
+                    A(mn!=q);
+                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,nsw++);
+                }
             if (NULL!=ppeq) *ppeq=p; /* leftmost min */
             if (NULL!=ppgt) *ppgt=mn+size; /* beyond rightmost min */
 #if DEBUG_CODE
@@ -144,7 +186,7 @@ void select_min(char *base,size_t first,size_t beyond,size_t size,
                     "/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p@%lu, ppgt=%p@%lu */\n",
                     __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,(void *)ppeq,(p-base)/size,
                     (void *)ppgt,(mn+size-base)/size);
-                print_some_array(base,first,beyond-1UL, "/* "," */");
+                print_some_array(base,first,beyond-1UL, "/* "," */",options);
             }
 #endif
         }
@@ -176,29 +218,61 @@ void select_max(char *base,size_t first,size_t beyond,size_t size,
         char *mx, *p, *r;
         p=base+first*size,mx=r=base+(beyond-1UL)*size;
         if ((NULL==ppeq)&&(NULL==ppgt)) { /* non-partitioning */
-            for (; p<r; p+=size)
-                if (0>compar(mx,p)) mx=p;
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mx
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mx);
+                for (; p<r; p+=size)
+                    if (0>COMPAR(x,*((char **)p),/**/)) x=*((char **)(mx=p));
+            } else
+#endif /* QUICKSELECT_INDIRECT */
+                for (; p<r; p+=size)
+                    if (0>COMPAR(mx,p,/**/)) mx=p;
             if (mx!=r) {
+#if QUICKSELECT_STABLE
                 if (0U==((QUICKSELECT_STABLE)&options)) {
+#endif /* QUICKSELECT_STABLE */
                     EXCHANGE_SWAP(swapf,r,mx,size,alignsize,size_ratio,nsw++);
+#if QUICKSELECT_STABLE
                 } else {
                     /* |      mx      | */
                     protate(mx,mx+size,r,size,swapf,alignsize,size_ratio);
                 }
+#endif /* QUICKSELECT_STABLE */
             }
         } else { /* partitioning for median-of-medians */
             /* sorting stability is not an issue if median-of-medians is used */
             char *q;
-            for (q=r-size; q>=p; q-=size) {
-                int c=compar(mx,q);
-                if (0<c) continue;
-                if (0==c) {
-                    mx-=size;
-                    if (q==mx) continue;
-                } else /* 0>c */ mx=r; /* new max */
-                A(mx!=q);
-                EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,nsw++);
-            }
+            /* separate indirect/direct versions of loop to avoid repeated
+               option testing in loop, cache dereferenced mn
+            */
+#if QUICKSELECT_INDIRECT
+            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+                char *x=*((char **)mx);
+                for (q=r-size; q>=p; q-=size) {
+                    int c=COMPAR(x,*((char **)q),/**/);
+                    if (0<c) continue;
+                    if (0==c) {
+                        mx-=size, x=*((char **)mx);
+                        if (q==mx) continue;
+                    } else /* 0>c */ x=*((char **)(mx=r)); /* new max */
+                    A(mx!=q);
+                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,nsw++);
+                }
+            } else
+#endif /* QUICKSELECT_INDIRECT */
+                for (q=r-size; q>=p; q-=size) {
+                    int c=COMPAR(mx,q,/**/);
+                    if (0<c) continue;
+                    if (0==c) {
+                        mx-=size;
+                        if (q==mx) continue;
+                    } else /* 0>c */ mx=r; /* new max */
+                    A(mx!=q);
+                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,nsw++);
+                }
             if (NULL!=ppeq) *ppeq=mx; /* leftmost max */
             if (NULL!=ppgt) *ppgt=r+size; /* beyond rightmost max */
 #if DEBUG_CODE
@@ -210,7 +284,7 @@ void select_max(char *base,size_t first,size_t beyond,size_t size,
                     "/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p@%lu, ppgt=%p@%lu */\n",
                     __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,(void *)ppeq,(mx-base)/size,
                     (void *)ppgt,(r+size-base)/size);
-                print_some_array(base,first,beyond-1UL, "/* "," */");
+                print_some_array(base,first,beyond-1UL, "/* "," */",options);
             }
 #endif
         }
@@ -279,11 +353,6 @@ __func__,source_file,__LINE__,(unsigned long)nmemb,idx);
         A((psts==sorting_sampling_table)
         ||(psts==ends_sampling_table)
         ||(psts==middle_sampling_table)
-#if 0
-        ||(psts==extended_sampling_table)
-        ||(psts==separated_sampling_table)
-        ||(psts==distributed_sampling_table)
-#endif
         );
         A(idx <= (SAMPLING_TABLE_SIZE)-1U);
         A(nmemb <= psts[SAMPLING_TABLE_SIZE-1U].max_nmemb);
@@ -465,11 +534,6 @@ struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
     if ((psts!=sorting_sampling_table)
     &&(psts!=ends_sampling_table)
     &&(psts!=middle_sampling_table)
-#if 0
-    &&(psts!=extended_sampling_table)
-    &&(psts!=separated_sampling_table)
-    &&(psts!=distributed_sampling_table)
-#endif
     ) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: nmemb=%lu, pk=%p, firstk=%lu, beyondk=%lu, sort=%u, distribution=%u */\n",
@@ -480,11 +544,6 @@ struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
     A((psts==sorting_sampling_table)
     ||(psts==ends_sampling_table)
     ||(psts==middle_sampling_table)
-#if 0
-    ||(psts==extended_sampling_table)
-    ||(psts==separated_sampling_table)
-    ||(psts==distributed_sampling_table)
-#endif
     );
     A(*pindex < (SAMPLING_TABLE_SIZE));
     *pindex=d_sample_index(psts, *pindex, nmemb);
@@ -517,8 +576,8 @@ unsigned int d_should_repivot(size_t nmemb, size_t n, size_t cutoff,
         if ((8UL>=n)||(cutoff+3UL>n)) {
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
-"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, no repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk);
+"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, cutoff=%lu, pk=%p, no repivot */\n",
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,cutoff,(const void *)pk);
 #endif
             return 0U;
         }
@@ -527,7 +586,7 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk);
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, no repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,(const void *)pk);
 #endif
             return 0U; /* no repivot unless >= 3 medians-of-3 */
         }
@@ -535,8 +594,8 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk);
     if (n>=nmemb) {
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||(DEBUGGING(SHOULD_REPIVOT_DEBUG))||(n>nmemb)) (V)fprintf(stderr,
-"/* %s: %s line %d: nmemb=%lu, n=%lu, pk=%p, repivoting */\n",
-__func__,source_file,__LINE__,nmemb,n,pk);
+"/* %s: %s line %d: ERROR: nmemb=%lu <= n=%lu, pk=%p, repivoting */\n",
+__func__,source_file,__LINE__,nmemb,n,(const void *)pk);
 #endif
         ++*pn2;
         return QUICKSELECT_RESTRICT_RANK;
@@ -547,16 +606,16 @@ __func__,source_file,__LINE__,nmemb,n,pk);
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, ppeq=%p, no repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,ppeq);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,(const void *)pk,(void *)ppeq);
 #endif
         return 0U; /* ratio 0; return w/o incurring division cost */
     }
-    /* check n vs. cutoff with actual sampling table samples */
-    if ((0U<table_index)&&(n<=cutoff+pst[table_index-1U].samples+1UL)) {
+    /* if sorting, check n vs. cutoff with actual sampling table samples */
+    if ((NULL==pk)&&(0U<table_index)&&(n<=cutoff+pst[table_index-1U].samples+1UL)) {
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
-"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, no ppeq=%p, repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,ppeq);
+"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, cutoff=%lu, pk=%p, no ppeq=%p, no repivot */\n",
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,cutoff,(const void *)pk,(void *)ppeq);
 #endif
         return 0U; /* next regions handled by dedicated sort w/o repivot; return w/o incurring ratio division cost */
     }
@@ -566,18 +625,18 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,pp
     /* aux tests, if not disabled */
     /* should be disabled for time vs. factor,limit graph */
     if (0==no_aux_repivot) {
-        repivot_factors(table_index,pk,&factor1,&factor2);
+        repivot_factors(table_index,(const void *)pk,&factor1,&factor2);
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_ANALYSIS_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, ratio>=%lu, repivot_factor1=%u, repivot_factor2=%u, pk=%p, ppeq=%p */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,ratio,factor1,factor2,pk,ppeq);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,ratio,factor1,factor2,(const void *)pk,(void *)ppeq);
 #endif
         /* size-dependent count 1 limit test */
         if (ratio>=factor1) {
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_ANALYSIS_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, ratio>=%lu>=repivot_factor1=%u, pk=%p, ppeq=%p, repivoting */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,ratio,factor1,pk,ppeq);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,ratio,factor1,(const void *)pk,(void *)ppeq);
 #endif
             if ((NULL==ppeq)&&(DEBUGGING(RATIO_GRAPH_DEBUG))) { /* for graphing worst-case partition ratios */
                 stats_table[table_index].repivots++;
@@ -592,7 +651,7 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,ratio
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_ANALYSIS_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, ppeq=%p, ratio>=%lu>=factor2=%u, *pn2=%d, limit=%d, repivoting */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,ppeq,ratio,factor2,*pn2,2);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,(const void *)pk,(void *)ppeq,ratio,factor2,*pn2,2);
 #endif
                 if ((NULL==ppeq)&&(DEBUGGING(RATIO_GRAPH_DEBUG))) { /* for graphing worst-case partition ratios */
                     stats_table[table_index].repivots++;
@@ -604,7 +663,7 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,pp
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, ppeq=%p, ratio>=%lu<factor2=%u or *pn2=%d<2, limit=%d, no repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,ppeq,ratio,factor2,*pn2,2);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,(const void *)pk,(void *)ppeq,ratio,factor2,*pn2,2);
 #endif
     } else {
         /* global limit test */
@@ -616,7 +675,7 @@ __func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk,pp
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor=%lu, pk=%p, *pn2=%d, limit=%d, repivoting */\n",
-__func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,pk,*pn2,lopsided_partition_limit);
+__func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,(const void *)pk,*pn2,lopsided_partition_limit);
 #endif
                     if ((NULL==ppeq)&&(DEBUGGING(RATIO_GRAPH_DEBUG))) { /* for graphing worst-case partition ratios */
                         stats_table[table_index].repivots++;
@@ -628,7 +687,7 @@ __func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,pk,*pn2,lopsided_part
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, ratio>=%lu>=repivot_factor=%lu, pk=%p, repivoting */\n",
-__func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,pk);
+__func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,(const void *)pk);
 #endif
                 if ((NULL==ppeq)&&(DEBUGGING(RATIO_GRAPH_DEBUG))) { /* for graphing worst-case partition ratios */
                     stats_table[table_index].repivots++;
@@ -641,7 +700,7 @@ __func__,source_file,__LINE__,nmemb,n,ratio,repivot_factor,pk);
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, table_index=%u, pk=%p, no repivot */\n",
-__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,pk);
+__func__,source_file,__LINE__,nmemb,n,pst[table_index].samples,table_index,(const void *)pk);
 #endif
     return 0U;
 }
@@ -673,7 +732,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
 #if DEBUG_CODE
 if ((fk<first)||(ek>=beyond)) (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu, pk=%p, firstk=%lu, beyondk=%lu, fk=%lu, ek=%lu */\n",
-__func__,source_file,__LINE__,first,beyond,pk,firstk,beyondk,fk,ek);
+__func__,source_file,__LINE__,first,beyond,(const void *)pk,firstk,beyondk,fk,ek);
 #endif
             A(fk>=first);A(ek<beyond); /* arg sanity */
             A((beyondk==firstk+1UL)||(fk!=ek)); /* no duplicate rank requests */
@@ -686,7 +745,7 @@ __func__,source_file,__LINE__,first,beyond,pk,firstk,beyondk,fk,ek);
                             select_min(base,sp,beyond,size,
                                 compar,swapf,alignsize,size_ratio,options,ppeq,ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                            &&(0==compar(*ppeq-size,*ppeq)))
+                            &&(0==OPT_COMPAR(*ppeq-size,*ppeq,options,/**/)))
                                 (*ppeq)-=size;
                         }
                         return 1 ;
@@ -697,7 +756,7 @@ __func__,source_file,__LINE__,first,beyond,pk,firstk,beyondk,fk,ek);
                             select_max(base,first,lp,size,
                                 compar,swapf,alignsize,size_ratio,options,ppeq,ppgt);
                             if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                            &&(0==compar(*ppeq,*ppgt)))
+                            &&(0==OPT_COMPAR(*ppeq,*ppgt,options,/**/)))
                                 (*ppgt)+=size;
                         }
                         return 1 ;
@@ -779,7 +838,8 @@ void d_quickselect_loop(char *base, size_t first, size_t beyond,
     const size_t size, int(*compar)(const void *,const void *),
     const size_t *pk, size_t firstk, size_t beyondk,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t cutoff, unsigned int options, char **ppeq, char **ppgt)
+    size_t cutoff, unsigned int options, char *conditions,
+    size_t *indices, char *element, char **ppeq, char **ppgt)
 {
     auto int c=0;
     unsigned int table_index=2U;
@@ -864,7 +924,7 @@ A(pk[beyondk-1UL]<beyond);
                         (unsigned long)size_ratio, (unsigned long)cutoff);
 #endif
                 A(1UL<nmemb);
-                dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
+                d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
                     size_ratio,options);
                 return ; /* done */
             }
@@ -890,7 +950,7 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
     (V)fprintf(stderr, "/* %s: %s line %d: pivot=%p(%d), pl=%p, pu=%p */\n",
         __func__,source_file,__LINE__,(void *)pivot,*((int *)pivot),
         base+first*size,base+beyond*size);
-    print_some_array(base,first,beyond-1UL, "/* "," */");
+    print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 #endif
         A(NULL!=pivot);A(base+first*size<=pivot);A(pivot<base+beyond*size);
@@ -904,6 +964,7 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
         lt_region.first=first, gt_region.beyond=beyond;
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,
             compar,swapf,alignsize,size_ratio,options,
+            conditions,indices,element,
             &(lt_region.beyond),&(gt_region.first));
         /* regions: < [first,p)
                     > [q,beyond)
@@ -963,20 +1024,21 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
                 nrecursions++;
                 d_quickselect_loop(base,ps_region->first,ps_region->beyond,size,
                     compar,pk,ps_region->firstk,ps_region->beyondk,swapf,
-                    alignsize,size_ratio,cutoff,options,ppeq,ppgt);
+                    alignsize,size_ratio,cutoff,options,conditions,
+                    indices,element,ppeq,ppgt);
             }
             /* Dedicated sort for large region? */
             if ((NULL==pk)&&(pl_region->beyond<=pl_region->first+cutoff)) {
 #if DEBUG_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
                     (V) fprintf(stderr,
-                        "/* %s: %s line %d: pl_region->first=%lu, pl_region->beyond=%lu, pk=%p, pl_region->firstk=%lu, pl_region->beyondk=%lu, ppeq=%p, ppgt=%p */\n",
+                        "/* %s: %s line %d: pl_region->first=%lu, pl_region->beyond=%lu, cutoff=%lu, pk=%p, pl_region->firstk=%lu, pl_region->beyondk=%lu, ppeq=%p, ppgt=%p */\n",
                         __func__,source_file,__LINE__,pl_region->first,pl_region->beyond,
-                        (const void *)pk,pl_region->firstk,pl_region->beyondk,
+                        cutoff,(const void *)pk,pl_region->firstk,pl_region->beyondk,
                         (void *)ppeq,(void *)ppgt);
 #endif
                 A(pl_region->first+1UL<pl_region->beyond);
-                dedicated_sort(base,pl_region->first,pl_region->beyond,size,
+                d_dedicated_sort(base,pl_region->first,pl_region->beyond,size,
                     compar,swapf,alignsize,size_ratio,options);
                 return ; /* done */
             }
@@ -1053,13 +1115,41 @@ inline
 #endif /* C99 */
 void quickselect_internal(char *base, size_t nmemb,
     /*const*/ size_t size, int (*compar)(const void *,const void *),
+#if 0
+    void (*swapf)(char *,char *,size_t),
+#endif
     size_t *pk, size_t nk, unsigned int options, char **ppeq, char **ppgt)
 {
     size_t onk=nk; /* original nk value */
     size_t s=0UL;  /* rotation amount */
-    size_t alignsize, salignsize, cutoff, scutoff, size_ratio, sratio, sz;
-    void (*swapf)(char *, char *, size_t) = NULL;
-    void (*sswapf)(char *, char *, size_t);
+    size_t alignsize, salignsize
+#if SILENCE_WHINEY_COMPILERS
+        =0UL
+#endif
+        , cutoff, scutoff
+#if SILENCE_WHINEY_COMPILERS
+        =0UL
+#endif
+        , size_ratio, sratio
+#if SILENCE_WHINEY_COMPILERS
+        =0UL
+#endif
+        , sz;
+    void (*swapf)(char *, char *, size_t)=NULL;
+    void (*sswapf)(char *, char *, size_t)
+#if SILENCE_WHINEY_COMPILERS
+        =NULL
+#endif
+        ;
+    char *conditions = NULL;
+    size_t *indices = NULL;
+#if QUICKSELECT_INDIRECT + QUICKSELECT_LINEAR_STABLE
+    char *element = NULL;
+#endif /* QUICKSELECT_INDIRECT + QUICKSELECT_LINEAR_STABLE */
+#if QUICKSELECT_INDIRECT
+    char **pointers = NULL;
+    void (*pswapf)(char *, char *, size_t);
+#endif /* QUICKSELECT_INDIRECT */
 
     /* Initialization of strings is performed here (rather than in
        quickselect_loop) so that quickselect_loop can be made inline.
@@ -1077,6 +1167,7 @@ options);
     */
     if (((0UL!=nmemb) && ((NULL==base) || (0UL==size) || (NULL==compar)))
     || ((0UL!=nk) && (NULL==pk))
+    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK)))
     ) {
         errno=EINVAL;
         return ;
@@ -1110,18 +1201,27 @@ options);
         /* Alignment, swapping function, cutoff for order statistics. */
         sz=sizeof(size_t);
         sswapf=swapn(salignsize=alignment_size((char *)pk,sz));
+        /* sswapf is guaranteed to have been assigned a value by the above
+           statement (and always if pk != NULL or nk > 1UL), whether or not
+           (:-/) gcc's authors realize it...
+        */
         sratio=sz/salignsize;
+        /* sratio is guaranteed to have been assigned a value by the above
+           statement (and always if pk != NULL or nk > 1UL), whether or not
+           (:-/) gcc's authors realize it...
+        */
         scutoff=cutoff_value(sratio,0x07F8U);
 
         if (q<nk) { /* fix (sort) iff broken (not nondecreasing) */
             d_quickselect_loop((char *)pk,0UL,nk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-                salignsize,sratio,scutoff,0x07F8U,NULL,NULL);
+                salignsize,sratio,scutoff,0x07F8U,NULL,NULL,NULL,NULL,NULL);
         }
         /* verify, fix uniqueness */
-        for (p=0UL,q=1UL; q<=nk; q++) {
+        for (p=0UL,q=1UL; q<=nk; q++) { /* CLEARLY executed iff nk>0UL */
             if ((q==nk)||(pk[p]!=pk[q])) {
                 p++;
                 if (p!=q) { /* indices [p,q) are duplicates */
+                    /* CLEARLY not executed if nk==1UL */
                     size_t r=q-p;
 #if DEBUG_CODE
 if (DEBUGGING(PK_ADJUSTMENT_DEBUG)) { (V)fprintf(stderr, "/* %s: %s line %d: %lu duplicate order statistic%s [%lu,%lu): */\n",
@@ -1150,71 +1250,209 @@ print_size_t_array(pk, 0UL, nk-1UL, "/* "," */");
     }
 #endif /* DEBUG_CODE */
 
-    /* base array alignment size and swap function */
+    /* base array alignment size and size_ratio */
+    alignsize=alignment_size(base,size);
+    size_ratio=size/alignsize;
+
     /* Initialize the dedicated sorting cutoff based on array element size
        and alignment (swapping cost relative to comparisons).
     */
-    alignsize=alignment_size(base,size);
-    size_ratio=size/alignsize;
-    if (NULL==swapf) {
-        if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
-        if (0UL!=quickselect_small_array_cutoff)
-            cutoff=quickselect_small_array_cutoff;
-        else cutoff=cutoff_value(size_ratio,options);
-    } else if (0UL!=quickselect_small_array_cutoff)
+    if (0UL!=quickselect_small_array_cutoff)
         cutoff=quickselect_small_array_cutoff;
-    else
-        cutoff=cutoff_value(1UL,options);
+    else cutoff=cutoff_value(size_ratio,options);
+    /* cutoff is guaranteed to have been assigned a value by the above statement
+       whether or not (:-/) gcc's authors realize it...
+    */
     if (2UL>cutoff) cutoff=2UL;
 
-#if DEBUG_CODE
-if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: size=%lu, alignsize=%lu, size_ratio=%lu, cutoff=%lu */\n",
-__func__,source_file,__LINE__, (unsigned long)size, (unsigned long)alignsize,
-(unsigned long)size_ratio,(unsigned long)cutoff);
-#endif
-    if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++)
-            stats_table[q].max_ratio=stats_table[q].repivot_ratio=0UL,
-                stats_table[q].repivots=0UL;
+    /* Swap function based on alignment size */
+    if (NULL==swapf) {
+        if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
     }
 
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)) {
-        if (NULL!=pk)
-            (V) fprintf(stderr,
-                "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu, pk[%lu]=%lu */\n",
-                __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,
-                0UL,pk[0],nk-1UL,pk[nk-1UL]);
-        else
-            (V) fprintf(stderr,
-                "/* %s: %s line %d: nmemb=%lu, pk=NULL */\n",
-                __func__,source_file,__LINE__,nmemb);
+#if QUICKSELECT_INDIRECT > QUICKSELECT_NETWORK_MASK
+# error "some reasonable heuristic for deciding when to sort indirectly is needed"
+    /* (N.B. Unreliable) example: Direct or indirect sorting based on nmemb and size_ratio. */
+    if ((1UL<size_ratio)&&(7UL<nmemb+size_ratio)) {
+        options|=(QUICKSELECT_INDIRECT);
     }
+#endif /* QUICKSELECT_INDIRECT */
+
+#if QUICKSELECT_INDIRECT
+    /* Don't use indirection if size_ratio==1UL (it would be inefficient). */
+    if (1UL==size_ratio) options&=~(QUICKSELECT_INDIRECT);
+    /* If indirect sorting, alignment size and size_ratio are reset to
+       appropriate values for pointers.
+    */
+    if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+        char **p=set_array_pointers(pointers,nmemb,base,nmemb,size,0UL,nmemb);
+        if (NULL==p) {
+            if (NULL!=pointers) { free(pointers); pointers=NULL; }
+            options&=~(QUICKSELECT_INDIRECT);
+        } else {
+            if (p!=pointers) pointers=p;
+            if (size>=sizeof(char *))
+                element=malloc(size);
+            else
+                element=malloc(sizeof(char *));
+            if (NULL==element) {
+                free(pointers);
+                pointers=NULL;
+                options&=~(QUICKSELECT_INDIRECT);
+            } else {
+                alignsize=alignment_size((char *)pointers,sizeof(char *));
+                if (0U==instrumented) pswapf=swapn(alignsize);
+                else pswapf=iswapn(alignsize);
+                /* pswapf is guaranteed to have been assigned a value by the
+                   above statement (and always if options contains
+                   QUICKSELECT_INDIRECT after this block), whether or not (:-/)
+                   gcc's authors realize it...
+                */
+                cutoff=cutoff_value(1UL,options);
+                A(pointers[0]==base);
+            }
+        }
+    }
+#endif /* QUICKSELECT_INDIRECT */
+
+#if QUICKSELECT_LINEAR_STABLE
+    /* If sorting/selection partial-order stability is supported and requsted,
+       try to allocate space for linear-time stable partitioning (fallback if
+       allocation fails is O(N log N) in-place stable partitioning).
+    */
+    if (0U!=(options&(QUICKSELECT_STABLE))) {
+        conditions=malloc(nmemb);
+        if (NULL!=conditions) indices=malloc(sizeof(size_t)*nmemb);
+        if ((NULL!=conditions)&&(NULL==element)) element=malloc(size);
+    }
+#endif /* QUICKSELECT_LINEAR_STABLE */
+
+    /* For sorting (but not selection), use dedicated sort if nmemb<=cutoff. */
+    if ((NULL==pk)&&(nmemb<=cutoff)) {
+#if QUICKSELECT_INDIRECT
+        if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+            d_dedicated_sort((char *)pointers,0UL,nmemb,sizeof(char *),compar,pswapf,
+                alignsize,1UL,options);
+            if (NULL==indices) indices=(size_t *)pointers;
+            indices=convert_pointers_to_indices(base,nmemb,size,pointers,
+                nmemb,indices,0UL,nmemb);
+            A(NULL!=indices);
+            alignsize=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,element);
+            free(element); element=NULL;
+            free(pointers);
+            if ((void *)indices==(void *)pointers) indices=NULL;
+            if (nmemb<(alignsize>>1)) { /* indirection failed; use direct sort */
+/* shouldn't happen */fprintf(stderr,"/* %s: %s line %d: size_ratio=%lu, nmemb=%lu, indirect sort failed */\n",
+__func__,source_file,__LINE__,size_ratio,nmemb);
+                options&=~(QUICKSELECT_INDIRECT);
+                alignsize=alignment_size(base,size);
+                size_ratio=size/alignsize;
+                if (0U==instrumented) swapf=swapn(alignsize);
+                else swapf=iswapn(alignsize);
+                d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,
+                    size_ratio,options);
+            } else if (0UL!=alignsize)
+                nmoves+=(alignsize+nmemb)*size_ratio;
+        } else
+#endif /* QUICKSELECT_INDIRECT */
+            d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,
+                size_ratio,options);
+    } else {
+#if DEBUG_CODE
+        if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
+            "/* %s: %s line %d: size=%lu, alignsize=%lu, size_ratio=%lu, cutoff=%lu */\n",
+            __func__,source_file,__LINE__,(unsigned long)size,
+            (unsigned long)alignsize,(unsigned long)size_ratio,
+            (unsigned long)cutoff);
+#endif
+        if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+            size_t q;
+            for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++)
+                stats_table[q].max_ratio=stats_table[q].repivot_ratio=0UL,
+                    stats_table[q].repivots=0UL;
+        }
+
+#if DEBUG_CODE
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
+            if (NULL!=pk)
+                (V) fprintf(stderr,
+                    "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu, pk[%lu]=%lu */\n",
+                    __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,
+                    0UL,pk[0],nk-1UL,pk[nk-1UL]);
+            else
+                (V) fprintf(stderr,
+                    "/* %s: %s line %d: nmemb=%lu, pk=NULL */\n",
+                    __func__,source_file,__LINE__,nmemb);
+        }
 #endif
 #if ASSERT_CODE
-if (NULL!=pk) {
-A(nk>0UL);
-A(0UL<=pk[0]);
+        if (NULL!=pk) {
+            A(nk>0UL);
+            A(0UL<=pk[0]);
 #if DEBUG_CODE
-if (pk[nk-1]>=nmemb) (V) fprintf(stderr,
-"/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu */\n",
-__func__,source_file,__LINE__,nmemb,pk,nk,nk-1UL,pk[nk-1]);
+            if (pk[nk-1]>=nmemb) (V) fprintf(stderr,
+                "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu */\n",
+                __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,nk-1UL,pk[nk-1]);
 #endif
-A(pk[nk-1]<nmemb);
-}
+            A(pk[nk-1]<nmemb);
+        }
 #endif
-    d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
-        alignsize,size_ratio,cutoff,options,NULL,NULL);
+#if QUICKSELECT_INDIRECT
+        if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+            d_quickselect_loop((char *)pointers,0UL,nmemb,sizeof(char *),compar,pk,0UL,
+                nk,swapf,alignsize,1UL,cutoff,options,conditions,
+                indices,element,NULL,NULL);
+            if (NULL==indices) indices=(size_t *)pointers;
+            indices=convert_pointers_to_indices(base,nmemb,size,pointers,
+                nmemb,indices,0UL,nmemb);
+            A(NULL!=indices);
+            alignsize=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,element);
+            free(element); element=NULL;
+            free(pointers);
+            if ((void *)indices==(void *)pointers) indices=NULL;
+            if (nmemb<(alignsize>>1)) { /* indirection failed; use direct sort/select */
+/* shouldn't happen */fprintf(stderr,"/* %s: %s line %d: size_ratio=%lu, nmemb=%lu, indirect sort failed */\n",
+__func__,source_file,__LINE__,size_ratio,nmemb);
+                options&=~(QUICKSELECT_INDIRECT);
+                alignsize=alignment_size(base,size);
+                size_ratio=size/alignsize;
+                if (0U==instrumented) swapf=swapn(alignsize);
+                else swapf=iswapn(alignsize);
+                cutoff=cutoff_value(size_ratio,options);
+                d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
+                    alignsize,size_ratio,cutoff,options,conditions,
+                    indices,element,NULL,NULL);
+            } else if (0UL!=alignsize)
+                nmoves+=(alignsize+nmemb)*size_ratio;
+        } else
+#endif /* QUICKSELECT_INDIRECT */
+#if QUICKSELECT_LINEAR_STABLE
+            d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
+                alignsize,size_ratio,cutoff,options,conditions,
+                indices,element,NULL,NULL);
+#else
+            d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
+                alignsize,size_ratio,cutoff,options,NULL,
+                NULL,NULL,NULL,NULL);
+#endif /* QUICKSELECT_LINEAR_STABLE */
 
-    if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++) {
-            if (0UL<stats_table[q].max_ratio)
-                (V)fprintf(stderr,
-                    "%s: table_index=%lu, max_ratio=%lu, repivots=%lu@%lu */\n",
-                    __func__,q,stats_table[q].max_ratio,
-                    stats_table[q].repivots,stats_table[q].repivot_ratio);
+#if QUICKSELECT_LINEAR_STABLE
+        if (0U!=(options&(QUICKSELECT_STABLE))) {
+            if (NULL!=element) free(element);
+            if (NULL!=conditions) free(conditions);
+            if (NULL!=indices) free(indices);
+        }
+#endif /* QUICKSELECT_LINEAR_STABLE */
+
+        if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+            size_t q;
+            for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++) {
+                if (0UL<stats_table[q].max_ratio)
+                    (V)fprintf(stderr,
+                        "%s: table_index=%lu, max_ratio=%lu, repivots=%lu@%lu */\n",
+                        __func__,q,stats_table[q].max_ratio,
+                        stats_table[q].repivots,stats_table[q].repivot_ratio);
+            }
         }
     }
 
@@ -1224,6 +1462,6 @@ A(pk[nk-1]<nmemb);
     */
     if (0UL!=s) { /* there were duplicates */
         d_quickselect_loop((char *)pk,0UL,onk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-            salignsize,sratio,scutoff,0x07F8U,NULL,NULL);
+            salignsize,sratio,scutoff,0x07F8U,NULL,NULL,NULL,NULL,NULL);
     }
 }

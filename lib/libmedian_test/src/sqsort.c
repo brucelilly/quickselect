@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqsort.c version 1.4 dated 2017-11-03T19:42:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqsort.c version 1.5 dated 2017-12-06T23:17:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "sqsort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "sqsort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-03T19:42:34Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-06T23:17:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -80,7 +80,7 @@ __func__,source_file,__LINE__,first,beyond,nmemb,table_index);
 #endif
         if (nmemb<=cutoff) {
             if (2UL<=nmemb)
-                dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
+                d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
                     size_ratio,options);
     /* <- */return; /* Done; */
         }
@@ -101,8 +101,9 @@ __func__,source_file,__LINE__,first,beyond,nmemb,table_index);
         pivot=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,table_index,NULL,options,&pc,&pd,&pe,&pf);
         pivot_minrank=nmemb;
+        /* no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
-            alignsize,size_ratio,options,&q,&p);
+            alignsize,size_ratio,options,NULL,NULL,NULL,&q,&p);
         s=q-first;
         if (beyond>p) r=beyond-p; else r=0UL;  /* size of the > region */
         if (s<r) { /* > region is larger */

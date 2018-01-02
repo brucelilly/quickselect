@@ -1,5 +1,6 @@
 /* $Id: ~|^` @(#)   This is quicksort_loop_decl.h version 1.2 dated 2017-09-15T04:49:55Z. \ $ */
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quicksort_loop_decl.h */
+#error "obsolete source"
 
 #ifndef SORTING_DEDICATED_SORT_CUTOFF
 # include "quickselect_config.h"

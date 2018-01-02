@@ -30,15 +30,15 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repeated_median.h version 1.2 dated 2016-07-13T22:54:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is repeated_median.h version 1.3 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "repeated_median" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.repeated_median.h */
 
 /* version-controlled header file version information */
-#define REPEATED_MEDIAN_H_VERSION "repeated_median.h 1.2 2016-07-13T22:54:11Z"
+#define REPEATED_MEDIAN_H_VERSION "repeated_median.h 1.3 2017-12-22T04:14:04Z"
 
-#include <sys/types.h>          /* *_t (size_t) */
+#include <stddef.h>             /* size_t */
 
 #if defined(__cplusplus)
 # define REPEATED_MEDIAN_EXTERN extern "C"
@@ -47,7 +47,8 @@
 #endif
 
 /* repeated_median.c */
-REPEATED_MEDIAN_EXTERN int repeated_median_filter(double *, double *, double *, size_t, double *, double *, size_t, double *, unsigned int);
+REPEATED_MEDIAN_EXTERN int repeated_median_filter(double *, double *, double *,
+    size_t, double *, double *, size_t, double *, unsigned int);
 
 #define	REPEATED_MEDIAN_H_INCLUDED
 #endif

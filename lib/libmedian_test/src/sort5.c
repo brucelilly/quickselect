@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sort5.c version 1.2 dated 2017-10-02T00:14:33Z. \ $ */
+/* $Id: ~|^` @(#)   This is sort5.c version 1.3 dated 2017-12-06T23:17:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sort5.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sort5.c ~|^` @(#)"
 #define SOURCE_MODULE "sort5.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-10-02T00:14:33Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2017-12-06T23:17:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -61,21 +61,22 @@ inline
 #endif /* C99 */
 void sort5(char *pa, char *pb, char *pc, char *pd, char *pe, size_t size,
     int(*compar)(const void *, const void *),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
 {
     if ((char)0==file_initialized) initialize_file(__FILE__);
     /* Batcher sorting network: 9 comparisons in 5 groups, 0-9 exchanges */
-    COMPARE_EXCHANGE(pa,pe,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pa,pe,options,cx,size,swapf,alignsize,size_ratio);
     /* parallel group */
-    COMPARE_EXCHANGE(pa,pc,cx,size,swapf,alignsize,size_ratio);
-    COMPARE_EXCHANGE(pb,pd,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pa,pc,options,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pb,pd,options,cx,size,swapf,alignsize,size_ratio);
     /* parallel group */
-    COMPARE_EXCHANGE(pa,pb,cx,size,swapf,alignsize,size_ratio);
-    COMPARE_EXCHANGE(pc,pe,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pa,pb,options,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pc,pe,options,cx,size,swapf,alignsize,size_ratio);
     /* parallel group */
-    COMPARE_EXCHANGE(pc,pd,cx,size,swapf,alignsize,size_ratio);
-    COMPARE_EXCHANGE(pb,pe,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pc,pd,options,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pb,pe,options,cx,size,swapf,alignsize,size_ratio);
     /* parallel group */
-    COMPARE_EXCHANGE(pb,pc,cx,size,swapf,alignsize,size_ratio);
-    COMPARE_EXCHANGE(pd,pe,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pb,pc,options,cx,size,swapf,alignsize,size_ratio);
+    COMPARE_EXCHANGE(pd,pe,options,cx,size,swapf,alignsize,size_ratio);
 }

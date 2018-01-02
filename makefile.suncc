@@ -79,5 +79,5 @@ C99FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C99) $(XTRAS
 FFLAG =
 
 # Load flags used by C compiler
-LDFLAGS += $(PROFILE) $(DEBUG_SYM) $(STRIP) $(FFLAG)
+LDFLAGS += $(PROFILE) $(DEBUG_SYM) $(STRIP) $(XTRAS) $(FFLAG)
 

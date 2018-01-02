@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_lib.c version 1.2 dated 2017-09-15T04:35:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_lib.c version 1.4 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect_lib.c */
@@ -82,13 +82,14 @@
  are required.
 ******************************************************************************/
 
+/* header files */
 #include "quickselect_config.h"
 #include "tables.h"
 
+/* source to be compiled into the library object file */
 #include "klimits_src.h"
 #include "sampling_table_src.h"
 #include "repivot_src.h"
-#include "dedicated_sort_src.h"
 #include "pivot_src.h"
 #include "partition_src.h"
 #include "quickselect_loop_src.h"

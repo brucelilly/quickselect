@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is fmed3.c version 1.2 dated 2017-11-03T19:50:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is fmed3.c version 1.4 dated 2017-12-15T21:52:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.fmed3.c */
@@ -46,47 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: fmed3.c ~|^` @(#)"
 #define SOURCE_MODULE "fmed3.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:50:06Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-15T21:52:12Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
-
-static const char *build_options = ID_STRING_PREFIX " built with configuration options: "
-    "ASSERT_CODE=" xbuildstr(ASSERT_CODE)
-    ", BM_INSERTION_CUTOFF=" xbuildstr(BM_INSERTION_CUTOFF)
-#ifdef COMPARE1
-    ", COMPARE1=" xbuildstr(COMPARE1)
-#endif
-#ifdef CONSOLIDATED_TABLES
-    ", CONSOLIDATED_TABLES=" xbuildstr(CONSOLIDATED_TABLES)
-#endif
-    ", DEBUG_CODE=" xbuildstr(DEBUG_CODE)
-#ifdef FAVOR_SORTED
-    ", FAVOR_SORTED=" xbuildstr(FAVOR_SORTED)
-#endif
-    ", GENERATOR_TEST=" xbuildstr(GENERATOR_TEST)
-    ", LOWER_MEDIAN=" xbuildstr(LOWER_MEDIAN)
-    ", SORTING_TABLE_ENTRIES="
-#if SORTING_TABLE_ENTRIES == TRANSPARENT
-        "transparent"
-#elif SORTING_TABLE_ENTRIES == LOOSE
-        "loose"
-#elif SORTING_TABLE_ENTRIES == RELAXED
-        "relaxed"
-#elif SORTING_TABLE_ENTRIES == AGGRESSIVE
-        "aggressive"
-#elif SORTING_TABLE_ENTRIES == EXPERIMENTAL
-        "experimental"
-#else
-        "disabled"
-#endif
-    ", STRING_SIZE=" xbuildstr(STRING_SIZE)
-    ", TEST_TIMEOUT=" xbuildstr(TEST_TIMEOUT)
-    "\\ $"
-                  ;
 
 #include "initialize_src.h"
 
@@ -113,24 +79,25 @@ static const char *build_options = ID_STRING_PREFIX " built with configuration o
       C) it is not backwards-compatible with earlier C standards
 */
 char *fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc,
-    int(*compar)(const void *,const void *), char *base, size_t size)
+    int(*compar)(const void *,const void *), unsigned int options, char *base, size_t size)
 {
-    register int c=compar(pa,pb);
+    register int c=COMPAR(pa,pb,/**/);
 #if DEBUG_CODE
 if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
     if ((char)0==file_initialized) initialize_file(__FILE__);
 (V)fprintf(stderr, "/* %s: %s line %d: pa=%p[%lu], pb=%p[%lu], pc=%p[%lu] */\n",__func__,source_file,__LINE__,(void *)pa,(pa-base)/size,(void *)pb,(pb-base)/size,(void *)pc,(pc-base)/size);
 }
 #endif
+    A(0U==(options&(QUICKSELECT_INDIRECT)));
     if (0!=c) {
-        register int d=compar(pb,pc);
+        register int d=COMPAR(pb,pc,/**/);
         if (0!=d) {
             if ((0<d)&&(0>c)) {
-                if (0>compar(pa,pc)) pb= pc;
-                else pb= pa;
+                if (0>COMPAR(pa,pc,/**/)) pb=pc;
+                else pb=pa;
             } else if ((0>d)&&(0<c)) {
-                if (0<compar(pa,pc)) pb= pc;
-                else pb= pa;
+                if (0<COMPAR(pa,pc,/**/)) pb=pc;
+                else pb=pa;
             }
         }
     }

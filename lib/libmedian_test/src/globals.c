@@ -59,14 +59,14 @@ int use_networks=0;
 int method_partition=QUICKSELECT_PARTITION_FAST;
 int method_pivot=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
 
-unsigned int network_mask=0x07F8U;
+unsigned int network_mask=QUICKSELECT_NETWORK_MASK;
 unsigned int debug=0U;
 
 size_t quickselect_small_array_cutoff = 0UL;
 
 long *input_data=NULL;
 /* for instrumented comparisons, swaps, rotations, etc.: */
-size_t nlt, neq, ngt, nsw;
+size_t nlt, neq, ngt, nsw, nmoves;
 size_t nrotations[MAXROTATION];
 size_t nmerges, npartitions, nrecursions, nrepivot;
 

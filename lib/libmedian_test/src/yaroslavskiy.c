@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.3 dated 2017-11-03T19:38:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.5 dated 2017-12-15T21:34:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.yaroslavskiy.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: yaroslavskiy.c ~|^` @(#)"
 #define SOURCE_MODULE "yaroslavskiy.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:38:59Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-15T21:34:10Z"
 #define COPYRIGHT_HOLDER "V. Yaroslavskiy"
 #define COPYRIGHT_DATE "2009"
 
@@ -80,7 +80,7 @@ void yqsort_internal(char *base, size_t nmemb, size_t size,
 {
     int pcmp;
     char *pg, *pivot1, *pivot2, *pk, *pl, *pr;
-    size_t dist, t;
+    size_t dist, temp;
 
 #define YQSORT_DEBUG 0
 #if YQSORT_DEBUG
@@ -99,7 +99,7 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
             isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,
                 size_ratio);
 #else
-            dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,
+            d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,
                 size_ratio,options);
 #endif
 /* <- */return; /* Done; */
@@ -108,14 +108,14 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
     /* indices should be (nmemb-2UL)/3 and nmemb-1-((nmemb-2UL)/3) */
     A(nmemb>=2UL); A(0UL!=y_div); A(0UL!=size);
 #if 0 /* original, unequal spacing */
-    t = (nmemb / y_div) * size;
+    temp = (nmemb / y_div) * size;
 #else /* improved, more equal spacing */
-    t = ((nmemb-2UL)/y_div) * size;
+    temp = ((nmemb-2UL)/y_div) * size;
 #endif
-    if (0UL==t) t++;
+    if (0UL==temp) temp++;
     /* "medians", actually pivot elements */
-    pivot1=base+t;
-    pivot2=pr-t;
+    pivot1=base+temp;
+    pivot2=pr-temp;
     pcmp=compar(pivot1,pivot2); /* cached comparison */
     if (0<pcmp) {
         EXCHANGE_SWAP(swapf,base,pivot2,size,alignsize,size_ratio,nsw++);
@@ -131,14 +131,20 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
     /* sorting */
     for (pk=pl; pk<=pg; pk+=size) {
         if (0>compar(pk,pivot1)) {
-            if (pk!=pl) EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+            if (pk!=pl) {
+                EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+            }
             pl+=size;
         } else if (0<compar(pk,pivot2)) {
             while ((pk<pg)&&(0<compar(pg,pivot2))) pg-=size;
-            if (pk!=pg) EXCHANGE_SWAP(swapf,pk,pg,size,alignsize,size_ratio,nsw++);
+            if (pk!=pg) {
+                EXCHANGE_SWAP(swapf,pk,pg,size,alignsize,size_ratio,nsw++);
+            }
             pg-=size;
             if (0>compar(pk,pivot1)) {
-                if (pk!=pl) EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+                if (pk!=pl) {
+                    EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+                }
                 pl+=size;
             }
         }
@@ -152,22 +158,26 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
     if (dist < y_cutoff2) y_div++;
 #endif
     pivot1=pl-size; /* new location for pivot1 */
-    if (pivot1!=base) EXCHANGE_SWAP(swapf,pivot1,base,size,alignsize,size_ratio,nsw++);
+    if (pivot1!=base) {
+        EXCHANGE_SWAP(swapf,pivot1,base,size,alignsize,size_ratio,nsw++);
+    }
     pivot2=pg+size; /* new location for pivot2 */
-    if (pivot2!=pr) EXCHANGE_SWAP(swapf,pivot2,pr,size,alignsize,size_ratio,nsw++);
+    if (pivot2!=pr) {
+        EXCHANGE_SWAP(swapf,pivot2,pr,size,alignsize,size_ratio,nsw++);
+    }
     /* subarrays */
-    t=(pivot1-base)/size; /* save size for protection comparison & recursion */
-    A((2UL>t)||(base+(t-1UL)*size<=pr));
-    if (1UL<t) {
+    temp=(pivot1-base)/size; /* save size for protection comparison & recursion */
+    A((2UL>temp)||(base+(temp-1UL)*size<=pr));
+    if (1UL<temp) {
         nrecursions++;
-        yqsort_internal(base,t,size,compar,y_div,swapf,alignsize,size_ratio,
+        yqsort_internal(base,temp,size,compar,y_div,swapf,alignsize,size_ratio,
             options);
     }
-    t=(pr-pivot2)/size; /* save size for protection comparison and recursion */
-    A((2UL>t)||(pivot2+t*size<=pr));
-    if (1UL<t) {
+    temp=(pr-pivot2)/size; /* save size for protection comparison and recursion */
+    A((2UL>temp)||(pivot2+temp*size<=pr));
+    if (1UL<temp) {
         nrecursions++;
-        yqsort_internal(pivot2+size,t,size,compar,y_div,swapf,alignsize,
+        yqsort_internal(pivot2+size,temp,size,compar,y_div,swapf,alignsize,
             size_ratio,options);
     }
     /* equal elements */
@@ -181,13 +191,20 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
         npartitions++;
         for (pk=pl; pk<=pg; pk+=size) {
             if (0==compar(pk,pivot1)) {
-                if (pk!=pl) EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+                if (pk!=pl) {
+                    EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+                }
                 pl+=size;
             } else if (0==compar(pk,pivot2)) {
-                if (pk!=pg) EXCHANGE_SWAP(swapf,pk,pg,size,alignsize,size_ratio,nsw++);
+                if (pk!=pg) {
+                    EXCHANGE_SWAP(swapf,pk,pg,size,alignsize,size_ratio,nsw++);
+                }
                 pg-=size;
                 if (0==compar(pk,pivot1)) {
-                    if (pk!=pl) EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,nsw++);
+                    if (pk!=pl) {
+                        EXCHANGE_SWAP(swapf,pk,pl,size,alignsize,size_ratio,
+                            nsw++);
+                    }
                     pl+=size;
                 }
             }

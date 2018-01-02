@@ -8,54 +8,157 @@ quickselect(3)             Library Functions Manual             quickselect(3)
 [1mSYNOPSIS[0m
        [1m#include <quickselect.h>[0m
 
-       [1mvoid  quickselect(void  *base,  size_t  nmemb,  const  size_t size, int[0m
-       [1m(*compar)(const void *, const void *), size_t *pk, const size_t nk);[0m
+       [1munsigned int quickselect_options(void);[0m
 
-       [1mvoid QSORT_FUNCTION_NAME(void *base, size_t nmemb, const  size_t  size,[0m
-       [1mint (*compar)(const void , const void *));[0m
+       [1mvoid   quickselect(void   *base,   size_t   nmemb,   size_t  size,  int[0m
+       [1m(*compar)(const void *, const void *), size_t *pk, size_t nk,  unsigned[0m
+       [1mint options);[0m
+
+       [1merrno_t  quickselect_s(void  *base,  rsize_t  nmemb,  rsize_t size, int[0m
+       [1m(*compar)(const void *, const void *, void *),  void  *context,  size_t[0m
+       [1m*pk, size_t nk, unsigned int options);[0m
+
+       [1mvoid  QSORT_FUNCTION_NAME(void  *base,  size_t  nmemb, size_t size, int[0m
+       [1m(*compar)(const void , const void *));[0m
+
+       [1merrno_t QSORT_S_FUNCTION_NAME(void *base, rsize_t nmemb, rsize_t  size,[0m
+       [1mint (*compar)(const void *, const void *, void *), void *context);[0m
 
 [1mDESCRIPTION[0m
        The   [1mquickselect  [22mfunction  implements  multiple  selection  of  order
        statistics.  Given an array  [1mpk  [22mof  [1mnk  [4m[22msize_t[24m  elements  representing
        0-based  order  statistic ranks, [1mquickselect [22mpartially orders the array
-       [1mbase [22msuch that the specified  order  statistics  are  in-place  in  the
-       array.   If  [1mpk  [22mis  [4mNULL[24m  or  [1mnk  [22mis  0UL, a full sort of the array is
-       performed.
+       [1mbase [22m(having [1mnmemb [22melements of size [1msize[22m) such that the specified order
+       statistics  are  in-place  in the array.  If [1mpk [22mis [4mNULL[24m or [1mnk [22mis 0UL, a
+       full sort of the array is performed.
+
+       Function [1mcompar [22mis provided by the caller, and should  return  a  value
+       less  than  zero,  equal  to  zero, or greater than zero when the array
+       element pointed to by the first argument is less  than,  equal  to,  or
+       greater than the array element pointed to by the second argument.
+
+       The  [1moptions  [22margument  affects  operation by bitwise or'ing any of the
+       following components:
+
+       QUICKSELECT_STABLE
+            causes sorting or selection to preserve partial order  present  in
+            the  input.   There  is  a  substantial  performance  penalty; the
+            default operation  does  not  guarantee  preservation  of  partial
+            order.
+
+       QUICKSELECT_OPTIMIZE_COMPARISONS
+            uses  minimum-comparison methods and is suitable if the comparison
+            function [1mcompar [22mis known to be relatively expensive.  The  default
+            operation attempts to minimize run-time for simple comparisons.
+
+       QUICKSELECT_INDIRECT
+            allocates  an  array  of  pointers  and initializes it to point to
+            elements in the [1mbase [22marray.  Sorting or selection then proceeds by
+            dereferencing  the  pointers  for  comparisons  (using  the  user-
+            supplied [1mcompar [22mfunction, and caching dereferenced pointers  where
+            practical),  finally  rearranging  [1mbase [22marray elements and freeing
+            the allocated pointers.  Direct sorting or selection  is  used  if
+            memeory   cannot  be  allocated  for  the  pointers.   Caching  of
+            dereferenced pointers provides a tiny performance gain compared to
+            caller  indirection (the comparison function in that case would do
+            the dereferencing, and caching (e.g. the pivot  element  used  for
+            partitioning)  would  not  be  possible).   Rearranging [1mbase [22marray
+            elements  after  sorting  the  pointers  saves  considerable  data
+            movement  (moving  only  pointers during sorting or selection, and
+            moving each [1mbase [22marray element one time to its correct position is
+            considerably  less  overall  data  movement than moving [1mbase [22marray
+            elements during sorting or selection if [1msize [22mis appreciably larger
+            than  a  pointer).   However,  the  final  data  movement has poor
+            locality of  access  for  random  inputs,  which  may  cause  poor
+            performance  when  the data array (the product of element [1msize [22mand
+            the number of elements [1mnmemb[22m) is large  relative  to  cache  size.
+            The   primary   advantage   of   internal  indirection  is  caller
+            convenience: the caller provides a normal [1mcompar  [22mfunction  rather
+            than  one  which  dereferences pointers; allocating, initializing,
+            and freeing the pointers is handled transparently to  the  caller,
+            fallback  to  direct sorting is also automatic, and the final [4mO(N)[0m
+            [1mbase [22marray reordering is efficient (though not cache-friendly).
+
+       bits in QUICKSELECT_NETWORK_MASK
+            specify the ability to use sorting networks for arrays of  size  3
+            through 12 elements, corresponding to bit 0x01 << size.  A sorting
+            network is always used to sort  sub-arrays  of  size  2.   Sorting
+            networks  for  arrays  of size 7 or larger are not applicable when
+            [1mQUICKSELECT_STABLE  [22mis  set,  and  are  silently  ignored.    When
+            [1mQUICKSELECT_OPTIMIZE_COMPARISONS  [22mis  set, only the size 2 sorting
+            network  is  used;  all  others  are  silently  ignored.   Sorting
+            networks  are  fast  due  to  low overhead, but are unable to take
+            advantage of pre-existing order in the input (e.g.  already-sorted
+            input).
+
+       Options  may  have  been  limited  at  library  compile  time  to  more
+       restrictive  values  than  those  found  in  [4mquickselect.h[24m.    Function
+       [1mquickselect_options [22mmay be called to determine the options available at
+       run-time:  bits  not  present  in  the  returned  value  provided  from
+       [1mquickselect_options  [22mshould  not be included in the [4moptions[24m argument to
+       [1mquickselect[22m; they will cause [1mquickselect  [22mto  fail  and  set  [4merrno[24m  to
+       [1mEINVAL[22m.
 
 [1mRETURN VALUES[0m
-       none
+       none      for      quickselect     and     QSORT_FUNCTION_NAME.      If
+       [1m__STDC_WANT_LIB_EXT1__   [22mis   defined   with   non-zero   value    when
+       [4mquickselect.h[24m  is included, quickselect_s and QSORT_S_FUNCTION_NAME are
+       provided, which return zero on normal exection and non-zero if there is
+       an argument error.  Arguments [1mnmemb [22mand [1msize [22mare compared to [1mRSIZE_MAX[22m,
+       and [1mcompar [22mis compared to [1mNULL[22m.  In addition, the  comparison  function
+       [1mcompar  [22mis  expected to take a third argument, which is provided by the
+       [1mcontect [22margument.
 
 [1mERRORS[0m
-       If [1mbase [22mis [4mNULL[24m, [1mnmemb [22mis 0UL, [1msize [22mis 0UL,  or  [1mcompar  [22mis  [4mNULL[24m,  the
-       global variable [4merrno[24m is set to [1mEINVAL[22m.
+       If [1mbase [22mis [4mNULL[24m, [1mnmemb [22mis 0UL, [1msize [22mis 0UL, [1mcompar [22mis [4mNULL[24m, or  [1moptions[0m
+       requests  unavailable  options,  the  global  variable  [4merrno[24m is set to
+       [1mEINVAL[22m.
 
 [1mEXAMPLES[0m
+       #include "quickselect.h"
+       #include <errno.h>
        size_t karray[2];
+       unsigned int options;
        karray[0] = (nmemb-1UL)/2UL;
        karray[1] = nmemb/2UL;
-       quickselect(base, nmemb, size, compar, karray, 2UL);
+       options = quickselect_options();
+
+       quickselect(base,   nmemb,   size,   compar,   NULL,    karray,    2UL,
+       QUICKSELECT_NETWORK_MASK & options);
 
        places  the  median  ([1mnmemb [22modd)  or medians ([1mnmemb [22meven) in the middle
        element(s) of the array pointed to by [1mbase.   [22mRefer  to  the  BUGS  and
        CAVEATS section regarding duplicated order statistic ranks.
 
-       quickselect(base, nmemb, size, compar, NULL, 0UL);
+       quickselect(base,    nmemb,    size,    compar,    NULL,   NULL,   0UL,
+       QUICKSELECT_NETWORK_MASK & options);
 
-       sorts the array.
+       sorts the array, and is equivalent to
+       QSORT_FUNCTION_NAME(base, nmemb, size, compar);
+
+       errno = 0;
+       quickselect(base,   nmemb,   size,    compar,    NULL,    NULL,    0UL,
+       QUICKSELECT_NETWORK_MASK | QUICKSELECT_STABLE);
+
+       requests  a  stable sort; if that option is unavailable, the array [1mbase[0m
+       will be unaltered, and [4merrno[24m will be set to [1mEINVAL[22m.
 
 [1mAPPLICATION USAGE[0m
-       If  the  macro  [1mQSORT_FUNCTION_NAME  [22mis defined before [4mquickselect.h[24m is
-       included when compiling the [4mquickselect.c[24m source,  a  sorting  function
-       with  the  same  semantics  as  [1mqsort [22mis generated, using the specified
-       name.  A library implementation of [1mqsort [22mmay be generated  by  defining
+       If the macro [1mQSORT_FUNCTION_NAME [22mis  defined  before  [4mquickselect.h[24m  is
+       included  when  compiling  the [4mquickselect.c[24m source, a sorting function
+       with the same semantics as [1mqsort  [22mis  generated,  using  the  specified
+       name.   A  library implementation of [1mqsort [22mmay be generated by defining
        [1mQSORT_FUNCTION_NAME [22mas [1mqsort[22m.
 
 [1mRATIONALE[0m
-       While  many  libraries  include  a standard [1mqsort [22mfunction, those [1mqsort[0m
-       implementations may tend to quadratic performance  on  adverse  inputs.
+       While many libraries include a standard  [1mqsort  [22mfunction,  those  [1mqsort[0m
+       implementations  may  tend  to quadratic performance on adverse inputs.
        Many  implementations  exhibit  poor  performance  for  some  types  of
-       structured  input  sequences,  such  as   reverse-sorted   or   rotated
-       sequences.   Few  libraries  provide  a function for selection of order
+       structured   input   sequences,   such  as  reverse-sorted  or  rotated
+       sequences.   Most  [1mqsort  [22mimplementations  provide  no   guarantee   of
+       stablilty (in the sense of preservation of partial order), and there is
+       no  means  to  adjust  the  algorithm  to  compensate   for   expensive
+       comparisons.   Few  libraries provide a function for selection of order
        statistics.  Those libraries  that  do  provide  a  selection  function
        usually  only permit selection of a single order statistic per function
        call.
@@ -74,22 +177,42 @@ quickselect(3)             Library Functions Manual             quickselect(3)
        contain no duplicates.
 
        [1mquickselect [22mhas expected and worst-case linear complexity for finding a
-       single   order  statistic.   Worst-case  selection  of  multiple  order
-       statistics is linearithmic.  [1mquickselect [22mhas  expected  and  worst-case
-       linearithmic complexity for sorting.
+       single  order  statistic.   Worst-case non-stable selection of multiple
+       order  statistics  is  linearithmic.   [1mquickselect  [22mhas  expected   and
+       worst-case linearithmic complexity for non-stable sorting.
+
+       When   stable   sorting   or   selection   is   specified   by  setting
+       [1mQUICKSELECT_STABLE[22m, selection may become linearithmic and  sorting  may
+       become  [4mO[24m([4mN[24mlog2[4mN[24m)  due  to  additional data movement (the complexity of
+       comparisons is unchanged).  Moreover, locality of access may  be  poor,
+       resulting  in  performance  deterioration  due  to  cache size effects.
+       Sorting and selection may remain in-place, or  additional  size-related
+       temporary memory may be used if available.
+
+       Compiled  library  code  might  have been built with [1mQUICKSELECT_STABLE[0m
+       and/or [1mQUICKSELECT_NETWORK_MASK [22mset to values other  than  those  which
+       appear  in  [4mquickselect.h[24m.  If the library was built without the option
+       to sort or select while maintaining partial order stability, specifying
+       [1mQUICKSELECT_STABLE  [22min  [4moptions[24m will not be effective; quickselect will
+       set [4merrno[24m to [1mEINVAL [22mand the  array  will  not  be  sorted.   Similarly,
+       support  for  sorting  network  sizes  may  have  been limited when the
+       library object files were built.  It is strongly  recommended  to  call
+       [4mquickselect_options[24m  to  determine  which  option  bits  are available.
+       Compiled options may also be determined by  running  external  programs
+       such as [4mwhat[24m or [4mident[24m on the library archive containing [4mquickselect[24m.
 
 [1mFUTURE DIRECTIONS[0m
        none
 
 [1mSEE ALSO[0m
-       qsort
+       qsort, what, ident
 
 [1mCHANGE HISTORY[0m
        Function  implementation  initial  version  June  2016.  Implementation
-       backward-compatible updates through June 2017.
+       backward-compatible updates through December 2017.
 
        Manual page initial version January 2017.  Latest  manual  page  update
-       June 2017.
+       December 2017.
 
 [1mAUTHOR[0m
        Bruce Lilly <bruce.lilly@gmail.com>
@@ -104,7 +227,7 @@ quickselect(3)             Library Functions Manual             quickselect(3)
        The  zlib/libpng license is a recognized "free" software license by the
        Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
        ***************  Copyright notice (part of the license) ***************
-       @(#)quickselect.3 1.4 2017-06-10T16:43:23Z  copyright  2016-2017  Bruce
+       @(#)quickselect.3 1.9 2017-12-16T04:03:05Z  copyright  2016-2017  Bruce
        Lilly
        This  software  is  provided  'as-is',  without  any express or implied
        warranty.  In no event will the authors be held liable for any  damages

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is select_pivot.c version 1.5 dated 2017-11-05T22:16:45Z. \ $ */
+/* $Id: ~|^` @(#)   This is select_pivot.c version 1.7 dated 2017-12-15T21:41:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.select_pivot.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: select_pivot.c ~|^` @(#)"
 #define SOURCE_MODULE "select_pivot.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-11-05T22:16:45Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2017-12-15T21:41:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -69,7 +69,7 @@ inline
 char *remedian(register char *middle, register size_t row_spacing,
     register size_t sample_spacing, register size_t size,
     register unsigned int idx, int(*compar)(const void*,const void*),
-    char *base)
+    unsigned int options, char *base)
 {
     register size_t o;
 #if DEBUG_CODE
@@ -85,13 +85,39 @@ __func__,source_file,__LINE__,(const void *)middle,(middle-base)/size,(unsigned 
         register size_t s=sample_spacing/3UL;
 
         o=s*size;
-        pa=remedian(middle-o,row_spacing,s,size,idx,compar,base);
-        pb=remedian(middle,row_spacing,s,size,idx,compar,base);
-        pc=remedian(middle+o,row_spacing,s,size,idx,compar,base);
-        return fmed3(pa,pb,pc,compar,base,size);
+        pa=remedian(middle-o,row_spacing,s,size,idx,compar,options,base);
+        pb=remedian(middle,row_spacing,s,size,idx,compar,options,base);
+        pc=remedian(middle+o,row_spacing,s,size,idx,compar,options,base);
+#if QUICKSELECT_INDIRECT
+        if (0U==(options&(QUICKSELECT_INDIRECT)))
+#endif /* QUICKSELECT_INDIRECT */
+            return fmed3(pa,pb,pc,compar,options,base,size);
+#if QUICKSELECT_INDIRECT
+        else {
+            char *pr= fmed3(*((char **)pa),*((char **)pb),*((char **)pc),
+                compar,options&~(QUICKSELECT_INDIRECT),base,size);
+            if (pr==*((char **)pa)) return pa;
+            if (pr==*((char **)pc)) return pc;
+            return pb;
+        }
+#endif /* QUICKSELECT_INDIRECT */
     }
     o=row_spacing*size;
-    return fmed3(middle-o,middle,middle+o,compar,base,size);
+#if QUICKSELECT_INDIRECT
+    if (0U==(options&(QUICKSELECT_INDIRECT)))
+#endif /* QUICKSELECT_INDIRECT */
+        return fmed3(middle-o,middle,middle+o,compar,options,base,size);
+#if QUICKSELECT_INDIRECT
+    else {
+        char *pa, *pc, *pr;
+        pa=middle-o, pc=middle+o;
+        pr = fmed3(*((char **)pa),*((char **)middle),*((char **)pc),compar,
+            options&~(QUICKSELECT_INDIRECT),base,size);
+        if (pr==*((char **)pa)) return pa;
+        if (pr==*((char **)pc)) return pc;
+        return middle;
+    }
+#endif /* QUICKSELECT_INDIRECT */
 }
 
 /* pivot selection using remedian or median-of-medians */
@@ -142,11 +168,11 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
     (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, pivot=%p[%lu](%d), pl=%p, pu=%p */\n",
 __func__,source_file,__LINE__,nmemb,(void *)pivot,(pivot-base)/size,*((int *)pivot),(void *)(base+first*size),(void *)(base+beyond*size));
-    print_some_array(base,first,beyond-1UL, "/* "," */");
+    print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 #endif
                 A(base+first*size<=pivot);A(pivot<base+beyond*size);
-                pivot=remedian(pivot,r,r,size,table_index,compar,base);
+                pivot=remedian(pivot,r,r,size,table_index,compar,options,base);
             }
             *ppc=*ppd=pivot, *ppe=*ppf=pivot+size;
 #if DEBUG_CODE
@@ -154,7 +180,7 @@ if ((pivot<base+first*size)||(pivot>=base+beyond*size)) {
     (V)fprintf(stderr,
 "/* %s: %s line %d: nmemb=%lu, pivot=%p[%lu](%d), pl=%p, pu=%p */\n",
 __func__,source_file,__LINE__,nmemb,(void *)pivot,(pivot-base)/size,*((int *)pivot),(void *)(base+first*size),(void *)(base+beyond*size));
-    print_some_array(base,first,beyond-1UL, "/* "," */");
+    print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 #endif
 #if DEBUG_CODE
@@ -190,7 +216,7 @@ __func__,source_file,__LINE__,(void *)base,first,beyond,nmemb,(pivot-base)/size,
 if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, r=%lu */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 # endif
                 A(1UL<r); /* never repivot for nmemb<9 */
@@ -199,20 +225,38 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
                     pa=pc+o;
                     pb=pa+n; /* middle element */
                     A(pb+n<base+beyond*size);
-                    pm=fmed3(pb,pa,pb+n,compar,base,size);/* first element (pa) bias */
+                    /* first element (pa) bias */
+#if QUICKSELECT_INDIRECT
+                    if (0U==(options&(QUICKSELECT_INDIRECT))) {
+#endif /* QUICKSELECT_INDIRECT */
+                        pm=fmed3(pb,pa,pb+n,compar,options,base,size);
+                        if (pm!=pa) {
+                            EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,
+                                nsw++); /*medians at start of sub-array*/
+                        }
+#if QUICKSELECT_INDIRECT
+                    } else {
+                        pm=fmed3(*((char **)pb),*((char **)pa),
+                            *((char **)(pb+n)),compar,
+                            options&~(QUICKSELECT_INDIRECT),base,size);
+                        /*medians at start of sub-array*/
+                        /*compare returned data pointer,swap indirect pointers*/
+                        if (pm!=*((char **)pa)) {
+                            if (pm==*((char **)pb)) {
+                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,
+                                    size_ratio,nsw++);
+                            } else {
+                                EXCHANGE_SWAP(swapf,pa,pb+n,size,alignsize,
+                                    size_ratio,nsw++);
+                            }
+                        }
+                    }
+#endif /* QUICKSELECT_INDIRECT */
 # if DEBUG_CODE
 if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, pa@%lu, pb@%lu, pc@%lu -> pm@%lu */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r,(pc+o-base)/size,(pb-base)/size,(pb+n-base)/size,(pm-base)/size);
-print_some_array(base,first,beyond-1UL, "/* "," */");
-}
-# endif
-                    if (pm!=pa) EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,nsw++); /* medians at start of sub-array */
-# if DEBUG_CODE
-if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
-(V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, pa@%lu, pb@%lu, pc@%lu -> pm@%lu */\n",
-__func__,source_file,__LINE__,first,beyond,nmemb,r,(pc+o-base)/size,(pb-base)/size,(pb+n-base)/size,(pm-base)/size);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 # endif
                 }
@@ -233,7 +277,7 @@ __func__,source_file,__LINE__,(void *)pc,(void *)base,first,beyond,nmemb,r,size,
 if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, karray[0]=%lu, *ppc=pc@%lu, *ppf=base+beyond*size@%lu */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r,karray[0],(pc-base)/size,(*ppf-base)/size);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 # endif
 # if ASSERT_CODE
@@ -245,23 +289,31 @@ print_some_array(base,first,beyond-1UL, "/* "," */");
 if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
 (V)fprintf(stderr,"/* %s: %s line %d: before quickselect_loop: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, karray[0]=%lu, *ppd=%p, *ppe=%p, save_partial=%u */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r,karray[0],(void *)(*ppd),(void *)(*ppe),save_partial);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 #endif
                 /* cutoff (5UL used here) is unimportant for selection */
+                /* options wrangling: QUICKSELECT_STABLE doesn't apply here
+                   (can't use median-of-medians if stability is required),
+                   reset QUICKSELECT_RESTRICT_RANK for initial partition;
+                   remaining options are network bits, QUICKSELECT_INDIRECT,
+                   and QUICKSELECT_OPTIMIZE_COMPARISONS
+                */
+                A(0U==(options&(QUICKSELECT_STABLE)));
+                options &= ~(QUICKSELECT_STABLE | QUICKSELECT_RESTRICT_RANK);
                 if (0U!=save_partial)
                     d_quickselect_loop(base,first,first+r,size,compar,
                         karray,0UL,1UL,swapf,alignsize,size_ratio,5UL,
-                        0x07F8U,ppd,ppe);
+                        options,NULL,NULL,NULL,ppd,ppe);
                 else
                     d_quickselect_loop(base,first,first+r,size,compar,
                         karray,0UL,1UL,swapf,alignsize,size_ratio,5UL,
-                        0x07F8U,NULL,NULL);
+                        options,NULL,NULL,NULL,NULL,NULL);
 # if DEBUG_CODE
 if (DEBUGGING(MEDIAN_DEBUG)||DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(SORT_SELECT_DEBUG)) {
 (V)fprintf(stderr,"/* %s: %s line %d: after quickselect_loop: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, pivot@karray[0]=%lu, *ppd=%p, *ppe=%p, save_partial=%u */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r,karray[0],(void *)(*ppd),(void *)(*ppe),save_partial);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 # endif
                 pivot=base+karray[0]*size; /* pointer to median of medians */
@@ -292,13 +344,13 @@ if (v<karray[0]) (V)fprintf(stderr, "%s: %s line %d: ppe@%lu, karray[0]=%lu */\n
 __func__,source_file,__LINE__,v+1UL,karray[0]);
 A(karray[0]<=v);
 A(u<=v);
-w=test_array_partition(base,first,u,v,t,size,compar,NULL,NULL);
+w=test_array_partition(base,first,u,v,t,size,compar,options,NULL,NULL);
 nlt=x, neq=y, ngt=z;
 if (w!=u) {
 (V)fprintf(stderr,"/* %s: %s line %d: after quickselect: first=%lu, beyond=%lu, nmemb=%lu, r=%lu, pivot@karray[0]=%lu, *ppd=%p@%lu, *ppe=%p@%lu, save_partial=%u: bad partition */\n",
 __func__,source_file,__LINE__,first,beyond,nmemb,r,karray[0],(void *)(*ppd),u,
 (void *)(*ppe),v+1UL,save_partial);
-print_some_array(base,first,beyond-1UL, "/* "," */");
+print_some_array(base,first,beyond-1UL, "/* "," */",options);
 A(0==1);
 }
                 A(*ppd<=pivot);A(pivot<*ppe);
@@ -319,12 +371,12 @@ t=(*ppd-base)/size;
 u=(*ppe-base)/size-1UL;
 v=(*ppf-base)/size-1UL;
 x=nlt, y=neq, z=ngt;
-w=test_array_partition(base,s,t,u,v,size,compar,NULL,NULL);
+w=test_array_partition(base,s,t,u,v,size,compar,options,NULL,NULL);
 nlt=x, neq=y, ngt=z;
 if (w!=t) {
 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, pc@%lu, pd@%lu, pe@%lu, pf@%lu, size=%lu, options=%x: bad partition */\n",
 __func__,source_file,__LINE__,first,beyond,s,t,u+1UL,v+1UL,(unsigned long)size,options);
-    print_some_array(base,s,v, "/* "," */");
+    print_some_array(base,s,v, "/* "," */",options);
 A(0==1);
 }
 }

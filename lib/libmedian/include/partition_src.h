@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.5 dated 2017-11-03T20:22:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.7 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -101,11 +101,15 @@
 #  endif
 # endif
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MIN_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MIN_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE < MIN_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MIN_XOPEN_SOURCE_VERSION
 #endif
-#if defined(_XOPEN_SOURCE) && defined(MAX_XOPEN_SOURCE_VERSION) && ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
+#if defined(_XOPEN_SOURCE) \
+&& defined(MAX_XOPEN_SOURCE_VERSION) \
+&& ( _XOPEN_SOURCE > MAX_XOPEN_SOURCE_VERSION )
 # undef _XOPEN_SOURCE
 # define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
 #endif
@@ -127,8 +131,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-11-03T20:22:16Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2017-12-22T04:14:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -145,11 +149,10 @@
 /* local header files needed */
 #include "quickselect_config.h"
 #include "exchange.h"           /* alignment_size blockmove reverse irotate protate swapn EXCHANGE_SWAP */
+#include "indirect.h"           /* set_array_pointers rearrange_array */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "zz_build_str.h"       /* build_id build_strings_registered
-                                   copyright_id register_build_strings */
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -159,6 +162,9 @@
 /* system header files */
 #include <assert.h>             /* assert */
 #include <stddef.h>             /* size_t NULL */
+#if ASSERT_CODE
+# include <stdio.h>
+#endif
 
 #if __STDC_WANT_LIB_EXT1__
 /* Preliminary support for 9899:201x draft N1570 qsort_s w/ "context".
@@ -234,6 +240,7 @@
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
+#if QUICKSELECT_STABLE
 /* merge 2 adjacent canonical partitions */
 /* +-----------------------------+
    | L< | L= | L> | R< | R= | R> |
@@ -252,37 +259,34 @@
   Preservation of ordering within blocks and between blocks of like types
   results in stable partitoning, stable sort or selection.
   3 methods each consisting of 2 rotations may be used:
-  1a.
+  1a.      <---------
    +-----------------------------+
    | L< | R< | L= | L> | R= | R> |
    +-----------------------------+
-  1b.
+  1b.                  X
    +-----------------------------+
    | L< | R< | L= | R= | L> | R> |
    +-----------------------------+
-  2a.
+  2a.           <---------
    +-----------------------------+
    | L< | L= | R< | R= | L> | R> |
    +-----------------------------+
-  2b.
+  2b.        X
    +-----------------------------+
    | L< | R< | L= | R= | L> | R> |
    +-----------------------------+
-  3a.
+  3a.      <--------------
    +-----------------------------+
-   | L< | R< | R= | L= | R> | R> |
+   | L< | R< | R= | L= | L> | R> |
    +-----------------------------+
-  3b.
+  3b.             X
    +-----------------------------+
    | L< | R< | L= | R= | L> | R> |
    +-----------------------------+
   One method is chosen depending on the region sizes so as to minimize the
   total number of swaps.
 */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
     size_t mid, size_t eq2, size_t gt2, size_t beyond, size_t size,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
@@ -292,7 +296,8 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
     size_t lgt=mid-gt1, m=(lgt<rlt?lgt:rlt); /* minimum of lgt, rlt */
 
     A(first<mid);A(mid<beyond);
-    A(first<=eq1);A(eq1<=gt1);A(gt1<=mid);A(mid<=eq2);A(eq2<=gt2);A(gt2<=beyond);
+    A(first<=eq1);A(eq1<=gt1);A(gt1<=mid);
+    A(mid<=eq2);A(eq2<=gt2);A(gt2<=beyond);
     /* +-----------------------------+ */
     /* | L< | L= | L> | R< | R= | R> | */
     /* +-----------------------------+ */
@@ -330,11 +335,16 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
     /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
     *peq=gt1=eq1+rlt, mid=gt1+leq, *pgt=eq2=mid+req;
 }
+#endif
 
 /* array partitioning */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "partition_decl.h"
 {
-    char *pa, *pb, *pg, *ph, *pl, *pu;
+    char *pa, *ph, *pl, *pu;
+    register char *pb, *pg;
     int c=0, d=0;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
@@ -391,6 +401,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
             } else {
                 A(pl==pc); /* already-partitioned region is at far left */
                 pd=blockmove(pc,pd,pe,swapf); /* swap already-partitioned < and = */
+                pivot=pc;
                 /* +-----------------------------------------------------+ */
                 /* |           ?         :=: < : > :         ?           | */
                 /* +-----------------------------------------------------+ */
@@ -409,6 +420,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
 #if 1
                 /* swap = block to far left; N.B. for pl==pc, this simply sets pa=pd */
                 pa=blockmove(pl,pc,pd,swapf);
+                pivot=pl;
 #else
                 pa=pd;
 #endif
@@ -432,77 +444,156 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                 A(pa>pl);
                 if (pa>pl) pivot=pa-size; else pivot=pl; /* pivot in = block */
             }
-            /* +-----------------------------------------------------+ */
-            /* | = |  <  |                ?                  |  >  |=| */
-            /* +-----------------------------------------------------+ */
-            /*  pl  a     b->         c   d e   f         <-g       h u*/
-            /* Skip over = elements at left; then < elements at left, swapping
-               additional = elements to far left. Stop at out-of-place element or when
-               pointers pb and pg cross.
-            */
-            if (pa==pb) {
-                while ((pb<=pg)&&(0==(c=COMPAR(pivot,pb,context)))) { pb+=size; }
-                pa=pb;
-                if (0<c)
-                    for (pb+=size; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
+#if QUICKSELECT_INDIRECT
+            if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+#endif /* QUICKSELECT_INDIRECT */
+                /* +-----------------------------------------------------+ */
+                /* | = |  <  |                ?                  |  >  |=| */
+                /* +-----------------------------------------------------+ */
+                /*  pl  a     b->         c   d e   f         <-g       h u*/
+                /* Skip over = elements at left; then < elements at left, swapping
+                   additional = elements to far left. Stop at out-of-place element or when
+                   pointers pb and pg cross.
+                */
+                if (pa==pb) {
+                    while ((pb<=pg)&&(0==(c=COMPAR(pivot,pb,context)))) { pb+=size; }
+                    pa=pb;
+                    if (0<c)
+                        for (pb+=size; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
+                            if (0==c) { A(pa!=pb);
+                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                    /**/);
+                                pa+=size;
+                            }
+                } else {
+                    for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
                         if (0==c) { A(pa!=pb);
                             EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
                                 /**/);
                             pa+=size;
                         }
-            } else {
-                for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
-                    if (0==c) { A(pa!=pb);
-                        EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
-                            /**/);
-                        pa+=size;
-                    }
-            }
-            /* Skip over = elements at right; then > elements at right, swapping
-               additional = elements to far right. Stop at out-of-place element or when
-               pointers pb and pg meet.
-            */
-            if (pg==ph-size) {
-                while ((pb<pg)&&(0==(d=COMPAR(pivot,pg,context)))) { pg-=size; }
-                ph=pg+size;
-                if (0>d)
-                    for (pg-=size; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
+                }
+                /* Skip over = elements at right; then > elements at right, swapping
+                   additional = elements to far right. Stop at out-of-place element or when
+                   pointers pb and pg meet.
+                */
+                if (pg==ph-size) {
+                    while ((pb<pg)&&(0==(d=COMPAR(pivot,pg,context)))) { pg-=size; }
+                    ph=pg+size;
+                    if (0>d)
+                        for (pg-=size; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
+                            if (0==d) { A(pg!=ph-size);
+                                ph-=size;
+                                EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                    /**/);
+                            }
+                } else {
+                    for (; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
                         if (0==d) { A(pg!=ph-size);
                             ph-=size;
                             EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
                                 /**/);
                         }
-            } else {
-                for (; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
-                    if (0==d) { A(pg!=ph-size);
-                        ph-=size;
-                        EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
-                            /**/);
-                    }
+                }
+                /* +-----------------------------------------------------+ */
+                /* | = |  <  |>|              ?              |<|  >  | = | */
+                /* +-----------------------------------------------------+ */
+                /*  pl  a     b->         c   d e   f       <-g       h   u*/
+                /* Swap out-of-place elements, skip over in-place elements, swap = elements
+                   to nearest end. Stop when pointers pb and pg meet.
+                */
+                while (pb<pg) {
+                    EXCHANGE_SWAP(swapf,pb,pg,size,alignsize,size_ratio,/**/);
+                    pb+=size, pg-=size;
+                    for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
+                        if (0==c) { A(pa!=pb);
+                            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                /**/);
+                            pa+=size;
+                        }
+                    for (; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
+                        if (0==d) { A(pg!=ph-size);
+                            ph-=size;
+                            EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                /**/);
+                        }
+                }
+#if QUICKSELECT_INDIRECT
+            } else { /* indirect */
+                pivot=*((char **)pivot);
+                /* +-----------------------------------------------------+ */
+                /* | = |  <  |                ?                  |  >  |=| */
+                /* +-----------------------------------------------------+ */
+                /*  pl  a     b->         c   d e   f         <-g       h u*/
+                /* Skip over = elements at left; then < elements at left, swapping
+                   additional = elements to far left. Stop at out-of-place element or when
+                   pointers pb and pg cross.
+                */
+                if (pa==pb) {
+                    while ((pb<=pg)&&(0==(c=COMPAR(pivot,*((char **)pb),context)))) { pb+=size; }
+                    pa=pb;
+                    if (0<c)
+                        for (pb+=size; (pb<=pg)&&(0<=(c=COMPAR(pivot,*((char **)pb),context))); pb+=size)
+                            if (0==c) { A(pa!=pb);
+                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                    /**/);
+                                pa+=size;
+                            }
+                } else {
+                    for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,*((char **)pb),context))); pb+=size)
+                        if (0==c) { A(pa!=pb);
+                            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                /**/);
+                            pa+=size;
+                        }
+                }
+                /* Skip over = elements at right; then > elements at right, swapping
+                   additional = elements to far right. Stop at out-of-place element or when
+                   pointers pb and pg meet.
+                */
+                if (pg==ph-size) {
+                    while ((pb<pg)&&(0==(d=COMPAR(pivot,*((char **)pg),context)))) { pg-=size; }
+                    ph=pg+size;
+                    if (0>d)
+                        for (pg-=size; (pb<pg)&&(0>=(d=COMPAR(pivot,*((char **)pg),context))); pg-=size)
+                            if (0==d) { A(pg!=ph-size);
+                                ph-=size;
+                                EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                    /**/);
+                            }
+                } else {
+                    for (; (pb<pg)&&(0>=(d=COMPAR(pivot,*((char **)pg),context))); pg-=size)
+                        if (0==d) { A(pg!=ph-size);
+                            ph-=size;
+                            EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                /**/);
+                        }
+                }
+                /* +-----------------------------------------------------+ */
+                /* | = |  <  |>|              ?              |<|  >  | = | */
+                /* +-----------------------------------------------------+ */
+                /*  pl  a     b->         c   d e   f       <-g       h   u*/
+                /* Swap out-of-place elements, skip over in-place elements, swap = elements
+                   to nearest end. Stop when pointers pb and pg meet.
+                */
+                while (pb<pg) {
+                    EXCHANGE_SWAP(swapf,pb,pg,size,alignsize,size_ratio,/**/);
+                    pb+=size, pg-=size;
+                    for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,*((char **)pb),context))); pb+=size)
+                        if (0==c) { A(pa!=pb);
+                            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                /**/);
+                            pa+=size;
+                        }
+                    for (; (pb<pg)&&(0>=(d=COMPAR(pivot,*((char **)pg),context))); pg-=size)
+                        if (0==d) { A(pg!=ph-size);
+                            ph-=size;
+                            EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                /**/);
+                        }
+                }
             }
-            /* +-----------------------------------------------------+ */
-            /* | = |  <  |>|              ?              |<|  >  | = | */
-            /* +-----------------------------------------------------+ */
-            /*  pl  a     b->         c   d e   f       <-g       h   u*/
-            /* Swap out-of-place elements, skip over in-place elements, swap = elements
-               to nearest end. Stop when pointers pb and pg meet.
-            */
-            while (pb<pg) {
-                EXCHANGE_SWAP(swapf,pb,pg,size,alignsize,size_ratio,/**/);
-                pb+=size, pg-=size;
-                for (; (pb<=pg)&&(0<=(c=COMPAR(pivot,pb,context))); pb+=size)
-                    if (0==c) { A(pa!=pb);
-                        EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
-                            /**/);
-                        pa+=size;
-                    }
-                for (; (pb<pg)&&(0>=(d=COMPAR(pivot,pg,context))); pg-=size)
-                    if (0==d) { A(pg!=ph-size);
-                        ph-=size;
-                        EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
-                            /**/);
-                    }
-            }
+#endif /* QUICKSELECT_INDIRECT */
             /* Split-end partition complete; swap = blocks to middle to canonicalize. */
             /* +-----------------------------------------------------+ */
             /* | = |            <         |           >          | = | */
@@ -524,80 +615,162 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
         break;
 #if QUICKSELECT_STABLE
         case QUICKSELECT_STABLE :
-            /* divide-and-conquer partition */
-            pl=base+size*first, pu=base+size*beyond;
+# if QUICKSELECT_LINEAR_STABLE
+            if ((NULL!=conditions)&&(NULL!=indices)) {
+                /* linear-time stable partition using O(N) extra space */
+                register size_t i, ieq, igt;
 
-            A(pl<pu);A(pc<pf);
-            if (pl+size==pu) { /* 1 element */
-                if (pivot!=pl) { /* external pivot */
-                    int c=COMPAR(pivot,pl,context);
-                    if (0<c) *peq=*pgt=beyond;
-                    else if (0>c) *peq=*pgt=first;
-                    else *peq=first, *pgt=beyond;
-                } else *peq=first, *pgt=beyond; /* pivot */
-            } else { /* more than 1 element */
-                char *pa, *pb, *pg, *ph;
-                if ((pl<=pc)&&(pf<=pu)) { /* pivot is in region */
-                    /* already-partitioned region is one partition; zero, one,
-                       or two others
-                    */
-                    if ((pl==pc)&&(pf==pu)) { /* already fully partitioned */
-                        ;
-                    } else if (pl==pc) { /* already-partitioned at left end */
-                        /* partition unpartitioned region and merge */
-                        A(pf<pu);
-                        PARTITION_FUNCTION_NAME(base,(pf-base)/size,beyond,pc,
-                            pd,pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
-                            size_ratio,options,peq,pgt);
-                        A(*peq<=*pgt);A((pf-base)/size<=*peq);A(*pgt<=beyond);
-                        merge_partitions(base,first,(pd-base)/size,
-                            (pe-base)/size,(pf-base)/size,*peq,*pgt,beyond,size,
-                            swapf,alignsize,size_ratio,peq,pgt);
-                    } else if (pu==pf) { /* already-partitioned at right end */
-                        /* partition unpartitioned region and merge */
-                        A(pl<pc);
-                        PARTITION_FUNCTION_NAME(base,first,(pc-base)/size,pc,pd,
-                            pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
-                            size_ratio,options,peq,pgt);
-                        A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
-                        merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
-                            (pd-base)/size,(pe-base)/size,beyond,size,swapf,
-                            alignsize,size_ratio,peq,pgt);
-                    } else { /* already-partitioned in middle */
-                        size_t eq2, gt2;
-                        /* partition unpartitioned regions and merge */
-                        A(pl<pc);
-                        PARTITION_FUNCTION_NAME(base,first,(pc-base)/size,pc,pd,
-                            pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
-                            size_ratio,options,peq,pgt);
-                        A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
-                        merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
-                            (pd-base)/size,(pe-base)/size,(pf-base)/size,size,
-                            swapf,alignsize,size_ratio,peq,pgt);
-                        A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pf-base)/size);
-                        A(pf<pu);
-                        PARTITION_FUNCTION_NAME(base,(pf-base)/size,beyond,pl,
-                            base+*peq*size,base+*peq*size,base+*pgt*size,pf,
-                            size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                            options,&eq2,&gt2);
-                        A(eq2<=gt2);A((pf-base)/size<=eq2);A(gt2<=beyond);
-                        merge_partitions(base,first,*peq,*pgt,(pf-base)/size,
-                            eq2,gt2,beyond,size,swapf,alignsize,size_ratio,peq,
-                            pgt);
+                pl=base+size*first, pu=base+size*beyond;
+                /* 1st scan: left-to-right to get element partial order and set
+                   pointer for < elements.
+                */
+                /* split into pre-pivot, pivot, post-pivot */
+#  if QUICKSELECT_INDIRECT
+                /* further split into direct, indirect for pivot cache */
+                if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+#  endif /* QUICKSELECT_INDIRECT */
+                    for (i=ieq=first,pb=pl,pg=pivot; pb<pg; pb+=size,i++) {
+                        c=COMPAR(pb,pg,context);
+                        if (0<c) conditions[i]=(char)1;
+                        else if (0==c) conditions[i]=(char)0;
+                        else {
+                            conditions[i]=(char)(-1);
+                            indices[ieq++]=i;
+                        }
                     }
-                } else { /* external pivot; split into two regions; partition & merge */
-                    size_t mid=first+((beyond-first)>>1), eq2, gt2;
-                    PARTITION_FUNCTION_NAME(base,first,mid,pc,pd,pivot,pe,pf,
-                            size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                            options,peq,pgt);
-                    A(first<mid);A(mid<beyond);
-                    PARTITION_FUNCTION_NAME(base,mid,beyond,pc,pd,pivot,pe,pf,
-                            size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                            options,&eq2,&gt2);
-                    merge_partitions(base,first,*peq,*pgt,mid,eq2,gt2,beyond,
-                            size,swapf,alignsize,size_ratio,peq,pgt);
+                    A(pb==pg);
+                    conditions[i]=(char)0;
+                    for (++i,pb+=size; pb<pu; pb+=size,i++) {
+                        c=COMPAR(pb,pg,context);
+                        if (0<c) conditions[i]=(char)1;
+                        else if (0==c) conditions[i]=(char)0;
+                        else {
+                            conditions[i]=(char)(-1);
+                            indices[ieq++]=i;
+                        }
+                    }
+#  if QUICKSELECT_INDIRECT
+                } else { /* indirect; pivot data pointer cached */
+                    pg=*((char **)pivot);
+                    for (i=ieq=first,pb=pl; pb<pivot; pb+=size,i++) {
+                        c=COMPAR(*((char **)pb),pg,context);
+                        if (0<c) conditions[i]=(char)1;
+                        else if (0==c) conditions[i]=(char)0;
+                        else {
+                            conditions[i]=(char)(-1);
+                            indices[ieq++]=i;
+                        }
+                    }
+                    A(pb==pivot);
+                    conditions[i]=(char)0;
+                    for (++i,pb+=size; pb<pu; pb+=size,i++) {
+                        c=COMPAR(*((char **)pb),pg,context);
+                        if (0<c) conditions[i]=(char)1;
+                        else if (0==c) conditions[i]=(char)0;
+                        else {
+                            conditions[i]=(char)(-1);
+                            indices[ieq++]=i;
+                        }
+                    }
                 }
-           }
+#  endif /* QUICKSELECT_INDIRECT */
+                *peq=ieq;
+                /* 2nd scan: right-to-left to set pointers for > elements. */
+                for (igt=beyond,i=igt-1UL,pb=pu-size; pb>=pl; pb-=size,i--)
+                    if (0<conditions[i]) indices[--igt]=i;
+                *pgt=igt;
+                /* 3rd scan: left to right to set pointers for == elements. */
+                for (i=first,pb=pl; ieq<igt; pb+=size,i++) {
+                    if (0==conditions[i]) indices[ieq++]=i;
+                    A(pb<pu);A(i<beyond);
+                }
+                i=rearrange_array(base,beyond-first,size,indices,
+                    beyond-first,first,beyond,element);
+                A(beyond-first>(i>>1));
+            } else {
+# endif /* QUICKSELECT_LINEAR_STABLE */
+                /* divide-and-conquer partition */
+                pl=base+size*first, pu=base+size*beyond;
+
+                A(pl<pu);A(pc<pf);
+                if (pl+size==pu) { /* 1 element */
+                    if (pivot!=pl) { /* external pivot */
+                        c=OPT_COMPAR(pivot,pl,options,context);
+                        if (0<c) *peq=*pgt=beyond;
+                        else if (0>c) *peq=*pgt=first;
+                        else *peq=first, *pgt=beyond;
+                    } else *peq=first, *pgt=beyond; /* pivot */
+                } else { /* more than 1 element */
+                    if ((pl<=pc)&&(pf<=pu)) { /* pivot is in region */
+                        /* already-partitioned region is one partition; zero, one,
+                           or two others
+                        */
+                        if ((pl==pc)&&(pf==pu)) { /* already fully partitioned */
+                            ;
+                        } else if (pl==pc) { /* already-partitioned at left end */
+                            /* partition unpartitioned region and merge */
+                            A(pf<pu);
+                            PARTITION_FUNCTION_NAME(base,(pf-base)/size,beyond,pc,
+                                pd,pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
+                                size_ratio,options,conditions,indices,
+                                element,peq,pgt);
+                            A(*peq<=*pgt);A((pf-base)/size<=*peq);A(*pgt<=beyond);
+                            merge_partitions(base,first,(pd-base)/size,
+                                (pe-base)/size,(pf-base)/size,*peq,*pgt,beyond,size,
+                                swapf,alignsize,size_ratio,peq,pgt);
+                        } else if (pu==pf) { /* already-partitioned at right end */
+                            /* partition unpartitioned region and merge */
+                            A(pl<pc);
+                            PARTITION_FUNCTION_NAME(base,first,(pc-base)/size,pc,pd,
+                                pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
+                                size_ratio,options,conditions,indices,
+                                element,peq,pgt);
+                            A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
+                            merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
+                                (pd-base)/size,(pe-base)/size,beyond,size,swapf,
+                                alignsize,size_ratio,peq,pgt);
+                        } else { /* already-partitioned in middle */
+                            size_t eq2, gt2;
+                            /* partition unpartitioned regions and merge */
+                            A(pl<pc);
+                            PARTITION_FUNCTION_NAME(base,first,(pc-base)/size,pc,pd,
+                                pivot,pe,pf,size,COMPAR_ARGS,swapf,alignsize,
+                                size_ratio,options,conditions,indices,
+                                element,peq,pgt);
+                            A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
+                            merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
+                                (pd-base)/size,(pe-base)/size,(pf-base)/size,size,
+                                swapf,alignsize,size_ratio,peq,pgt);
+                            A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pf-base)/size);
+                            A(pf<pu);
+                            PARTITION_FUNCTION_NAME(base,(pf-base)/size,beyond,pl,
+                                base+*peq*size,base+*peq*size,base+*pgt*size,pf,
+                                size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                options,conditions,indices,
+                                element,&eq2,&gt2);
+                            A(eq2<=gt2);A((pf-base)/size<=eq2);A(gt2<=beyond);
+                            merge_partitions(base,first,*peq,*pgt,(pf-base)/size,
+                                eq2,gt2,beyond,size,swapf,alignsize,size_ratio,peq,
+                                pgt);
+                        }
+                    } else { /* external pivot; split into two regions; partition & merge */
+                        size_t mid=first+((beyond-first)>>1), eq2, gt2;
+                        PARTITION_FUNCTION_NAME(base,first,mid,pc,pd,pivot,pe,pf,
+                                size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                options,conditions,indices,
+                                element,peq,pgt);
+                        A(first<mid);A(mid<beyond);
+                        PARTITION_FUNCTION_NAME(base,mid,beyond,pc,pd,pivot,pe,pf,
+                                size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                options,conditions,indices,
+                                element,&eq2,&gt2);
+                        merge_partitions(base,first,*peq,*pgt,mid,eq2,gt2,beyond,
+                                size,swapf,alignsize,size_ratio,peq,pgt);
+                    }
+                }
+# if QUICKSELECT_LINEAR_STABLE
+            }
+# endif /* QUICKSELECT_LINEAR_STABLE */
         break;
 #endif /* QUICKSELECT_STABLE */
     }

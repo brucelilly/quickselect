@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.3 dated 2017-11-03T19:33:29Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.4 dated 2017-12-06T23:04:02Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqrtsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sqrtsort.c ~|^` @(#)"
 #define SOURCE_MODULE "sqrtsort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:33:29Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-06T23:04:02Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -72,7 +72,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) {
 fprintf(stderr,
 "/* %s: %s line %d: base=%p, first=%lu, beyond=%lu\n",
 __func__,source_file,__LINE__,(void *)base,first,beyond);
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */");
+    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
 }
 #endif
     A(first<beyond);
@@ -111,8 +111,9 @@ __func__,source_file,__LINE__,first,beyond,xnk,o,xpk[0],xnk-1UL,xpk[xnk-1UL]);
             table_index++;
         A(table_index<SAMPLING_TABLE_SIZE);
 
+        /* no support for efficient stable sorting */
         d_quickselect_loop(base,first,beyond,size,compar,xpk,0UL,xnk,
-            swapf, alignsize, size_ratio,cutoff, options,NULL,NULL);
+            swapf,alignsize,size_ratio,cutoff,options,NULL,NULL,NULL,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
 /* XXX for selection (future), check for desired order statistic ranks for each region */
         sqrtsort_internal(base,first,xpk[0UL],size,compar,swapf,alignsize,
@@ -141,7 +142,7 @@ __func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
             isort_internal(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio);
 #else
-            dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
+            d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio,options);
 #endif
     }

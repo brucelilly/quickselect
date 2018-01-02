@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is isort.c version 1.3 dated 2017-11-03T19:31:30Z. \ $ */
+/* $Id: ~|^` @(#)   This is isort.c version 1.4 dated 2017-12-06T23:02:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.isort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: isort.c ~|^` @(#)"
 #define SOURCE_MODULE "isort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:31:30Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-06T23:02:21Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -56,20 +56,94 @@
 
 #include "initialize_src.h"
 
+/* Insertion sort using binary search to locate insertion position for
+   out-of-order element, followed by rotation to insert the element in position.
+*/
+static
+#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+inline
+#endif /* C99 */
+void isort_bs(char *base, size_t first, size_t beyond, size_t size,
+    int (*compar)(const void *,const void *),
+    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
+{
+    register size_t l, m, h, n, u=beyond-1UL;
+    char *pa, *pu=base+u*size;
+
+/* separate direct, indirect versions to avoid options checks in loops,
+   also cache dereferenced pa in inner loop
+*/
+#if QUICKSELECT_INDIRECT
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+#endif /* QUICKSELECT_INDIRECT */
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            if (0<COMPAR(pa,pa+size,/**/)) { /* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* binary search for insertion position */
+                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
+                        if (0>=COMPAR(pa,base+m*size,/**/)) h=m-1UL;
+                        else l=m+1UL;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
+#if QUICKSELECT_INDIRECT
+    } else { /* indirect */
+        register char *p;
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            p=*((char **)pa);
+            if (0<COMPAR(p,*((char**)(pa+size)),/**/)) {/* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* binary search for insertion position */
+                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
+                        if (0>=COMPAR(p,*((char**)(base+m*size)),/**/)) h=m-1UL;
+                        else l=m+1UL;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+                if (0U!=instrumented) {
+                    h=l-n;
+                    if (MAXROTATION<=h) h=0UL;
+                    nrotations[h]+=size_ratio;
+                }
+            }
+        }
+    }
+#endif /* QUICKSELECT_INDIRECT */
+}
+
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
 {
     if (beyond>first) {
-        char *pa, *pb, *pu;
+        char *pa, *pb;
         register size_t n=beyond-first;
 #if 0
 if (DEBUGGING(SORT_SELECT_DEBUG)) {
 fprintf(stderr, "// %s line %d: base=%p, first=%lu, beyond=%lu\n",__func__,__LINE__,(void *)base,(unsigned long)first,(unsigned long)beyond);
-print_some_array(base,0UL,nmemb-1UL, "/* "," */");
+print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
 }
 #endif
 #if 0 /* one implementation */
@@ -89,7 +163,7 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */");
             case 2UL : /* less overhead than default loop */
                 pa=base+first*size;
                 pb=pa+size;
-                COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,size_ratio);
+                COMPARE_EXCHANGE(pa,pb,options,context,size,swapf,alignsize,size_ratio);
             break;
 #if 0 /* 0 for pure insertion sort for comparison and swap counts */
             case 3UL : /* optimized sort of 3 */
@@ -105,12 +179,12 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */");
                     pa=base+first*size;
                     pb=pa+size;
                     pc=pb+size;
-                    COMPARE_EXCHANGE(pa,pc,context,size,swapf,alignsize,
+                    COMPARE_EXCHANGE(pa,pc,options,context,size,swapf,alignsize,
                         size_ratio);
-                    COMPARE_EXCHANGE(pa,pb,context,size,swapf,alignsize,
+                    COMPARE_EXCHANGE(pa,pb,options,context,size,swapf,alignsize,
                         size_ratio);
                     else
-                        COMPARE_EXCHANGE(pb,pc,context,size,swapf,alignsize,
+                        COMPARE_EXCHANGE(pb,pc,options,context,size,swapf,alignsize,
                             size_ratio);
                 }
             break;
@@ -124,34 +198,13 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */");
                 /* nmemb is the index of the out-of-place element immediately to
                    the left of the rightmost sorted run of elements
                 */
-                {
-                    register size_t u;
-                    u=beyond-1UL, pu=pb=base+u*size, pa=pb-size;
-                    n=u; /* now n becomes the index of the last element */
-                    switch (alignsize) {
-                        case 8UL : /* uint64_t */
-                            ISORT_AS(uint64_t,
-                                base,n,first,pa,pb,size,size_ratio,u,pu,compar)
-                        break;
-                        case 4UL : /* uint32_t */
-                            ISORT_AS(uint32_t,
-                                base,n,first,pa,pb,size,size_ratio,u,pu,compar)
-                        break;
-                        case 2UL : /* uint16_t */
-                            ISORT_AS(uint16_t,
-                                base,n,first,pa,pb,size,size_ratio,u,pu,compar)
-                        break;
-                        default : /* uint8_t */
-                            ISORT_AS(uint8_t,
-                                base,n,first,pa,pb,size,size_ratio,u,pu,compar)
-                        break;
-                    }
-                }
+                isort_bs(base,first,beyond,size,compar,swapf,alignsize,
+                    size_ratio,options);
             break;
         }
 # if ASSERT_CODE > 1
         for (pa=base+first*size,pb=base+beyond*size; pa<pb; pa+=size)
-            A(0>=compar(pa,pa+size));
+            A(0>=COMPAR(pa,pa+size,options,/**/));
 # endif
     }
 #endif
@@ -160,7 +213,8 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */");
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
-void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
+void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *),
+    unsigned int options)
 {
     size_t alignsize=alignment_size(base,size);
     size_t size_ratio=size/alignsize;
@@ -168,5 +222,5 @@ void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, co
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
-    isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio);
+    isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
 }

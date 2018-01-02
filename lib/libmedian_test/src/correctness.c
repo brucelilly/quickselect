@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.4 dated 2017-11-05T22:15:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.10 dated 2017-12-28T22:17:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-11-05T22:15:14Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2017-12-28T22:17:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -58,7 +58,7 @@
 
 #if DEBUG_CODE + ASSERT_CODE
 #if GENERATOR_TEST
-size_t test_array_distinctness(const void *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), void (*f)(int, void *, const char *, ...), void *log_arg)
+size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     int c;
     size_t i, j;
@@ -70,7 +70,7 @@ size_t test_array_distinctness(const void *pv, size_t l, size_t u, size_t size, 
     }
     for (i=l; i<u; i++) {
         for (j=i+1UL; j<=u; j++) {
-            c = compar((const char *)pv+i*size, (const char *)pv+j*size);
+            c = OPT_COMPAR(pv+i*size, pv+j*size,options,/**/);
             if (0 == c) {
                 if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed distinctness comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)j);
                 return i;
@@ -91,9 +91,75 @@ size_t test_array_distinctness(const void *pv, size_t l, size_t u, size_t size, 
    If arguments are not valid, return >= u+1UL.
    On the first failed test, return the index of the item failing the test.
 */
-size_t test_array_partition(const void *pv, size_t l, size_t pl,
+size_t test_array_partition(const char *pv, size_t l, size_t pl,
     size_t pu, size_t u, size_t size,
-    int(*compar)(const void *, const void *),
+    int(*compar)(const void *, const void *), unsigned int options,
+    void(*f)(int, void *, const char *, ...), void *log_arg)
+{
+    int c;
+    size_t i, n, lim;
+    const char *p, *pe;
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    if (l > pl) {
+        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: l (%lu) > pl (%lu)", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
+        else fprintf(stderr, "/* %s: %s line %d: l (%lu) > pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
+        return u+1UL;
+    }
+    if (pu > u) {
+        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) > u (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
+        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) > u (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
+        return u+2UL;
+    }
+    if (pu < pl) {
+        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) < pl (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
+        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) < pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
+        return u+3UL;
+    }
+    if (NULL == pv) {
+        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: NULL pv", __func__, source_file, __LINE__);
+        else fprintf(stderr, "/* %s: %s line %d: NULL pv */\n", __func__, source_file, __LINE__);
+        return u+4UL;
+    }
+    pe=pv+pl*size;
+    if (pl >= l+1UL)
+        for (i=pl-1UL; ; i--) {
+            p=pv+i*size;
+            c = OPT_COMPAR(p,pe,options,/**/);
+            if (0 < c) {
+                if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
+                else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
+                return i;
+            }
+            if (i < l+1UL) break;
+        }
+    for (i=pl+1UL; i<=pu; i++) {
+        p=pv+i*size;
+        c = OPT_COMPAR(p,pe,options,/**/);
+        if (0 != c) {
+            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
+            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
+            return i;
+        }
+    }
+    n = (u + 1UL - l);
+    lim = l + n - 1UL;
+    for (i=pu+1UL; i<=lim; i++) {
+        p=pv+i*size;
+        c = OPT_COMPAR(p,pe,options,/**/);
+        if (0 > c) {
+            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
+            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
+            return i;
+        }
+    }
+    return pl;
+}
+
+#if 0
+size_t test_array_partition_s(const char *pv, size_t l, size_t pl,
+    size_t pu, size_t u, size_t size,
+    int(*compar)(const void *, const void *,void *), void *context, unsigned int options,
     void(*f)(int, void *, const char *, ...), void *log_arg)
 {
     int c;
@@ -121,8 +187,8 @@ size_t test_array_partition(const void *pv, size_t l, size_t pl,
         return u+4UL;
     }
     if (pl >= l+1UL)
-        for (i=pl-1UL; 1; i--) {
-            c = compar((const char *)pv+i*size, (const char *)pv+pl*size);
+        for (i=pl-1UL; ; i--) {
+            c = OPT_COMPAR(pv+i*size, pv+pl*size, options, context);
             if (0 < c) {
                 if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
                 else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
@@ -131,7 +197,7 @@ size_t test_array_partition(const void *pv, size_t l, size_t pl,
             if (i < l+1UL) break;
         }
     for (i=pl+1UL; i<=pu; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+pl*size);
+        c = OPT_COMPAR(pv+i*size, pv+pl*size, options, context);
         if (0 != c) {
             if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
             else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
@@ -141,7 +207,7 @@ size_t test_array_partition(const void *pv, size_t l, size_t pl,
     n = (u + 1UL - l);
     lim = l + n - 1UL;
     for (i=pu+1UL; i<=lim; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+pu*size);
+        c = OPT_COMPAR(pv+i*size, pv+pu*size, options, context);
         if (0 > c) {
             if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
             else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
@@ -150,73 +216,14 @@ size_t test_array_partition(const void *pv, size_t l, size_t pl,
     }
     return pl;
 }
-
-size_t test_array_partition_s(const void *pv, size_t l, size_t pl,
-    size_t pu, size_t u, size_t size,
-    int(*compar)(const void *, const void *,void *), void *context,
-    void(*f)(int, void *, const char *, ...), void *log_arg)
-{
-    int c;
-    size_t i, n, lim;
-
-    if ((char)0==file_initialized) initialize_file(__FILE__);
-    if (l > pl) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: l (%lu) > pl (%lu)", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
-        else fprintf(stderr, "/* %s: %s line %d: l (%lu) > pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
-        return u+1UL;
-    }
-    if (pu > u) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) > u (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
-        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) > u (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
-        return u+2UL;
-    }
-    if (pu < pl) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) < pl (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
-        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) < pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
-        return u+3UL;
-    }
-    if (NULL == pv) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: NULL pv", __func__, source_file, __LINE__);
-        else fprintf(stderr, "/* %s: %s line %d: NULL pv */\n", __func__, source_file, __LINE__);
-        return u+4UL;
-    }
-    if (pl >= l+1UL)
-        for (i=pl-1UL; 1; i--) {
-            c = compar((const char *)pv+i*size, (const char *)pv+pl*size, context);
-            if (0 < c) {
-                if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
-                else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
-                return i;
-            }
-            if (i < l+1UL) break;
-        }
-    for (i=pl+1UL; i<=pu; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+pl*size, context);
-        if (0 != c) {
-            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
-            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
-            return i;
-        }
-    }
-    n = (u + 1UL - l);
-    lim = l + n - 1UL;
-    for (i=pu+1UL; i<=lim; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+pu*size, context);
-        if (0 > c) {
-            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
-            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
-            return i;
-        }
-    }
-    return pl;
-}
+#endif
 
 /* verify median:
       no more than n/2 elements < median
       no more than n/2 elements > median
       every element is <, ==, or > median
 */
-size_t test_array_median(const void *pv, size_t l, size_t m, size_t u, size_t size, int(*compar)(const void *, const void *), void(*f)(int, void *, const char *, ...), void *log_arg)
+size_t test_array_median(const char *pv, size_t l, size_t m, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, void(*f)(int, void *, const char *, ...), void *log_arg)
 {
     int c;
     size_t i, eq, gt, lt, lim, n;
@@ -241,13 +248,13 @@ size_t test_array_median(const void *pv, size_t l, size_t m, size_t u, size_t si
     lim = l + n - 1UL;
     gt=lt=0UL,eq=1UL;
     if (m >= l+1UL)
-        for (i=m-1UL; 1; i--) {
-            c = compar((const char *)pv+i*size, (const char *)pv+m*size);
+        for (i=m-1UL; ; i--) {
+            c = OPT_COMPAR(pv+i*size, pv+m*size,options,/**/);
             if (0 < c) gt++; else if (0 > c) lt++; else eq++;
             if (i < l+1UL) break;
         }
     for (i=m+1UL; i<=lim; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+m*size);
+        c = OPT_COMPAR(pv+i*size, pv+m*size,options,/**/);
         if (0 < c) gt++; else if (0 > c) lt++; else eq++;
     }
     if (eq + gt + lt != n) {
@@ -269,7 +276,7 @@ size_t test_array_median(const void *pv, size_t l, size_t m, size_t u, size_t si
 }
 
 /* Test array for sorting correctness */
-size_t test_array_sort(const void *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int distinct, void(*f)(int, void *, const char *, ...), void *log_arg)
+size_t test_array_sort(const char *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, unsigned int distinct, void(*f)(int, void *, const char *, ...), void *log_arg)
 {
     int c;
     size_t i;
@@ -286,7 +293,7 @@ size_t test_array_sort(const void *pv, size_t l, size_t u, size_t size, int(*com
         return u+2UL;
     }
     for (i=l; i<u; i++) {
-        c = compar((const char *)pv+i*size, (const char *)pv+(i+1UL)*size);
+        c = OPT_COMPAR(pv+i*size, pv+(i+1UL)*size,options,/**/);
         if (0 <= c) {
             if ((0U==distinct)&&(0==c)) continue; /* uniqueness not required */
             if (NULL != f)
@@ -303,10 +310,26 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
     const char *pcc=NULL, *pfunc=NULL, *ptest="";
     const char *comment="";
     const char *psize = test_size(*ptests);
-    int c, c1, odebug;
+    int c, c1, odebug
+#if SILENCE_WHINEY_COMPILERS
+        = 0
+#endif
+        ;
     unsigned int distinct=0U, errs=0U, rpt=flags['d'], inst;
-    size_t carray[MAX_PERMUTATION_SIZE], ct, cycle, eql, equ, k, *karray=NULL,
-        m, nc, nk, t, u, v, w, x, y;
+    size_t carray[MAX_PERMUTATION_SIZE], ct, cycle
+#if SILENCE_WHINEY_COMPILERS
+        = 0UL
+#endif
+        , eql, equ, k, *karray=NULL,
+        m, nc
+#if SILENCE_WHINEY_COMPILERS
+        = 0UL
+#endif
+        , nk, t
+#if SILENCE_WHINEY_COMPILERS
+        = 0UL
+#endif
+        , u, v, w, x, y;
     size_t erro
 #if SILENCE_WHINEY_COMPILERS
         = 0UL
@@ -322,7 +345,6 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
         = NULL
 #endif
         ;
-    long mid;
     double d, d2, d3, factor;
     void *pv;
     uint64_t max_val;
@@ -357,21 +379,13 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
             break;
             case DATA_TYPE_POINTER :
                 pv=parray;
-#if LONG_MAX > 0x7fffffffL
-                max_val = 253402300800L; /* max. 9999-12-31T23:59:59 */
-#else
                 max_val = LONG_MAX;
-#endif
             break;
             case DATA_TYPE_STRUCT :
             /*FALLTHROUGH*/
             case DATA_TYPE_STRING :
                 pv=data_array;
-#if LONG_MAX > 0x7fffffffL
-                max_val = 253402300800L; /* max. 9999-12-31T23:59:59 */
-#else
                 max_val = LONG_MAX;
-#endif
             break;
             default:
                 (V)fprintf(stderr, "/* %s: %s line %d: unrecognized data type %u */\n", __func__, source_file, __LINE__, type);
@@ -403,7 +417,6 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
             case TEST_SEQUENCE_JUMBLE :              /*FALLTHROUGH*/
             case TEST_SEQUENCE_RANDOM_DISTINCT :     /*FALLTHROUGH*/
             case TEST_SEQUENCE_ADVERSARY :
-            case TEST_SEQUENCE_ANTIQUICKSELECT :
             break;
             case TEST_SEQUENCE_MANY_EQUAL_LEFT :     /*FALLTHROUGH*/
             case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :   /*FALLTHROUGH*/
@@ -465,11 +478,56 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                         if (0UL==m) {
                             /* generate test sequence */
                             if (!(DEBUGGING(AQCMP_DEBUG))) odebug=debug, debug=0;
+                            /* odebug is guaranteed to have been assigned a
+                               value by the above statement when
+                               DEBUGGING(AQCMP_DEBUG) whether or not (:-/) gcc's
+                               authors realize it...
+                            */
                             v=nmerges,w=nrecursions,x=npartitions, y=nrepivot;
                             /* Initialization of antiqsort: place increasing
                                sequence in pv, initialize refarray to all "gas".
                             */
                             initialize_antiqsort(n, pv, type, size, refarray);
+#if GENERATOR_TEST
+                            if (1000UL > u) {
+                                print_some_array(pv,0UL,u,"/* data: */\n/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                print_some_array(refarray,0UL,u,"/* antiqsort (all gas): */\n/* "," */",0U);
+                            }
+                            /* data in increasing order should pass sorted and distinctness tests */
+                            t = test_array_sort(pv, 0UL, u, size, compar, 0U, 1U, logger, log_arg);
+                            if (t != u) {
+                                (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_sort) for %s ^^^^^ ERROR!!!!\n", ptest);
+                                errs++;
+                                erro = 0UL;
+                                if (t <= u) errt = t;
+                                if (1000UL > u) {
+                                    print_some_array(pv,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                }
+                            }
+                            if (1000UL > u) {
+                                t = test_array_distinctness((const char *)pv, 0UL, u, size, compar, options&~(QUICKSELECT_INDIRECT), f, log_arg);
+                                if (t != u) {
+                                    (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! line %d\n", ptest, __LINE__);
+                                    errs++;
+                                    erro = 0UL;
+                                    if (t <= u) errt = t;
+                                    if (1000UL > u) {
+                                        print_some_array(pv,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                    }
+                                }
+                            }
+                            /* all-gas in refarray should pass sorted test */
+                            t = test_array_sort((const char *)refarray, 0UL, u, sizeof(long), longcmp, 0U, 0U, logger, log_arg);
+                            if (t != u) {
+                                (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_sort) for %s ^^^^^ ERROR!!!!\n", ptest);
+                                errs++;
+                                erro = 0UL;
+                                if (t <= u) errt = t;
+                                if (1000UL > u) {
+                                    print_some_array(refarray,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                }
+                            }
+#endif
                             /* run sorting function (even if selection is specified)
                                against adversary to generate adverse sequence in
                                refarray, without instrumented comparisons
@@ -486,6 +544,9 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                                 break;
                                 case FUNCTION_HEAPSORT :
                                     HEAPSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
+                                break;
+                                case FUNCTION_INDIRECT_MERGESORT :
+                                    IMERGESORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
                                 break;
                                 case FUNCTION_INTROSORT :
                                     INTROSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
@@ -520,15 +581,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                                 case FUNCTION_QSELECT_S :     /*FALLTHROUGH*/
                                 case FUNCTION_QSELECT :       /*FALLTHROUGH*/
                                 case FUNCTION_QSORT_WRAPPER : /*FALLTHROUGH*/
-#if 0
-                                    QSEL(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
-                                break;
-#endif
                                 case FUNCTION_SQSORT :        /*FALLTHROUGH*/
-#if 0
-                                    SQSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
-                                break;
-#endif
                                 case FUNCTION_WQSORT :
                                     WQSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
                                 break;
@@ -554,68 +607,57 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                                     YQSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
                                 break;
                             }
-                            /* Now pv is sorted and refarray contains an adverse
-                               sequence.
+                            /* Now pv is unsorted and refarray contains an
+                               adverse sequence.  Both arrays should contain
+                               unique values.
                             */
 #if GENERATOR_TEST
                             (V)fprintf(stderr,"%s: %s line %d: n=%lu, antiqsort_nsolid=%lu\n",
                                 __func__,source_file,__LINE__,n,antiqsort_nsolid);
                             if (1000UL > u) {
-                                print_some_array(pv,0UL,u,"/* data: */\n/* "," */");
-                                print_some_array(refarray,0UL,u,"/* adverse sequence: */\n/* "," */");
+                                print_some_array(pv,0UL,u,"/* data: */\n/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                print_some_array(refarray,0UL,u,"/* adverse sequence: */\n/* "," */",0U);
                             }
-                            t = test_array_sort(pv, 0UL, u, size, aqcmp, distinct, logger, log_arg);
-                            if (t != u) {
-                                (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_sort) for %s ^^^^^ ERROR!!!!\n", ptest);
-                                errs++;
-                                erro = 0UL;
-                                if (t <= u) errt = t;
-                                if (1000UL > u) {
-                                    print_some_array(pv,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */");
-                                }
-                            } else
-                                (V)fprintf(stderr, "generator passed (test_array_sort) for %s\n", ptest);
                             if (1000UL > u) {
-                                t = test_array_distinctness(pv, 0UL, u, size, compar, f, log_arg);
+                                t = test_array_distinctness((const char *)pv, 0UL, u, size, compar, options&~(QUICKSELECT_INDIRECT), f, log_arg);
                                 if (t != u) {
-                                    (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! line %d\n", ptest, __LINE__);
+                                    (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! %s line %d\n", ptest, source_file, __LINE__);
                                     errs++;
                                     erro = 0UL;
                                     if (t <= u) errt = t;
-                                }
-                                if (1000UL > u) {
-                                    print_some_array(pv,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */");
+                                    if (1000UL > u) {
+                                        print_some_array(pv,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */",options&~(QUICKSELECT_INDIRECT));
+                                    }
                                 }
                             } else
                                 (V)fprintf(stderr, "generator passed (test_array_distinctness) for %s\n", ptest);
                             if (1000UL > u) {
-                                t = test_array_distinctness(refarray, 0UL, u, sizeof(long), longcmp, f, log_arg);
+                                t = test_array_distinctness((const char *)refarray, 0UL, u, sizeof(long), longcmp, 0U, f, log_arg);
                                 if (t != u) {
-                                    (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! line %d\n", ptest, __LINE__);
+                                    (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! %s line %d\n", ptest, source_file, __LINE__);
                                     errs++;
                                     erro = 0UL;
                                     if (t <= u) errt = t;
-                                }
-                                if (1000UL > u) {
-                                    print_some_array(refarray,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */");
+                                    if (1000UL > u) {
+                                        print_some_array(refarray,0UL<errt?errt-1UL:errt,errt<u-1UL?errt+1UL:errt,"/* "," */",0U);
+                                    }
                                 }
                             } else
                                 (V)fprintf(stderr, "generator passed (test_array_distinctness) for %s refarray\n", ptest);
 #endif /* GENERATOR_TEST */
-                            if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
+                            if (0U != flags['i']) ngt=nlt=neq=nsw=nmoves=0UL;
                             if (!(DEBUGGING(AQCMP_DEBUG))) debug=odebug;
-                            nmerges=v,nrecursions=w,npartitions=x, nrepivot=y;
-#if 0
-                            mid = (long)(u>>1);
-                            if (3L<mid) mid-=3L;
-                            for (v=0UL; v<u; v++)
-                                if (refarray[v]>=mid) refarray[v]=(long)u+mid-refarray[v];
-#endif
+                            nmerges=v,nrecursions=w,npartitions=x,nrepivot=y;
                         } else
-                            restore_test_data(0UL,n,refarray,larray,array,darray,
-                                data_array,parray);
+                            restore_test_data(0UL,n,refarray,pv,type);
                         /* refarray should now contain an appropriate adverse sequence */
-                        duplicate_test_data(refarray,larray,array,darray,data_array,parray, 0UL,n);
+                        duplicate_test_data(refarray,pv,type,0UL,n);
+#if 1
+                        if (1000UL > u) {
+                            print_some_array(refarray,0UL,u,"/* adverse sequence: */\n/* "," */",0U);
+                            print_some_array(pv,0UL,u,"/* data: */\n/* "," */",options&~(QUICKSELECT_INDIRECT));
+                        }
+#endif
                     break;
                     case TEST_SEQUENCE_PERMUTATIONS :
                         if (0UL==m%cycle) {
@@ -635,14 +677,14 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                         } else {
                             permute(refarray,0UL,u,carray,&ct);
                         }
-                        duplicate_test_data(refarray,larray,array,darray,data_array,parray, 0UL,n);
+                        duplicate_test_data(refarray,pv,type,0UL,n);
                     break;
                     case TEST_SEQUENCE_COMBINATIONS :
                         /* combinations of 0, 1 elements for this test */
                         for (ct=0UL; ct<nc; ct++) {
                             refarray[ct] = (long)((m >> (nc-ct-1UL)) & 0x01UL);
                         }
-                        duplicate_test_data(refarray,larray,array,darray,data_array,parray, 0UL,n);
+                        duplicate_test_data(refarray,pv,type,0UL,n);
                     break;
                     default :
                         /* generate new  test sequence */
@@ -657,8 +699,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                             return ++errs;
                         }
                         /* copy test sequence to alternates */
-                        duplicate_test_data(refarray,larray,array,darray,data_array,parray, 0UL,
-                            n);
+                        duplicate_test_data(refarray,pv,type,0UL,n);
                     break;
                 }
                 /* long test data is in long array larray */
@@ -668,14 +709,14 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                     case TEST_SEQUENCE_SORTED :               /*FALLTHROUGH*/
                         distinct=1U;
 #if GENERATOR_TEST
-                        t = test_array_sort(pv, 0UL, u, size, compar, distinct, logger, log_arg);
+                        t = test_array_sort(pv, 0UL, u, size, compar, options&~(QUICKSELECT_INDIRECT), distinct, logger, log_arg);
                         if (t != u) {
                             (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_sort) for %s ^^^^^ ERROR!!!!\n", ptest);
                             errs++;
                             erro = 0UL;
                             if (t <= u) errt = t;
                         }
-                        if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
+                        if (0U != flags['i']) ngt = nlt = neq = nsw = nmoves = 0UL;
                     /*FALLTHROUGH*/
 #endif /* GENERATOR_TEST */
                     case TEST_SEQUENCE_JUMBLE :                  /*FALLTHROUGH*/
@@ -686,12 +727,10 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                     case TEST_SEQUENCE_PERMUTATIONS :            /*FALLTHROUGH*/
                     case TEST_SEQUENCE_DUAL_PIVOT_KILLER :       /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MEDIAN3KILLER :           /*FALLTHROUGH*/
-                    case TEST_SEQUENCE_ANTIQUICKSELECT :
-                    case TEST_SEQUENCE_ADVERSARY :               /*FALLTHROUGH*/
                         distinct=1U;
 #if GENERATOR_TEST
                         if (1000UL > u) {
-                            t = test_array_distinctness(pv, 0UL, u, size, compar, f, log_arg);
+                            t = test_array_distinctness((const char *)pv, 0UL, u, size, compar, options&~(QUICKSELECT_INDIRECT), f, log_arg);
                             if (t != u) {
                                 (V)fprintf(stderr, "ERROR ^^^^^: generator failed (test_array_distinctness) for %s ^^^^^ ERROR!!!! line %d\n", ptest, __LINE__);
                                 errs++;
@@ -699,7 +738,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                                 if (t <= u) errt = t;
                             }
                         }
-                        if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
+                        if (0U != flags['i']) ngt = nlt = neq = nsw = nmoves = 0UL;
 #endif /* GENERATOR_TEST */
                     break;
                     case TEST_SEQUENCE_STDIN :                   /*FALLTHROUGH*/
@@ -720,6 +759,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                     case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :       /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_RIGHT :        /*FALLTHROUGH*/
                     case TEST_SEQUENCE_MANY_EQUAL_SHUFFLED :     /*FALLTHROUGH*/
+                    case TEST_SEQUENCE_ADVERSARY :               /*FALLTHROUGH*/
                         distinct=0U;
                     break;
                     default:
@@ -728,7 +768,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                 }
                 if ((2UL > count) && (MAX_ARRAY_PRINT > n) && (DEBUGGING(SORT_SELECT_DEBUG))) {
                     (V)fprintf(stderr, "initial %s array:\n", ptest);
-                    print_some_array(pv, 0UL, u, "/* "," */");
+                    print_some_array(pv, 0UL, u, "/* "," */",options&~(QUICKSELECT_INDIRECT));
                 }
                 eql = equ = j = k;
                 if ((0UL==m)&&(NULL==f)) {
@@ -757,7 +797,7 @@ static unsigned int correctness_test(int type, size_t size, long *refarray, long
                 }
 do_test:
                 /* reset counters every time, as they are altered by correctness test comparisons */
-                if (0U != flags['i']) ngt = nlt = neq = nsw = 0UL;
+                if (0U != flags['i']) ngt = nlt = neq = nsw = nmoves = 0UL;
                 instrumented = inst;
                 switch (func) {
                     case FUNCTION_QSELECT_S :
@@ -848,6 +888,9 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s line %d: quickselect
                     case FUNCTION_IBMQSORT :
                         IBMQSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);
                     break;
+                    case FUNCTION_INDIRECT_MERGESORT :
+                        IMERGESORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
+                    break;
                     case FUNCTION_INTROSORT :
                         INTROSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);
                     break;
@@ -885,14 +928,10 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s line %d: calling qui
 A(NULL!=pv);A(1UL<n);A(0UL<size);A(NULL!=compar);
 A(u+1UL==n);
 errno=0;
-#if 0
-                        qsort_wrapper((char *)pv,n,size,compar);
-#else
-                        quickselect((char *)pv,n,size,compar,swapf,NULL,0UL,options);
+                        quickselect((char *)pv,n,size,compar,NULL,0UL,options);
 #if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s line %d: quickselect returned: errno=%d */\n", __func__, __LINE__,errno);
 #endif /* DEBUG_CODE */
-#endif
                     break;
                     case FUNCTION_SELSORT :
                         SELSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);
@@ -934,14 +973,11 @@ fprintf(stderr, "/* %s line %d: *ptests=0x%x */\n",__func__,__LINE__,*ptests);
 fprintf(stderr, "/* %s line %d: n=%lu, t=%lu, count=%lu, factor=%f, d=%f, nsw=%lu, d2=%f */\n",__func__,__LINE__,n,t,count,factor,d,nsw,d2);
 #endif
                 }
-#if 0
-                if (j > u) { errs++; }
-#endif
                 if ((0U == errs) && (TEST_TYPE_PARTITION == (TEST_TYPE_PARTITION & *ptests))) {
                     if (NULL!=karray) {
 #if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr, "/* %s: %s line %d, nk=%lu */\n", __func__,source_file,__LINE__,nk);
-print_some_array(pv, 0UL, u, "/* "," */");
+print_some_array(pv, 0UL, u, "/* "," */",options&~(QUICKSELECT_INDIRECT));
 }
 #endif /* DEBUG_CODE */
                         for (k=0UL; k<nk; k++) {
@@ -954,14 +990,14 @@ print_some_array(pv, 0UL, u, "/* "," */");
 if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[%lu]=%lu, ll=%lu, ul=%lu */\n", __func__,source_file,__LINE__,k,le,ll,ul);
 #endif /* DEBUG_CODE */
                             for (pa=(char *)pv+ll*size,pb=pc-size;pb>=pa;pb-=size,le--)
-                                if (0!=compar(pb,pc)) break;
+                                if (0!=OPT_COMPAR(pb,pc,options&~(QUICKSELECT_INDIRECT),/**/)) break;
                             for (pd=pc+size,pe=(char *)pv+ul*size;pd<pe;pd+=size,ue++)
-                                if (0!=compar(pc,pd)) break;
+                                if (0!=OPT_COMPAR(pc,pd,options&~(QUICKSELECT_INDIRECT),/**/)) break;
 #if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[%lu]=%lu, le=%lu, ue=%lu */\n", __func__,source_file,__LINE__,k,karray[k],le,ue);
 #endif /* DEBUG_CODE */
                             x = test_array_partition(pv,ll,le,ue,ul,size,
-                                compar,f,log_arg);
+                                compar,options&~(QUICKSELECT_INDIRECT),f,log_arg);
                             if (x!=le) {
                                 (V)fprintf(stderr,
                                     "ERROR ^^^^^: %s failed (test_array_partition) for %s ^^^^^ ERROR!!!! line %d\n",
@@ -973,12 +1009,12 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[
                                 errs++;
                                 erro = 0UL;
                                 errt = x;
-                                print_some_array(pv, errl, erru, "/* "," */");
+                                print_some_array(pv, errl, erru, "/* "," */",options&~(QUICKSELECT_INDIRECT));
                                 break;
                             }
                         }
                     } else {
-                        x = test_array_partition(pv, 0UL, eql, equ, u, size, compar, f, log_arg);
+                        x = test_array_partition(pv, 0UL, eql, equ, u, size, compar, options&~(QUICKSELECT_INDIRECT),f, log_arg);
                         if (x != eql) {
                             (V)fprintf(stderr, "ERROR ^^^^^: %s failed (test_array_partition) for %s ^^^^^ ERROR!!!! line %d\n", pcc, ptest, __LINE__);
                             errs++;
@@ -988,7 +1024,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[
                     }
                 }
                 if ((0U == errs) && (TEST_TYPE_MEDIAN == (TEST_TYPE_MEDIAN & *ptests))) {
-                    x = test_array_median(pv, 0UL, j, u, size, compar, f, log_arg);
+                    x = test_array_median(pv, 0UL, j, u, size, compar, options&~(QUICKSELECT_INDIRECT), f, log_arg);
                     if (x != j) {
                         (V)fprintf(stderr, "ERROR ^^^^^: %s failed (test_array_median) for %s ^^^^^ ERROR!!!! line %d\n", pcc, ptest, __LINE__);
                         errs++;
@@ -997,7 +1033,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[
                     } else if (j != k) k = j; /* some median functions do not move data */
                 }
                 if ((0U == errs) && (TEST_TYPE_SORT == (TEST_TYPE_SORT & *ptests))) {
-                    x = test_array_sort(pv, 0UL, u, size, compar, distinct, logger, log_arg);
+                    x = test_array_sort(pv, 0UL, u, size, compar, options&~(QUICKSELECT_INDIRECT), distinct, logger, log_arg);
                     if (x != u) {
                         (V)fprintf(stderr, "ERROR ^^^^^: %s failed (test_array_sort) for %s ^^^^^ ERROR!!!!\n", pcc, ptest);
                         errs++;
@@ -1038,23 +1074,25 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "/* %s: %s line %d: karray[
             }
             if (0U < errs) { /* error diagnostics */
                 (V)fprintf(stderr, "/* %s returned index %lu, range %lu through %lu */\n", pcc, j, eql, equ);
+#if 0
                 if (eql < 0UL)
                     (V)fprintf(stderr, "ERROR ^^^^^: %s failed (eql %lu < o %lu) for %s ^^^^^ ERROR!!!!\n", pcc, eql, 0UL, ptest);
+#endif
                 if (equ > u)
                     (V)fprintf(stderr, "ERROR ^^^^^: %s failed (equ %lu < u %lu) for %s ^^^^^ ERROR!!!!\n", pcc, equ, u, ptest);
                 if (MAX_ARRAY_PRINT > n) {
-                    if (0UL != errt) print_some_array(pv, errt-1UL, errt+1UL, "/* "," */");
-                    print_some_array(pv, erro, erro+u, "/* "," */");
+                    if (0UL != errt) print_some_array(pv, errt-1UL, errt+1UL, "/* "," */",options&~(QUICKSELECT_INDIRECT));
+                    print_some_array(pv, erro, erro+u, "/* "," */",options&~(QUICKSELECT_INDIRECT));
                 } else {
-                    if (0UL != errt) print_some_array(pv, errt-1UL, errt+1UL, "/* "," */");
-                    else print_some_array(pv, 0UL, 2UL, "/* "," */");
-                    print_some_array(pv, 0UL<eql?eql-1UL:eql, equ+1UL, "/* "," */");
+                    if (0UL != errt) print_some_array(pv, errt-1UL, errt+1UL, "/* "," */",options&~(QUICKSELECT_INDIRECT));
+                    else print_some_array(pv, 0UL, 2UL, "/* "," */",options);
+                    print_some_array(pv, 0UL<eql?eql-1UL:eql, equ+1UL, "/* "," */",options&~(QUICKSELECT_INDIRECT));
                 }
                 if (0U == rpt) {
-                    restore_test_data(0UL,n,refarray,larray,array,darray,data_array,parray);
+                    restore_test_data(0UL,n,refarray,pv,type);
                     if (MAX_ARRAY_PRINT > n) {
                         (V)fprintf(stderr, "initial %s array:\n", ptest);
-                        print_some_array(pv, 0UL, u, "/* "," */");
+                        print_some_array(pv, 0UL, u, "/* "," */",options&~(QUICKSELECT_INDIRECT));
                     }
                     errs = 0U;
                     rpt++;
@@ -1105,7 +1143,7 @@ fprintf(stderr, "/* %s%s line %d: n=%lu, t=%lu, count=%lu, d=%f, nsw=%lu, d2=%f 
                         d = (double)(nrotations[0])/(double)count;
                         (V)snf(buf0, sizeof(buf0), NULL, NULL,
                             d, '0', 1, -15, f, log_arg);
-                        (V)printf("%s%s%*.*s%.6G %s rotations of >= %lu elements (%s)\n", comment,
+                        (V)printf("%s%s%*.*s%.6G %s rotations of >= %d elements (%s)\n", comment,
                             buf, col-c1, col-c1, " ",
                             d / factor,
                             psize, MAXROTATION, buf0);
@@ -1120,7 +1158,7 @@ fprintf(stderr, "/* %s%s line %d: n=%lu, t=%lu, count=%lu, d=%f, nsw=%lu, d2=%f 
                         (V)printf("%s%s%*.*s%.6G recursion%s\n", comment, buf, col-c1, col-c1, " ", (double)nrecursions/(double)count, 1UL==nrecursions?"":"s");
                     }
                     if (0UL<nmerges) {
-                        (V)printf("%s%s%*.*s%.6G merge%s\n", comment, buf, col-c1, col-c1, " ", (double)nmerges/(double)count, 1UL==nmerges?"":"s");
+                        (V)printf("%s%s%*.*s%.6G merge%s\n", comment, buf, col-c1, col-c1, " ", (double)nmerges/(double)count, count==nmerges?"":"s");
                     }
                 }
                 fflush(stdout);

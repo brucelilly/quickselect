@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.2 dated 2017-11-03T19:48:49Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.5 dated 2017-12-28T22:17:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:48:49Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2017-12-28T22:17:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -69,32 +69,33 @@ const char *function_type(unsigned int func, unsigned int *ptests)
             *ptests |= ( TEST_TYPE_PARTITION );
             ret = "selection";
         break;
-        case FUNCTION_QSELECT_S :     /*FALLTHROUGH*/
-        case FUNCTION_QSELECT_SORT :  /*FALLTHROUGH*/
-        case FUNCTION_QSORT_WRAPPER : /*FALLTHROUGH*/
-        case FUNCTION_BMQSORT :       /*FALLTHROUGH*/
-        case FUNCTION_DEDSORT :       /*FALLTHROUGH*/
-        case FUNCTION_DPQSORT :       /*FALLTHROUGH*/
-        case FUNCTION_GLQSORT :       /*FALLTHROUGH*/
-        case FUNCTION_HEAPSORT :      /*FALLTHROUGH*/
-        case FUNCTION_IBMQSORT :      /*FALLTHROUGH*/
-        case FUNCTION_INTROSORT :     /*FALLTHROUGH*/
-        case FUNCTION_ISORT :         /*FALLTHROUGH*/
-        case FUNCTION_LOGSORT :       /*FALLTHROUGH*/
-        case FUNCTION_MBMQSORT :      /*FALLTHROUGH*/
-        case FUNCTION_MERGESORT :     /*FALLTHROUGH*/
-        case FUNCTION_MINMAXSORT :    /*FALLTHROUGH*/
-        case FUNCTION_NBQSORT :       /*FALLTHROUGH*/
-        case FUNCTION_NETWORKSORT :   /*FALLTHROUGH*/
-        case FUNCTION_P9QSORT :       /*FALLTHROUGH*/
-        case FUNCTION_QSORT :         /*FALLTHROUGH*/
-        case FUNCTION_SELSORT :       /*FALLTHROUGH*/
-        case FUNCTION_SHELLSORT :     /*FALLTHROUGH*/
-        case FUNCTION_SMOOTHSORT :    /*FALLTHROUGH*/
-        case FUNCTION_SQRTSORT :      /*FALLTHROUGH*/
-        case FUNCTION_SQSORT :        /*FALLTHROUGH*/
-        case FUNCTION_SYSMERGESORT :  /*FALLTHROUGH*/
-        case FUNCTION_WQSORT :        /*FALLTHROUGH*/
+        case FUNCTION_QSELECT_S :          /*FALLTHROUGH*/
+        case FUNCTION_QSELECT_SORT :       /*FALLTHROUGH*/
+        case FUNCTION_QSORT_WRAPPER :      /*FALLTHROUGH*/
+        case FUNCTION_BMQSORT :            /*FALLTHROUGH*/
+        case FUNCTION_DEDSORT :            /*FALLTHROUGH*/
+        case FUNCTION_DPQSORT :            /*FALLTHROUGH*/
+        case FUNCTION_GLQSORT :            /*FALLTHROUGH*/
+        case FUNCTION_HEAPSORT :           /*FALLTHROUGH*/
+        case FUNCTION_IBMQSORT :           /*FALLTHROUGH*/
+        case FUNCTION_INDIRECT_MERGESORT : /*FALLTHROUGH*/
+        case FUNCTION_INTROSORT :          /*FALLTHROUGH*/
+        case FUNCTION_ISORT :              /*FALLTHROUGH*/
+        case FUNCTION_LOGSORT :            /*FALLTHROUGH*/
+        case FUNCTION_MBMQSORT :           /*FALLTHROUGH*/
+        case FUNCTION_MERGESORT :          /*FALLTHROUGH*/
+        case FUNCTION_MINMAXSORT :         /*FALLTHROUGH*/
+        case FUNCTION_NBQSORT :            /*FALLTHROUGH*/
+        case FUNCTION_NETWORKSORT :        /*FALLTHROUGH*/
+        case FUNCTION_P9QSORT :            /*FALLTHROUGH*/
+        case FUNCTION_QSORT :              /*FALLTHROUGH*/
+        case FUNCTION_SELSORT :            /*FALLTHROUGH*/
+        case FUNCTION_SHELLSORT :          /*FALLTHROUGH*/
+        case FUNCTION_SMOOTHSORT :         /*FALLTHROUGH*/
+        case FUNCTION_SQRTSORT :           /*FALLTHROUGH*/
+        case FUNCTION_SQSORT :             /*FALLTHROUGH*/
+        case FUNCTION_SYSMERGESORT :       /*FALLTHROUGH*/
+        case FUNCTION_WQSORT :             /*FALLTHROUGH*/
         case FUNCTION_YQSORT :
             ret = "sort";
             *ptests |= ( TEST_TYPE_SORT );
@@ -113,59 +114,61 @@ const char *function_name(unsigned int func)
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     switch (func) {
-        case FUNCTION_IBMQSORT :      /*FALLTHROUGH*/
-        case FUNCTION_BMQSORT :       ret = "Bentley&McIlroy qsort";
+        case FUNCTION_IBMQSORT :           /*FALLTHROUGH*/
+        case FUNCTION_BMQSORT :            ret = "Bentley&McIlroy qsort";
         break;
-        case FUNCTION_DEDSORT :       ret = "dedicated sort";
+        case FUNCTION_DEDSORT :            ret = "dedicated sort";
         break;
-        case FUNCTION_DPQSORT :       ret = "dual-pivot qsort";
+        case FUNCTION_DPQSORT :            ret = "dual-pivot qsort";
         break;
-        case FUNCTION_GLQSORT :       ret = "glibc qsort";
+        case FUNCTION_GLQSORT :            ret = "glibc qsort";
         break;
-        case FUNCTION_HEAPSORT :      ret = "heapsort";
+        case FUNCTION_HEAPSORT :           ret = "heapsort";
         break;
-        case FUNCTION_INTROSORT :     ret = "introsort";
+        case FUNCTION_INDIRECT_MERGESORT : ret = "indirect mergesort";
         break;
-        case FUNCTION_ISORT :         ret = "insertion sort";
+        case FUNCTION_INTROSORT :          ret = "introsort";
         break;
-        case FUNCTION_LOGSORT :       ret = "log sort";
+        case FUNCTION_ISORT :              ret = "insertion sort";
         break;
-        case FUNCTION_MBMQSORT :      ret = "modified Bentley&McIlroy qsort";
+        case FUNCTION_LOGSORT :            ret = "log sort";
         break;
-        case FUNCTION_MERGESORT :     ret = "in-place mergesort";
+        case FUNCTION_MBMQSORT :           ret = "modified Bentley&McIlroy qsort";
         break;
-        case FUNCTION_MINMAXSORT :    ret = "minmax sort";
+        case FUNCTION_MERGESORT :          ret = "in-place mergesort";
         break;
-        case FUNCTION_NBQSORT :       ret = "NetBSD qsort";
+        case FUNCTION_MINMAXSORT :         ret = "minmax sort";
         break;
-        case FUNCTION_NETWORKSORT :   ret = "network sort";
+        case FUNCTION_NBQSORT :            ret = "NetBSD qsort";
         break;
-        case FUNCTION_P9QSORT :       ret = "plan9 qsort";
+        case FUNCTION_NETWORKSORT :        ret = "network sort";
         break;
-        case FUNCTION_QSELECT_SORT :  /*FALLTHROUGH*/
-        case FUNCTION_QSELECT :       ret = "quickselect";
+        case FUNCTION_P9QSORT :            ret = "plan9 qsort";
         break;
-        case FUNCTION_QSORT :         ret = "library qsort";
+        case FUNCTION_QSELECT_SORT :       /*FALLTHROUGH*/
+        case FUNCTION_QSELECT :            ret = "quickselect";
         break;
-        case FUNCTION_QSORT_WRAPPER : ret = "qsort_wrapper";
+        case FUNCTION_QSORT :              ret = "library qsort";
         break;
-        case FUNCTION_SELSORT :       ret = "selection sort";
+        case FUNCTION_QSORT_WRAPPER :      ret = "qsort_wrapper";
         break;
-        case FUNCTION_SHELLSORT :     ret = "Shell sort";
+        case FUNCTION_SELSORT :            ret = "selection sort";
         break;
-        case FUNCTION_SMOOTHSORT :    ret = "smoothsort";
+        case FUNCTION_SHELLSORT :          ret = "Shell sort";
         break;
-        case FUNCTION_SQRTSORT :      ret = "sqrt sort";
+        case FUNCTION_SMOOTHSORT :         ret = "smoothsort";
         break;
-        case FUNCTION_SQSORT :        ret = "simplified quickselect";
+        case FUNCTION_SQRTSORT :           ret = "sqrt sort";
         break;
-        case FUNCTION_SYSMERGESORT :  ret = "system mergesort";
+        case FUNCTION_SQSORT :             ret = "simplified quickselect";
         break;
-        case FUNCTION_WQSORT :        ret = "lopsided quickselect";
+        case FUNCTION_SYSMERGESORT :       ret = "system mergesort";
         break;
-        case FUNCTION_YQSORT :        ret = "Yaroslavskiy's dual-pivot sort";
+        case FUNCTION_WQSORT :             ret = "lopsided quickselect";
         break;
-        case FUNCTION_QSELECT_S :     ret = "quickselect_s";
+        case FUNCTION_YQSORT :             ret = "Yaroslavskiy's dual-pivot sort";
+        break;
+        case FUNCTION_QSELECT_S :          ret = "quickselect_s";
         break;
         default :
             (V)fprintf(stderr, "// %s: %s line %d: unrecognized func %u\n", __func__, source_file, __LINE__, func);
@@ -194,7 +197,11 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
 #if DEBUG_CODE
     const char *fname = function_name(func);
 #endif
-    const char *ftype = function_type(func, ptests), *typename;
+    const char *ftype = function_type(func, ptests), *typename
+#if SILENCE_WHINEY_COMPILERS
+        ="gcc-fodder"
+#endif
+        ;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #if DEBUG_CODE
@@ -207,7 +214,7 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
 #endif
     /* check flags, modify tests as requested */
     /* first pass for test types */
-    for (c=0U; 1; c++) {
+    for (c=0U; ; c++) {
         /* supported flags */
         switch (c) {
             case 'a' :
@@ -232,7 +239,7 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
                 prog, fname, ftype);
 #endif
     /* second pass for tests with data types */
-    for (c=0U; 1; c++) {
+    for (c=0U; ; c++) {
         /* supported flags */
         switch (c) {
             case 'A' :
@@ -243,12 +250,11 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
                     if (0U != flags['i']) /* comparison/swap counts */
                         compar = idata_struct_strcmp,
                         compar_s = idata_struct_strcmp_s,
-                        swapf = iswapstruct;
+                        swapf=NULL;
                     else
                         compar = data_struct_strcmp,
                         compar_s = data_struct_strcmp_s,
-                        swapf = swapstruct;
-            break;
+                        swapf=NULL;
                 } else { /* test not requested */
                     continue;
                 }
@@ -322,10 +328,10 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
                     size = sizeof(struct data_struct);
                     if (0U != flags['i']) /* comparison/swap counts */
                         compar = itimecmp, compar_s = itimecmp_s,
-                        swapf = iswapstruct;
+                        swapf=NULL;
                     else
                         compar = timecmp, compar_s = timecmp_s,
-                        swapf = swapstruct;
+                        swapf=NULL;
                 } else { /* test not requested */
                     continue;
                 }
@@ -335,6 +341,9 @@ unsigned int test_function(const char *prog, long *refarray, int *array,
             break;
         }
         if (c == UCHAR_MAX) break; /* That's All Folks! */
+        /* typename is guaranteed to have been assigned a value by the above
+           switch statement whether or not (:-/) gcc's authors realize it...
+        */
 #if DEBUG_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             if (NULL!=f)

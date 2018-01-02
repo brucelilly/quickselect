@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is shuffle.c version 1.8 dated 2017-09-07T08:57:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is shuffle.c version 1.9 dated 2017-12-02T03:32:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "shuffle" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/weather/lib/libshuffle/src/s.shuffle.c */
@@ -49,8 +49,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: shuffle.c ~|^` @(#)"
 #define SOURCE_MODULE "shuffle.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2017-09-07T08:57:57Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2017-12-02T03:32:17Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -163,12 +163,12 @@ int fisher_yates_shuffle(void *array, size_t n, size_t size,
 
         /* the following lines of code implement the actual shuffle */
         while (1UL<n) {
-            size_t count, m;
+            size_t m;
 
             m=(size_t)randf(n--);
             /* swap elements at indices n and m */
             if (n!=m) { /* else nothing to do */
-                swapf(array+size*m,array+size*n,size);
+                swapf(((char *)array)+size*m,((char *)array)+size*n,size);
             }
         }
     }

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is plan9.c version 1.2 dated 2017-11-03T19:35:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is plan9.c version 1.3 dated 2017-12-30T02:32:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.plan9.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: plan9.c ~|^` @(#)"
 #define SOURCE_MODULE "plan9.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:35:12Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2017-12-30T02:32:29Z"
 #define COPYRIGHT_HOLDER "Lucent Technologies Inc."
 #define COPYRIGHT_DATE "2002"
 
@@ -151,6 +151,7 @@ qsorts(char *a, long n, Sort *p)
         while(n > 1) {
 /* BL: 3 sample pivot selection at size >= 11 elements; never more samples, 1 sample at mid-point for <= 10 elements */
                 if(n > 10) {
+                        nfrozen=0UL, pivot_minrank=1UL; /* BL: for antiqsort */
                         pi = pivot(a, n, p);
                 } else
                         pi = a + (n>>1)*es;

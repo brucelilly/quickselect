@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is selsort.c version 1.3 dated 2017-11-03T19:37:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is selsort.c version 1.4 dated 2017-12-15T21:39:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.selsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: selsort.c ~|^` @(#)"
 #define SOURCE_MODULE "selsort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:37:48Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2017-12-15T21:39:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -74,8 +74,9 @@ void selsort_internal(char *base, size_t first, size_t beyond, size_t size,
             for (pb=pa,pc=pa+size; pc<=pr; pc+=size) {
                 if (0<compar(pb,pc)) pb=pc;
             }
-            if (pb!=pa)
+            if (pb!=pa) {
                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,nsw++);
+            }
         }
     }
 }

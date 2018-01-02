@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    tables.h 1.2 copyright 2017 Bruce Lilly.   \ tables.h $
+* $Id: ~|^` @(#)    tables.h 1.3 copyright 2017 Bruce Lilly.   \ tables.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is tables.h version 1.2 dated 2017-11-03T20:53:41Z. \ $ */
+/* $Id: ~|^` @(#)   This is tables.h version 1.3 dated 2017-12-22T04:14:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.tables.h */
@@ -84,19 +84,13 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define TABLES_H_VERSION "tables.h 1.2 2017-11-03T20:53:41Z"
+#define TABLES_H_VERSION "tables.h 1.3 2017-12-22T04:14:04Z"
 
 /* local header files needed */
 #include "quickselect_config.h" /* quickselect QSORT_FUNCTION_NAME */
 
 /* system header files */
-#include <sys/types.h>          /* *_t */
-#include <limits.h>             /* *_MAX *_BIT */
-#include <stddef.h>             /* size_t NULL */
-
-#ifndef SIZE_MAX /* not standardized pre-C99 */
-# define SIZE_MAX ULONG_MAX
-#endif
+#include <stddef.h>             /* size_t */
 
 /* Nothing to configure below this line. */
 
@@ -124,8 +118,8 @@ extern struct sampling_table_struct ends_sampling_table[];
 extern struct sampling_table_struct middle_sampling_table[];
 
 /* For simplicity, all sampling tables are the same size */
-#define SAMPLING_TABLE_SIZE  21
-/* 3^21 < 2^32, so samples values are safe for 32-bit machines */
+#define SAMPLING_TABLE_SIZE  21 /* 3^0 - 3^20 */
+/* 3^20 < 2^32, so samples values are safe for 32-bit machines */
 
 /* Sampling for selection depends on the distribution of order statistic ranks.
    Specifically on whether or not there are desired order statistic ranks near

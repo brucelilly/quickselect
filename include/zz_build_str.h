@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.14 2017-02-16T13:16:09Z. \ $ */
+/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.15 2017-11-21T05:23:23Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "zz_build_str" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/include/s.zz_build_str.h */
 
 /* version-controlled header file version information */
-#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.14 2017-02-16T13:16:09Z"
+#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.15 2017-11-21T05:23:23Z"
 
 /* Some preprocessors and/or compilers generate strings for __func__ or __FUNCTION__ */
 /* ANSI/ISO C99 defines __func__ as a pre-defined identifier which
@@ -458,6 +458,14 @@ static const char *build_id = ID_STRING_PREFIX
 #  define NOT_FIRST
 # endif
  INDENT_H_VERSION
+#endif
+#ifdef INDIRECT_H_VERSION
+# ifdef NOT_FIRST
+ ", "
+# else
+#  define NOT_FIRST
+# endif
+ INDIRECT_H_VERSION
 #endif
 #ifdef IP_DECL_H_VERSION
 # ifdef NOT_FIRST
