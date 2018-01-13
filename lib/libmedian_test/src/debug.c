@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    debug.c copyright 2016-2017 Bruce Lilly.   \ debug.c $
+* $Id: ~|^` @(#)    debug.c copyright 2016-2018 Bruce Lilly.   \ debug.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is debug.c version 1.3 dated 2017-12-06T22:43:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is debug.c version 1.5 dated 2018-01-12T14:33:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.debug.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: debug.c ~|^` @(#)"
 #define SOURCE_MODULE "debug.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-12-06T22:43:28Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-01-12T14:33:41Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -99,6 +99,8 @@ const char *debug_name(unsigned int value)
         return "wqsort";
         case MERGE_DEBUG :
         return "merge";
+        case DPQSORT_DEBUG :
+        return "dpqsort";
     }
     (V)snul(buf, sizeof(buf), "unknown value 0x", NULL, value, 16, '0', 8, NULL, NULL);
     return buf;

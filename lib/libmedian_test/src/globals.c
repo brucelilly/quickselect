@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    globals.c copyright 2016-2017 Bruce Lilly.   \ globals.c $
+* $Id: ~|^` @(#)    globals.c copyright 2016-2018 Bruce Lilly.   \ globals.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is globals.c version 1.3 dated 2017-11-03T19:45:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is globals.c version 1.6 dated 2018-01-12T20:02:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.globals.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: globals.c ~|^` @(#)"
 #define SOURCE_MODULE "globals.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:45:36Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-01-12T20:02:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -91,7 +91,7 @@ int no_aux_repivot = 0;
 unsigned int save_partial = 0U;
 size_t sort_threshold = 10UL;
 
-size_t dp_cutoff = 15UL; /* 15 seems to be optimal */
+size_t dp_cutoff = 36UL; /* 36 seems to be optimal */
 
 size_t histogram[8][37];
 size_t histoswap[8];

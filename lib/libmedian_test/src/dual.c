@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    dual.c copyright 2016-2017 Bruce Lilly.   \ dual.c $
+* $Id: ~|^` @(#)    dual.c copyright 2016-2018 Bruce Lilly.   \ dual.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.5 dated 2017-12-15T21:54:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.9 dated 2018-01-13T02:47:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,30 +46,109 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-12-15T21:54:06Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-01-13T02:47:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
+/* Partition array starting at base with nmemb elements of size size around
+   2 pivots at pivot1, pivot2 (0>=compar(pivot1,pivot2), pivot1!=pivot2) using
+   comparison function compar and swap function swapf, observing options.  Cost
+   is 5/3 * nmemb - 2 comparisons.  On return *ppivot1 points to the first
+   element comparing equal to pivot1, *pmid points to the first element greater
+   than pivot1 and less than pivot2, *ppivot2 points to the first element
+   comparing equal to pivot2, and *pgt points to the first element greater than
+   pivot2.
+*/
+static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
+    size_t size, int(*compar)(const void*,const void*),
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options, char **ppivot1, char **pmid, char **ppivot2,
+    char **pgt)
+{
+    char *pa, *pb, *pc, *pd, *pe;
+    int c, d;
+
+    /* at entry: */
+    /* +-----------------------------------------------+ */
+    /* |        ?     |p1|       ?        |p2|    ?    | */
+    /* +-----------------------------------------------+ */
+    /*  base                                             */
+    /* N.B. order of p1,p2 may be reversed */
+    /* initialization: */
+    /* +-----------------------------------------------+ */
+    /* |p1|                     ?                   |p2| */
+    /* +-----------------------------------------------+ */
+    /*  b  a                                         d  e*/
+    /*                                               c   */
+    /* intermediate: */
+    /* +-----------------------------------------------+ */
+    /* |<p1|=p1|     ?                 |p1<x<p2|=p2|>p2| */
+    /* +-----------------------------------------------+ */
+    /*      b   a                       c       d   e    */
+    /* final: */
+    /* +-----------------------------------------------+ */
+    /* |    <p1    | =p1 |  p1<x<p2  | =p2 |    >p2    | */
+    /* +-----------------------------------------------+ */
+    /*  base        b     c           d     e             */
+    /* Initialize */
+    if (*ppivot1!=base) {
+        EXCHANGE_SWAP(swapf,base,*ppivot1,size,alignsize,size_ratio,nsw++);
+        if (*ppivot2==base) *ppivot2=*ppivot1; /* it moved */
+    }
+    pc=pd=(pe=base+size*nmemb)-size;
+    if (*ppivot2!=pd) {
+        EXCHANGE_SWAP(swapf,*ppivot2,pd,size,alignsize,size_ratio,nsw++);
+    }
+    pa=(pb=base)+size;
+    /* partition element at pa while pa<pc */
+    while (pa<pc) {
+/* XXX indirection is not necessarily handled correctly here! */
+        c=OPT_COMPAR(pa,pb,options,foo); /* pb has same value as pivot1 */
+        if (0>c) { /* element at pa is < pivot1 */
+            EXCHANGE_SWAP(swapf,pb,pa,size,alignsize,size_ratio,nsw++);
+            pa+=size,pb+=size;
+        } else if (0==c) { /* element at pa compares equal to pivot1 */
+            pa+=size;
+        } else { /* element at pa is greater than pivot1 */
+            d=OPT_COMPAR(pa,pd,options,foo); /* pd has same value as pivot2 */
+            if (0>d) { /* pivot1 < element at pa < pivot2 */
+                pc-=size;
+                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
+            } else if (0==d) { /* element at pa compares equal to pivot2 */
+                pc-=size;
+                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
+                pd-=size;
+                EXCHANGE_SWAP(swapf,pc,pd,size,alignsize,size_ratio,nsw++);
+            } else { /* element at pa > pivot2 */
+                pc-=size;
+                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
+                pd-=size;
+                EXCHANGE_SWAP(swapf,pc,pd,size,alignsize,size_ratio,nsw++);
+                pe-=size;
+                EXCHANGE_SWAP(swapf,pd,pe,size,alignsize,size_ratio,nsw++);
+            }
+        }
+    }
+    *ppivot1=pb,*pmid=pc,*ppivot2=pd,*pgt=pe;
+}
+
 /* dual-pivot qsort */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void dpqsort_internal(char *base, size_t nmemb, size_t size,
-    int(*compar)(const void *,const void *),
+/* Expected number of comparisons is 5/3 N log3 N ~ 1.05155 N log2 N.  */
+static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
+    size_t size, int(*compar)(const void *,const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
     unsigned int options)
 {
-    char *pa, *pb, *pivot1, *pivot2, *pm, *pn, *ps, *pt, *pu;
-    size_t n, q, r, s, u, v, w, x, karray[2];
+    char *pa, *pivot1, *pivot2, *ps, *pu;
+    size_t q, r, s, u, karray[2];
 
-#define DPDEBUG 0
+#define DPDEBUG 1
 /* SAMPLE_SELECTION 0: use sort of 5 elements; 1: use quickselect to obtain pivots from desired ranks */
 #define SAMPLE_SELECTION 1
 /* ADAPTIVE_SAMPLING 0: always use 5 samples; 1: use ~sqrt(nmemb) samples */
@@ -99,37 +178,43 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         }
 #if ADAPTIVE_SAMPLING
         /* number of samples for pivot selection */
-        for(s=30UL,q=900UL; q<nmemb; s+=30UL,q=s*s) ; /* XXX worry about overflow iff dual-pivot shows potential ... */
-        if (q>nmemb) s-=30UL;
-        if (s<5UL) s=5UL;
+        /* Variable r represents the number of samples in each of the 3
+           partitioned regions (if all goes perfectly) and affects the total
+           number of samples s=3r+2. 0-based pivot ranks within the s samples
+           are at k and 2k+1.
+        */
+        /* Variable u is a multiplier for some power of the number of
+           samples and affects the array size q where the number of samples
+           is increased.
+        */
+        u=4UL;
+        /* Samples proportional to square root, cube root, or fourth root of
+           the number of elements.
+        */
+#define SAMPLE_ROOT 2
+#if SAMPLE_ROOT == 4
+        for (r=1UL,s=5UL,q=u*625UL; q<nmemb; r++,s+=3UL,q=u*s*s*s*s) ;
+#elif SAMPLE_ROOT == 3
+        for (r=1UL,s=5UL,q=u*125UL; q<nmemb; r++,s+=3UL,q=u*s*s*s) ;
+#else
+        for (r=1UL,s=5UL,q=u*25UL; q<nmemb; r++,s+=3UL,q=u*s*s) ;
+#endif
+        if (q>nmemb) r--,s--;
+        if (s<5UL) r=1UL,s=5UL;
+        if (DEBUGGING(DPQSORT_DEBUG)) {
+            (V)fprintf(stderr,"%s: %s line %d: %lu elements, %lu samples, r=%lu\n",__func__,source_file,__LINE__,nmemb,s,r);
+        }
 #else
         s=5UL;
 #endif
-        w=nmemb>>1;
-        pm=base+w*size; /* middle element */
         pu+=size; /* past last element */
 #if SAMPLE_SELECTION
-        /* swap sample elements to middle of array for selection */
-        /* XXX quick hack */
-        for (r=((s+1UL)>>1),q=1UL,x=nmemb/s*size; q<r; q++) {
-            if (x!=size) {
-                u=q*x;
-                v=q*size;
-                if (pm-u>=base) {
-                    EXCHANGE_SWAP(swapf,pm-u,pm-v,size,alignsize,size_ratio,
-                        nsw++);
-                }
-                if (pm+u<pu) {
-                    EXCHANGE_SWAP(swapf,pm+u,pm+v,size,alignsize,size_ratio,
-                        nsw++);
-                }
-            }
-        }
-        r=s>>1;
 # if 1
-        q=(s+1UL)/6UL;
-        karray[0]=r-q;
-        karray[1]=r+q;
+        karray[0]=r;
+        karray[1]=(r<<1)+1UL;
+        if (DEBUGGING(DPQSORT_DEBUG)) {
+            (V)fprintf(stderr,"%s: %s line %d: karray[0]=%lu, karray[1]=%lu\n",__func__,source_file,__LINE__,karray[0],karray[1]);
+        }
 # else
         /* Aumuller & Dietzfelbinger suggest s/2 and s/4 */
         /* but it's slower in practice */
@@ -137,16 +222,22 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         karray[0]=q;
         karray[1]=r;
 # endif
-        pn=pm-r*size;
-        n=s;
-        pivot1=pn+karray[0]*size;
-        pivot2=pn+karray[1]*size;
-        /* XXX selecting pivots partitions the samples around the pivots and
-           costs ~ 2s.  Subsequent partitioning of the array costs > 2n.
+        /* swap sample elements to beginning of array for selection */
+        /* XXX quick hack */
+        for (pa=base,ps=base+r*size,q=0UL; q<s; pa+=size,ps+=r*size,q++) {
+            if (pa!=ps) {
+                swapf(pa,ps,size);
+                nsw+=size;
+            }
+        }
+        pivot1=base+karray[0]*size;
+        pivot2=base+karray[1]*size;
+        /* Selecting 2 pivots partitions the samples around the pivots and
+           costs ~ 3s.  Subsequent partitioning of the array costs 5/3 n.
            Using full array indices (rather than relative to first sample)
            and selecting the pivots based on those ranks from the entire
            array would partition the array around the pivots w/o a separate
-           partitioning step, with total cost ~ 2n.
+           partitioning step, with total cost ~ 3n.
            That would be an extension of the basic quicksort divide-and-conquer
            method, extended to multiple pivots.  Instead of selecting the single
            median as the single pivot, select n pivots to divide the array into
@@ -158,7 +249,7 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
            produce ~ sqrt(nmemb) smaller partitions which would have to be
            processed.
         */
-        quickselect_internal(pn,n,size,compar,karray,2UL,
+        quickselect_internal(base,s,size,compar,karray,2UL,
             QUICKSELECT_NETWORK_MASK,NULL,NULL); /* bootstrap with quickselect */
         /* XXX samples are partitioned, and could be moved to the appropriate
            regions w/o recomparisons
@@ -173,164 +264,30 @@ void dpqsort_internal(char *base, size_t nmemb, size_t size,
         sort5(pa,pivot1,pm,pivot2,ps,size,compar,swapf,alignsize,size_ratio,options);
 #endif
 #if DPDEBUG
-fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
+        if (DEBUGGING(DPQSORT_DEBUG)) {
+            (V)fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
+            print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
+        }
 #endif
         /* partition array around pivot elements */
-#if 1
-        /* This implementation puts equals in the outer regions, then separates
-           them into position in a quick single-comparison pass over each of the
-           two outer regions for a total expected comparison count of 7/3 N. An
-           alternative is to put them in the middle region, then separate
-           them into position using a one- to two-comparison pass over the
-           middle region for a total expected comparison count of 2 N (for
-           pivot1,pivot2 same value, else also 7/3 N).  Either has about
-           double the comparisons of a single-pivot partition. This one has less
-           overhead, so runs faster on typical input sequences.
-        */
-        /* | =P1 | <P1 | P1<x<P2 |  ?            | >P2 | =P2 | */
-        /*  |     |     |         |               |     |     | */
-        /*  base  pa    pb        pm              ps    pt    pu */
+        dp_partition(base,nmemb,size,compar,swapf,alignsize,size_ratio,options,
+            &pivot1,&pa,&pivot2,&ps);
         npartitions++;
-        for (pb=pm=base,ps=pu; pm<ps;) {
-            A(base<=pm);A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
-            if (0<=compar(pivot1,pm)) {
-                if (pb!=pm) {
-                    EXCHANGE_SWAP(swapf,pb,pm,size,alignsize,size_ratio,
-                        nsw++);
-                }
-                if (pivot1==pm) pivot1=pb; else if (pivot2==pm) pivot2=pb;
-                else if (pivot1==pb) pivot1=pm; else if (pivot2==pb) pivot2=pm;
-                pb+=size;
-            } else if (0>=compar(pivot2,pm)) {
-                do ps-=size; while ((pm<ps)&&(0>=compar(pivot2,ps)));
-                if (pm>=ps) break;
-                EXCHANGE_SWAP(swapf,pm,ps,size,alignsize,size_ratio,nsw++);
-                if (pivot1==pm) pivot1=ps; else if (pivot2==pm) pivot2=ps;
-                else if (pivot1==ps) pivot1=pm; else if (pivot2==ps) pivot2=pm;
-                continue; /* new unknown at pm */
-            }
-            pm+=size;
-        }
-        /* |      <=P1 | P1<x<P2 |      >=P2 | */
-        /*  |           |         |           | */
-        /*  base        pb        ps          pu */
-        /* group equals */
-        /* | <P1 | =P1 | P1<x<P2 | =P2 | >P2 | */
-        /*  |     |     |         |     |     | */
-        /*  base  pa    pb        ps    pt    pu */
-#if DPDEBUG
-fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
-fprintf(stderr, "//%s line %d: pb=%p[%lu](%d), ps=%p[%lu](%d)\n",__func__,__LINE__,(void *)pb,(pb-base)/size,*((int *)pb),(void *)ps,(ps-base)/size,*((int *)ps));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-#endif
-        npartitions++;
-        for (pa=pb,pm=base; pm<pa; pm+=size) {
-            if (0==compar(pivot1,pm)) {
-                pa-=size;
-                if (pm!=pa) {
-                    EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,
-                        nsw++);
-                }
-                if (pivot1==pm) pivot1=pa; else if (pivot2==pm) pivot2=pa;
-            }
-        }
-#if DPDEBUG
-fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,(void *)pa,(pa-base)/size,*((int *)pa),(void *)pb,(pb-base)/size,*((int *)pb));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-#endif
-        npartitions++;
-        for (pt=ps,pm=pu-size; pm>=pt; pm-=size) {
-            if (0==compar(pivot2,pm)) {
-                if (pm!=pt) {
-                    EXCHANGE_SWAP(swapf,pm,pt,size,alignsize,size_ratio,
-                        nsw++);
-                }
-                if (pivot1==pm) pivot1=pt; else if (pivot2==pm) pivot2=pt;
-                pt+=size;
-            }
-        }
-#if DPDEBUG
-fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,(void *)pa,(pa-base)/size,*((int *)pa),(void *)pb,(pb-base)/size,*((int *)pb));
-fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,(void *)ps,(ps-base)/size,*((int *)ps),(void *)pt,(pt-base)/size,*((int *)pt));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-#endif
-#else
-        npartitions++;
-        for (pa=pm=base,pt=pu; pm<pt;) {
-            A(base<=pm);A(base<=pa);A(pa<=pm);A(pt<=pu);
-            A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
-            if (0<compar(pivot1,pm)) {
-                EXCHANGE_SWAP(swapf,pa,pm,size,alignsize,size_ratio,nsw++);
-                if (pivot1==pa) pivot1=pm; else if (pivot2==pa) pivot2=pm;
-                else if (pivot2==pm) pivot2=pa;
-                pa+=size;
-            } else if (0>compar(pivot2,pm)) {
-                do pt-=size; while ((pm<pt)&&(0>compar(pivot2,pt)));
-                if (pm>=pt) break;
-                EXCHANGE_SWAP(swapf,pm,pt,size,alignsize,size_ratio,nsw++);
-                if (pivot1==pt) pivot1=pm; else if (pivot2==pt) pivot2=pm;
-                else if (pivot1==pm) pivot1=pt;
-                continue; /* new unknown at pm */
-            }
-            pm+=size;
-        }
-        /* | <P1 |      P1<=x<=P2      | >P2 | */
-        /*  |     |                     |     | */
-        /*  base  pa                    pt    pu */
-#if DPDEBUG
-fprintf(stderr, "//%s line %d: base=%p, pivot1=%p[%lu](%d), pivot2=%p[%lu](%d), pu=%p\n",__func__,__LINE__,(void *)base,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2),(void *)pu);
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,(void *)pa,(pa-base)/size,*((int *)pa),(void *)pt,(pt-base)/size,*((int *)pt));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-#endif
-        /* group equals */
-        /* | <P1 | =P1 | P1<x<P2 | =P2 | >P2 | */
-        /*  |     |     |         |     |     | */
-        /*  base  pa    pb        ps    pt    pu */
-        npartitions++;
-        for (pm=pb=pa,ps=pt; pm<ps;) {
-            A(base<=pm);A(base<=pa);A(pa<=pb);A(ps<=pt);A(pt<=pu);
-            A(base<=pivot1);A(pivot1<pu);A(base<=pivot2);A(pivot2<pu);
-            if (0==compar(pivot1,pm)) {
-                EXCHANGE_SWAP(swapf,pb,pm,size,alignsize,size_ratio,nsw++);
-                if (pivot1==pm) pivot1=pb; else if (pivot1==pb) pivot1=pm;
-                if (pivot2==pm) pivot2=pb; else if (pivot2==pb) pivot2=pm;
-                pb+=size;
-            } else if (0==compar(pivot2,pm)) {
-                do ps-=size; while ((pm<ps)&&(0==compar(pivot2,ps)));
-                if (pm>=ps) break;
-                EXCHANGE_SWAP(swapf,pm,ps,size,alignsize,size_ratio,nsw++);
-                if (pivot1==pm) pivot1=ps; else if (pivot1==ps) pivot1=pm;
-                if (pivot2==pm) pivot2=ps; else if (pivot2==ps) pivot2=pm;
-                continue; /* test moved element at pm */
-            }
-            pm+=size;
-        }
-#if DPDEBUG
-fprintf(stderr, "//%s line %d: base=%p, pivot1=%p[%lu](%d), pivot2=%p[%lu](%d), pu=%p\n",__func__,__LINE__,(void *)base,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2),(void *)pu);
-fprintf(stderr, "//%s line %d: pa=%p[%lu](%d), pb=%p[%lu](%d)\n",__func__,__LINE__,(void *)pa,(pa-base)/size,*((int *)pa),(void *)pb,(pb-base)/size,*((int *)pb));
-fprintf(stderr, "//%s line %d: ps=%p[%lu](%d), pt=%p[%lu](%d)\n",__func__,__LINE__,(void *)ps,(ps-base)/size,*((int *)ps),(void *)pt,(pt-base)/size,*((int *)pt));
-    print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-#endif
-#endif
-        npartitions++;
-        /* process [base,pa), [pb,ps), [pt,pu) */
+        /* process [base,pivot1), [pa,pivot2), [ps,pu) */
         /* process 3 regions */
         /* region sizes */
-        if (pa>base) q=(pa-base)/size; else q=0UL;
-        if (ps>pb) r=(ps-pb)/size; else r=0UL;
-        if (pu>pt) s=(pu-pt)/size; else s=0UL;
+        if (pivot1>base) q=(pivot1-base)/size; else q=0UL;
+        if (pivot2>pa) r=(pivot2-pa)/size; else r=0UL;
+        if (pu>ps) s=(pu-ps)/size; else s=0UL;
         /* should process small regions recursively, large iteratively */
         /* XXX quick hack: 2nd, 3rd regions recursively, 1st iteratively */
         if (r>1UL) {
             nrecursions++;
-            dpqsort_internal(pb,r,size,compar,swapf,alignsize,size_ratio,options);
+            dpqsort_internal(pa,r,size,compar,swapf,alignsize,size_ratio,options);
         }
         if (s>1UL) {
             nrecursions++;
-            dpqsort_internal(pt,s,size,compar,swapf,alignsize,size_ratio,options);
+            dpqsort_internal(ps,s,size,compar,swapf,alignsize,size_ratio,options);
         }
         if (q<2UL) return;
         nmemb=q;

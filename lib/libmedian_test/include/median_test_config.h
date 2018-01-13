@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    median_test_config.h copyright 2017 Bruce Lilly.   \ median_test_config.h $
+* $Id: ~|^` @(#)    median_test_config.h copyright 2017-2018 Bruce Lilly.   \ median_test_config.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.13 dated 2017-12-28T22:17:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.15 dated 2018-01-12T14:33:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -400,8 +400,9 @@ extern size_t nsw;
 #define SWAP_DEBUG               0x00010000U
 #define WQSORT_DEBUG             0x00020000U
 #define MERGE_DEBUG              0x00040000U
+#define DPQSORT_DEBUG            0x00080000U
 
-#define DEBUG_VALUE_COUNT 19
+#define DEBUG_VALUE_COUNT 20
 
 #define DEBUGGING(mx) (0U!=((mx)&debug))
 

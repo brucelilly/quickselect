@@ -134,12 +134,15 @@ void     arc4random_addrandom(u_char *, int);
 #define buildstr(s) #s
 
 /* XXX cleanup */
-#define OPTSTRING "dh:H:l:L:mn:p:T:V:w:x:Xy:Yz:"
-#define USAGE_STRING     "[-d] [-h ht] [-H val] [-l legend-text] [-L lim] [-m] [-n [x][y]] [-p offset] [-T \"title\"] [-V val] [-w wid] [-x \"x-label\"] [-X] [-y \"y-label\"] [-Y] [-z [x][y]]\n\
+#define OPTSTRING "C:c:dh:H:l:L:M:mn:p:T:V:w:x:Xy:Yz:"
+#define USAGE_STRING     "[-C color] [-c color] [-d] [-h ht] [-H val] [-l legend-text] [-L lim] [-M axis maximum] [-m] [-n [x][y]] [-p offset] [-T \"title\"] [-V val] [-w wid] [-x \"x-label\"] [-X] [-y \"y-label\"] [-Y] [-z [x][y]]\n\
+-C color\tset color for plotting symbol\n\
+-c color\tset color for plot line\n\
 -h ht\tspecify graph height\n\
 -H val\tdraw a dashed horizontal line at val\n\
 -l legend-text\tlegend for data (may be repeated for multiplots)\n\
 -L lim\tset threshold for data reduction\n\
+-M[x|y]n\t clip data points exceeding value n on x or y axis\n\
 -m\tmark maximum data point\n\
 -n[x][y]\tomit x- or y-axis ticks\n\
 -p offset\tset page offset\n\
@@ -186,6 +189,8 @@ struct symbol_struct {
     const char *marker;
     const char *mchar;
     const char *legend_text;
+    const char *line_color;
+    const char *symbol_color;
 };
 
 int main(int argc, char *argv[]) /* XPG (see exec()) */
@@ -206,20 +211,20 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     const char *grapcommentend = "\n";
     char *endptr=NULL;
     struct symbol_struct symbols[] = {
-        { "bullet", "\\(bu",                NULL } ,
-        { "times",  "\\(mu",                NULL } ,
-        { "plus",   "\\(pl",                NULL } ,
-        { "delta",  "\\(*D",                NULL } ,
-        { "square", "\\(sq",                NULL } ,
-        { "dot",    "\\v~-0.2m~.\\v~0.2m~", NULL } , /* almost invisible */
-        { "box",    "\\f(ZD\\N~110~\\fP",   NULL } , /* can obscure others */
-        { "star",   "\\(**",                NULL } , /* can be confused for overlayed x and + */
-        { "ring",   "\\(ci",                NULL } ,
-        { "htick",  "\\(em",                NULL } , /* poor for nearly horizontal plots */
-        { "vtick",  "|",                    NULL } , /* poor for nearly vertical plots */
+        { "bullet", "\\(bu",                NULL, NULL, NULL } ,
+        { "times",  "\\(mu",                NULL, NULL, NULL } ,
+        { "plus",   "\\(pl",                NULL, NULL, NULL } ,
+        { "delta",  "\\(*D",                NULL, NULL, NULL } ,
+        { "square", "\\(sq",                NULL, NULL, NULL } ,
+        { "dot",    "\\v~-0.2m~.\\v~0.2m~", NULL, NULL, NULL } , /* almost invisible */
+        { "box",    "\\f(ZD\\N~110~\\fP",   NULL, NULL, NULL } , /* can obscure others */
+        { "star",   "\\(**",                NULL, NULL, NULL } , /* can be confused for overlayed x and + */
+        { "ring",   "\\(ci",                NULL, NULL, NULL } ,
+        { "htick",  "\\(em",                NULL, NULL, NULL } , /* poor for nearly horizontal plots */
+        { "vtick",  "|",                    NULL, NULL, NULL } , /* poor for nearly vertical plots */
     };
     size_t nmarks = sizeof(symbols)/sizeof(symbols[0]);
-    size_t dim, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
+    size_t dim, line_number = 0UL, symbol_number = 0UL, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
     int bufsz, c, i, ingrap=0, optind;
     int maxlen = 1024;
     int sockfd = -1;
@@ -229,7 +234,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     unsigned int seqid = 1U;
     unsigned int tzknown = 1U;
     unsigned int errs=0U;
-    volatile unsigned long count, ul;
+    volatile unsigned long count, l, r, ul;
     pid_t pid;
     void (*f)(int, void *, const char *, ...) = logger;
     void *log_arg;
@@ -237,6 +242,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     FILE *fp;
     double d, dx,dy, hline, lim = 0.70, lx,ly, ox=-1.0e300, oy=-1.0e300, vline;
     double maxx, maxlx, maxly, maxy, maxyx=0.0, minx, minlx, minly, miny;
+    double xlim=1.0e300, ylim=1.0e300;
     double *x=NULL, *plx=NULL, **py=NULL, **ply=NULL;
     double minytick, maxytick, ytickintvl, minxtick, maxxtick, tick, xtickintvl;
     double deltax, deltay, xres, yres;
@@ -319,6 +325,24 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 default :
                     flags[c] = 1U;
                 break;
+                case 'C' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc))
+                        pcc = argv[++optind];
+                    symbols[symbol_number%nmarks].symbol_color = pcc;
+                    symbol_number++;
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
+                case 'c' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc))
+                        pcc = argv[++optind];
+                    symbols[line_number%nmarks].line_color = pcc;
+                    line_number++;
+                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
                 case 'd' :
                     flags[c] = 1U;
                     debug++;
@@ -368,6 +392,40 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind];
                     lim = strtod(pcc, NULL);
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
+                    pcc--;
+                break;
+                case 'M' : 
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind];
+                    }
+                    for (; '\0' != *pcc; pcc++)
+                        switch (*pcc) {
+                            case 'x' : /*FALLTHROUGH*/
+                            case 'X' :
+                                flags[c] |= 2U;
+                                i='x';
+                            break;
+                            case 'y' : /*FALLTHROUGH*/
+                            case 'Y' :
+                                flags[c] |= 4U;
+                                i='y';
+                            break;
+                            case ' ': /*FALLTHROUGH*/ case '\t': /* whitespace */
+                            break;
+                            default : /* a number */
+                                d = strtod(pcc, &endptr);
+                                if (i=='x') xlim=d;
+                                else if (i=='y') ylim=d;
+                                pcc=endptr;
+                                pcc--;
+                            break;
+                        }
                     pcc--;
                 break;
                 case 'n' : 
@@ -531,7 +589,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         dx = strtod(buf, &endptr);
 // if (debug) (void)fprintf(stderr, "x=%G, buf %s\n",dx, buf);
         if ((dx!=0.0) && (dx<minx)) minx=dx;
-        if (dx>maxx) maxx=dx;
+        if ((dx>maxx)&&(dx<=xlim)) maxx=dx;
         if (0U!=flags['X']) {
             if (dx==0.0) {
                 if (minx<maxx) dx=minx; /* fudge data to prevent log error */
@@ -539,12 +597,12 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             }
             lx = log2(dx);
             if (lx<minlx) minlx=lx;
-            if (lx>maxlx) maxlx=lx;
+            if ((lx>maxlx)&&(dx<=xlim)) maxlx=lx;
         }
         dy = strtod(endptr, &endptr);
 // if (debug) (void)fprintf(stderr, "y=%G, buf %s\n",dy, buf);
         if ((dy!=0.0) && (dy<miny)) miny=dy;
-        if (dy>maxy) maxy=dy, maxyx=dx;
+        if ((dy>maxy)&&(dy<=ylim)) maxy=dy, maxyx=dx;
         if (0U!=flags['Y']) {
             if (dy==0.0) {
                 if (miny<maxy) dy=miny; /* fudge data to prevent log error */
@@ -552,7 +610,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             }
             ly = log2(dy);
             if (ly<minly) minly=ly;
-            if (ly>maxly) maxly=ly;
+            if ((ly>maxly)&&(dy<=ylim)) maxly=ly;
         }
         if (dx==ox) { /* another dimension, same count */
             dim++;
@@ -994,11 +1052,25 @@ else
                     len+=(0UL<ul?4UL:2UL);
                     strlcat(buf,buf2,sizeof(buf));
                 }
-                snprintf(buf2,sizeof(buf2),"%s\\0%s", symbols[ul].mchar,
-                    NULL!=endptr?endptr:"?"
-                );
+                snprintf(buf2,sizeof(buf2),"%s\\0",symbols[ul].mchar);
+                strlcat(buf,buf2,sizeof(buf));
+#if 0
+                if ((NULL!=symbols[ul%nmarks].symbol_color)
+                &&('\0'!=symbols[ul%nmarks].symbol_color[0]))
+                    snprintf(buf2,sizeof(buf2)," color \"%s\"",
+                        symbols[ul%nmarks].symbol_color);
+                strlcat(buf,buf2,sizeof(buf));
+#endif
+                snprintf(buf2,sizeof(buf2),"%s",NULL!=endptr?endptr:"?");
                 len+=wordlen+2UL;
                 strlcat(buf,buf2,sizeof(buf));
+#if 0
+                if ((NULL!=symbols[ul%nmarks].line_color)
+                &&('\0'!=symbols[ul%nmarks].line_color[0]))
+                    snprintf(buf2,sizeof(buf2)," color \"%s\"",
+                        symbols[ul%nmarks].line_color);
+                strlcat(buf,buf2,sizeof(buf));
+#endif
             }
             if ('\0'!=buf[0]) {
                 printf(
@@ -1012,16 +1084,40 @@ else
 #endif
 
         for (ul=0UL; ul<dim; ul++) {
-            printf("draw data%lu solid %s\n", ul, symbols[ul%nmarks].marker);
+            printf("draw data%lu solid ", ul);
+            if ((NULL!=symbols[ul%nmarks].line_color)
+            &&('\0'!=symbols[ul%nmarks].line_color[0]))
+                printf("color \"%s\" ", symbols[ul%nmarks].line_color);
+            printf("%s", symbols[ul%nmarks].marker);
+            if ((NULL!=symbols[ul%nmarks].symbol_color)
+            &&('\0'!=symbols[ul%nmarks].symbol_color[0]))
+                printf(" color \"%s\"", symbols[ul%nmarks].symbol_color);
+            printf("\n");
+            l=0UL,r=count-1UL;
+#if 1
+            for (q=0UL; q<count; q++) {
+                if ((x[q]>xlim)||(py[ul][q]>ylim)) {
+                    pp[ul][q]=1U;
+                    if (q==l) l++;
+                    else if (q==r) {
+                        while (0U<pp[ul][q]) {
+                            r--;
+                            if (l==q) break;
+                            q--;
+                        }
+                    }
+                }
+            }
+#endif
             if (0U!=flags['X']) {
                 if (0U!=flags['Y'])
-                    q=trim(plx, ply[ul], pp[ul], 0UL, count-1UL, lim);
+                    q=trim(plx, ply[ul], pp[ul], l, r, lim);
                 else
-                    q=trim(plx, py[ul], pp[ul], 0UL, count-1UL, lim);
+                    q=trim(plx, py[ul], pp[ul], l, r, lim);
             } else if (0U!=flags['Y'])
-                q=trim(x, ply[ul], pp[ul], 0UL, count-1UL, lim);
+                q=trim(x, ply[ul], pp[ul], l, r, lim);
             else
-                q=trim(x, py[ul], pp[ul], 0UL, count-1UL, lim);
+                q=trim(x, py[ul], pp[ul], l, r, lim);
             (void)fprintf(stderr,"%s %s line %d: trim reports %lu remaining data points (trimmed from %lu) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,q,count,ingrap?grapcommentend:commentend);
             for (q=0UL; q<count; q++) {
                 if (0U<pp[ul][q]) continue;
