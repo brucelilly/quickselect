@@ -29,4 +29,6 @@ a usage synopsis.  It is advisable to build w/o optimization to run the
 operations cost tests; otherwise optimization is recommended.
 
 A pre-peer-reviewed document describing quickselect and its development
-and testing may be found at lib/libmedian/doc/pub/spe/paper.pdf.
+and testing may be found at lib/libmedian/doc/pub/generic/paper.pdf.
+
+A separate document detailing internals is in lib/libmedian/doc/pub/design.pdf.
