@@ -135,11 +135,11 @@ void     arc4random_addrandom(u_char *, int);
 
 /* XXX cleanup */
 #define OPTSTRING "C:c:dh:H:l:L:M:mn:p:T:V:w:x:Xy:Yz:"
-#define USAGE_STRING     "[-C color] [-c color] [-d] [-h ht] [-H val] [-l legend-text] [-L lim] [-M axis maximum] [-m] [-n [x][y]] [-p offset] [-T \"title\"] [-V val] [-w wid] [-x \"x-label\"] [-X] [-y \"y-label\"] [-Y] [-z [x][y]]\n\
+#define USAGE_STRING     "[-C color] [-c color] [-d] [-h ht] [-H val [color]] [-l legend-text] [-L lim] [-M axis maximum] [-m] [-n [x][y]] [-p offset] [-T \"title\"] [-V val [color]] [-w wid] [-x \"x-label\"] [-X] [-y \"y-label\"] [-Y] [-z [x][y]]\n\
 -C color\tset color for plotting symbol\n\
 -c color\tset color for plot line\n\
 -h ht\tspecify graph height\n\
--H val\tdraw a dashed horizontal line at val\n\
+-H val [color]\tdraw a dashed horizontal line at val with optional color\n\
 -l legend-text\tlegend for data (may be repeated for multiplots)\n\
 -L lim\tset threshold for data reduction\n\
 -M[x|y]n\t clip data points exceeding value n on x or y axis\n\
@@ -147,7 +147,7 @@ void     arc4random_addrandom(u_char *, int);
 -n[x][y]\tomit x- or y-axis ticks\n\
 -p offset\tset page offset\n\
 -T \"title\"\tset graph title\n\
--V val\tdraw a dashed vertical line at val\n\
+-V val [color]\tdraw a dashed vertical line at val with optional color\n\
 -w wid\tspecify graph width\n\
 -x \"xlabel\"\tlabel x-axis\n\
 -X\t use log scaling for the x-axis\n\
@@ -225,6 +225,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     };
     size_t nmarks = sizeof(symbols)/sizeof(symbols[0]);
     size_t dim, line_number = 0UL, symbol_number = 0UL, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
+    size_t xc, label_num, start_label, line_len, max_len;
     int bufsz, c, i, ingrap=0, optind;
     int maxlen = 1024;
     int sockfd = -1;
@@ -245,7 +246,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     double xlim=1.0e300, ylim=1.0e300;
     double *x=NULL, *plx=NULL, **py=NULL, **ply=NULL;
     double minytick, maxytick, ytickintvl, minxtick, maxxtick, tick, xtickintvl;
-    double deltax, deltay, xres, yres;
+    double cw, deltax, deltay, xres, yres;
 #if ! defined(PP__FUNCTION__)
     static const char __func__[] = "main";
 #endif
@@ -373,7 +374,16 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
                         pcc = argv[++optind];
-                    hline = strtod(pcc, NULL);
+                    hline = strtod(pcc, &endptr);
+                    pcc=endptr;
+                    if ('\0' == *(pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* color */
+                    }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
@@ -459,15 +469,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
-#if 0
-                case 'r' :
-                    if ('\0' == *(++pcc))
-                        pcc = argv[++optind];
-                    reduction = strtoul(pcc, NULL, 10);
-                    for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
-                    pcc--;
-                break;
-#endif
                 case 'T' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
@@ -480,7 +481,16 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
                         pcc = argv[++optind];
-                    vline = strtod(pcc, NULL);
+                    vline = strtod(pcc, &endptr);
+                    pcc=endptr;
+                    if ('\0' == *(pcc)) {
+                        if ('-' == argv[optind+1][0]) {
+                            /* next arg */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* color */
+                    }
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                     pcc--;
                 break;
@@ -702,16 +712,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             printf("coord log y\n");
 /* XXX maybe make frame types settable via option args */
         printf("frame ht %s wid %s top invis right invis\n",graph_height, graph_width);
-#if 0
-        if ((maxy-miny)/1.0e-6>deltay) deltay=(maxy-miny)*1.0e-6;
-#endif
         ym=snmagnitude(maxy,NULL,NULL);
         if (0>ym) ym++;
         yp=formatprecision(stderr,miny,maxy,deltay);
         if (yp-ym>8) yp=8-ym;
-#if 0
-        if (yp>6) yp=6;
-#endif
         yw=formatwidth(stderr, miny,maxy,yp);
         maxyticks=htp*4*4/5/5/vs; /* assumes ticks 80% of graph ht and 80% maximum text density */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, miny=%.15G, maxy=%.15G, deltay=%.15G, yp=%d, yw=%d, maxyticks=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,miny,maxy,deltay,yp,yw,maxyticks,ingrap?grapcommentend:commentend);
@@ -729,9 +733,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             while (minytick*ytickintvl<miny) minytick*=ytickintvl;
             while (maxytick>maxy*ytickintvl) maxytick/=ytickintvl;
             yp=formatprecision(stderr,minytick,maxytick,ytickintvl);
-#if 0
-            if (yp>6) yp=6;
-#endif
             yw=formatwidth(stderr, minytick,maxytick,yp);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: ytickintvl=%.15G, minytick=%.15G, maxytick=%.15G, yw=%d, yp=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,ytickintvl,minytick,maxytick,yw,yp,ingrap?grapcommentend:commentend);
@@ -750,42 +751,18 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             yp=formatprecision(stderr,minytick,maxytick,ytickintvl);
             i=formatprecision(stderr,ytickintvl,ytickintvl,ytickintvl);
             if (yp>i) yp=i;
-#if 0
-            if (yp>6) yp=6;
-#endif
             yw=formatwidth(stderr, minytick,maxytick,yp);
 (void)fprintf(stderr,"%s %s line %d: minytick=%.15G, maxytick=%.15G, ym=%d, yp=%d, yw=%d, ytickintvl=%.15G%s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minytick,maxytick,ym,yp,yw,ytickintvl,ingrap?grapcommentend:commentend);
         }
-#if 0
-        if ((maxx-minx)/1.0e-6>deltax) deltax=(maxx-minx)*1.0e-6;
-#endif
         xm=snmagnitude(maxx,NULL,NULL);
         if (0>xm) xm++;
         xp=formatprecision(stderr,minx,maxx,deltax);
         if (xp-xm>8) xp=8-xm;
-#if 0
-        if (xp>6) xp=6;
-#endif
         xw=formatwidth(stderr,minx,maxx,xp);
         maxxticks=widp*3*4/5/(xw+xp+1-(0U!=flags['X']?1:0))/ps; /* assumes digit width 4 pt @ ps=12, ticks 80% of graph width */
 (void)fprintf(stderr,"%s %s line %d: widp=%d, maxx=%G, xm=%d, xp=%d, xw=%d, maxxticks=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,widp,maxx,xm,xp,xw,maxxticks,ingrap?grapcommentend:commentend);
         if (0U!=flags['X']) {
             flags['z'] &= (~2U); /* can't have zero on log axis */
-#if 0
-            minxtick=mintick(stderr, minlx, maxlx, 1.0, xtickintvl, minlx, maxlx);
-            maxxtick=maxtick(stderr, minlx, maxlx, 1.0, xtickintvl, minlx, maxlx);
-            xtickintvl=intvl(stderr, minlx, maxlx, 1.0e-12, minlx, maxlx, maxxticks, 0U);
-            minxtick=mintick(stderr, minlx, maxlx, 1.0e-12, xtickintvl, minlx, maxlx);
-            maxxtick=maxtick(stderr, minlx, maxlx, 1.0e-12, xtickintvl, minlx, maxlx);
-            xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
-            minxtick=snround(exp2(minxtick),NULL,NULL);
-            maxxtick=snround(exp2(maxxtick),NULL,NULL);
-            while (minxtick*xtickintvl<minx) minxtick=snround(minxtick*xtickintvl,NULL,NULL);
-            while (maxxtick>maxx*xtickintvl) maxxtick=snround(maxxtick/xtickintvl,NULL,NULL);
-            /* for log X, assume powers of 2 and don't worry about  intervals */
-            xtickintvl=(maxlx-minlx)/(maxxticks-1UL);
-            xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
-#else
             d=(maxlx-minlx)/(maxxticks-1);
             if (d>=1.5)
                 d=snmultiple(d,2.0,NULL,NULL);
@@ -795,21 +772,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
             minxtick=minx;
             maxxtick=maxx;
-#endif
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: minlx=%G, maxlx=%G, xtickintvl=%G, minxtick=%G, maxxtick=%G %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minlx,maxlx,xtickintvl,minxtick,maxxtick,ingrap?grapcommentend:commentend);
 #endif /* DEBUG_CODE */
-#if 0
-        c=snmagnitude(maxx,NULL,NULL);
-        if (0>c) c++;
-#endif
             xp=formatprecision(stderr,minxtick,maxxtick,xtickintvl);
-#if 0
-        if (xp-c>8) xp=8-c;
-#endif
-#if 0
-            if (xp>6) xp=6;
-#endif
             xw=formatwidth(stderr, minxtick,maxxtick,xp);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: xtickintvl=%G, minxtick=%G, maxxtick=%G, xw=%d, xp=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,xtickintvl,minxtick,maxxtick,xw,xp,ingrap?grapcommentend:commentend);
@@ -826,44 +792,14 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             minxtick=mintick(stderr, minx, maxx, xres, xtickintvl, minx, maxx);
             maxxtick=maxtick(stderr, minx, maxx, xres, xtickintvl, minx, maxx);
             xp=formatprecision(stderr,minxtick,maxxtick,xtickintvl);
-#if 0
-            if (xp>6) xp=6;
-#endif
             xw=formatwidth(stderr, minxtick,maxxtick,xp);
         }
         if (NULL!=title) {
-#if 0
-            printf("label top \"");
-            len=0UL;
-            dq=strchr(title,'"');
-            if (NULL==dq) pcc=title; else pcc=dq+1;
-            do {
-                sp=strchr(pcc,' ');
-                dq=strchr(pcc,'"');
-                if ((NULL==sp)&&(NULL!=dq)) sp=dq;
-                else if ((NULL!=sp)&&(NULL!=dq)&&(dq<sp)) sp=dq;
-                if (NULL==sp) wordlen=strlen(pcc); else wordlen=(sp-pcc);
-                if (widp*3UL/5UL<=len+wordlen) { printf("\" \""); len=0UL; }
-                printf("%*.*s", (int)wordlen, (int)wordlen, pcc);
-                len+=wordlen;
-                if (NULL!=sp) { printf(" "); len++; pcc=sp+1; }
-                else pcc=sp;
-            } while (NULL!=pcc);
-            printf("\"\n");
-#else
             printf("label top %s\n", title);
-#endif
         }
         /* tick numbers look better if width is left unspecified */
         if (0U==(flags['n']&4U)) {
-#if 0
-            (void)sng(buf,sizeof(buf),NULL,NULL,minytick,0-(yw+yp),3,logger,log_arg);
-            (void)sng(buf2,sizeof(buf2),NULL,NULL,maxytick,0-(yw+yp),3,logger,log_arg);
-#endif
             if (0U!=flags['Y']) {
-#if 0
-                printf("ticks left out from %s to %s by *%.9G \"%%.%dg\"\n", buf, buf2, ytickintvl, yp+ym);
-#else
                 for (tick=minytick; tick<maxytick*ytickintvl*9.0/11.0; tick*=ytickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,yp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(yp+ym),3,logger,log_arg);
@@ -872,11 +808,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
 #endif /* DEBUG_CODE */
                     (void)printf("tick left out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
-#endif
             } else {
-#if 0
-                printf("ticks left out from %s to %s by %.9G \"%%.%dg\"\n", buf, buf2, ytickintvl, yp+ym);
-#else
                 for (tick=minytick; tick<maxytick+ytickintvl; tick+=ytickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,yp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(yp+ym),3,logger,log_arg);
@@ -885,20 +817,12 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
 #endif /* DEBUG_CODE */
                     (void)printf("tick left out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
-#endif
             }
         } else printf("ticks left off\n");
         if (NULL!=ylabel)
             printf("label left %s\n",ylabel);
         if (0U==(flags['n']&2U)) {
-#if 0
-            (void)sng(buf,sizeof(buf),NULL,NULL,minxtick,0-(xw+xp),3,logger,log_arg);
-            (void)sng(buf2,sizeof(buf2),NULL,NULL,maxxtick,0-(xw+xp),3,logger,log_arg);
-#endif
             if (0U!=flags['X']) {
-#if 0
-                printf("ticks bot out from %s to %s by *%.9G \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
-#else
                 for (tick=minxtick; tick<maxxtick*xtickintvl*9.0/11.0; tick*=xtickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,xp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(xp+xm),3,logger,log_arg);
@@ -907,11 +831,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
 #endif /* DEBUG_CODE */
                     (void)printf("tick bot out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
-#endif
             } else {
-#if 0
-                printf("ticks bot out from %s to %s by %.9G \"%%.%df\"\n", buf, buf2, xtickintvl, xp);
-#else
                 for (tick=minxtick; tick<maxxtick+xtickintvl; tick+=xtickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,xp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(xp+xm),3,logger,log_arg);
@@ -920,7 +840,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
 #endif /* DEBUG_CODE */
                     (void)printf("tick bot out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
-#endif
             }
         } else printf("ticks bot off\n");
         /* legend */
@@ -1027,58 +946,95 @@ else
                 xlines++;
             }
             d=(double)(yw*ps/c+i)/72.0; /* space for y-axis ticks and tick numbers, in inches */
-            for (ul=0UL; ul<q; ul++) {
-                endptr=symbols[ul].legend_text;
-                if (NULL==endptr) wordlen=1;
-                else wordlen=strlen(endptr);
-                if (yw*ps/c+widp+i<=ps*(len+wordlen+(0UL<ul?6UL:4UL))/c) {
-#if 1
+            max_len = yw+(widp+i)*c/ps;
+            cw = (double)ps / (double)c / 72.0; /* character width, inches */
+# if 1
 if (0!=ingrap)
-(void)printf("%s %s line %d: dy=%.6f, ps=%d, c=%d, i=%d, yw=%d, widp=%d, wordlen=%lu, len=%lu, ul=%lu, xlines=%lu%s",grapcommentstart,__func__,__LINE__,dy,ps,c,i,yw,widp,wordlen,len,ul,xlines,grapcommentend);
+(void)printf("%s %s line %d: ps=%d, c=%d, i=%d, yw=%d, widp=%d, max_len=%lu%s",grapcommentstart,__func__,__LINE__,ps,c,i,yw,widp,max_len,grapcommentend);
 else
-(void)printf("%s %s line %d: dy=%.6f, ps=%d, c=%d, i=%d, yw=%d, widp=%d, wordlen=%lu, len=%lu, ul=%lu, xlines=%lu%s",commentstart,__func__,__LINE__,dy,ps,c,i,yw,widp,wordlen,len,ul,xlines,commentend);
-#endif
-                    printf(
-                        "pic Label: box invis wid framewid2+%.6f ht %.6f with .ne at Frame.se -0,%.6f\n",
-                        d,dy,dy+(double)xlines*dy);
-                    printf(
-                        "pic line invis from Label.w to Label.e \"%s\" aligned\n", 
-                        buf);
-                    buf[0]='\0';
-                    len=0UL;
-                    xlines++;
-                } else {
-                    snprintf(buf2,sizeof(buf2),"\\0%s",0UL<ul?"\\0\\0":"");
-                    len+=(0UL<ul?4UL:2UL);
-                    strlcat(buf,buf2,sizeof(buf));
+(void)printf("%s %s line %d: ps=%d, c=%d, i=%d, yw=%d, widp=%d, max_len=%lu%s",commentstart,__func__,__LINE__,ps,c,i,yw,widp,max_len,commentend);
+# endif
+            line_len = 8UL; /* "Legend:\0" */
+            for (start_label=ul=0UL; ul<=q; ul++) {
+                if (ul<q) endptr=symbols[ul].legend_text;
+                else endptr="";
+                if (NULL!=endptr) {
+                    if (ul<q) wordlen=strlen(endptr);
+                    else wordlen = max_len;
+                    if (ul>start_label) xc=5UL; else xc=2UL;
+                    if (line_len + wordlen + xc <= max_len)
+                        line_len += wordlen + xc;
+                    else {
+                        /* overall box */
+                        printf(
+                            "pic Label: box invis wid framewid2+%.6f ht %.6f with .ne at Frame.se -0,%.6f\n",
+                            d,dy,dy+(double)xlines*dy);
+                        /* box for necessary length line_len */
+                        printf(
+                            "pic Textbox: box invis wid %lu*%.6f ht %.6f with .c at Label.c\n",
+                            line_len,cw,dy);
+                        for (label_num=start_label; label_num<ul; label_num++) {
+                            if (0UL==label_num) {
+                                /* box for "Legend:\0" */
+                                printf(
+                                    "pic Legendtextbox: box invis wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
+                                    8UL,cw,dy);
+                                /* Line with "Legend:\0" text */
+                                printf(
+                                    "pic line invis from Legendtextbox.w to Legendtextbox.e \"%s\" aligned\n",
+                                    "Legend:\0"); 
+                                /* box for symbol (after "Legend:\0" box) */
+                                printf(
+                                    "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Legendtextbox.e + %.6f,0\n",
+                                    label_num,2UL,cw,dy,cw);
+                            } else {
+                                if (label_num > start_label) {
+                                    /* box for symbol (offset from last label's box) */
+                                    printf(
+                                        "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Subtextbox%lu.e + 3.0 * %.6f,0\n",
+                                        label_num,2UL,cw,dy,label_num-1UL,cw);
+                                } else {
+                                    /* box for symbol (at start of line) */
+                                    printf(
+                                        "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
+                                        label_num,2UL,cw,dy);
+                                }
+                            }
+                            endptr=symbols[label_num].legend_text;
+                            if (NULL!=endptr) {
+                                wordlen=strlen(endptr);
+                                /* line with symbol (possibly colored) */
+                                printf(
+                                    "pic line invis from last box.w to last box.e \"%s\"",
+                                    symbols[label_num%nmarks].mchar); 
+                                if ((NULL!=symbols[label_num].symbol_color)
+                                &&('\0'!=symbols[label_num].symbol_color[0])
+                                ) {
+                                    printf(" color \"%s\"", symbols[label_num].symbol_color);
+                                }
+                                printf(" aligned\n");
+                                /* box for legend text */
+                                printf(
+                                    "pic Subtextbox%lu: box invis wid %lu*%.6f ht %.6f with .w at last box.e + %.6f,0\n",
+                                    label_num,wordlen,cw,dy,cw);
+                                /* line with legend text (possibly colored) */
+                                printf(
+                                    "pic line invis from last box.w to last box.e \"%s\"",
+                                    symbols[label_num].legend_text); 
+                                if ((NULL!=symbols[label_num].line_color)
+                                &&('\0'!=symbols[label_num].line_color[0])
+                                ) {
+                                    printf(" color \"%s\"", symbols[label_num].line_color);
+                                }
+                                printf(" aligned\n");
+                            }
+                        }
+                        xlines++;
+                        if (ul==q) break;
+                        start_label = ul--;
+                        line_len = 0UL;
+                    }
                 }
-                snprintf(buf2,sizeof(buf2),"%s\\0",symbols[ul].mchar);
-                strlcat(buf,buf2,sizeof(buf));
-#if 0
-                if ((NULL!=symbols[ul%nmarks].symbol_color)
-                &&('\0'!=symbols[ul%nmarks].symbol_color[0]))
-                    snprintf(buf2,sizeof(buf2)," color \"%s\"",
-                        symbols[ul%nmarks].symbol_color);
-                strlcat(buf,buf2,sizeof(buf));
-#endif
-                snprintf(buf2,sizeof(buf2),"%s",NULL!=endptr?endptr:"?");
-                len+=wordlen+2UL;
-                strlcat(buf,buf2,sizeof(buf));
-#if 0
-                if ((NULL!=symbols[ul%nmarks].line_color)
-                &&('\0'!=symbols[ul%nmarks].line_color[0]))
-                    snprintf(buf2,sizeof(buf2)," color \"%s\"",
-                        symbols[ul%nmarks].line_color);
-                strlcat(buf,buf2,sizeof(buf));
-#endif
-            }
-            if ('\0'!=buf[0]) {
-                printf(
-                    "pic Label: box invis wid framewid2+%.6f ht %.6f with .ne at Frame.se -0,%.6f\n",
-                    d,dy,dy+(double)xlines*dy);
-                printf(
-                    "pic line invis from Label.w to Label.e \"%s\" aligned\n", 
-                    buf);
             }
         }
 #endif
@@ -1163,18 +1119,36 @@ else
                         case 'H' :
                             if ('\0' == *(++pcc))
                                 pcc = argv[++optind];
-                            hline = strtod(pcc, NULL);
+                            hline = strtod(pcc, &endptr);
+                            pcc=endptr;
+                            if ('\0' == *(pcc)) {
+                                if ('-' != argv[optind+1][0]) {
+                                    endptr=argv[++optind]; /* color */
+                                }
+                            }
                             for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                             pcc--;
-                            printf("line dashed from %G,%G to %G,%G\n", minxtick, hline, maxxtick, hline);
+                            if ('\0'!=*endptr)
+                                printf("line dashed color \"%s\" from %G,%G to %G,%G\n", endptr, minxtick, hline, maxxtick, hline);
+                            else
+                                printf("line dashed from %G,%G to %G,%G\n", minxtick, hline, maxxtick, hline);
                         break;
                         case 'V' :
                             if ('\0' == *(++pcc))
                                 pcc = argv[++optind];
-                            vline = strtod(pcc, NULL);
+                            vline = strtod(pcc, &endptr);
+                            pcc=endptr;
+                            if ('\0' == *(pcc)) {
+                                if ('-' != argv[optind+1][0]) {
+                                    endptr=argv[++optind]; /* color */
+                                }
+                            }
                             for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
                             pcc--;
-                            printf("line dashed from %G,%G to %G,%G\n", vline, minytick, vline, maxytick);
+                            if ('\0'!=*endptr)
+                                printf("line dashed color \"%s\" from %G,%G to %G,%G\n", endptr, vline, minytick, vline, maxytick);
+                            else
+                                printf("line dashed from %G,%G to %G,%G\n", vline, minytick, vline, maxytick);
                         break;
                         default :
                             if (':'==endptr[1]) {

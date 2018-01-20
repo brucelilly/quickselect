@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.8 dated 2018-01-08T16:38:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.9 dated 2018-01-19T23:01:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -131,8 +131,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-01-08T16:38:58Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-01-19T23:01:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -256,41 +256,12 @@
    +-----------------------------+
    | L< | R< | L= | R= | L> | R> |
    +-----------------------------+
-  Preservation of ordering within blocks and between blocks of like types
-  results in stable partitoning, stable sort or selection.
-  3 methods each consisting of 2 rotations may be used:
-  1a.      <---------
-   +-----------------------------+
-   | L< | R< | L= | L> | R= | R> |
-   +-----------------------------+
-  1b.                  X
-   +-----------------------------+
-   | L< | R< | L= | R= | L> | R> |
-   +-----------------------------+
-  2a.           <---------
-   +-----------------------------+
-   | L< | L= | R< | R= | L> | R> |
-   +-----------------------------+
-  2b.        X
-   +-----------------------------+
-   | L< | R< | L= | R= | L> | R> |
-   +-----------------------------+
-  3a.      <--------------
-   +-----------------------------+
-   | L< | R< | R= | L= | L> | R> |
-   +-----------------------------+
-  3b.             X
-   +-----------------------------+
-   | L< | R< | L= | R= | L> | R> |
-   +-----------------------------+
-  One method is chosen depending on the region sizes so as to minimize the
-  total number of swaps.
 */
 static QUICKSELECT_INLINE
 void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
     size_t mid, size_t eq2, size_t gt2, size_t beyond, size_t size,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t *peq, size_t *pgt)
+    unsigned int options, size_t *peq, size_t *pgt)
 {
     register size_t leq=gt1-eq1, req=gt2-eq2, rlt=eq2-mid;
     size_t lgt=mid-gt1, m=(lgt<rlt?lgt:rlt); /* minimum of lgt, rlt */
@@ -302,40 +273,72 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
     /* | L< | L= | L> | R< | R= | R> | */
     /* +-----------------------------+ */
     /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-    if ((0UL==leq)||(0UL==req)||(leq+req<m)) { /* method 3 */
-        irotate(base,eq1,mid,gt2,size,swapf,alignsize,size_ratio);
-        /* +-----------------------------+ */
-        /* | L< | R< | R= | L= | R> | R> | */
-        /* +-----------------------------+ */
-        /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-        if (0UL<leq+req) {
-            gt1=eq1+rlt, mid=gt1+req, eq2=mid+leq;
-            irotate(base,gt1,mid,eq2,size,swapf,alignsize,size_ratio);
-        }
-    } else if (lgt<rlt) { /* method 2 */
-        irotate(base,gt1,mid,gt2,size,swapf,alignsize,size_ratio);
-        /* +-----------------------------+ */
-        /* | L< | L= | R< | R= | L> | R> | */
-        /* +-----------------------------+ */
-        /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-        mid=gt1+rlt, eq2=mid+req;
-        irotate(base,eq1,gt1,mid,size,swapf,alignsize,size_ratio);
-    } else { /* method 1 */
-        irotate(base,eq1,mid,eq2,size,swapf,alignsize,size_ratio);
-        /* +-----------------------------+ */
-        /* | L< | R< | L= | L> | R= | R> | */
-        /* +-----------------------------+ */
-        /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-        gt1=eq1+rlt, mid=gt1+leq;
-        irotate(base,mid,eq2,gt2,size,swapf,alignsize,size_ratio);
-    }
-    /* +-----------------------------+ */
-    /* | L< | R< | L= | R= | L> | R> | */
-    /* +-----------------------------+ */
-    /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-    *peq=gt1=eq1+rlt, mid=gt1+leq, *pgt=eq2=mid+req;
+            /* Preservation of ordering within blocks and between blocks of like
+               types results in stable partitoning, stable sort or selection.  3
+               methods each consisting of 2 rotations may be used:
+               1a.      <---------
+                +-----------------------------+
+                | L< | R< | L= | L> | R= | R> |
+                +-----------------------------+
+               1b.                  X
+                +-----------------------------+
+                | L< | R< | L= | R= | L> | R> |
+                +-----------------------------+
+               2a.           <---------
+                +-----------------------------+
+                | L< | L= | R< | R= | L> | R> |
+                +-----------------------------+
+               2b.        X
+                +-----------------------------+
+                | L< | R< | L= | R= | L> | R> |
+                +-----------------------------+
+               3a.      <--------------
+                +-----------------------------+
+                | L< | R< | R= | L= | L> | R> |
+                +-----------------------------+
+               3b.             X
+                +-----------------------------+
+                | L< | R< | L= | R= | L> | R> |
+                +-----------------------------+
+               One method is chosen depending on the region sizes so as to minimize the
+               total number of swaps.
+             */
+            if ((0UL==leq)||(0UL==req)||(leq+req<m)) { /* method 3 */
+                irotate(base,eq1,mid,gt2,size,swapf,alignsize,size_ratio);
+                /* +-----------------------------+ */
+                /* | L< | R< | R= | L= | R> | R> | */
+                /* +-----------------------------+ */
+                /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
+                if (0UL<leq+req) {
+                    gt1=eq1+rlt, mid=gt1+req, eq2=mid+leq;
+                    irotate(base,gt1,mid,eq2,size,swapf,alignsize,size_ratio);
+                }
+            } else if (lgt<rlt) { /* method 2 */
+                irotate(base,gt1,mid,gt2,size,swapf,alignsize,size_ratio);
+                /* +-----------------------------+ */
+                /* | L< | L= | R< | R= | L> | R> | */
+                /* +-----------------------------+ */
+                /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
+                mid=gt1+rlt, eq2=mid+req;
+                irotate(base,eq1,gt1,mid,size,swapf,alignsize,size_ratio);
+            } else { /* method 1 */
+                irotate(base,eq1,mid,eq2,size,swapf,alignsize,size_ratio);
+                /* +-----------------------------+ */
+                /* | L< | R< | L= | L> | R= | R> | */
+                /* +-----------------------------+ */
+                /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
+                gt1=eq1+rlt, mid=gt1+leq;
+                irotate(base,mid,eq2,gt2,size,swapf,alignsize,size_ratio);
+            }
+            /* +-----------------------------+ */
+            /* | L< | R< | L= | R= | L> | R> | */
+            /* +-----------------------------+ */
+            /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
+            *peq=gt1=eq1+rlt, mid=gt1+leq, *pgt=eq2=mid+req;
 }
+#endif
 
+#if QUICKSELECT_STABLE
 /* divide-and-conquer in-place stable partition */
 static void stable_inplace_partition(char *base, size_t first, size_t beyond,
     char *pc, char *pd, char *pivot, char *pe, char *pf, size_t size,
@@ -368,7 +371,7 @@ static void stable_inplace_partition(char *base, size_t first, size_t beyond,
                 A(*peq<=*pgt);A((pf-base)/size<=*peq);A(*pgt<=beyond);
                 merge_partitions(base,first,(pd-base)/size,
                     (pe-base)/size,(pf-base)/size,*peq,*pgt,beyond,size,
-                    swapf,alignsize,size_ratio,peq,pgt);
+                    swapf,alignsize,size_ratio,options,peq,pgt);
             } else if (pu==pf) { /* already-partitioned at right end */
                 /* partition unpartitioned region and merge */
                 A(pl<pc);
@@ -378,7 +381,7 @@ static void stable_inplace_partition(char *base, size_t first, size_t beyond,
                 A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
                 merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
                     (pd-base)/size,(pe-base)/size,beyond,size,swapf,
-                    alignsize,size_ratio,peq,pgt);
+                    alignsize,size_ratio,options,peq,pgt);
             } else { /* already-partitioned in middle */
                 size_t eq2, gt2;
                 /* partition unpartitioned regions and merge */
@@ -389,7 +392,7 @@ static void stable_inplace_partition(char *base, size_t first, size_t beyond,
                 A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pc-base)/size);
                 merge_partitions(base,first,*peq,*pgt,(pc-base)/size,
                     (pd-base)/size,(pe-base)/size,(pf-base)/size,size,
-                    swapf,alignsize,size_ratio,peq,pgt);
+                    swapf,alignsize,size_ratio,options,peq,pgt);
                 A(*peq<=*pgt);A(first<=*peq);A(*pgt<=(pf-base)/size);
                 A(pf<pu);
                 stable_inplace_partition(base,(pf-base)/size,beyond,pl,
@@ -398,7 +401,7 @@ static void stable_inplace_partition(char *base, size_t first, size_t beyond,
                     options,&eq2,&gt2);
                 A(eq2<=gt2);A((pf-base)/size<=eq2);A(gt2<=beyond);
                 merge_partitions(base,first,*peq,*pgt,(pf-base)/size,
-                    eq2,gt2,beyond,size,swapf,alignsize,size_ratio,peq,
+                    eq2,gt2,beyond,size,swapf,alignsize,size_ratio,options,peq,
                     pgt);
             }
         } else { /* external pivot; split into two regions; partition & merge */
@@ -411,7 +414,7 @@ static void stable_inplace_partition(char *base, size_t first, size_t beyond,
                     size,COMPAR_ARGS,swapf,alignsize,size_ratio,
                     options,&eq2,&gt2);
             merge_partitions(base,first,*peq,*pgt,mid,eq2,gt2,beyond,
-                    size,swapf,alignsize,size_ratio,peq,pgt);
+                    size,swapf,alignsize,size_ratio,options,peq,pgt);
         }
     }
 }

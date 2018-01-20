@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition.c version 1.6 dated 2017-12-06T23:11:02Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition.c version 1.7 dated 2018-01-19T23:02:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.partition.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition.c ~|^` @(#)"
 #define SOURCE_MODULE "partition.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2017-12-06T23:11:02Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-01-19T23:02:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -56,7 +56,92 @@
 
 #include "initialize_src.h"
 
-#if QUICKSELECT_STABLE
+#if 0 /* unused: for make_partition */
+/* Force integer comparison result to one of -1, 0, or 1. */
+static QUICKSELECT_INLINE int ternary_value(int c)
+{
+    if (0 > c) return -1;
+    else if (0 < c) return 1;
+    return 0;
+}
+#endif
+
+#if 0 /* find a run of elements that constitute a partition (which can then be
+         merged with other partitions.  Merging is relatively expensive for
+         random sequences (about double the cost of Kiwiel Algorithm L in terms
+         of swaps, for non-stable merge).  Works well for input patterns, though
+         (all-equal, already-sorted, bitonic, rotated).
+      */
+/* make_partition:
+   On entry, the comparison result (forced to ternary value {-1,0,1}) of
+   some element to the pivot is c.  If c is -1, that element is at index *pgt;
+   if 1 the element's index is *plt, and if zero, the element is at index *peq.
+   Elements are examined from the next element up to (but not including) index
+   *pbeyond so long as they form a partition, i.e. elements form a sequence of
+   contiguous (possibly empty) groups of less than, equal to, and greater than
+   values compared to the pivot, in that order.  When an element that has been
+   examined fails to belong to the current partition, *pbeyond is set to its
+   index and its comparison value (forced to ternary value) is returned. If all
+   elements are part of the partition, a value outside of the possible ternary
+   values is returned. The starting indices of equal to and greater than regions
+   are placed in *peq and *pgt, respectively.
+*/
+#include <stdio.h>
+static QUICKSELECT_INLINE int make_partition(int c, char *base, size_t *plt,
+    size_t *peq, size_t *pgt, size_t *pbeyond, size_t size, char *pivot,
+    int(*compar)(const void*,const void*), unsigned int options)
+{
+    int d=-2;
+    size_t i, beyond=*pbeyond;
+    char *p, *pu=base+size*beyond;
+
+    if ((((SIZE_MAX)>>1)<beyond)||(base>=pu)||(DEBUGGING(PARTITION_DEBUG)))
+        (V)fprintf(stderr,"/* %s: %s line %d: c=%d, beyond=%lu, pu=%p, pivot@%p[%lu] */\n",
+           __func__,source_file,__LINE__,c,beyond,pu,pivot,(pivot-base)/size);
+    if (0>c) i=*plt,*peq=*pgt=i;
+    else if (0<c) i=*pgt,*plt=*peq=i;
+    else i=*peq,*plt=*pgt=i;
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+        for (++i,p=base+size*i; p<pu; i++,p+=size) {
+            d=ternary_value(compar(p,pivot));
+            if (d==c) continue;
+            else if (d<c) {
+                if (0==c) *pgt=i;
+                *pbeyond=i;
+                return d;
+            } /* else d>c */
+            if (0>c) *peq=i;
+            *pgt=i;
+            c=d;
+        }
+    } else { /* indirect */
+        pivot=*((char **)pivot);
+        for (++i,p=base+size*i; p<pu; i++,p+=size) {
+            d=ternary_value(compar(*((char **)p),pivot));
+            if (d==c) continue;
+            else if (d<c) {
+                if (0==c) *pgt=i;
+                *pbeyond=i;
+                return d;
+            } /* else d>c */
+            if (0>c) *peq=i;
+            *pgt=i;
+            c=d;
+        }
+    }
+if ((i!=beyond)||(p!=pu)) (V)fprintf(stderr,"/* %s: %s line %d: i=%lu, beyond=%lu, p=%p, pu=%p */\n",__func__,source_file,__LINE__,i,beyond,p,pu);
+    A(i==beyond);
+    A(p==pu);
+    if (0>c) *peq=i;
+    if (0>=c) *pgt=i;
+    if (DEBUGGING(PARTITION_DEBUG))
+        (V)fprintf(stderr,
+           "/* %s: %s line %d: c=%d, d=%d, i=%lu, *plt=%lu, *peq=%lu, *pgt=%lu */\n",
+           __func__,source_file,__LINE__,c,d,i,*plt,*peq,*pgt);
+    return 2;
+}
+#endif
+
 /* merge 2 adjacent canonical partitions */
 /* +-----------------------------+
    | L< | L= | L> | R< | R= | R> |
@@ -73,14 +158,14 @@
    | L< | R< | L= | R= | L> | R> |
    +-----------------------------+
 */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void merge_partitions(char *base, size_t first, size_t eq1,
-    size_t gt1, size_t mid, size_t eq2, size_t gt2,
-    size_t beyond, size_t size, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio, unsigned int options, size_t *peq,
-    size_t *pgt)
+/* Supports both non-stable merge using blockmoves and stable serge using
+   rotations.
+*/
+QUICKSELECT_INLINE
+void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
+    size_t mid, size_t eq2, size_t gt2, size_t beyond, size_t size,
+    void (*swapf)(char*, char*, size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options, size_t *peq, size_t *pgt)
 {
     register size_t leq=gt1-eq1, req=gt2-eq2, rlt=eq2-mid;
     size_t lgt=mid-gt1, m=(lgt<rlt?lgt:rlt); /* minimum of lgt, rlt */
@@ -274,7 +359,6 @@ void merge_partitions(char *base, size_t first, size_t eq1,
     }
 #endif
 }
-#endif /* QUICKSELECT_STABLE */
 
 /* array partitioning */
 /* Partitioning based on Bentley & McIlroy's split-end partition, as
@@ -288,10 +372,9 @@ inline
 #endif /* C99 */
 void d_partition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     register char *pivot, char *pe, char *pf, register size_t size,
-    int(*compar)(const void *,const void*),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options, char *conditions, size_t *indices,
-    char *element, size_t *peq, size_t *pgt)
+    int(*compar)(const void*,const void*), void (*swapf)(char*, char*, size_t),
+    size_t alignsize, size_t size_ratio, unsigned int options, char *conditions,
+    size_t *indices, char *element, size_t *peq, size_t *pgt)
 {
     char *pa, *ph, *pl, *pu;
     register char *pb, *pg;
@@ -316,6 +399,10 @@ void d_partition(char *base, size_t first, size_t beyond, char *pc, char *pd,
     npartitions++;
     switch (options&(QUICKSELECT_STABLE)) {
         default:
+#if 1 /* 0 to test divide-and-conquer partition or partition by merging mini-partitions */
+            /* Kiwiel Algorithm L, based on Bentley & McIlroy's split-end
+               partition.
+            */
             /* McGeoch & Tygar suggest that partial partition information
                from median-of-medians might be used to avoid recomparisons
                during repartitioning.
@@ -839,6 +926,105 @@ A(0==1);
 }
 #endif
             A(pe>pd);
+#else
+            /* Non-stable partition by merging runs of elements constituting
+               partitions w/o initial pivot element movement.  The merges are
+               relatively expensive (about 2x swaps of Kiwiel L) for random
+               input sequences.
+            */
+            {
+                size_t b1, b2, b3, lt1, lt2, lt3, eq1, eq2, eq3, gt1, gt2, gt3;
+
+                pa=base+first*size, pu=base+beyond*size;
+                eq1=(pd-base)/size, gt1=(pe-base)/size;
+            /* make a partition */
+                if (pa<pc) {
+                    c=ternary_value(compar(pa,pivot));
+                    lt3=(pc-base)/size, eq3=eq1, gt3=gt1, b3=(pf-base)/size;
+                    lt1=eq1=gt1=first, b1=lt3;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    c=make_partition(c,base,&lt1,&eq1,&gt1,&b1,size,pivot,compar,options);
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    while (b1<lt3) {
+                        lt2=eq2=gt2=b1,b2=lt3;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=lt3=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,lt3);
+                        c=make_partition(c,base,&lt2,&eq2,&gt2,&b2,size,pivot,compar,options);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                        merge_partitions(base,lt1,eq1,gt1,lt2,eq2,gt2,b2,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                        b1=b2;
+                        if (eq1<gt1) pivot=base+size*eq1;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    }
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt3=%lu, eq3=%lu, gt3=%lu, b3=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt3,eq3,gt3,b3);
+                    merge_partitions(base,lt1,eq1,gt1,lt3,eq3,gt3,b3,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                    b1=b3;
+                    if (eq1<gt1) pivot=base+size*eq1;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                } else {
+                    lt1=(pc-base)/size, b1=(pf-base)/size;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                }
+                if (pf<pu) {
+                    c=ternary_value(compar(pf,pivot));
+                    while (b1<beyond) {
+                        lt2=eq2=gt2=b1, b2=beyond;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        c=make_partition(c,base,&lt2,&eq2,&gt2,&b2,size,pivot,compar,options);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                        merge_partitions(base,lt1,eq1,gt1,lt2,eq2,gt2,b2,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                        b1=b2;
+                        if (eq1<gt1) pivot=base+size*eq1;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    }
+                }
+                *peq=eq1, *pgt=gt1;
+                return;
+            /* while elements below pivot, make another partition and merge */
+            /* merge already-partitioned region (w/ pivot) and region to its left */
+            /* while there are elements to the right, make partitions and merge */
+            }
+#endif
         break;
 #if QUICKSELECT_STABLE /* not used if QUICKSELECT_STABLE is defined as zero */
         case QUICKSELECT_STABLE :
@@ -924,7 +1110,104 @@ A(0==1);
                     nmoves+=(i+beyond-first)*size_ratio;
             } else {
 # endif /* QUICKSELECT_LINEAR_STABLE */
-                /* divide-and-conquer partition */
+#if 0 /* Stable in-place partition by stable merge of runs of elements
+         constituting partitions.  Merges are expensive for random input
+         sequences.
+      */
+           {
+                size_t b1, b2, b3, lt1, lt2, lt3, eq1, eq2, eq3, gt1, gt2, gt3;
+
+                pa=base+first*size, pu=base+beyond*size;
+                eq1=(pd-base)/size, gt1=(pe-base)/size;
+            /* make a partition */
+                if (pa<pc) {
+                    c=ternary_value(compar(pa,pivot));
+                    lt3=(pc-base)/size, eq3=eq1, gt3=gt1, b3=(pf-base)/size;
+                    lt1=eq1=gt1=first, b1=lt3;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    c=make_partition(c,base,&lt1,&eq1,&gt1,&b1,size,pivot,compar,options);
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    while (b1<lt3) {
+                        lt2=eq2=gt2=b1,b2=lt3;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=lt3=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,lt3);
+                        c=make_partition(c,base,&lt2,&eq2,&gt2,&b2,size,pivot,compar,options);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                        merge_partitions(base,lt1,eq1,gt1,lt2,eq2,gt2,b2,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                        b1=b2;
+                        if (eq1<gt1) pivot=base+size*eq1;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    }
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt3=%lu, eq3=%lu, gt3=%lu, b3=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt3,eq3,gt3,b3);
+                    merge_partitions(base,lt1,eq1,gt1,lt3,eq3,gt3,b3,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                    b1=b3;
+                    if (eq1<gt1) pivot=base+size*eq1;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                } else {
+                    lt1=(pc-base)/size, b1=(pf-base)/size;
+                    if (DEBUGGING(PARTITION_DEBUG))
+                        (V)fprintf(stderr,
+                           "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                           __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                }
+                if (pf<pu) {
+                    c=ternary_value(compar(pf,pivot));
+                    while (b1<beyond) {
+                        lt2=eq2=gt2=b1, b2=beyond;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        c=make_partition(c,base,&lt2,&eq2,&gt2,&b2,size,pivot,compar,options);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt2,eq2,gt2,b2);
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu, lt2=%lu, eq2=%lu, gt2=%lu, b2=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1,lt2,eq2,gt2,b2);
+                        merge_partitions(base,lt1,eq1,gt1,lt2,eq2,gt2,b2,size,swapf,alignsize,size_ratio,options,&eq1,&gt1);
+                        b1=b2;
+                        if (eq1<gt1) pivot=base+size*eq1;
+                        if (DEBUGGING(PARTITION_DEBUG))
+                            (V)fprintf(stderr,
+                               "/* %s: %s line %d: c=%d, lt1=%lu, eq1=%lu, gt1=%lu, b1=%lu */\n",
+                               __func__,source_file,__LINE__,c,lt1,eq1,gt1,b1);
+                    }
+                }
+                *peq=eq1, *pgt=gt1;
+                return;
+            /* while elements below pivot, make another partition and merge */
+            /* merge already-partitioned region (w/ pivot) and region to its left */
+            /* while there are elements to the right, make partitions and merge */
+            }
+#else
+            /* divide-and-conquer partition */
                 pl=base+size*first, pu=base+size*beyond;
 
                 /* Recursively partitions unpartitioned regions down to a partition
@@ -1025,6 +1308,7 @@ A(0==1);
                                 size,swapf,alignsize,size_ratio,options,peq,pgt);
                     }
                 }
+#endif
 # if QUICKSELECT_LINEAR_STABLE
             }
 # endif /* QUICKSELECT_LINEAR_STABLE */
