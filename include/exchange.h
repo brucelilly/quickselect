@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is exchange.h version 1.16 dated 2017-11-06T00:20:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is exchange.h version 1.17 dated 2018-01-22T05:16:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "exchange" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.exchange.h */
@@ -52,7 +52,7 @@
 */
 
 /* version-controlled header file version information */
-#define EXCHANGE_H_VERSION "exchange.h 1.16 2017-11-06T00:20:37Z"
+#define EXCHANGE_H_VERSION "exchange.h 1.17 2018-01-22T05:16:19Z"
 
 #include <sys/types.h>          /* *_t (size_t) */
 #include <limits.h>             /* *_MAX */
@@ -81,12 +81,12 @@
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 198901L )
 # define EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,mST)       \
     if (1UL==(msize_ratio)) {                                               \
-        mST;                                                                \
         switch ((malignsize)) {                                             \
             case 1UL :                                                      \
                 { char t = *(ma);                                           \
                   *(ma)=*(mb), *(mb)=t;                                     \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 2UL :                                                      \
                 { uint_least16_t t                                          \
@@ -94,6 +94,7 @@
                   *((uint_least16_t *)(ma)) = *((uint_least16_t *)(mb)),    \
                   *((uint_least16_t *)(mb)) = t;                            \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 4UL :                                                      \
                 { uint_least32_t t                                          \
@@ -101,6 +102,7 @@
                   *((uint_least32_t *)(ma)) = *((uint_least32_t *)(mb)),    \
                   *((uint_least32_t *)(mb)) = t;                            \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 8UL :                                                      \
                 { uint_least64_t t                                          \
@@ -108,6 +110,10 @@
                   *((uint_least64_t *)(ma)) = *((uint_least64_t *)(mb)),    \
                   *((uint_least64_t *)(mb)) = t;                            \
                 }                                                           \
+                mST;                                                        \
+            break;                                                          \
+            default :                                                       \
+                mswapf((ma),(mb),(msize));                                  \
             break;                                                          \
         }                                                                   \
     } else mswapf((ma),(mb),(msize)) /* caller provides terminating semicolon */
@@ -124,12 +130,12 @@
 # endif
 # define EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,mST)       \
     if (1UL==(msize_ratio)) {                                               \
-        mST;                                                                \
         switch ((malignsize)) {                                             \
             case 1UL :                                                      \
                 { char t = *(ma);                                           \
                   *(ma)=*(mb), *(mb)=t;                                     \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 2UL :                                                      \
                 { unsigned short t                                          \
@@ -137,6 +143,7 @@
                   *((unsigned short *)(ma)) = *((unsigned short *)(mb)),    \
                   *((unsigned short *)(mb)) = t;                            \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 4UL :                                                      \
                 { SWAP_TYPE4 t                                              \
@@ -144,6 +151,7 @@
                   *((SWAP_TYPE4 *)(ma)) = *((SWAP_TYPE4 *)(mb)),            \
                   *((SWAP_TYPE4 *)(mb)) = t;                                \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
             case 8UL :                                                      \
                 { SWAP_TYPE8 t                                              \
@@ -151,7 +159,11 @@
                   *((SWAP_TYPE8 *)(ma)) = *((SWAP_TYPE8 *)(mb)),            \
                   *((SWAP_TYPE8 *)(mb)) = t;                                \
                 }                                                           \
+                mST;                                                        \
             break;                                                          \
+            default :                                                       \
+                mswapf((ma),(mb),(msize));                                  \
+            break;                                                        \
         }                                                                   \
     } else mswapf((ma),(mb),(msize)) /* caller provides terminating semicolon */
 #endif

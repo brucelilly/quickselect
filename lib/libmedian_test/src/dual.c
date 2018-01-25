@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.9 dated 2018-01-13T02:47:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.10 dated 2018-01-22T05:44:56Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-01-13T02:47:57Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-01-22T05:44:56Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -55,6 +55,9 @@
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+/* turn on (or off) debugging code */
+#define DPDEBUG 0
 
 /* Partition array starting at base with nmemb elements of size size around
    2 pivots at pivot1, pivot2 (0>=compar(pivot1,pivot2), pivot1!=pivot2) using
@@ -71,7 +74,7 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
     unsigned int options, char **ppivot1, char **pmid, char **ppivot2,
     char **pgt)
 {
-    char *pa, *pb, *pc, *pd, *pe;
+    char *pa, *pb, *pc, *pd, *pe, *pu;
     int c, d;
 
     /* at entry: */
@@ -84,58 +87,169 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
     /* +-----------------------------------------------+ */
     /* |p1|                     ?                   |p2| */
     /* +-----------------------------------------------+ */
-    /*  b  a                                         d  e*/
-    /*                                               c   */
+    /*     a                                         c  u*/
+    /*     b                                         d   */
+    /*                                               e   */
     /* intermediate: */
     /* +-----------------------------------------------+ */
-    /* |<p1|=p1|     ?                 |p1<x<p2|=p2|>p2| */
+    /* |=p1|<p1|     ?                 |p1<x<p2|>p2|=p2| */
     /* +-----------------------------------------------+ */
-    /*      b   a                       c       d   e    */
-    /* final: */
+    /*      b   a                       c       d   e   u*/
+    /* all categorized: */
     /* +-----------------------------------------------+ */
-    /* |    <p1    | =p1 |  p1<x<p2  | =p2 |    >p2    | */
+    /* |=p1|    <p1    |    p1<x<p2    |    >p2    |=p2| */
     /* +-----------------------------------------------+ */
-    /*  base        b     c           d     e             */
+    /*      b           c               d           e   u*/
+    /* final, canonical: */
+    /* +-----------------------------------------------+ */
+    /* |    <p1    |=p1|    p1<x<p2    |=p2|    >p2    | */
+    /* +-----------------------------------------------+ */
+    /*  base        b   c               d   e           u*/
+    /* Expected comparisons (uniformly distributed random input):
+          N/3 * 1 + 2N/3 * 2 = 5N/3
+          67% more than single pivot partition (N-1)
+       Expected swaps (uniformly distributed distinct input):
+          2 + N/3 * 0 + N/3 * 1 + N/3 * 2 + 2 = N + 4
+          300% more than single-pivot partition (N/4+2)
+    */
     /* Initialize */
     if (*ppivot1!=base) {
         EXCHANGE_SWAP(swapf,base,*ppivot1,size,alignsize,size_ratio,nsw++);
         if (*ppivot2==base) *ppivot2=*ppivot1; /* it moved */
     }
-    pc=pd=(pe=base+size*nmemb)-size;
-    if (*ppivot2!=pd) {
-        EXCHANGE_SWAP(swapf,*ppivot2,pd,size,alignsize,size_ratio,nsw++);
+    pa=pb=base+size;
+    pc=pd=pe=(pu=base+size*nmemb)-size;
+    if (*ppivot2!=pe) {
+        EXCHANGE_SWAP(swapf,*ppivot2,pe,size,alignsize,size_ratio,nsw++);
     }
-    pa=(pb=base)+size;
+#if DPDEBUG
+    if (DEBUGGING(DPQSORT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d) */\n",
+            __func__,__LINE__,(void *)base,0UL,*((int *)base),
+            (void *)pe,(pe-base)/size,*((int *)pe));
+        print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
+    }
+#endif /* DPDEBUG */
     /* partition element at pa while pa<pc */
     while (pa<pc) {
-/* XXX indirection is not necessarily handled correctly here! */
-        c=OPT_COMPAR(pa,pb,options,foo); /* pb has same value as pivot1 */
+        c=OPT_COMPAR(pa,base,options,foo); /* pivot1 at base */
         if (0>c) { /* element at pa is < pivot1 */
-            EXCHANGE_SWAP(swapf,pb,pa,size,alignsize,size_ratio,nsw++);
-            pa+=size,pb+=size;
-        } else if (0==c) { /* element at pa compares equal to pivot1 */
             pa+=size;
+        } else if (0==c) { /* element at pa compares equal to pivot1 */
+            if (pa!=pb) {
+                EXCHANGE_SWAP(swapf,pb,pa,size,alignsize,size_ratio,nsw++);
+            }
+            pa+=size,pb+=size;
         } else { /* element at pa is greater than pivot1 */
-            d=OPT_COMPAR(pa,pd,options,foo); /* pd has same value as pivot2 */
-            if (0>d) { /* pivot1 < element at pa < pivot2 */
-                pc-=size;
+            A(0<c);
+            /* element will be moved to a section starting at pc, pd, or pe */
+            pc-=size;
+            if (pa!=pc) {
                 EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
-            } else if (0==d) { /* element at pa compares equal to pivot2 */
-                pc-=size;
-                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
+            }
+            A(pc!=pe);
+            d=OPT_COMPAR(pc,pe,options,foo); /* pe is same as pivot2 */
+            /* if pivot1<*pc<pivot2 (0>d), element is now in place */
+            if (0<=d) { /* element >= pivot2 */
                 pd-=size;
-                EXCHANGE_SWAP(swapf,pc,pd,size,alignsize,size_ratio,nsw++);
-            } else { /* element at pa > pivot2 */
-                pc-=size;
-                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
-                pd-=size;
-                EXCHANGE_SWAP(swapf,pc,pd,size,alignsize,size_ratio,nsw++);
-                pe-=size;
-                EXCHANGE_SWAP(swapf,pd,pe,size,alignsize,size_ratio,nsw++);
+                if (pc!=pd) {
+                    EXCHANGE_SWAP(swapf,pc,pd,size,alignsize,size_ratio,nsw++);
+                }
+                if (0==d) { /* element compares equal to pivot2 */
+                    pe-=size;
+                    if (pd!=pe)
+                        EXCHANGE_SWAP(swapf,pd,pe,size,alignsize,size_ratio,nsw++);
+                }
             }
         }
     }
+    /* blockmoves to canonicalize */
+    pb=blockmove(base,pb,pc,swapf);
+    pe=blockmove(pd,pe,pu,swapf);
     *ppivot1=pb,*pmid=pc,*ppivot2=pd,*pgt=pe;
+#if DPDEBUG
+    if (DEBUGGING(DPQSORT_DEBUG)) {
+        /* verify correct partitioning */
+        (V)fprintf(stderr,
+            "/* %s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d) */\n",
+            __func__,__LINE__,(void *)pb,(pb-base)/size,*((int *)pb),
+            (void *)pd,(pd-base)/size,*((int *)pd));
+        print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
+        for (pa=base; pa<pb; pa+=size) {
+            c=OPT_COMPAR(pa,pb,options,foo);
+            if (0<=c)
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu/\n",
+                    __func__,source_file,__LINE__,
+                    (pa-base)/size,(pb-base)/size);
+            A(0>c);
+        }
+        for (pa=pb+size; pa<pc; pa+=size) {
+            c=OPT_COMPAR(pa,pb,options,foo);
+            if (0!=c)
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu/\n",
+                    __func__,source_file,__LINE__,
+                    (pa-base)/size,(pb-base)/size);
+            A(0==c);
+        }
+        for (pa=pc; pa<pd; pa+=size) {
+            c=OPT_COMPAR(pa,pb,options,foo);
+            d=OPT_COMPAR(pa,pd,options,foo);
+            if ((0>=c)||(0<=d))
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu, pivot 2 at %lu/\n",
+                    __func__,source_file,__LINE__,
+                    (pa-base)/size,(pb-base)/size,(pd-base)/size);
+            A((0<c)&&(0>d));
+        }
+        for (pa=pd+size; pa<pe; pa+=size) {
+            d=OPT_COMPAR(pa,pd,options,foo);
+            if (0!=d)
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 at %lu/\n",
+                    __func__,source_file,__LINE__,
+                    (pa-base)/size,(pd-base)/size);
+            A(0==d);
+        }
+        for (pa=pe; pa<pu; pa+=size) {
+            d=OPT_COMPAR(pa,pd,options,foo);
+            if (0>=d)
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 at %lu/\n",
+                    __func__,source_file,__LINE__,
+                    (pa-base)/size,(pd-base)/size);
+            A(0<d);
+        }
+    }
+#endif /* DPDEBUG */
+}
+
+/* Regions to process after partitioning. */
+struct region_struct {
+    char *base;
+    size_t nmemb;
+};
+
+static size_t regionsize = sizeof(struct region_struct);
+
+/* compare regions by size */
+static int regioncmp(const struct region_struct *r1,
+    const struct region_struct *r2)
+{
+    size_t s1=r1->nmemb, s2=r2->nmemb;
+    if (s1>s2) return 1;
+    if (s1<s2) return -1;
+    return 0;
+}
+
+/* swap two regions by structure copy */
+static void regionswap(struct region_struct *r1, struct region_struct *r2,
+    size_t unused)
+{
+    struct region_struct t;
+    t = *r1, *r1=*r2, *r2=t;
 }
 
 /* dual-pivot qsort */
@@ -147,8 +261,8 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
 {
     char *pa, *pivot1, *pivot2, *ps, *pu;
     size_t q, r, s, u, karray[2];
+    struct region_struct regions[3];
 
-#define DPDEBUG 1
 /* SAMPLE_SELECTION 0: use sort of 5 elements; 1: use quickselect to obtain pivots from desired ranks */
 #define SAMPLE_SELECTION 1
 /* ADAPTIVE_SAMPLING 0: always use 5 samples; 1: use ~sqrt(nmemb) samples */
@@ -162,6 +276,14 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
 # undef SAMPLE_SELECTION
 # define SAMPLE_SELECTION ADAPTIVE_SAMPLING
 #endif
+#if DPDEBUG
+    if (DEBUGGING(DPQSORT_DEBUG)) {
+        (V)fprintf(stderr,
+           "/* %s: %s line %d: %lu elements */\n",
+           __func__,source_file,__LINE__,nmemb);
+        print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
+    }
+#endif /* DPDEBUG */
     for (;;) {
         pu=base+(nmemb-1UL)*size; /* last element */
         if (nmemb<=dp_cutoff) { /* small-array sort */
@@ -169,11 +291,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
             if (0!=use_networks) networksort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
             else if (0!=use_shell) shellsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio);
             else
-#if 0
-                isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio);
-#else
                 d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
-#endif
     /* <- */return; /* Done; */
         }
 #if ADAPTIVE_SAMPLING
@@ -191,40 +309,53 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         /* Samples proportional to square root, cube root, or fourth root of
            the number of elements.
         */
-#define SAMPLE_ROOT 2
-#if SAMPLE_ROOT == 4
+        /* With 2 pivots, it is not possible to simultaneously have uniform
+           sampling and the expectation of equal partitioned region sizes.
+           This implementation opts for uniform sampling to avoid anomalies
+           with input patterns.  Worst case expected region size imbalance with
+           uniformly distributed random input is expected to be 30%-40%-30%
+           (ignoring the pivots themselves) with 5 samples; this improves to
+           5/16-3/8-5/16 at 8 samples, 7/22-4/11-7/22 at 11 samples, etc.  The
+           slight imbalance in partition sizes is expected to have only a tiny
+           effect on performance.
+        */
+# define SAMPLE_ROOT 2
+# if SAMPLE_ROOT == 4
         for (r=1UL,s=5UL,q=u*625UL; q<nmemb; r++,s+=3UL,q=u*s*s*s*s) ;
-#elif SAMPLE_ROOT == 3
+# elif SAMPLE_ROOT == 3
         for (r=1UL,s=5UL,q=u*125UL; q<nmemb; r++,s+=3UL,q=u*s*s*s) ;
-#else
+# else
         for (r=1UL,s=5UL,q=u*25UL; q<nmemb; r++,s+=3UL,q=u*s*s) ;
-#endif
+# endif
         if (q>nmemb) r--,s--;
         if (s<5UL) r=1UL,s=5UL;
+# if DPDEBUG
         if (DEBUGGING(DPQSORT_DEBUG)) {
             (V)fprintf(stderr,"%s: %s line %d: %lu elements, %lu samples, r=%lu\n",__func__,source_file,__LINE__,nmemb,s,r);
         }
+# endif /* DPDEBUG */
 #else
         s=5UL;
 #endif
         pu+=size; /* past last element */
 #if SAMPLE_SELECTION
-# if 1
+        /* Aumuller & Dietzfelbinger suggest s/2 and s/4 */
+        /* but it's slower in practice */
         karray[0]=r;
         karray[1]=(r<<1)+1UL;
         if (DEBUGGING(DPQSORT_DEBUG)) {
             (V)fprintf(stderr,"%s: %s line %d: karray[0]=%lu, karray[1]=%lu\n",__func__,source_file,__LINE__,karray[0],karray[1]);
         }
-# else
-        /* Aumuller & Dietzfelbinger suggest s/2 and s/4 */
-        /* but it's slower in practice */
-        q=r>>1;
-        karray[0]=q;
-        karray[1]=r;
-# endif
         /* swap sample elements to beginning of array for selection */
-        /* XXX quick hack */
-        for (pa=base,ps=base+r*size,q=0UL; q<s; pa+=size,ps+=r*size,q++) {
+        /* There are s uniformly-spaced samples taken from nmemb elements.
+           The samples are spaced nmemb/s elements apart with the first sample
+           at 0-based index (nmemb-s)/s/2.  Variable r will be set to the
+           sample spacing.  Variable q will be initially set to the index of the
+           first sample, and will then be used to count samples.
+           (nmemb-s)/s/2 = (nmemb/s-1)/2 = (r-1)/2
+        */
+        r=nmemb/s, q=(r-1UL)>>1, ps=base+q*size;
+        for (pa=base,q=0UL; q<s; pa+=size,ps+=r*size,q++) {
             if (pa!=ps) {
                 swapf(pa,ps,size);
                 nsw+=size;
@@ -251,21 +382,29 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         */
         quickselect_internal(base,s,size,compar,karray,2UL,
             QUICKSELECT_NETWORK_MASK,NULL,NULL); /* bootstrap with quickselect */
-        /* XXX samples are partitioned, and could be moved to the appropriate
-           regions w/o recomparisons
+        /* Samples are partitioned, and could be moved to the appropriate
+           regions w/o recomparisons (except for the fact that some sample
+           elements might compare equal to one (or both) of the pivots, and
+           selection provides no indication of that, so recomparison would be
+           necessary).
         */
 #else
         /* for 5 samples only, simply identify pivots using sort5 */
-        x=nmemb/s*size; /* sample spacing (chars) */
-        pivot1=pm-x;
-        pa=pivot1-x;
-        pivot2=pm+x;
-        ps=pivot2+x;
-        sort5(pa,pivot1,pm,pivot2,ps,size,compar,swapf,alignsize,size_ratio,options);
+        r=nmemb/s*size; /* sample spacing (chars) */
+        pivot1=pm-r;
+        pa=pivot1-r;
+        pivot2=pm+r;
+        ps=pivot2+r;
+        sort5(pa,pivot1,pm,pivot2,ps,size,compar,swapf,alignsize,size_ratio,
+            options);
 #endif
 #if DPDEBUG
         if (DEBUGGING(DPQSORT_DEBUG)) {
-            (V)fprintf(stderr, "//%s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d)\n",__func__,__LINE__,(void *)pivot1,(pivot1-base)/size,*((int *)pivot1),(void *)pivot2,(pivot2-base)/size,*((int *)pivot2));
+            (V)fprintf(stderr,
+                "/* %s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d) */\n",
+                __func__,__LINE__,(void *)pivot1,(pivot1-base)/size,
+               *((int *)pivot1),(void *)pivot2,(pivot2-base)/size,
+               *((int *)pivot2));
             print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
         }
 #endif
@@ -273,24 +412,27 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         dp_partition(base,nmemb,size,compar,swapf,alignsize,size_ratio,options,
             &pivot1,&pa,&pivot2,&ps);
         npartitions++;
-        /* process [base,pivot1), [pa,pivot2), [ps,pu) */
-        /* process 3 regions */
-        /* region sizes */
-        if (pivot1>base) q=(pivot1-base)/size; else q=0UL;
-        if (pivot2>pa) r=(pivot2-pa)/size; else r=0UL;
-        if (pu>ps) s=(pu-ps)/size; else s=0UL;
-        /* should process small regions recursively, large iteratively */
-        /* XXX quick hack: 2nd, 3rd regions recursively, 1st iteratively */
-        if (r>1UL) {
-            nrecursions++;
-            dpqsort_internal(pa,r,size,compar,swapf,alignsize,size_ratio,options);
+        /* process 3 regions: [base,pivot1), [pa,pivot2), [ps,pu) */
+        regions[0].base=base, regions[0].nmemb=(pivot1-base)/size;
+        regions[1].base=pa, regions[1].nmemb=(pivot2-pa)/size;
+        regions[2].base=ps, regions[2].nmemb=(pu-ps)/size;
+        /* sort regions by size (3 regions; use dedicated sort) */
+        d_dedicated_sort(regions,0UL,3UL,regionsize,regioncmp,regionswap,
+            regionsize,1UL,QUICKSELECT_NETWORK_MASK);
+        A(regions[0].nmemb<=regions[1].nmemb);
+        A(regions[1].nmemb<=regions[2].nmemb);
+        /* process small regions recursively, large iteratively */
+        /* If the largest region is too small to process, so are the others. */
+        if (regions[2].nmemb<2UL) return;
+        for (q=0UL; q<2UL; q++) {
+            if (regions[q].nmemb>1UL) {
+                nrecursions++;
+                dpqsort_internal(regions[q].base,regions[q].nmemb,size,compar,
+                    swapf,alignsize,size_ratio,options);
+            }
         }
-        if (s>1UL) {
-            nrecursions++;
-            dpqsort_internal(ps,s,size,compar,swapf,alignsize,size_ratio,options);
-        }
-        if (q<2UL) return;
-        nmemb=q;
+        base=regions[2].base;
+        nmemb=regions[2].nmemb;
     }
 }
 

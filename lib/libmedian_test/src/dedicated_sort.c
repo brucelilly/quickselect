@@ -266,7 +266,7 @@ void d_dedicated_sort(char *base, size_t first, size_t beyond, size_t size,
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) {
-(V) fprintf(stderr,"/* %s: %s line %d: base=%p, first=%lu, beyond=%lu, options=0x%x */\n",__func__,source_file,__LINE__,(void *)base,(unsigned long)first,(unsigned long)beyond,options);
+(V) fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, options=0x%x */\n",__func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,options);
 print_some_array(base,first,beyond-1UL, "/* "," */",options);
 }
 #endif
