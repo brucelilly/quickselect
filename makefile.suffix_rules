@@ -278,11 +278,13 @@ FAKE_TARGETS += .tms.psa4
 FAKE_TARGETS += .psa4.pdfa4
 
 .pnm.png :
-	$(PNMTOPNG) $< > $@.temp
-	rm -f $@.bak $@.temp.bak
-	if test -n "$(OPTIPNG)" ; then $(OPTIPNG) -quiet $@.temp ; fi
-	if test -n "$(PNGCRUSH)" ; then $(PNGCRUSH) -fix -q $@.temp $@ ; else mv -f $@.temp $@ ; fi
-	rm -f $@.temp
+	if test -s $< ; then \
+		$(PNMTOPNG) $< > $@.temp ;\
+		rm -f $@.bak $@.temp.bak ;\
+		if test -n "$(OPTIPNG)" ; then $(OPTIPNG) -quiet $@.temp ; fi ;\
+		if test -n "$(PNGCRUSH)" ; then $(PNGCRUSH) -fix -q $@.temp $@ ; else mv -f $@.temp $@ ; fi ;\
+		rm -f $@.temp ;\
+	fi
 
 FAKE_TARGETS += .pnm.png
 

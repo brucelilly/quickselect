@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    %M% copyright 2016-2017 %Q%.   \ make_grap.c $
+* $Id: ~|^` @(#)    make_grap.c copyright 2016-2018 Bruce Lilly.   \ make_grap.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,10 +28,10 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is %M% version %I% dated %O%. \ $ */
-/* You may send bug reports to %Y% with subject "make_grap" */
+/* $Id: ~|^` @(#)   This is make_grap.c version 1.10 dated 2018-04-18T02:10:09Z. \ $ */
+/* You may send bug reports to bruce.lilly@gmail.com with subject "make_grap" */
 /*****************************************************************************/
-/* maintenance note: master file %P% */
+/* maintenance note: master file /data/projects/automation/940/src/s.make_grap.c */
 
 /********************** Long description and rationale: ***********************
 * read input from file or stdin, write grap to stdout
@@ -51,7 +51,7 @@
 #endif
 
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600
 #else
 # define MIN_XOPEN_SOURCE_VERSION 500
@@ -94,11 +94,11 @@ void     arc4random_addrandom(u_char *, int);
 #undef COPYRIGHT_HOLDER
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: make_grap.c ~|^` @(#)"
-#define SOURCE_MODULE "%M%"
-#define MODULE_VERSION "%I%"
-#define MODULE_DATE "%O%"
-#define COPYRIGHT_HOLDER "%Q%"
-#define COPYRIGHT_DATE "2016-2017"
+#define SOURCE_MODULE "make_grap.c"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-04-18T02:10:09Z"
+#define COPYRIGHT_HOLDER "Bruce Lilly"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "get_host_name.h"      /* get_host_name */
@@ -209,6 +209,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     const char *commentend = "\n";
     const char *grapcommentstart = "#";
     const char *grapcommentend = "\n";
+    const char *visibility = "invis";
     char *endptr=NULL;
     struct symbol_struct symbols[] = {
         { "bullet", "\\(bu",                NULL, NULL, NULL } ,
@@ -216,6 +217,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         { "plus",   "\\(pl",                NULL, NULL, NULL } ,
         { "delta",  "\\(*D",                NULL, NULL, NULL } ,
         { "square", "\\(sq",                NULL, NULL, NULL } ,
+        { "grad",   "\\(gr",                NULL, NULL, NULL } ,
         { "dot",    "\\v~-0.2m~.\\v~0.2m~", NULL, NULL, NULL } , /* almost invisible */
         { "box",    "\\f(ZD\\N~110~\\fP",   NULL, NULL, NULL } , /* can obscure others */
         { "star",   "\\(**",                NULL, NULL, NULL } , /* can be confused for overlayed x and + */
@@ -224,7 +226,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         { "vtick",  "|",                    NULL, NULL, NULL } , /* poor for nearly vertical plots */
     };
     size_t nmarks = sizeof(symbols)/sizeof(symbols[0]);
-    size_t dim, line_number = 0UL, symbol_number = 0UL, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
+    size_t dim, odim, line_number = 0UL, symbol_number = 0UL, legend_number = 0UL, len, maxdim, q, wordlen, xlines;
     size_t xc, label_num, start_label, line_len, max_len;
     int bufsz, c, i, ingrap=0, optind;
     int maxlen = 1024;
@@ -235,7 +237,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     unsigned int seqid = 1U;
     unsigned int tzknown = 1U;
     unsigned int errs=0U;
-    volatile unsigned long count, l, r, ul;
+    volatile unsigned long count, l, maxcount, mincount, ocount, xcount, r, s, ul;
     pid_t pid;
     void (*f)(int, void *, const char *, ...) = logger;
     void *log_arg;
@@ -285,7 +287,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = prog;
-    ls.swVersion = "%I%";       /* maintained by version control system */
+    ls.swVersion = "1.10";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;
@@ -391,6 +393,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
                         pcc = argv[++optind];
+                    /* overwrite if too many legends are supplied */
                     symbols[legend_number%nmarks].legend_text = pcc;
                     legend_number++;
                     for (; '\0' != *pcc; pcc++) ;   /* pass over arg to satisfy loop conditions */
@@ -414,6 +417,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind];
                     }
+                    i='\0';
                     for (; '\0' != *pcc; pcc++)
                         switch (*pcc) {
                             case 'x' : /*FALLTHROUGH*/
@@ -595,24 +599,28 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     maxx=maxlx=maxy=-1.0e300, minx=minlx=miny=0.0-maxx;
     deltax=deltay=1.0e300;
     /* read input */
-    for (maxdim=dim=count=0UL; NULL!=fgets(buf,sizeof(buf),fp); ox=dx,oy=dy) {
+    /* input assumptions/constraints:
+          at least the first dimension (x,y pairs) must be in non-decreasing x order
+          multiple dimensions may be grouped (x1,y1 x2=x1,y2 x3=x1,y3)
+             or sequential (x1,y1 x2,y2 ... xm=x1,ym xn=x2,yn ...)
+          multi-dimensional input has the same x values and the same number of points
+             for each dimension (y series)
+    */
+    for (maxdim=count=maxcount=0UL,odim=dim=1UL; NULL!=fgets(buf,sizeof(buf),fp); ox=dx,oy=dy) {
         dx = strtod(buf, &endptr);
-// if (debug) (void)fprintf(stderr, "x=%G, buf %s\n",dx, buf);
-        if ((dx!=0.0) && (dx<minx)) minx=dx;
-        if ((dx>maxx)&&(dx<=xlim)) maxx=dx;
-        if (0U!=flags['X']) {
-            if (dx==0.0) {
-                if (minx<maxx) dx=minx; /* fudge data to prevent log error */
-                else dx=1.0e-6;
-            }
-            lx = log2(dx);
-            if (lx<minlx) minlx=lx;
-            if ((lx>maxlx)&&(dx<=xlim)) maxlx=lx;
-        }
+        /* read y value before processing x */
         dy = strtod(endptr, &endptr);
+        *endptr='\0';
+// if (debug) (void)fprintf(stderr, "x=%G, buf %s\n",dx, buf);
 // if (debug) (void)fprintf(stderr, "y=%G, buf %s\n",dy, buf);
         if ((dy!=0.0) && (dy<miny)) miny=dy;
-        if ((dy>maxy)&&(dy<=ylim)) maxy=dy, maxyx=dx;
+        if ((dy>maxy)&&(dy<=ylim)) {
+            if ((1UL<count)&&(dy>100.0*maxy)) (void)fprintf(stderr,
+                "%s %s: %s line %d: suspicious Y value %G (maxy=%G) from buf "
+                "\"%s\"\n",ingrap?grapcommentstart:commentstart,prog,
+                source_file,__LINE__,dy,maxy,buf);
+            maxy=dy, maxyx=dx;
+        }
         if (0U!=flags['Y']) {
             if (dy==0.0) {
                 if (miny<maxy) dy=miny; /* fudge data to prevent log error */
@@ -622,10 +630,61 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
             if (ly<minly) minly=ly;
             if ((ly>maxly)&&(dy<=ylim)) maxly=ly;
         }
-        if (dx==ox) { /* another dimension, same count */
+if (debug) (void)fprintf(stderr, "x=%G, buf \"%s\", ox=%G, maxx=%G\n",dx, buf, ox, maxx);
+        /* has this value of x been seen before? yes: another dimension; no: another data count */
+        if (dx==ox) { /* quick check; previous value (grouped input) */
             dim++;
-        } else { /* next count */
-            if (0UL<count) {
+if (debug) fprintf(stderr,"line %d: dx=%E, ox=%E, count=%lu, maxcount=%lu, dim=%lu, maxdim=%lu\n",__LINE__,dx,ox,count,maxcount,dim,maxdim);
+        } else if ((dx<minx)||(dx>maxx)) { /* quick check; not seen this value */
+            if (dx<minx) minx=dx;
+            if ((dx>maxx)&&(dx<=xlim)) maxx=dx;
+            if (0U!=flags['X']) {
+                if (dx==0.0) {
+                    if (minx<maxx) {
+                        if (maxyx==dx) maxyx=minx;
+                        dx=minx; /* fudge data to prevent log error */
+                    } else {
+                        if (maxyx==dx) maxyx=1.0e-6;
+                        dx=1.0e-6;
+                    }
+                }
+                lx = log2(dx);
+                if (lx<minlx) minlx=lx;
+                if ((lx>maxlx)&&(dx<=xlim)) maxlx=lx;
+            }
+            if (dim>odim)
+                dim=odim; /* reset dimension */
+            else
+                odim=dim; /* save dimension */
+            count++;
+        } else { /* search previous input */
+            /* binary search in data seen so far */
+            ocount=count;
+            /* don't alter maxcount! (use xcount) */
+            for (mincount=0UL,xcount=maxcount-1UL; mincount<=xcount; ) {
+                count=mincount+((xcount-mincount)>>1);
+                if (x[count]==dx) break; /* seen @ count */
+                else if (x[count]<dx) mincount=count+1UL;
+                else xcount=count-1UL;
+if (debug) fprintf(stderr,"line %d: mincount=%lu, xcount=%lu, count=%lu\n",__LINE__,mincount,xcount,count);
+            }
+            if ((count==ocount)&&(x[ocount]!=dx)) {
+                (void)fprintf(stderr,"%s: %s line %d: data error: %E < %E "
+                    "but x=%E was not seen before\n",__func__,source_file,
+                    __LINE__,dx,maxx,dx);
+            } else {
+                if (debug) (void)fprintf(stderr,"dx=%G previously seen at count=%lu\n",dx,count);
+                if (count==0UL) {
+                    if (dim>=odim)
+                        odim=++dim; /* start new dimension */
+                } else dim=odim; /* reset dimension for next data point */
+            }
+            count++; /* convention is that count is incremented before use as an index */
+        }
+        if (count>maxcount) maxcount=count;
+if (debug) (void)fprintf(stderr, "line %d: dim=%lu, odim=%lu, count=%lu, maxcount=%lu\n",__LINE__,dim,odim,count,maxcount);
+        if (count==maxcount) { /* next count */
+            if (1UL<count) {
                 d=dx-ox;
                 if (0.0>d) d=0.0-d;
                 if ((d<deltax)&&(0.0<d)) deltax=d;
@@ -633,7 +692,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 if (0.0>d) d=0.0-d;
                 if ((d<deltay)&&(0.0<d)) deltay=d;
             }
-            count++;
             if (NULL!=x) { x=realloc(x,sizeof(double)*count);
             } else { x=malloc(sizeof(double)*count); }
             x[count-1UL]=dx;
@@ -642,42 +700,66 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 } else { plx=malloc(sizeof(double)*count); }
                 plx[count-1UL]=lx;
             }
-            dim=1UL;
         }
         if (dim>maxdim) {
-            if (NULL!=py) { py=realloc(py,sizeof(double *)*dim); py[dim-1UL]=NULL;
+            if (NULL!=py) {
+                py=realloc(py,sizeof(double *)*dim);
+                for (ul=maxdim; ul<dim; ul++)
+                    py[ul]=NULL;
             } else { py=calloc(sizeof(double *),dim); }
             if (0U!=flags['Y']) {
-                if (NULL!=ply) { ply=realloc(ply,sizeof(double *)*dim); ply[dim-1UL]=NULL;
+                if (NULL!=ply) {
+                    ply=realloc(ply,sizeof(double *)*dim);
+                    for (ul=maxdim; ul<dim; ul++)
+                        ply[ul]=NULL;
                 } else { ply=calloc(sizeof(double *),dim); }
             }
-            if (NULL!=pp) { pp=realloc(pp,sizeof(unsigned char *)*dim); pp[dim-1UL]=NULL;
+            if (NULL!=pp) {
+                pp=realloc(pp,sizeof(unsigned char *)*dim);
+                for (ul=maxdim; ul<dim; ul++)
+                    pp[ul]=NULL;
             } else { pp=calloc(sizeof(unsigned char *),dim); }
             maxdim=dim;
         }
-        if (NULL!=py[dim-1UL]) { py[dim-1UL]=realloc(py[dim-1UL],sizeof(double)*count); }
-        else { py[dim-1UL]=malloc(sizeof(double)*count); }
+        if (NULL!=py[dim-1UL]) {
+            py[dim-1UL]=realloc(py[dim-1UL],sizeof(double)*maxcount);
+        } else { py[dim-1UL]=malloc(sizeof(double)*maxcount); }
         py[dim-1UL][count-1UL]=dy;
         if (0U!=flags['Y']) {
-            if (NULL!=ply[dim-1UL]) { ply[dim-1UL]=realloc(ply[dim-1UL],sizeof(double)*count);
-            } else { ply[dim-1UL]=malloc(sizeof(double)*count); }
+            if (NULL!=ply[dim-1UL]) {
+                ply[dim-1UL]=realloc(ply[dim-1UL],sizeof(double)*maxcount);
+            } else {
+                ply[dim-1UL]=malloc(sizeof(double)*maxcount);
+            }
             ply[dim-1UL][count-1UL]=ly;
         }
-        if (NULL!=pp[dim-1UL]) { pp[dim-1UL]=realloc(pp[dim-1UL],sizeof(unsigned char)*count); }
-        else { pp[dim-1UL]=malloc(sizeof(unsigned char)*count); }
+if (debug) fprintf(stderr,"# line %d: dim=%lu, odim=%lu, maxcount=%lu, count=%lu, dx=%G, dy=%G\n",__LINE__,dim,odim,maxcount,count,dx,dy);
+        if (NULL!=pp[dim-1UL]) {
+                pp[dim-1UL]=realloc(pp[dim-1UL],sizeof(unsigned char)*maxcount);
+        } else {
+                pp[dim-1UL]=malloc(sizeof(unsigned char)*maxcount);
+        }
         pp[dim-1UL][count-1UL]=0U;
     }
 
 #if DEBUG_CODE > 1
-    for (ul=0UL; ul<dim; ul++) {
-        for (q=0UL; q<count; q++) {
+    for (ul=0UL; ul<maxdim; ul++) {
+        for (q=0UL; q<maxcount; q++) {
             if (0U<pp[ul][q]) continue;
                 (void)fprintf(stderr,"%G\t%G\n",x[q],py[ul][q]);
         }
     }
 #endif /* DEBUG_CODE */
+    for (ul=0UL; ul<maxdim; ul++) {
+        for (q=0UL; q<maxcount; q++) {
+            if ((maxy<py[ul][q])&&(lim>=py[ul][q]))
+                (void)fprintf(stderr,"### suspicious stored y value %G,%G "
+                    "(maxy=%G) dimension %lu, count %lu\n",x[q],py[ul][q],maxy,
+                    ul,q);
+        }
+    }
 
-    if (0UL<count) {
+    if (0UL<maxcount) {
         /* output troff and grap lines */
         if (0U!=flags['p'])
             printf(".po %s\n", page_offset);
@@ -801,7 +883,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         if (0U==(flags['n']&4U)) {
             if (0U!=flags['Y']) {
                 for (tick=minytick; tick<maxytick*ytickintvl*9.0/11.0; tick*=ytickintvl) {
-                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,yp,logger,log_arg);
+                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-yp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(yp+ym),3,logger,log_arg);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: tick=%G, snf \"%s\" (%d), sng \"%s\" (%d) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,tick,buf,c,buf2,i,ingrap?grapcommentend:commentend);
@@ -810,7 +892,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 }
             } else {
                 for (tick=minytick; tick<maxytick+ytickintvl; tick+=ytickintvl) {
-                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,yp,logger,log_arg);
+                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-yp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(yp+ym),3,logger,log_arg);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: tick=%G, snf \"%s\" (%d), sng \"%s\" (%d) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,tick,buf,c,buf2,i,ingrap?grapcommentend:commentend);
@@ -824,7 +906,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         if (0U==(flags['n']&2U)) {
             if (0U!=flags['X']) {
                 for (tick=minxtick; tick<maxxtick*xtickintvl*9.0/11.0; tick*=xtickintvl) {
-                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,xp,logger,log_arg);
+                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-xp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(xp+xm),3,logger,log_arg);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: tick=%G, snf \"%s\" (%d), sng \"%s\" (%d) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,tick,buf,c,buf2,i,ingrap?grapcommentend:commentend);
@@ -833,7 +915,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 }
             } else {
                 for (tick=minxtick; tick<maxxtick+xtickintvl; tick+=xtickintvl) {
-                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,xp,logger,log_arg);
+                    c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-xp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(xp+xm),3,logger,log_arg);
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: tick=%G, snf \"%s\" (%d), sng \"%s\" (%d) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,tick,buf,c,buf2,i,ingrap?grapcommentend:commentend);
@@ -954,110 +1036,127 @@ if (0!=ingrap)
 else
 (void)printf("%s %s line %d: ps=%d, c=%d, i=%d, yw=%d, widp=%d, max_len=%lu%s",commentstart,__func__,__LINE__,ps,c,i,yw,widp,max_len,commentend);
 # endif
-            line_len = 8UL; /* "Legend:\0" */
-            for (start_label=ul=0UL; ul<=q; ul++) {
-                if (ul<q) endptr=symbols[ul].legend_text;
-                else endptr="";
+            line_len = 9UL; /* "Legend:\0" */
+// fprintf(stderr,"#### line %d: q=%lu, symbol_number=%lu, legend_number=%lu, line_number=%lu, maxdim=%lu\n",__LINE__,q,symbol_number,legend_number,line_number,maxdim);
+            for (start_label=ul=0UL; ul<maxdim; ) {
+                q=ul%nmarks;
+                if (0UL!=legend_number) r=(ul%legend_number)%nmarks;
+                else r=0UL;
+                if (0UL!=symbol_number) s=(ul%symbol_number)%nmarks;
+                else s=0UL;
+// fprintf(stderr,"#### line %d: q=%lu, r=%lu, s=%lu, symbol_number=%lu, legend_number=%lu, line_number=%lu, maxdim=%lu\n",__LINE__,q,r,s,symbol_number,legend_number,line_number,maxdim);
+                endptr=symbols[r].legend_text;
                 if (NULL!=endptr) {
-                    if (ul<q) wordlen=strlen(endptr);
-                    else wordlen = max_len;
-                    if (ul>start_label) xc=5UL; else xc=2UL;
+                    /* legend for dimension ul if text has been defined */
+                    wordlen=strlen(endptr);
+                    if (ul>start_label) xc=6UL; else xc=3UL;
                     if (line_len + wordlen + xc <= max_len)
                         line_len += wordlen + xc;
-                    else {
+                    else ul--;
+                    if ((ul+1UL==maxdim)||(line_len+wordlen+xc>max_len)) {
+// fprintf(stderr,"#### line %d: q=%lu, r=%lu, s=%lu, symbol_number=%lu, legend_number=%lu, line_number=%lu, maxdim=%lu\n",__LINE__,q,r,s,symbol_number,legend_number,line_number,maxdim);
                         /* overall box */
                         printf(
-                            "pic Label: box invis wid framewid2+%.6f ht %.6f with .ne at Frame.se -0,%.6f\n",
-                            d,dy,dy+(double)xlines*dy);
+                            "pic Label: box %s wid framewid2+%.6f ht %.6f with .ne at Frame.se -0,%.6f\n",
+                            visibility,d,dy,dy+(double)xlines*dy);
                         /* box for necessary length line_len */
                         printf(
-                            "pic Textbox: box invis wid %lu*%.6f ht %.6f with .c at Label.c\n",
-                            line_len,cw,dy);
-                        for (label_num=start_label; label_num<ul; label_num++) {
+                            "pic Textbox: box %s wid %lu*%.6f ht %.6f with .c at Label.c\n",
+                            visibility,line_len,cw,dy);
+                        for (label_num=start_label; label_num<=ul; label_num++) {
+                            if (0UL!=legend_number) r=(label_num%legend_number)%nmarks;
+                            else r=0UL;
+                            endptr=symbols[r].legend_text;
                             if (0UL==label_num) {
                                 /* box for "Legend:\0" */
                                 printf(
-                                    "pic Legendtextbox: box invis wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
-                                    8UL,cw,dy);
+                                    "pic Legendtextbox: box %s wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
+                                    visibility,8UL,cw,dy);
                                 /* Line with "Legend:\0" text */
                                 printf(
                                     "pic line invis from Legendtextbox.w to Legendtextbox.e \"%s\" aligned\n",
                                     "Legend:\0"); 
                                 /* box for symbol (after "Legend:\0" box) */
                                 printf(
-                                    "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Legendtextbox.e + %.6f,0\n",
-                                    label_num,2UL,cw,dy,cw);
-                            } else {
+                                    "pic Symbolbox%lu: box %s wid %lu*%.6f ht %.6f with .w at Legendtextbox.e + %.6f,0\n",
+                                    label_num,visibility,2UL,cw,dy,cw);
+                            } else if (NULL!=endptr) {
                                 if (label_num > start_label) {
                                     /* box for symbol (offset from last label's box) */
                                     printf(
-                                        "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Subtextbox%lu.e + 3.0 * %.6f,0\n",
-                                        label_num,2UL,cw,dy,label_num-1UL,cw);
+                                        "pic Symbolbox%lu: box %s wid %lu*%.6f ht %.6f with .w at Subtextbox%lu.e + 3.0 * %.6f,0\n",
+                                        label_num,visibility,2UL,cw,dy,label_num-1UL,cw);
                                 } else {
                                     /* box for symbol (at start of line) */
                                     printf(
-                                        "pic Symbolbox%lu: box invis wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
-                                        label_num,2UL,cw,dy);
+                                        "pic Symbolbox%lu: box %s wid %lu*%.6f ht %.6f with .w at Textbox.w\n",
+                                        label_num,visibility,2UL,cw,dy);
                                 }
                             }
-                            endptr=symbols[label_num].legend_text;
                             if (NULL!=endptr) {
+                                q=label_num%nmarks;
+                                if (0UL!=symbol_number) s=(label_num%symbol_number)%nmarks;
+                                else s=0UL;
+// fprintf(stderr,"#### line %d: q=%lu, r=%lu, s=%lu, symbol_number=%lu, legend_number=%lu, line_number=%lu, maxdim=%lu\n",__LINE__,q,r,s,symbol_number,legend_number,line_number,maxdim);
                                 wordlen=strlen(endptr);
                                 /* line with symbol (possibly colored) */
                                 printf(
                                     "pic line invis from last box.w to last box.e \"%s\"",
-                                    symbols[label_num%nmarks].mchar); 
-                                if ((NULL!=symbols[label_num].symbol_color)
-                                &&('\0'!=symbols[label_num].symbol_color[0])
+                                    symbols[q].mchar); 
+                                if ((NULL!=symbols[s].symbol_color)
+                                &&('\0'!=symbols[s].symbol_color[0])
                                 ) {
-                                    printf(" color \"%s\"", symbols[label_num].symbol_color);
+                                    printf(" color \"%s\"", symbols[s].symbol_color);
                                 }
                                 printf(" aligned\n");
                                 /* box for legend text */
                                 printf(
-                                    "pic Subtextbox%lu: box invis wid %lu*%.6f ht %.6f with .w at last box.e + %.6f,0\n",
-                                    label_num,wordlen,cw,dy,cw);
+                                    "pic Subtextbox%lu: box %s wid %lu*%.6f ht %.6f with .w at last box.e + %.6f,0\n",
+                                    label_num,visibility,wordlen,cw,dy,cw);
                                 /* line with legend text (possibly colored) */
                                 printf(
                                     "pic line invis from last box.w to last box.e \"%s\"",
-                                    symbols[label_num].legend_text); 
-                                if ((NULL!=symbols[label_num].line_color)
-                                &&('\0'!=symbols[label_num].line_color[0])
+                                    symbols[r].legend_text); 
+                                if ((NULL!=symbols[r].line_color)
+                                &&('\0'!=symbols[r].line_color[0])
                                 ) {
-                                    printf(" color \"%s\"", symbols[label_num].line_color);
+                                    printf(" color \"%s\"", symbols[r].line_color);
                                 }
                                 printf(" aligned\n");
                             }
                         }
                         xlines++;
-                        if (ul==q) break;
-                        start_label = ul--;
+                        if (ul+1UL==maxdim) break;
+                        start_label = ++ul;
                         line_len = 0UL;
-                    }
-                }
+                    } else ul++;
+                } else ul++;
             }
         }
 #endif
 
-        for (ul=0UL; ul<dim; ul++) {
+// fprintf(stderr,"#### line %d: nmarks=%lu, symbol_number=%lu, legend_number=%lu, line_number=%lu, maxdim=%lu\n",__LINE__,nmarks,symbol_number,legend_number,line_number,maxdim);
+        for (ul=0UL; ul<maxdim; ul++) {
+            if (0UL!=legend_number) r=(ul%legend_number)%nmarks;
+            else r=0UL;
             printf("draw data%lu solid ", ul);
-            if ((NULL!=symbols[ul%nmarks].line_color)
-            &&('\0'!=symbols[ul%nmarks].line_color[0]))
-                printf("color \"%s\" ", symbols[ul%nmarks].line_color);
+            if ((NULL!=symbols[r].line_color)
+            &&('\0'!=symbols[r].line_color[0]))
+                printf("color \"%s\" ", symbols[r].line_color);
             printf("%s", symbols[ul%nmarks].marker);
-            if ((NULL!=symbols[ul%nmarks].symbol_color)
-            &&('\0'!=symbols[ul%nmarks].symbol_color[0]))
-                printf(" color \"%s\"", symbols[ul%nmarks].symbol_color);
+            if ((NULL!=symbols[r].symbol_color)
+            &&('\0'!=symbols[r].symbol_color[0]))
+                printf(" color \"%s\"", symbols[r].symbol_color);
             printf("\n");
-            l=0UL,r=count-1UL;
+            l=0UL,s=maxcount-1UL;
 #if 1
-            for (q=0UL; q<count; q++) {
+            for (q=0UL; q<maxcount; q++) {
                 if ((x[q]>xlim)||(py[ul][q]>ylim)) {
                     pp[ul][q]=1U;
                     if (q==l) l++;
-                    else if (q==r) {
+                    else if (q==s) {
                         while (0U<pp[ul][q]) {
-                            r--;
+                            s--;
                             if (l==q) break;
                             q--;
                         }
@@ -1067,16 +1166,18 @@ else
 #endif
             if (0U!=flags['X']) {
                 if (0U!=flags['Y'])
-                    q=trim(plx, ply[ul], pp[ul], l, r, lim);
+                    q=trim(plx, ply[ul], pp[ul], l, s, lim);
                 else
-                    q=trim(plx, py[ul], pp[ul], l, r, lim);
+                    q=trim(plx, py[ul], pp[ul], l, s, lim);
             } else if (0U!=flags['Y'])
-                q=trim(x, ply[ul], pp[ul], l, r, lim);
+                q=trim(x, ply[ul], pp[ul], l, s, lim);
             else
-                q=trim(x, py[ul], pp[ul], l, r, lim);
-            (void)fprintf(stderr,"%s %s line %d: trim reports %lu remaining data points (trimmed from %lu) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,q,count,ingrap?grapcommentend:commentend);
-            for (q=0UL; q<count; q++) {
+                q=trim(x, py[ul], pp[ul], l, s, lim);
+            (void)fprintf(stderr,"%s %s line %d: trim reports %lu remaining data points (trimmed from %lu) %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,q,maxcount,ingrap?grapcommentend:commentend);
+            for (q=0UL; q<maxcount; q++) {
                 if (0U<pp[ul][q]) continue;
+if (py[ul][q]>maxy)
+fprintf(stderr,"#### line %d: ul=%lu, dim=%lu, maxdim=%lu\n",__LINE__,ul,dim,maxdim);
                 printf("next data%lu at %G, %G\n", ul, x[q], py[ul][q]);
             }
         }

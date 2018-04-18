@@ -281,14 +281,10 @@
 #endif
 
 /* definition */
-#if __STDC_WANT_LIB_EXT1__
-# include "quicksort_loop_s_decl.h"
-#else
 # include "quicksort_loop_decl.h"
-#endif /* __STDC_WANT_LIB_EXT1__ */
 {
 #if __STDC_WANT_LIB_EXT1__
-    QSORT_RETURN_TYPE ret=0;
+    QUICKSELECT_RETURN_TYPE ret=0;
 #endif /* __STDC_WANT_LIB_EXT1__ */
     size_t nmemb=beyond-first;
     auto int c=0; /* repivot factor2 count */

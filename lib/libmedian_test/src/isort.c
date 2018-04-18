@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    isort.c copyright 2016-2017 Bruce Lilly.   \ isort.c $
+* $Id: ~|^` @(#)    isort.c copyright 2016-2018 Bruce Lilly.   \ isort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is isort.c version 1.4 dated 2017-12-06T23:02:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is isort.c version 1.11 dated 2018-03-20T19:30:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.isort.c */
@@ -46,92 +46,21 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: isort.c ~|^` @(#)"
 #define SOURCE_MODULE "isort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-12-06T23:02:21Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-03-20T19:30:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
+
+#define PURE_INSERTION 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-/* Insertion sort using binary search to locate insertion position for
-   out-of-order element, followed by rotation to insert the element in position.
-*/
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
-void isort_bs(char *base, size_t first, size_t beyond, size_t size,
-    int (*compar)(const void *,const void *),
-    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options)
-{
-    register size_t l, m, h, n, u=beyond-1UL;
-    char *pa, *pu=base+u*size;
+#include "insertion_sort_src.h" /* isort_bs */
 
-/* separate direct, indirect versions to avoid options checks in loops,
-   also cache dereferenced pa in inner loop
-*/
-#if QUICKSELECT_INDIRECT
-    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
-#endif /* QUICKSELECT_INDIRECT */
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            if (0<COMPAR(pa,pa+size,/**/)) { /* skip over in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* binary search for insertion position */
-                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
-                        if (0>=COMPAR(pa,base+m*size,/**/)) h=m-1UL;
-                        else l=m+1UL;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating elements
-                   [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-                if (0U!=instrumented) {
-                    h=l-n;
-                    if (MAXROTATION<=h) h=0UL;
-                    nrotations[h]+=size_ratio;
-                }
-            }
-        }
-#if QUICKSELECT_INDIRECT
-    } else { /* indirect */
-        register char *p;
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            p=*((char **)pa);
-            if (0<COMPAR(p,*((char**)(pa+size)),/**/)) {/* skip over in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* binary search for insertion position */
-                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
-                        if (0>=COMPAR(p,*((char**)(base+m*size)),/**/)) h=m-1UL;
-                        else l=m+1UL;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating elements
-                   [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-                if (0U!=instrumented) {
-                    h=l-n;
-                    if (MAXROTATION<=h) h=0UL;
-                    nrotations[h]+=size_ratio;
-                }
-            }
-        }
-    }
-#endif /* QUICKSELECT_INDIRECT */
-}
-
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
@@ -163,7 +92,7 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
             case 2UL : /* less overhead than default loop */
                 pa=base+first*size;
                 pb=pa+size;
-                COMPARE_EXCHANGE(pa,pb,options,context,size,swapf,alignsize,size_ratio);
+                COMPARE_EXCHANGE(pa,pb,options,size,swapf,alignsize,size_ratio);
             break;
 #if 0 /* 0 for pure insertion sort for comparison and swap counts */
             case 3UL : /* optimized sort of 3 */
@@ -179,24 +108,22 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
                     pa=base+first*size;
                     pb=pa+size;
                     pc=pb+size;
-                    COMPARE_EXCHANGE(pa,pc,options,context,size,swapf,alignsize,
+                    COMPARE_EXCHANGE(pa,pc,options,size,swapf,alignsize,
                         size_ratio);
-                    COMPARE_EXCHANGE(pa,pb,options,context,size,swapf,alignsize,
+                    COMPARE_EXCHANGE(pa,pb,options,size,swapf,alignsize,
                         size_ratio);
                     else
-                        COMPARE_EXCHANGE(pb,pc,options,context,size,swapf,alignsize,
+                        COMPARE_EXCHANGE(pb,pc,options,size,swapf,alignsize,
                             size_ratio);
                 }
             break;
 #endif
             default :
                 /* Insertion sort iterative loop. */
-                /* Implementation by insertion of first out-of-place element
-                   into sorted remainder (except for trivial case).
-                */
-                /* Find extent of rightmost sorted run of elements. */
-                /* nmemb is the index of the out-of-place element immediately to
-                   the left of the rightmost sorted run of elements
+                /* Implementation by insertion of out-of-place elements into
+                   sorted remainder (except for trivial case).  Find extent of
+                   longest (preferably central) sorted run of elements. See
+                   libmedian insertion_sort.c and insertion.h files.
                 */
                 isort_bs(base,first,beyond,size,compar,swapf,alignsize,
                     size_ratio,options);
@@ -204,15 +131,13 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
         }
 # if ASSERT_CODE > 1
         for (pa=base+first*size,pb=base+beyond*size; pa<pb; pa+=size)
-            A(0>=COMPAR(pa,pa+size,options,/**/));
+            A(0>=OPT_COMPAR(pa,pa+size,options));
 # endif
     }
 #endif
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *),
     unsigned int options)
 {
@@ -221,6 +146,10 @@ void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, co
     void (*swapf)(char *, char *, size_t);
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
+    if (0U!=(options&(QUICKSELECT_INDIRECT))) {
+        (V)fprintf(stderr, "%s: indirect sorting is not supported\n",__func__);
+        return;
+    }
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
     isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
 }

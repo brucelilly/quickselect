@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    klimits_src.h copyright 2017 Bruce Lilly.   \ klimits_src.h $
+* $Id: ~|^` @(#)    klimits_src.h copyright 2017-2018 Bruce Lilly.   \ klimits_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is klimits_src.h version 1.3 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is klimits_src.h version 1.5 dated 2018-03-07T04:24:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.klimits_src.h */
@@ -59,7 +59,7 @@
 /* Minimum _XOPEN_SOURCE version for C99 (else illumos compilation fails) */
 #undef MAX_XOPEN_SOURCE_VERSION
 #undef MIN_XOPEN_SOURCE_VERSION
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
 # define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
@@ -101,14 +101,20 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: klimits_src.h ~|^` @(#)"
 #define SOURCE_MODULE "klimits_src.h"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-03-07T04:24:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017"
+#define COPYRIGHT_DATE "2017-2018"
 
+#if !defined(QUICKSELECT_BUILD_FOR_SPEED) || !defined(QUICKSELECT_INLINE)
+# include "quickselect_config.h"
+#endif
+
+#if ! QUICKSELECT_BUILD_FOR_SPEED
 /* local header files needed */
 #include "zz_build_str.h"       /* build_id build_strings_registered
                                    copyright_id register_build_strings */
+#endif
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -133,16 +139,14 @@
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
+#if ! QUICKSELECT_BUILD_FOR_SPEED
 /* static data */
 static char klimits_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
 
 /* initialize at run-time */
-static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+static QUICKSELECT_INLINE
 void initialize_klimits(void)
 {
     const char *s;
@@ -151,33 +155,69 @@ void initialize_klimits(void)
     if (NULL == s) s = filenamebuf; else s++;
     klimits_initialized = register_build_strings(NULL, &source_file, s);
 }
+#endif
 
 /* klimits: find range of order statistic ranks corresponding to sub-array
             limits.
 */
-/* called from quickselect_loop and sampling_table */
 #if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
+QUICKSELECT_INLINE
 #endif
 #include "klimits_decl.h"
 {
-    size_t s, l, lk, rk;
+    size_t h, l, lk, rk;
 
     A(NULL!=pfk);A(NULL!=pbk);A(NULL!=pk);
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_klimits();
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SAMPLING_DEBUG)
+    ||DEBUGGING(REPARTITION_DEBUG)
+    ||DEBUGGING(REPIVOT_DEBUG)
+    ) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: firstk=%lu, pk[%lu]=%lu, beyondk=%lu, "
+            "pk[%lu]=%lu, first=%lu, beyond=%lu */\n",
+            __func__,source_file,__LINE__,(unsigned long)firstk,
+            (unsigned long)firstk,(unsigned long)pk[firstk],
+            (unsigned long)beyondk,(unsigned long)beyondk-1UL,
+            (unsigned long)pk[beyondk-1UL],(unsigned long)first,
+            (unsigned long)beyond);
+    }
+#endif
     /* binary search through pk to find limits for each region */
-    for (s=firstk,l=beyondk,lk=s+((l-s)>>1); s<l; lk=s+((l-s)>>1)) {
-        A(lk>=firstk);A(lk<=beyondk);
-        if (pk[lk]<first) s=lk+1UL; else l=lk;
+    for (l=firstk,h=beyondk,lk=BS_MID_L(l,h); l<h; lk=BS_MID_L(l,h)) {
+        A(lk>=firstk);A(lk<beyondk);
+        if (pk[lk]<first) l=lk+1UL; else h=lk;
     }
     A(lk>=firstk);A(lk<=beyondk);
-    for (s=lk,l=beyondk,rk=s+((l-s)>>1); s<l; rk=s+((l-s)>>1)) {
-        A(rk>=firstk);A(rk<=beyondk);
-        if (pk[rk]<beyond) s=rk+1UL; else l=rk;
+    for (l=lk,h=beyondk,rk=BS_MID_L(l,h); l<h; rk=BS_MID_L(l,h)) {
+        A(rk>=firstk);A(rk<beyondk);
+        if (pk[rk]<beyond) l=rk+1UL; else h=rk;
     }
     A(lk>=firstk);A(lk<=beyondk);A(rk>=firstk);A(rk<=beyondk);
     A((lk==beyondk)||(pk[lk]>=first));A((rk==beyondk)||(pk[rk]>=beyond));
     *pfk=lk, *pbk=rk;
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SAMPLING_DEBUG)
+    ||DEBUGGING(REPARTITION_DEBUG)
+    ||DEBUGGING(REPIVOT_DEBUG)
+    ) {
+        if (rk>lk) (V)fprintf(stderr,
+            "/* %s: %s line %d: firstk=%lu, lk=%lu, pk[%lu]=%lu, rk=%lu, "
+            "pk[%lu]=%lu, beyondk=%lu, first=%lu, beyond=%lu */\n",
+            __func__,source_file,__LINE__,(unsigned long)firstk,
+            (unsigned long)lk,(unsigned long)lk,(unsigned long)(pk[lk]),
+            (unsigned long)rk,(unsigned long)rk-1UL,(unsigned long)(pk[rk-1UL]),
+            (unsigned long)beyondk,(unsigned long)first,(unsigned long)beyond);
+        else (V)fprintf(stderr,
+            "/* %s: %s line %d: firstk=%lu, pk[%lu]=%lu, lk=%lu, rk=%lu, "
+            "beyondk=%lu, first=%lu, beyond=%lu */\n",
+            __func__,source_file,__LINE__,(unsigned long)firstk,
+            (unsigned long)firstk,(unsigned long)pk[firstk],(unsigned long)lk,
+            (unsigned long)rk,(unsigned long)beyondk,(unsigned long)first,
+            (unsigned long)beyond);
+    }
+#endif
 }

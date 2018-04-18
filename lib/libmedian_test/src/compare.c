@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    compare.c copyright 2016-2017 Bruce Lilly.   \ compare.c $
+* $Id: ~|^` @(#)    compare.c copyright 2016-2018 Bruce Lilly.   \ compare.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.3 dated 2017-12-28T22:17:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.6 dated 2018-04-15T02:39:42Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-12-28T22:17:34Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-04-15T02:39:42Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -62,6 +62,11 @@ int ilongcmp(const void *p1, const void *p2)
     /* longcmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(COMPARE_DEBUG))
+        (V)fprintf(stderr,"/* %s: compared %p(%ld),%p(%ld) -> %d */\n",__func__,
+            p1,*((long *)p1),p2,*((long *)p2),r);
+#endif
     switch (r) {
         case -1 : nlt++;
         break;
@@ -92,6 +97,11 @@ fprintf(stderr, "// %s line %d: p1=%p(%d), p2=%p(%d)\n",__func__,__LINE__,(void 
     /* intcmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(COMPARE_DEBUG))
+        (V)fprintf(stderr,"/* %s: compared %p(%d),%p(%d) -> %d */\n",__func__,
+            p1,*((int *)p1),p2,*((int *)p2),r);
+#endif
     switch (r) {
         case -1 : nlt++;
         break;
@@ -113,12 +123,49 @@ int iintcmp_s(const void *p1, const void *p2, void *unused)
     return iintcmp(p1,p2);
 }
 
+int ishortcmp(const void *p1, const void *p2)
+{
+    short r = shortcmp(p1,p2);
+    /* shortcmp (in compare.h) always returns one of -1, 0, 1; update counts
+       without favoring execution time for any distribution of results
+    */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(COMPARE_DEBUG))
+        (V)fprintf(stderr,"/* %s: compared %p(%hd),%p(%hd) -> %d */\n",__func__,
+            p1,*((short *)p1),p2,*((short *)p2),r);
+#endif
+    switch (r) {
+        case -1 : nlt++;
+        break;
+        case 0 : neq++;
+        break;
+        case 1 : ngt++;
+        break;
+    }
+    return r;
+}
+
+int shortcmp_s(const void *p1, const void *p2, void *unused)
+{
+    return shortcmp(p1,p2);
+}
+
+int ishortcmp_s(const void *p1, const void *p2, void *unused)
+{
+    return ishortcmp(p1,p2);
+}
+
 int idoublecmp(const void *p1, const void *p2)
 {
     int r = doublecmp(p1,p2);
     /* doublecmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(COMPARE_DEBUG))
+        (V)fprintf(stderr,"/* %s: compared %p(%E),%p(%E) -> %d */\n",__func__,
+            p1,*((double *)p1),p2,*((double *)p2),r);
+#endif
     switch (r) {
         case -1 : nlt++;
         break;
@@ -148,7 +195,12 @@ int data_struct_strcmp(const void *p1, const void *p2)
             *pb = (const struct data_struct *)p2;
 
         c = strcmp(pa->string, pb->string);
-if (DEBUGGING(COMPARE_DEBUG)) fprintf(stderr, "string %s vs. %s\n",pa->string,pb->string);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(COMPARE_DEBUG))
+            (V)fprintf(stderr,
+                "/* %s: compared string \"%s\" vs. \"%s\" -> %d */\n",
+                __func__,pa->string,pb->string,c);
+#endif
         if (0>c) return -1;
         if (0<c) return 1;
     }
@@ -179,6 +231,60 @@ int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused)
     return idata_struct_strcmp(p1,p2);
 }
 
+/* compare year,month,day,hour,minute,second,fraction as 12-D Euclidean distance from 1970-01-01T00:00:00.0 */
+/* Because sqrt is monotonic, the actual comparison is between squares of distance. */
+/* This is a moderately expensive computation (12 subtractions, 24 muliplications, 24 additions). */
+int date12dcmp(const void *p1, const void *p2)
+{
+    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
+        const struct data_struct *pa = (const struct data_struct *)p1,
+            *pb = (const struct data_struct *)p2;
+        register int i, j;
+        auto int i1=0, i2=0;
+
+        i=pa->year-1970, i1+=i*i;
+        i=pa->month-1,   i1+=i*i;
+        i=pa->mday-1,    i1+=i*i;
+        i=pa->hour,      i1+=i*i;
+        i=pa->minute,    i1+=i*i;
+        i=pa->second,    i1+=i*i;
+        for (j=0; j<6; j++) i=pa->fractional[j], i1+=i*i;
+        i=pb->year-1970, i2+=i*i;
+        i=pb->month-1,   i2+=i*i;
+        i=pb->mday-1,    i2+=i*i;
+        i=pb->hour,      i2+=i*i;
+        i=pb->minute,    i2+=i*i;
+        i=pb->second,    i2+=i*i;
+        for (j=0; j<6; j++) i=pb->fractional[j], i2+=i*i;
+        return intcmp(&i1,&i2);
+    }
+    return 0;
+}
+
+int idate12dcmp(const void *p1, const void *p2)
+{
+    int c = date12dcmp(p1, p2);
+    switch (c) {
+        case -1 : nlt++;
+        break;
+        case 0 : neq++;
+        break;
+        case 1 : ngt++;
+        break;
+    }
+    return c;
+}
+
+int date12dcmp_s(const void *p1, const void *p2, void *unused)
+{
+    return date12dcmp(p1,p2);
+}
+
+int idate12dcmp_s(const void *p1, const void *p2, void *unused)
+{
+    return idate12dcmp(p1,p2);
+}
+
 int timecmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
@@ -186,10 +292,12 @@ int timecmp(const void *p1, const void *p2)
             *pb = (const struct data_struct *)p2;
         int i;
 
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(COMPARE_DEBUG)) {
-            (V)fprintf(stderr,
+            (V)fprintf(stderr,"/* %s: comparing "
                 "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d vs. "
-                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d\n",
+                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d */\n"
+                ,__func__,
                 pa->string,pa->year,pa->month,pa->mday,pa->hour,pa->minute,
                 pa->second,pa->fractional[0],pa->fractional[1],
                 pa->fractional[2],pa->fractional[3],pa->fractional[4],
@@ -199,6 +307,7 @@ int timecmp(const void *p1, const void *p2)
                 pb->fractional[2],pb->fractional[3],pb->fractional[4],
                 pb->fractional[5]);
         }
+#endif
         if (pa->year>pb->year) return 1; else if (pa->year<pb->year) return -1;
         if (pa->month>pb->month) return 1;
         else if (pa->month<pb->month) return -1;
@@ -219,6 +328,10 @@ int timecmp(const void *p1, const void *p2)
 int itimecmp(const void *p1, const void *p2)
 {
     int c = timecmp(p1, p2);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(COMPARE_DEBUG))
+        (V)fprintf(stderr,"/* %s: compared %p,%p -> %d */\n",__func__,p1,p2,c);
+#endif
     switch (c) {
         case -1 : nlt++;
         break;

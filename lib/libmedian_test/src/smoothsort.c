@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    smoothsort.c copyright 2016-2017 Bruce Lilly.   \ smoothsort.c $
+* $Id: ~|^` @(#)    smoothsort.c copyright 2016-2018 Bruce Lilly.   \ smoothsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is smoothsort.c version 1.1 dated 2017-09-29T14:34:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is smoothsort.c version 1.2 dated 2018-03-06T20:41:46Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.smoothsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: smoothsort.c ~|^` @(#)"
 #define SOURCE_MODULE "smoothsort.c"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2017-09-29T14:34:10Z"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2018-03-06T20:41:46Z"
 #define COPYRIGHT_HOLDER "Valentin Ochs"
 #define COPYRIGHT_DATE "2011"
 
@@ -94,9 +94,7 @@
 #else
 #define a_ctz_l a_ctz_l
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 int a_ctz_l(unsigned long x)
 {
         __asm__( "bsf %1,%0" : "=r"(x) : "r"(x) );
@@ -108,9 +106,7 @@ int a_ctz_l(unsigned long x)
 typedef int (*cmpfun)(const void *, const void *);
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 int pntz(size_t p[2]) {
         int r = ntz(p[0] - 1);
         if(r != 0 || (r = 8*sizeof(size_t) + ntz(p[1])) != 8*sizeof(size_t)) {
@@ -143,9 +139,7 @@ static void cycle(size_t width, unsigned char* ar[], int n)
 
 /* shl() and shr() need n > 0 */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void shl(size_t p[2], int n)
 {
         if(n >= 8 * sizeof(size_t)) {
@@ -159,9 +153,7 @@ void shl(size_t p[2], int n)
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void shr(size_t p[2], int n)
 {
         if(n >= 8 * sizeof(size_t)) {

@@ -7,7 +7,7 @@ Description: makefile structure for fast, portable project builds
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%\ README.makefiles $
+#$Id: ~\|^` @(#)%M% copyright 2015-2018 %Q%\ README.makefiles $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -117,7 +117,7 @@ makefile.include7			in one place to simplify maintenance.
 					However, at least one implementation of
 					make fails to build files to be included
 					even when all dependency and recipe
-					information is know.  In order to work
+					information is known.  In order to work
 					around this bug, the files to be
 					included are divided into six groups
 					based on the need to build some files
@@ -166,7 +166,7 @@ makefile.stage2 through		Provides for generation of files to be
 makefile.stage7				included (e.g. makefile.$(OS)-$(FQDN))
 					which might not exist when make is
 					first run, or which might need to be
-					rebuild after some files are edited,
+					rebuilt after some files are edited,
 					primarily due to bugs in some make
 					implementations that do not run known
 					recipes to build included files. These

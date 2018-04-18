@@ -1,4 +1,5 @@
 /*INDENT OFF*/
+#error "obsolete file"
 
 /* Description: C source code for selection-related development */
 /******************************************************************************
@@ -9,7 +10,8 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    floor_lg.c copyright 2016-2017 Bruce Lilly.   \ floor_lg.c $
+* $Id: ~|^` @(#)    floor_lg.c copyright 2016-2018 Bruce Lilly.   \ floor_lg.c $
+#error "obsolete file"
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is floor_lg.c version 1.1 dated 2017-09-29T14:34:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is floor_lg.c version 1.2 dated 2018-03-06T22:11:25Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.floor_lg.c */
@@ -46,17 +48,19 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: floor_lg.c ~|^` @(#)"
 #define SOURCE_MODULE "floor_lg.c"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2017-09-29T14:34:10Z"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2018-03-06T22:11:25Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
+#error "obsolete file"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#error "obsolete file"
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 size_t floor_lg(size_t n)
@@ -67,3 +71,4 @@ size_t floor_lg(size_t n)
     while (1UL<n) n>>=1, r++;
     return r;
 }
+#error "obsolete file"

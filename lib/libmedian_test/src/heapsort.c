@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    heapsort.c copyright 2016-2017 Bruce Lilly.   \ heapsort.c $
+* $Id: ~|^` @(#)    heapsort.c copyright 2016-2018 Bruce Lilly.   \ heapsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is heapsort.c version 1.2 dated 2017-10-02T00:14:32Z. \ $ */
+/* $Id: ~|^` @(#)   This is heapsort.c version 1.3 dated 2018-03-06T23:19:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.heapsort.c */
@@ -46,19 +46,17 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: heapsort.c ~|^` @(#)"
 #define SOURCE_MODULE "heapsort.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-10-02T00:14:32Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2018-03-06T23:19:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void heap_sort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
@@ -70,9 +68,7 @@ void heap_sort_internal(char *base, size_t first, size_t beyond, size_t size,
         n=heap_delete_root(base,first,n,size,compar,swapf,alignsize,size_ratio);
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void heap_sort(char *base, size_t nmemb, size_t size,
     int(*compar)(const void *,const void *))
 {

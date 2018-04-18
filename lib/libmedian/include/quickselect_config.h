@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_config.h copyright 2017 Bruce Lilly.   \ quickselect_config.h $
+* $Id: ~|^` @(#)    quickselect_config.h copyright 2017-2018 Bruce Lilly.   \ quickselect_config.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.7 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.14 dated 2018-04-18T01:22:45Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.7 2017-12-22T04:14:04Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.14 2018-04-18T01:22:45Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -99,13 +99,18 @@
                                               comparisons used.
                                            */
 #endif
+#ifndef DEBUG_CODE
+# define DEBUG_CODE                      0
+#endif
 #ifndef SILENCE_WHINEY_COMPILERS
 # define SILENCE_WHINEY_COMPILERS        1 /* >0 whiney compilers STFU */
 #endif
 
 /* tuning */
 /* static inline (1) or separate major functions (0) */
-#define QUICKSELECT_BUILD_FOR_SPEED      1
+#ifndef QUICKSELECT_BUILD_FOR_SPEED
+# define QUICKSELECT_BUILD_FOR_SPEED      1
+#endif
 
 /* Repivoting parameters (for sorting) control the tradeoff between minimal
    effect on random inputs and effective repivoting of adverse inputs.
@@ -141,89 +146,24 @@
    if the size 3 sorting network is used (see below for configuration of
    sorting network sizes).
 */
-#define FAVOR_SORTED                     0 /* configure me */
+#define FAVOR_SORTED                     0 /* configure this */
 
 /* It is possible to override defined constants in quickselect.h here.
    Command-line compilation arguments can override this.
 */
 /* Quickselect can sort or select preserving partial order stability.  However,
-   code size approximately doubles, and there is a significant run-time cost.
+   code size approximately doubles, and there is a significant run-time cost
+   (only when stable sorting or selection is requested, of course).
    Partial order stability is a non-issue for scalar data, and multivariate
    data is most efficiently sorted using multivariate comparisons.  It is
    therefore recommended to define QUICKSELECT_STABLE as 0 (zero) for general-
    purpose use.
 */
 #ifndef QUICKSELECT_STABLE
-# if 1 /* configure me: 1 to support stable sort/select, 0 to disable */
+# if 1 /* configure this: 1 to support stable sort/select, 0 to disable */
 #  define QUICKSELECT_STABLE             0x01U
 # else
 #  define QUICKSELECT_STABLE             0 /* don't change this! */
-# endif
-#endif
-
-/* If QUICKSELECT_INDIRECT is pre-defined as zero, sorting will be direct
-   unless arranged externally by the caller and object code size will be
-   reduced slightly.  Internal indirection uses O(N) + O(1) additional space for
-   an array of pointers and a memory block to hold a temporary base array
-   element.  For non-trivial base array element size, it reduces data
-   movement cost by rearranging (permuting) base array elements after
-   indirectly sorting by low-cost pointer movement.  However, rearranging
-   base array elements has poor locality of access, and therfore suffers
-   from machine-dependent (cache-related) performance issues when the
-   base array (product of element size and number of elements) becomes
-   large relative to memory cache size.  The caller can of course arrange
-   for explicit indirect sorting by allocating and initializing an array of
-   pointers, providing a comparison function which indirectly accesses the
-   base elements for comparisons, and optionally rearranging base data
-   elements after indirect sorting of pointers (or accessing base elements
-   indirectly via the sorted pointers) [see header file indirect.h].  Such a
-   method is fully compatible with the internal indirect sorting (the internal
-   method never uses additional indirection when sorting trivial types such as
-   pointers), but the internal method can provide some performance tweaks by
-   caching dereferenced pointers e.g. for pivot comparisons during
-   partitioning.  Because of the cache-related performance degradation and the
-   difficulty of efficiently determining cache sizes at run-time, internal
-   indirection is not recommended for general-purpose use (the performance
-   tweaks may be useful for application-specific cases).
-*/
-#ifndef QUICKSELECT_INDIRECT
-# if 1 /* configure me: 1 to support internal indirection, 0 to disable */
-   /* 0x04U for user-visible, 0x04000U for internal flag */
-   /* N.B. for internal flag, you'll need to provide some heuristic for deciding
-      when to use indirect vs. direct sorting/selection in qsort_src.h, 
-      quickselect_src.h
-   */
-#  define QUICKSELECT_INDIRECT           0x04U /* configure me too */
-# else
-#  define QUICKSELECT_INDIRECT           0 /* don't change this! */
-# endif
-#endif
-
-/* Sorting networks are data-oblivious; the same number of comparisons are
-   made regardless of the input sequence.  Optimal (but non-stable) sorting
-   networks have low overhead. Stable variants (through size 6) operate as
-   unrolled insertion sort.  However, sorting networks can theoretically
-   take advantage of parallel operations, unlike insertion sort. As each
-   sorting network (for a particular sub-array size) is distinct from the
-   networks used for other sizes, the code size increases with each additional
-   sorting network included.  Size 2 is a simple, efficient compare-exchange
-   network which is always used for sorting 2 elements.  Larger sizes may be
-   included, through size 12, by setting appropriate bits in
-   QUICKSELECT_NETWORK_MASK.  Size 3 is implemented as a decision tree, which
-   is slightly more general, and which can be futher configured (near the top
-   of the configuration options in this file) to favor certain input sequences.
-*/
-#ifndef QUICKSELECT_NETWORK_MASK
-# if 0 /* configure me: 1 for network sort sizes 2-12 */
-   /* If you change this, also change the relevant comments! */
-#  define QUICKSELECT_NETWORK_MASK       0x01FF8U /* 2-12 */
-# else
-#  if 1 /* configure me: 1 for network sort sizes 2-3 */
-   /* If you change this, also change the relevant comments! */
-#   define QUICKSELECT_NETWORK_MASK      0x08U /* 3 only */
-#  else
-#   define QUICKSELECT_NETWORK_MASK      0x0U /* 2 only */
-#  endif
 # endif
 #endif
 
@@ -241,7 +181,7 @@
    QUICKSELECT_STABLE is not configured (i.e. defined as 0).
 */
 #if QUICKSELECT_STABLE
-# if 1 /* configure me: 1 to include O(N) space method, 0 to exclude */
+# if 1 /* configure this: 1 to include O(N) space method, 0 to exclude */
 # define QUICKSELECT_LINEAR_STABLE QUICKSELECT_STABLE /* don't change this! */
 # else
 # define QUICKSELECT_LINEAR_STABLE 0 /* don't change this! */
@@ -250,22 +190,77 @@
 # define QUICKSELECT_LINEAR_STABLE QUICKSELECT_STABLE /* don't change this! */
 #endif /* QUICKSELECT_STABLE */
 
+/* For testing and for no-repivot code (modified qsort, simplified qsort),
+   avoid setting QUICKSELECT_RESTRICT_RANK if QUICKSELECT_NO_REPIVOT is set.
+   This bit can be set (once) in the initial call; it persists through
+   functions which call quickselect_loop.
+*/
+#define QUICKSELECT_NO_REPIVOT        0x04000U
+
+/* Small-array sorting and stable partitioning work well when the data (and
+   ancillary data, when applicable) fit in processor cache memory.  Cache size
+   is determined from the operating system if possible, but few systems provide
+   a portable mechanism (i.e. working for all processor types and portable
+   operating systems) for obtaining that information.  If unavailable, a default
+   value is used, and that value is configurable.  It's probably not worth
+   obsessing over for general-purpose use, but might be useful in embedded
+   systems.  The default default (16kiB) presumes a conservative value
+   appropriate for systems with a 16kiB L1 data cache, such as e.g. on some
+   Intel(R) Celeron(R) processors.
+*/
+# define QUICKSELECT_DEFAULT_CACHE_SIZE 16384UL
+
+/* Allocated memory access performance may be improved by assuring alignment to
+   cache line size or TLB page size.  Aligned memory can be allocated via C11
+   aligned_alloc() or optional POSIX posix_memalign().  Some systems support
+   both, some support one but not the other, and some support neither.  E.g.
+   NetBSD using gcc with -stdc11 has no aligned_alloc, even though it is
+   supposed to be a standard function.  Define the following macros as non-zero
+   if the corresponding allocation function is available.  Precedence is to
+   use aligned_alloc if available, else posix_memalign, and if neither is
+   available, memory allocation will use malloc().
+*/
+#define QUICKSELECT_USE_ALIGNED_ALLOC  0
+#define QUICKSELECT_USE_POSIX_MEMALIGN 1
+
+#if 1
+# define QUICKSELECT_DEFAULT_ALIGNMENT  64 /* largest probable cache line size */
+#else
+# define QUICKSELECT_DEFAULT_ALIGNMENT  4096 /* likely page size */
+#endif
+
+/* C11 defines aligned_alloc, but no aligned versions of calloc or realloc; it
+   is assumed(!) that realloc doesn't decrease the alignment when decreasing the
+   size of the allocated block...
+*/
+#define REALLOC_DOES_NOT_DECREASE_ALIGNMENT 1
+
+/* Avoid sorting networks for nmemb>QUICKSELECT_MAX_NETWORK (saves code space,
+   faster for inputs with duplicate values).
+*/
+#define QUICKSELECT_MAX_NETWORK 8
+
 /*******************************************************************************
    Nothing to configure below this line. The remainder of this file contains
    internal definitions excluded from the public header file quickselect.h.
 *******************************************************************************/
+
+/* Indirection (i.e. initially moving pointers to the data instead of the data
+   elements, followed by a rearrangement of the data elements after their final
+   positions have been determined) is used internally for modest-sizes arrays
+   of large elements (when moving pointers is less costly than moving data
+   elements) and is available for all arrays as a user-visible option in
+   quickselect.  There is no guarantee of partial order stability for qsort.
+*/
+#define QUICKSELECT_INDIRECT           0x04U
 
 /* Don't use median-of-medians or "full" remedian if there are fewer than 3 sets
    of 3 elements available.
 */
 #define SELECTION_MIN_REPIVOT            9UL
 
-/* In-place merge sort is slower than insertion sort for small sub-arrays, but
-   is faster for larger sub-arrays.
-*/
-#define INPLACE_MERGE_CUTOFF             155UL
-
 /* repivot tuning */
+/* XXX can perhaps be reduced to 3 options (eliminate LOOSE) */
 #define DISABLED    0
 #define TRANSPARENT 1 /* (almost) no repivots for random inputs */
 #define LOOSE       2 /* adversary < 2.0 N log N */
@@ -288,13 +283,32 @@
 # define SORTING_TABLE_ENTRIES RELAXED
 #endif
 
+/* for assertions */
+#if ! ASSERT_CODE
+# define NDEBUG 1
+#endif
+
 /* space-saving abbreviations */
 #undef V
 #define V void
 #undef A
 #define A(me) assert(me)
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if QUICKSELECT_USE_ALIGNED_ALLOC
+/* Linux magic incantation for aligned_alloc */
+# if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
+# define _ISOC11_SOURCE
+# endif /* C11 */
+#endif
+
+#if QUICKSELECT_USE_POSIX_MEMALIGN
+/* Linux magic incantation for posix_memalign */
+# ifndef _POSIX_C_SOURCE
+#  define _POSIX_C_SOURCE 200112L
+# endif
+#endif
+
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define QUICKSELECT_INLINE inline
 #else
 # define QUICKSELECT_INLINE /**/
@@ -309,79 +323,153 @@
 # include "quickselect.h"
 #endif
 
+#ifndef QUICKSELECT_VISIBILITY
+# define QUICKSELECT_VISIBILITY static
+#endif
+
+#ifndef KLIMITS_FUNCTION_NAME
+# define KLIMITS_FUNCTION_NAME klimits
+#endif
+
+#ifndef SHOULD_REPIVOT_FUNCTION_NAME
+# define SHOULD_REPIVOT_FUNCTION_NAME should_repivot
+#endif
+
+#ifndef SAMPLE_INDEX_FUNCTION_NAME
+# define SAMPLE_INDEX_FUNCTION_NAME sample_index
+#endif
+
+#ifndef SAMPLING_TABLE_FUNCTION_NAME
+# define SAMPLING_TABLE_FUNCTION_NAME sampling_table
+#endif
+
 /* regular vs. _s variations: */
 #if __STDC_WANT_LIB_EXT1__
 /* Return type variation */
 # define QSORT_RETURN_TYPE errno_t
+# define QUICKSELECT_RETURN_TYPE errno_t
+# define DEDICATED_SORT_RETURN_TYPE errno_t
 /* function name variation */
 # define FUNCTION_NAME QSORT_S_FUNCTION_NAME
 /* nmemb,size argument type variation */
 # define NMEMB_SIZE_TYPE rsize_t
 /* comparison argument(s) variation */
-# define COMPAR_DECL int(*compar)(const void*,const void*,void*),void*context
+# ifndef COMPAR_DECL
+#  define COMPAR_DECL int(*compar)(const void*,const void*,void*),void*context
+# endif
 /* support function comparison arg(s) */
-# define COMPAR_ARGS compar,context
+# ifndef COMPAR_ARGS
+#  define COMPAR_ARGS compar,context
+# endif
 /* comparison function call variation */
-# define COMPAR(ma,mb,mc) compar(ma,mb,mc)
-# if QUICKSELECT_INDIRECT
-#  define OPT_COMPAR(ma,mb,mopts,mc) ((0U==(mopts&(QUICKSELECT_INDIRECT)))?\
-     compar(ma,mb,mc):compar(*((char *const *)(ma)),*((char *const *)(mb)),mc))
-# else
-#  define OPT_COMPAR(ma,mb,mopts,mc) COMPAR(ma,mb,mc)
-# endif /* QUICKSELECT_INDIRECT */
+# define COMPAR(ma,mb) compar((ma),(mb),context)
 /* support functions */
-# define DEDICATED_SORT dedicated_sort_s
-# define FIND_MINMAX_FUNCTION_NAME find_minmax_s
-# define FMED3_FUNCTION_NAME fmed3_s
-# define PARTITION_FUNCTION_NAME partition_s
-# define REMEDIAN_FUNCTION_NAME remedian_s
-# define SELECT_MAX_FUNCTION_NAME select_max_s
-# define SELECT_MIN_FUNCTION_NAME select_min_s
-# define SELECT_MINMAX_FUNCTION_NAME select_minmax_s
-# define SELECT_PIVOT_FUNCTION_NAME select_pivot_s
-# define QUICKSELECT_FUNCTION_NAME quickselect_s
-# define QUICKSELECT_LOOP quickselect_loop_s
-# define QUICKSORT_LOOP quicksort_loop_s
-#else
+# ifndef DEDICATED_SORT
+#  define DEDICATED_SORT dedicated_sort_s /* this is a mere macro (text substitution), not a declaration */
+# endif
+# ifndef FIND_MINMAX_FUNCTION_NAME
+#  define FIND_MINMAX_FUNCTION_NAME find_minmax_s
+# endif
+# ifndef FMED3_FUNCTION_NAME
+#  define FMED3_FUNCTION_NAME fmed3_s
+# endif
+# ifndef PARTITION_FUNCTION_NAME
+#  define PARTITION_FUNCTION_NAME partition_s
+# endif
+# ifndef REMEDIAN_FUNCTION_NAME
+#  define REMEDIAN_FUNCTION_NAME remedian_s
+# endif
+# ifndef SELECT_MAX_FUNCTION_NAME
+#  define SELECT_MAX_FUNCTION_NAME select_max_s
+# endif
+# ifndef SELECT_MIN_FUNCTION_NAME
+#  define SELECT_MIN_FUNCTION_NAME select_min_s
+# endif
+# ifndef SELECT_MINMAX_FUNCTION_NAME
+#  define SELECT_MINMAX_FUNCTION_NAME select_minmax_s
+# endif
+# ifndef SELECT_PIVOT_FUNCTION_NAME
+#  define SELECT_PIVOT_FUNCTION_NAME select_pivot_s
+# endif
+# ifndef QUICKSELECT_FUNCTION_NAME
+#  define QUICKSELECT_FUNCTION_NAME quickselect_s
+# endif
+# ifndef QUICKSELECT_LOOP
+#  define QUICKSELECT_LOOP quickselect_loop_s /* this is a mere macro (text substitution), not a declaration */
+# endif
+#else /* ! __STDC_WANT_LIB_EXT1__ */
 # define QSORT_RETURN_TYPE void
+# define QUICKSELECT_RETURN_TYPE int
+# define DEDICATED_SORT_RETURN_TYPE int
 # define FUNCTION_NAME QSORT_FUNCTION_NAME
 # define NMEMB_SIZE_TYPE size_t
-# define COMPAR_DECL int(*compar)(const void *,const void *)
-# define COMPAR_ARGS compar
-# define COMPAR(ma,mb,mc) compar(ma,mb)
-# if QUICKSELECT_INDIRECT
-#  define OPT_COMPAR(ma,mb,mopts,mc) ((0U==(mopts&(QUICKSELECT_INDIRECT)))?\
-      compar(ma,mb):compar(*((char *const *)(ma)),*((char *const *)(mb))))
-# else
-#  define OPT_COMPAR(ma,mb,mopts,mc) COMPAR(ma,mb,mc)
-#endif /* QUICKSELECT_INDIRECT */
-# define DEDICATED_SORT dedicated_sort
-# define FMED3_FUNCTION_NAME fmed3
-# define FIND_MINMAX_FUNCTION_NAME find_minmax
-# define PARTITION_FUNCTION_NAME partition
-# define REMEDIAN_FUNCTION_NAME remedian
-# define SELECT_MAX_FUNCTION_NAME select_max
-# define SELECT_MIN_FUNCTION_NAME select_min
-# define SELECT_MINMAX_FUNCTION_NAME select_minmax
-# define SELECT_PIVOT_FUNCTION_NAME select_pivot
-# define QUICKSELECT_FUNCTION_NAME quickselect
-# define QUICKSELECT_LOOP quickselect_loop
-# define QUICKSORT_LOOP quicksort_loop
+# ifndef COMPAR_DECL
+#  define COMPAR_DECL int(*compar)(const void *,const void *)
+# endif
+# ifndef COMPAR_ARGS
+#  define COMPAR_ARGS compar
+# endif
+# define COMPAR(ma,mb) compar((ma),(mb))
+# ifndef DEDICATED_SORT
+#  define DEDICATED_SORT dedicated_sort
+# endif
+# ifndef FMED3_FUNCTION_NAME
+#  define FMED3_FUNCTION_NAME fmed3
+# endif
+# ifndef FIND_MINMAX_FUNCTION_NAME
+#  define FIND_MINMAX_FUNCTION_NAME find_minmax
+# endif
+# ifndef PARTITION_FUNCTION_NAME
+#  define PARTITION_FUNCTION_NAME partition
+# endif
+# ifndef REMEDIAN_FUNCTION_NAME
+#  define REMEDIAN_FUNCTION_NAME remedian
+# endif
+# ifndef SELECT_MAX_FUNCTION_NAME
+#  define SELECT_MAX_FUNCTION_NAME select_max
+# endif
+# ifndef SELECT_MIN_FUNCTION_NAME
+#  define SELECT_MIN_FUNCTION_NAME select_min
+# endif
+# ifndef SELECT_MINMAX_FUNCTION_NAME
+#  define SELECT_MINMAX_FUNCTION_NAME select_minmax
+# endif
+# ifndef SELECT_PIVOT_FUNCTION_NAME
+#  define SELECT_PIVOT_FUNCTION_NAME select_pivot
+# endif
+# ifndef QUICKSELECT_FUNCTION_NAME
+#  define QUICKSELECT_FUNCTION_NAME quickselect
+# endif
+# ifndef QUICKSELECT_LOOP
+#  define QUICKSELECT_LOOP quickselect_loop
+# endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
-/* declarations for internal publicly-visible functions */
-/* cutoff_value declaration */
-QUICKSELECT_EXTERN
-#include "cutoff_value_decl.h"
-;
-/* dedicated_sort declaration */
-QUICKSELECT_EXTERN
-#include "dedicated_sort_decl.h"
-;
-/* quickselect_loop declaration */
-QUICKSELECT_EXTERN
-#include "quickselect_loop_decl.h"
-;
+/* macros */
+#ifndef SWAP_COUNT_STATEMENT
+# define SWAP_COUNT_STATEMENT /**/
+#endif
+
+/* watch the moving qualifiers */
+#define OPT_COMPAR(ma,mb,mopts)   ((0U==((mopts)&(QUICKSELECT_INDIRECT)))? \
+   COMPAR((ma),(mb)):COMPAR(*((char *const *)(ma)),*((char *const *)(mb))))
+
+/* compare-exchange primitive for sorting networks */
+#if SILENCE_WHINEY_COMPILERS /* no ambiguity here... */
+# define COMPARE_EXCHANGE(ma,mb,mopts,msize,mswapf,malignsize,msize_ratio) \
+   if(0<OPT_COMPAR((ma),(mb),(mopts))) {                                         \
+       EXCHANGE_SWAP(mswapf,(ma),(mb),msize,malignsize,msize_ratio,SWAP_COUNT_STATEMENT); }
+   /* Programmer's terminating semicolon is now an excess statement.
+      And this precludes a following "else".
+      "Thanks" :-/ gcc.
+   */
+#else
+# define COMPARE_EXCHANGE(ma,mb,mopts,msize,mswapf,malignsize,msize_ratio) \
+   if(0<OPT_COMPAR((ma),(mb),(mopts)))                                           \
+       EXCHANGE_SWAP(mswapf,(ma),(mb),msize,malignsize,msize_ratio,SWAP_COUNT_STATEMENT)
+#endif
+
+#define CX(ma,mb) COMPARE_EXCHANGE((ma),(mb),options,size,swapf,alignsize,size_ratio)
 
 /* defined values for pivot_method */
   /* no data movement */
@@ -396,5 +484,226 @@ QUICKSELECT_EXTERN
   /* partial order preserved */
 #define QUICKSELECT_PARTITION_STABLE 1
 
-#define	QUICKSELECT_CONFIG_H_INCLUDED
+/* system header files required */
+#include <assert.h>             /* assert */
+#include <errno.h>              /* errno E* */
+#if defined(__STDC__) && ( __STDC__ == 1 ) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L )
+# include <stdint.h>           /* (header not standardized pre-C99) SIZE_MAX */
+#endif /* C99 or later */
+#ifndef SIZE_MAX /* not standardized pre-C99 */
+# include <limits.h>           /* ULONG_MAX */
+# define SIZE_MAX ULONG_MAX
+#endif /* SIZE_MAX */
+#include <stddef.h>             /* NULL size_t */
+#include <string.h>             /* strerror */
+#include <unistd.h>             /* sysconf _SC_* */
+#if ASSERT_CODE + DEBUG_CODE
+# include <stdio.h>
+#endif /* ASSERT_CODE + DEBUG_CODE */
+
+/* local header files */
+#include "tables.h"             /* sampling_table_struct SAMPLING_TABLE_SIZE */
+
+/* macros */
+/* Selecting the middle m of a range from low l to high h often appears in naive
+   code as m=(l+h)/2, but that can lead to overflow if l and h are large.  An
+   equivalent avoiding overflow is m=l+(h-l)/2, and an alternative which favors
+   high values is m=h-(h-l)/2.  These are defined as macros BS_MID_L and
+   BS_MID_H.  Bit shifts are used here as they are sometimes faster than
+   integer division.
+*/
+#define BS_MID_L(ml,mh) (ml)+(((mh)-(ml))>>1)
+#define BS_MID_H(ml,mh) (mh)-(((mh)-(ml))>>1)
+
+/* inline code */
+/* cache_size is called by qsort[_s], quickselect[_s], introsort, mbmqsort,
+   logsort, sqrtsort, sqsort, wqsort, dual, and dedsort (dedicated_sort.c).
+*/
+/* Determine cache size (from OS if possible, otherwise use a default value).
+   But there is no standard interface for doing so; ISO C doesn't address this
+   issue at all, but does worry about buffer size for really slow ("physical
+   devices such as terminals and tape drives") I/O.  POSIX and X/OPEN don't
+   address it either, but worry about providing a C run-time interface to
+   determine limits for infrequently-used interactive commands like bc (which
+   could be documented in a man page).  Some operating systems do provide
+   extension(s) to POSIX and X/OPEN sysconf to provide information about cache
+   size(s), although at least one OS and its derivatives always fail when such
+   an extension is used, for any supported processor type.  Go figure.
+   Most (all modern?) processors have at least 16kiB L1 cache.  Any with less
+   (and many with only that amount!) aren't intended for high performance, and
+   that value is safe for those that may have larger cache (although in that
+   case performance could be improved with a larger value).
+*/
+static QUICKSELECT_INLINE
+size_t cache_size(void)
+{
+    register size_t c = 0UL;
+#if 1
+#if defined(_SC_LEVEL1_DCACHE_SIZE) || defined(_SC_LEVEL2_CACHE_SIZE) || \
+    defined(_SC_LEVEL3_CACHE_SIZE) || defined(_SC_LEVEL4_CACHE_SIZE) || \
+    defined(_SC_DCACHE_SZ)
+    register long l;
 #endif
+#ifdef _SC_LEVEL1_DCACHE_SIZE
+    errno=0;
+    l=sysconf(_SC_LEVEL1_DCACHE_SIZE);
+    if (l>(long)c) {
+        c=(size_t)l;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: cache size based on %s = %lu bytes */\n",
+                __func__,
+                "_SC_LEVEL1_DCACHE_SIZE",
+                (unsigned long)c);
+        }
+#endif
+    }
+# if ((DEBUG_CODE)>0)
+    else if (l<0L) (V)fprintf(stderr,
+        "/* %s: OS ERROR: %s is defined, but sysconf returns "
+        "%ld with errno=%d(%s) */\n",
+        __func__,
+        "_SC_LEVEL1_DCACHE_SIZE",
+        l,errno,strerror(errno));
+# endif /* DEBUG_CODE */
+# ifdef _SC_LEVEL1_DCACHE_LINESIZE
+#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CACHE_DEBUG)) {
+        l=sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
+        (V)fprintf(stderr,
+            "/* %s: cache linesize based on %s = %ld bytes */\n",
+            __func__, "_SC_LEVEL1_DCACHE_LINESIZE", l);
+    }
+#endif
+# endif /* _SC_LEVEL1_DCACHE_LINESIZE */
+#endif /* _SC_LEVEL1_DCACHE_SIZE */
+#if 0 /* 0: use only L1 or generic data cache */
+#ifdef _SC_LEVEL2_CACHE_SIZE
+    errno=0;
+    l=sysconf(_SC_LEVEL2_CACHE_SIZE);
+    /* Use only 1/2 of unified cache */
+    if (l>(long)(c<<1)) {
+        c=(size_t)(l>>1);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
+                __func__,
+                "_SC_LEVEL2_CACHE_SIZE",
+                l,(unsigned long)c);
+        }
+#endif
+    }
+# if ((DEBUG_CODE)>0)
+    else if (l<0L) (V)fprintf(stderr,
+        "/* %s: OS ERROR: %s is defined, but sysconf returns "
+        "%ld with errno=%d(%s) */\n",
+        __func__,
+        "_SC_LEVEL2_CACHE_SIZE",
+        l,errno,strerror(errno));
+# endif /* DEBUG_CODE */
+#endif /* _SC_LEVEL2_CACHE_SIZE */
+#if 0 /* use/don't use Level 3 cache */
+#ifdef _SC_LEVEL3_CACHE_SIZE
+    errno=0;
+    l=sysconf(_SC_LEVEL3_CACHE_SIZE);
+    /* Use only 1/2 of unified cache */
+    if (l>(long)(c<<1)) {
+        c=(size_t)(l>>1);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
+                __func__,
+                "_SC_LEVEL3_CACHE_SIZE",
+                l,(unsigned long)c);
+        }
+#endif
+    }
+# if ((DEBUG_CODE)>0)
+    else if (l<0L) (V)fprintf(stderr,
+        "/* %s: OS ERROR: %s is defined, but sysconf returns "
+        "%ld with errno=%d(%s) */\n",
+        __func__,
+        "_SC_LEVEL3_CACHE_SIZE",
+        l,errno,strerror(errno));
+# endif /* DEBUG_CODE */
+#endif /* _SC_LEVEL3_CACHE_SIZE */
+#endif
+#if 0 /* Use/don't use Level 4 cache */
+#ifdef _SC_LEVEL4_CACHE_SIZE
+    errno=0;
+    l=sysconf(_SC_LEVEL4_CACHE_SIZE);
+    /* Use only 1/2 of unified cache */
+    if (l>(long)(c<<1)) {
+        c=(size_t)(l>>1);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
+                __func__,
+                "_SC_LEVEL4_CACHE_SIZE",
+                l,(unsigned long)c);
+        }
+#endif
+    }
+# if ((DEBUG_CODE)>0)
+    else if (l<0L) (V)fprintf(stderr,
+        "/* %s: OS ERROR: %s is defined, but sysconf returns "
+        "%ld with errno=%d(%s) */\n",
+        __func__,
+        "_SC_LEVEL4_CACHE_SIZE",
+        l,errno,strerror(errno));
+# endif /* DEBUG_CODE */
+#endif /* _SC_LEVEL4_CACHE_SIZE */
+#endif /* L4 */
+#endif /* no L2, L3, L4 */
+#ifdef _SC_DCACHE_SZ
+    errno=0;
+    l=sysconf(_SC_DCACHE_SZ);
+    if (l>(long)c) {
+        c=(size_t)l;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: cache size based on %s = %lu bytes */\n",
+                __func__,
+                "_SC_DCACHE_SZ",
+                (unsigned long)c);
+        }
+#endif
+    }
+# if ((DEBUG_CODE)>0)
+    else if (l<0L) (V)fprintf(stderr,
+        "/* %s: OS ERROR: %s is defined, but sysconf returns "
+        "%ld with errno=%d(%s) */\n",
+        __func__,
+        "_SC_DCACHE_SZ",
+        l,errno,strerror(errno));
+# endif /* DEBUG_CODE */
+#endif /* _SC_DCACHE_SZ */
+#endif /* fixed default size only */
+    if (0UL==c) {
+        c= QUICKSELECT_DEFAULT_CACHE_SIZE ;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(CACHE_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: Assuming default cache size = %lu bytes */\n",
+                __func__,
+                (unsigned long)c);
+        }
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CACHE_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: cache size = %lu bytes */\n",
+            __func__,(unsigned long)c);
+    }
+#endif
+    return c;
+}
+
+#define	QUICKSELECT_CONFIG_H_INCLUDED 1
+#endif /* QUICKSELECT_CONFIG_H_INCLUDED */

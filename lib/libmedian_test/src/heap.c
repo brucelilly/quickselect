@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    heap.c copyright 2016-2017 Bruce Lilly.   \ heap.c $
+* $Id: ~|^` @(#)    heap.c copyright 2016-2018 Bruce Lilly.   \ heap.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is heap.c version 1.3 dated 2017-11-03T19:36:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is heap.c version 1.5 dated 2018-04-16T17:21:18Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.heap.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: heap.c ~|^` @(#)"
 #define SOURCE_MODULE "heap.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:36:06Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-04-16T17:21:18Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -97,27 +97,21 @@ static void print_int_heap(int *heap, size_t l, size_t u, "/* "," */")
 /* heap parent/child node index calculations */
 /* generalized for root at any position in array */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 size_t left_child(size_t l, size_t p)
 {
     return l + ((p-l)<<1) + 1UL;
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 size_t right_child(size_t l, size_t p)
 {
     return l + (((p-l) + 1UL)<<1);
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 size_t parent(size_t l, size_t c)
 {
     return l + ((c-l-1UL)>>1);
@@ -125,9 +119,7 @@ size_t parent(size_t l, size_t c)
 
 /* make a max-heap */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
@@ -150,16 +142,14 @@ size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
 }
 
 /* generalized to take root and upper indices of heap array */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void heapify_array(char *base, size_t r, size_t u, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
 {
     size_t p;
 
-    for (p=parent(r,u); 1; p--) {
+    for (p=parent(r,u); /*CONSTANTCONDITION*/ 1; p--) {
         (V)heap_siftdown(base,r,p,u,size,compar,swapf,alignsize,size_ratio);
         if (p == r)
             break;
@@ -172,9 +162,7 @@ void heapify_array(char *base, size_t r, size_t u, size_t size,
       to the lowest index in the array beyond the end of the reduced heap.
    Return the (new) largest index in the heap.
 */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 size_t heap_delete_root(char *base, size_t r, size_t n, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)

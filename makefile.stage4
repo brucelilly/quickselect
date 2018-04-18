@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015-2017 %Q%. \ makefile.stage4 $
+#$Id: ~\|^` @(#)%M% copyright 2015-2018 %Q%. \ makefile.stage4 $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -56,3 +56,7 @@ include $(MAKEFILES_DIR)/makefile.include4
 # makefile.platform has dependencies and recipe for building OVERRIDES
 depend : NO_FAKE_TARGETS $(OVERRIDES)
 
+rmold-depend : ALWAYS
+	rm -f $(PRE_DEPEND) $(DEPEND)
+
+clean-depend : rmold-depend depend

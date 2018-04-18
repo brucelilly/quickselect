@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    yaroslavskiy.c copyright 2016-2017 Bruce Lilly.   \ yaroslavskiy.c $
+* $Id: ~|^` @(#)    yaroslavskiy.c copyright 2016-2018 Bruce Lilly.   \ yaroslavskiy.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.5 dated 2017-12-15T21:34:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.7 dated 2018-03-06T20:03:33Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.yaroslavskiy.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: yaroslavskiy.c ~|^` @(#)"
 #define SOURCE_MODULE "yaroslavskiy.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-12-15T21:34:10Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-03-06T20:03:33Z"
 #define COPYRIGHT_HOLDER "V. Yaroslavskiy"
 #define COPYRIGHT_DATE "2009"
 
@@ -70,7 +70,7 @@ static size_t y_cutoff2 = 13UL; /* infinite is best */
    best available swap
 */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 void yqsort_internal(char *base, size_t nmemb, size_t size,
@@ -95,13 +95,8 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
             shellsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,
                 size_ratio);
         else
-#if 0
             isort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,
-                size_ratio);
-#else
-            d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,
                 size_ratio,options);
-#endif
 /* <- */return; /* Done; */
     }
     /* ideally, pivots should split array into 3 equal-sized regions */
@@ -222,7 +217,7 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
     }
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 inline
 #endif /* C99 */
 void yqsort(void *base, size_t nmemb, size_t size,

@@ -1,3 +1,5 @@
+#ifndef MEDIAN_TEST_CONFIG_H_INCLUDED
+# define MEDIAN_TEST_CONFIG_H_INCLUDED 1
 /*INDENT OFF*/
 
 /* Description: header file for configuration and declarations for median_test */
@@ -28,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.15 dated 2018-01-12T14:33:41Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.25 dated 2018-04-18T04:08:31Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -38,7 +40,9 @@
 ******************************************************************************/
 
 /* configuration options */
-#define ASSERT_CODE              0 /* N.B. ASSERT_CODE > 1 may affect comparison and swap counts */
+#ifndef ASSERT_CODE
+# define ASSERT_CODE             0 /* N.B. ASSERT_CODE > 1 may affect comparison and swap counts */
+#endif
 #define DEBUG_CODE               1 /* enable debugging */
 #define GENERATOR_TEST           1 /* validate generated test sequences */
 #define SILENCE_WHINEY_COMPILERS 1
@@ -68,38 +72,16 @@
 
 #define TEST_TIMEOUT             600.0  /* seconds (default value) */
 
-#define RESULTS_COLUMN           2
-
 #define MAX_ARRAY_PRINT          290UL
 
 #define QUICKSELECT_ARG_CHECKS   DEBUG_CODE
 
 #define DISCREPANCY_THRESHOLD    1.05
 
-/* for even-sized arrays, return lower- (else upper-) median */
-#define LOWER_MEDIAN             0
-
 /* place medians at start of array instead of middle */
 #define MEDIANS_FIRST            1
 
 #define BM_INSERTION_CUTOFF      7UL  /* 7UL in original B&M code */
-
-/* When selecting a relatively large number of order statistics (where "large"
-   depends on the sub-array size and the distribution of the desired order
-   statistic ranks within the sub-array's ranks), it may be more efficient to
-   sort the sub-array, avoiding the overhead of order statistic rank evaluation.
-   An alternative is to avoid the overhead of evaluating the distribution of
-   order statistic ranks, and just use selection (caller is responsible for
-   specifying a sort for a large number of widely distributed order statistics).
-*/
-#define SORT_FOR_SELECTION       1
-
-/* When sorting by merge sort, comparing the last element of the first sorted
-   sub-array to the first element of the second sorted sub-array adds 1
-   comparison for all inputs to save n/2-1 comparisons for already-sorted
-   input.
-*/
-#define COMPARE1                 0
 
 /* 0 to use separate sampling tables for sorting, middle, ends, distributed,
       extended, separated rank distributions.  Selection vs. sorting for
@@ -109,7 +91,7 @@
    2 further consolidates into sorting, middle, ends.  Selection vs. sorting
       for distributed, others.
 */
-#define CONSOLIDATED_TABLES     2
+#define CONSOLIDATED_TABLES     2 /* XXX is this still used? (sampling_table in quickselect.c) */
 
 /* nothing (much) to configure below this line */
 
@@ -124,7 +106,7 @@
 /* Minimum _XOPEN_SOURCE version for C99 (else illumos compilation fails) */
 #undef MAX_XOPEN_SOURCE_VERSION
 #undef MIN_XOPEN_SOURCE_VERSION
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
 # define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
@@ -163,24 +145,107 @@
 #undef _SVID_SOURCE
 #define _SVID_SOURCE 1
 
-/* size_t is needed for nsw declaration */
+/* size_t is needed for nsw and nrotations declarations */
 #include <stddef.h>             /* size_t NULL (maybe rsize_t) */
 
+/* some macros need to be defined before quickselect_config is included */
 /* gcc barfs if nsw is not declared before macro defining text using nsw */
 extern size_t nsw;
 
+/* gcc barfs if nrotations is not declared before macro defining text using nrotations */
+/* gcc barfs if MAXROTATION is not declared before macro defining text using MAXROTATION */
+extern size_t nrotations[];
+#define MAXROTATION 20
+
 /* count swaps using nsw */
 #define SWAP_COUNT_STATEMENT nsw++
+/* count rotations */
+#define QUICKSELECT_COUNT_ROTATIONS(md,mn) nrotations[(md<MAXROTATION)?md:0]+=mn /* caller supplies terminating semicolon */
+
+/* stringification (don't change!) */
+#undef xbuildstr
+#define xbuildstr(s) buildstr(s)
+#undef buildstr
+#define buildstr(s) #s
+
+/* debugging codes (need to be defined before DEBUGGING macro) */
+#define AQCMP_DEBUG              0x00000001U
+#define COMPARE_DEBUG            0x00000002U
+#define MEDIAN_DEBUG             0x00000004U
+#define PARTITION_ANALYSIS_DEBUG 0x00000008U
+#define PARTITION_DEBUG          0x00000010U
+#define PIVOT_SELECTION_DEBUG    0x00000020U
+#define PK_ADJUSTMENT_DEBUG      0x00000040U
+#define RATIO_GRAPH_DEBUG        0x00000080U
+#define RECURSION_DEBUG          0x00000100U
+#define REMEDIAN_DEBUG           0x00000200U
+#define REPARTITION_DEBUG        0x00000400U
+#define REPIVOT_DEBUG            0x00000800U
+#define SAMPLING_DEBUG           0x00001000U
+#define SHOULD_REPIVOT_DEBUG     0x00002000U
+#define SORT_SELECT_DEBUG        0x00004000U
+#define SUPPORT_DEBUG            0x00008000U
+#define SWAP_DEBUG               0x00010000U
+#define WQSORT_DEBUG             0x00020000U
+#define MERGE_DEBUG              0x00040000U
+#define DPQSORT_DEBUG            0x00080000U
+#define CACHE_DEBUG              0x00100000U
+#define MEMORY_DEBUG             0x00200000U
+#define METHOD_DEBUG             0x00400000U
+#define CORRECTNESS_DEBUG        0x00800000U
+
+#define DEBUG_VALUE_COUNT 24
+#if DEBUG_VALUE_COUNT > 32
+# error "DEBUG_VALUE_COUNT " xbuildstr(DEBUG_VALUE_COUNT) " is incompatible with 32-bit unsigned integers"
+#endif
+
+/* gcc barfs if debug is not declared before macro defining text using debug */
+extern unsigned int debug;
+
+/* shorthand for use in conditionals; definition is also used to enable
+   debugging features in common code blocks (e.g. inline functions in
+   quickselect_config.h); must be defined before including quickselect_config.h
+*/
+#define DEBUGGING(mx) (0U!=((mx)&debug))
+
+#ifndef SAMPLE_INDEX_FUNCTION_NAME
+# define SAMPLE_INDEX_FUNCTION_NAME d_sample_index
+#endif
+
+#if ! __STDC_WANT_LIB_EXT1__
+# ifndef FMED3_FUNCTION_NAME
+#  define FMED3_FUNCTION_NAME d_fmed3
+# endif
+# ifndef PARTITION_FUNCTION_NAME
+#  define PARTITION_FUNCTION_NAME d_partition
+# endif
+# ifndef REMEDIAN_FUNCTION_NAME
+#  define REMEDIAN_FUNCTION_NAME d_remedian
+# endif
+# ifndef SELECT_PIVOT_FUNCTION_NAME
+#  define SELECT_PIVOT_FUNCTION_NAME d_select_pivot
+# endif
+# ifndef QUICKSELECT_LOOP
+#  define QUICKSELECT_LOOP d_quickselect_loop
+# endif
+#endif
+
+/* more gcc barf prevention */
+static const char *source_file;
+extern unsigned int instrumented;
+extern size_t nlt, neq, ngt, nmoves; /* nsw already declared */
+extern size_t nmerges, npartitions, nrecursions, nrepivot;
+extern size_t npcopies, npderefs, npiconversions;
+    /* print.c */
+extern void print_some_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix,unsigned int options);
 
 /* local header files needed */
 #include "civil_time.h"         /* civil_time_cmp parse_civil_time_text sn_civil_time */
 #include "compare.h"            /* charcmp ... */
-#include "cutoff_value_decl.h"
-;
 #include "exchange.h"           /* alignment_size blockmove reverse irotate protate swapn EXCHANGE_SWAP */
 #include "get_host_name.h"      /* get_host_name */
 #include "get_ips.h"            /* get_ips */
-#include "indirect.h"           /* set_array_pointers rearrange_array */
+/* include indirect.h only where required */
 #include "logger.h"             /* logger */
 #include "paths_decl.h"         /* path_basename */
 #include "quickselect_config.h" 
@@ -202,14 +267,21 @@ extern size_t nsw;
 #include <limits.h>             /* *_MAX *_BIT */
 #include <math.h>               /* log2 */
 #include <regex.h>              /* regcomp regerror regexec regfree */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-# include <stdint.h>            /* *int*_t (maybe RSIZE_MAX) */
-# if __STDC_VERSION__ >= 201001L
-    /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
-# endif /* N1570 */
-#else
-# include <float.h>             /* DBL_MAX_10_EXP */
-#endif /* C99 */
+#if defined(__STDC__) && ( __STDC__ == 1 ) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L )
+# include <stdint.h>            /* (header not standardized pre-C99) SIZE_MAX
+                                   (maybe RSIZE_MAX (C11))
+                                */
+#endif /* C99 or later */
+#if defined(__STDC__) && ( __STDC__ == 1 ) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L )
+# include <stdint.h>            /* (header not standardized pre-C99) SIZE_MAX
+                                   (maybe RSIZE_MAX (C11))
+                                */
+#endif /* C99 or later */
+#ifndef SIZE_MAX /* not standardized pre-C99 */
+# include <limits.h>           /* ULONG_MAX */
+# define SIZE_MAX ULONG_MAX
+#endif /* SIZE_MAX */
+#include <float.h>              /* DBL_MAX_10_EXP */
 #include <stdio.h>              /* *printf (maybe errno_t rsize_t [N1570 K3.5]) */
 #include <stdlib.h>             /* free malloc realloc strtol strtoul
                                    (maybe errno_t rsize_t constraint_handler_t [N1570 K3.6]
@@ -217,10 +289,6 @@ extern size_t nsw;
 #include <string.h>             /* strrchr strstr */
 #include <time.h>               /* CLOCK_* clock_gettime */
 #include <unistd.h>             /* getpid */
-
-#ifndef SIZE_MAX /* not standardized pre-C99 */
-# define SIZE_MAX ULONG_MAX
-#endif
 
 /* allocation of time bits between fractional seconds and date-time */
 #if LONG_MAX > 0x7fffffffL
@@ -230,7 +298,7 @@ extern size_t nsw;
 #endif
 
 #undef MEDIAN_STDC_VERSION
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
 # define MEDIAN_STDC_VERSION __STDC_VERSION__ + 0L
 #elif defined(__STDC__)
 # define MEDIAN_STDC_VERSION __STDC__ + 0L
@@ -256,11 +324,6 @@ extern size_t nsw;
 #undef AGGRESSIVE
 #undef EXPERIMENTAL
 
-#undef xbuildstr
-#define xbuildstr(s) buildstr(s)
-#undef buildstr
-#define buildstr(s) #s
-
 /* repivot tuning */
 #define DISABLED                               0
 #define TRANSPARENT                            1 /* (almost) no repivots for random inputs */
@@ -280,16 +343,25 @@ extern size_t nsw;
 #define VOL volatile
 
 /* data types */
-#define DATA_TYPE_LONG                         1
-#define DATA_TYPE_INT                          2
-#define DATA_TYPE_DOUBLE                       3
-#define DATA_TYPE_STRUCT                       4
-#define DATA_TYPE_STRING                       5
-#define DATA_TYPE_POINTER                      6
-#define DATA_TYPE_UINT_LEAST8_T                7
-#define DATA_TYPE_UINT_LEAST16_T               8
-#define DATA_TYPE_UINT_LEAST32_T               9
-#define DATA_TYPE_UINT_LEAST64_T               10
+/* types capable of holding large values first */
+#define DATA_TYPE_STRUCT                       0U /* 0x0000001 */
+#define DATA_TYPE_STRING                       1U /* 0x0000002 */
+#define DATA_TYPE_POINTER                      2U /* 0x0000004 */
+#define DATA_TYPE_DOUBLE                       3U /* 0x0000008 */
+#define DATA_TYPE_UINT_LEAST64_T               4U /* 0x0000010 */
+#define DATA_TYPE_FLOAT                        5U /* 0x0000020 */ /* not used */
+#define DATA_TYPE_LONG                         6U /* 0x0000040 */
+#define DATA_TYPE_INT                          7U /* 0x0000080 */
+#define DATA_TYPE_UINT_LEAST32_T               8U /* 0x0000100 */
+#define DATA_TYPE_UINT_LEAST16_T               9U /* 0x0000200 */
+#define DATA_TYPE_SHORT                       10U /* 0x0000400 */
+#define DATA_TYPE_CHAR                        11U /* 0x0000800 */ /* not used */
+#define DATA_TYPE_UINT_LEAST8_T               12U /* 0x0001000 */
+
+#define DATA_TYPE_COUNT                       13U
+#if DATA_TYPE_COUNT > 32
+# error "DATA_TYPE_COUNT " xbuildstr(DATA_TYPE_COUNT) " is incompatible with 32-bit unsigned integers"
+#endif
 
 /* test sequence macros (could be an enum) */
 #define TEST_SEQUENCE_STDIN                    0U  /* 0x0000001 */ /* must be first (some loops start at 1 to avoid STDIN) */
@@ -317,11 +389,14 @@ extern size_t nsw;
 #define TEST_SEQUENCE_MEDIAN3KILLER            22U /* 0x0400000 */
 #define TEST_SEQUENCE_DUAL_PIVOT_KILLER        23U /* 0x0800000 */
 #define TEST_SEQUENCE_JUMBLE                   24U /* 0x1000000 */ /* worst-case swaps for sorting networks */
-#define TEST_SEQUENCE_PERMUTATIONS             25U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_COMBINATIONS             26U  /* also via TEST_TYPE_THOROUGH */
-#define TEST_SEQUENCE_ADVERSARY                27U  /* also via TEST_TYPE_ADVERSARY */
+#define TEST_SEQUENCE_PERMUTATIONS             25U
+#define TEST_SEQUENCE_COMBINATIONS             26U
+#define TEST_SEQUENCE_ADVERSARY                27U
 
 #define TEST_SEQUENCE_COUNT                    28U
+#if TEST_SEQUENCE_COUNT > 32
+# error "TEST_SEQUENCE_COUNT " xbuildstr(TEST_SEQUENCE_COUNT) " is incompatible with 32-bit unsigned integers"
+#endif
 
 #define MAX_PERMUTATION_SIZE                   20  /* 20! is huge */
 #define MAX_COMBINATION_SIZE                   ((LONG_BIT)-1) /* avoid sign bit */
@@ -380,32 +455,6 @@ extern size_t nsw;
 # endif
 #endif
 
-/* debugging */
-#define AQCMP_DEBUG              0x00000001U
-#define COMPARE_DEBUG            0x00000002U
-#define MEDIAN_DEBUG             0x00000004U
-#define PARTITION_ANALYSIS_DEBUG 0x00000008U
-#define PARTITION_DEBUG          0x00000010U
-#define PIVOT_SELECTION_DEBUG    0x00000020U
-#define PK_ADJUSTMENT_DEBUG      0x00000040U
-#define RATIO_GRAPH_DEBUG        0x00000080U
-#define RECURSION_DEBUG          0x00000100U
-#define REMEDIAN_DEBUG           0x00000200U
-#define REPARTITION_DEBUG        0x00000400U
-#define REPIVOT_DEBUG            0x00000800U
-#define SAMPLING_DEBUG           0x00001000U
-#define SHOULD_REPIVOT_DEBUG     0x00002000U
-#define SORT_SELECT_DEBUG        0x00004000U
-#define SUPPORT_DEBUG            0x00008000U
-#define SWAP_DEBUG               0x00010000U
-#define WQSORT_DEBUG             0x00020000U
-#define MERGE_DEBUG              0x00040000U
-#define DPQSORT_DEBUG            0x00080000U
-
-#define DEBUG_VALUE_COUNT 20
-
-#define DEBUGGING(mx) (0U!=((mx)&debug))
-
 /* macros to unify function calls */
 #undef ISORT
 #define BMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) bmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
@@ -414,7 +463,7 @@ extern size_t nsw;
 #define GLQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) glibc_quicksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define HEAPSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) heap_sort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define IBMQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) ibmqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
-#define IMERGESORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) indirect_mergesort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define IMERGESORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) d_indirect_mergesort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define INTROSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) introsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define ISORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) isort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define LOGSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) logsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
@@ -427,6 +476,7 @@ extern size_t nsw;
 #define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options,NULL,NULL)
 #define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options)
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
+#define RUNSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) runsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define SELSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) selsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define SHELLSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) shellsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define SMOOTHSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) smoothsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
@@ -437,84 +487,80 @@ extern size_t nsw;
 #define WQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) wqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options)
 #define YQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) yqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 
+/* IBMQSORT, BMQSORT, WBMQSORT are grouped together for adversary generation */
 #define FUNCTION_IBMQSORT             0U
 #define FUNCTION_BMQSORT              1U
-#define FUNCTION_MBMQSORT             2U
+#define FUNCTION_WBMQSORT             2U /* only for adversary generation */
 #define FUNCTION_NBQSORT              3U
-#define FUNCTION_SQSORT               4U
-#define FUNCTION_QSELECT_SORT         5U
-#define FUNCTION_WQSORT               6U
-#define FUNCTION_QSORT_WRAPPER        7U
-#define FUNCTION_QSELECT              8U
-#define FUNCTION_GLQSORT              9U
-#define FUNCTION_QSORT               10U
-#define FUNCTION_ISORT               11U
-#define FUNCTION_SHELLSORT           12U
-#define FUNCTION_MINMAXSORT          13U
-#define FUNCTION_SELSORT             14U
-#define FUNCTION_NETWORKSORT         15U
-#define FUNCTION_HEAPSORT            16U
-#define FUNCTION_INTROSORT           17U
-#define FUNCTION_YQSORT              18U
-#define FUNCTION_DPQSORT             19U
-#define FUNCTION_SQRTSORT            20U
-#define FUNCTION_LOGSORT             21U
-#define FUNCTION_SMOOTHSORT          22U
-#define FUNCTION_P9QSORT             23U
-#define FUNCTION_MERGESORT           24U
-#define FUNCTION_DEDSORT             25U
-#define FUNCTION_QSELECT_S           26U
-#define FUNCTION_SYSMERGESORT        27U
-#define FUNCTION_INDIRECT_MERGESORT  28U
+#define FUNCTION_MBMQSORT             4U
+/* SQSORT, QSELECT, QSELECT_S, QSELECT_SORT, QSORT_WRAPPER, WQSORT are grouped together for adversary generation */
+#define FUNCTION_SQSORT               5U
+#define FUNCTION_QSELECT_SORT         6U
+#define FUNCTION_WQSORT               7U
+#define FUNCTION_QSORT_WRAPPER        8U
+#define FUNCTION_QSELECT              9U
+#define FUNCTION_QSELECT_S           10U
+#define FUNCTION_GLQSORT             11U
+#define FUNCTION_QSORT               12U
+#define FUNCTION_ISORT               13U
+#define FUNCTION_SHELLSORT           14U
+#define FUNCTION_MINMAXSORT          15U
+#define FUNCTION_SELSORT             16U
+#define FUNCTION_NETWORKSORT         17U
+#define FUNCTION_HEAPSORT            18U
+#define FUNCTION_INTROSORT           19U
+#define FUNCTION_YQSORT              20U
+#define FUNCTION_DPQSORT             21U
+#define FUNCTION_SQRTSORT            22U
+#define FUNCTION_LOGSORT             23U
+#define FUNCTION_SMOOTHSORT          24U
+#define FUNCTION_P9QSORT             25U
+#define FUNCTION_MERGESORT           26U
+#define FUNCTION_DEDSORT             27U
+#define FUNCTION_SYSMERGESORT        28U
+#define FUNCTION_INDIRECT_MERGESORT  29U
+#define FUNCTION_RUNSORT             30U
 
-#define FUNCTION_COUNT               29U
+#define FUNCTION_COUNT               31U
+#if FUNCTION_COUNT > 32
+# error "FUNCTION_COUNT " xbuildstr(FUNCTION_COUNT) " is incompatible with 32-bit unsigned integers"
+#endif
 
 /* type of test */
-#define TEST_TYPE_MEDIAN       0x002U
-#define TEST_TYPE_PARTITION    0x004U
-#define TEST_TYPE_TRIPARTITION 0x008U
-#define TEST_TYPE_ADVERSARY    0x010U
-#define TEST_TYPE_SORT         0x020U
-#define TEST_TYPE_THOROUGH     0x040U
-#define TEST_TYPE_CORRECTNESS  0x080U
-#define TEST_TYPE_TIMING       0x100U
+#define TEST_TYPE_CORRECTNESS  0x01U
+#define TEST_TYPE_TIMING       0x02U
+#define TEST_TYPE_PARTITION    0x04U
+#define TEST_TYPE_SORT         0x08U
 
 #define HISTOGRAM_INDEX1_OFFSET 3
 
 #define ADD_PADDING 0
 
-#define MAXROTATION 20
-
-/* compare-exchange primitive for sorting networks */
-#undef COMPARE_EXCHANGE
-#if SILENCE_WHINEY_COMPILERS /* no ambiguity here... */
-# define COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,msize_ratio) \
-   if(0<OPT_COMPAR(ma,mb,mopts,mc)) {                                         \
-       EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,nsw++); }
-   /* Programmer's terminating semicolon is now an excess statement.
-      And this precludes a following "else".
-      Thanks :-/ gcc.
-   */
-#else
-# define COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,msize_ratio) \
-   if(0<OPT_COMPAR(ma,mb,mopts,mc))                                           \
-       EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,nsw++)
-#endif
+/* options for modified Bentley&McIlroy qsort */
+/* Improved sampling quality, Kiwiel Algorithm L, and recursion on the smaller
+   partitioned region are always incorporated.
+*/
+#define MBM_SAMPLE_QUANTITY    0x001U
+#define MBM_ISORT_LS           0x002U
+#define MBM_ISORT_BS           0x004U /* overrides MBM_ISORT_LS */
+#define MBM_DEDICATED_SORT     0x008U /* overrides MBM_ISORT_BS, MBM_ISORT_LS */
+#define MBM_NETWORK2           0x010U
+#define MBM_TREE3              0x020U
 
 /* worst-case for sorting network; force swaps for network sort */
 #if SILENCE_WHINEY_COMPILERS /* no ambiguity here... */
-# define REVERSE_COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,  \
+# define REVERSE_COMPARE_EXCHANGE(ma,mb,mopts,msize,mswapf,malignsize,  \
    msize_ratio)                                                            \
-   if(0>OPT_COMPAR(ma,mb,mopts,mc)) {                                      \
+   if(0>OPT_COMPAR(ma,mb,mopts)) {                                      \
        EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,/**/); }
    /* Programmer's terminating semicolon is now an excess statement.
       And this precludes a following "else".
       Thanks :-/ gcc.
    */
 #else
-# define REVERSE_COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,  \
+# define REVERSE_COMPARE_EXCHANGE(ma,mb,mopts,msize,mswapf,malignsize,  \
    msize_ratio)                                                            \
-   if(0>OPT_COMPAR(ma,mb,mopts,mc))                                        \
+   if(0>OPT_COMPAR(ma,mb,mopts))                                        \
        EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,/**/)
 #endif
 
@@ -582,7 +628,7 @@ struct breakpoint_table_struct {
     size_t optimum_bp;    /* for optimization */
 };
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
 /* aligned data block */
 union aligned_union {
     void *p;
@@ -602,31 +648,31 @@ extern int reset_selection_factor2_count;
 extern int strict_selection;
 extern int use_networks;
 extern int use_shell;
-extern unsigned int debug;
 extern unsigned int do_histogram;
-extern unsigned int instrumented;
 extern unsigned int introsort_final_insertion_sort;
-extern unsigned int network_mask;
+extern unsigned int network_mask; /* obsolete */
 extern unsigned int save_partial;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+extern unsigned int mbm_options;
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
 extern size_t ausz;
 #endif /* C99 */
 extern size_t dp_cutoff;
+extern size_t global_count;
+extern size_t global_ratio;
+extern size_t global_sz;
 extern size_t histogram[8][37];
 extern size_t histoswap[8];
 extern size_t introsort_recursion_factor;
 extern size_t introsort_small_array_cutoff;
 extern size_t merge_cutoff;
 extern size_t nfrozen, pivot_minrank;
-extern size_t nlt, neq, ngt, nmoves; /* nsw already declared */
-extern size_t nmerges, npartitions, nrecursions, nrepivot;
-extern size_t nrotations[];
 extern size_t quickselect_small_array_cutoff;
 extern size_t repivot_cutoff;
 extern size_t repivot_factor;
 extern size_t selection_nk;
 extern size_t sort_threshold;
 extern size_t y_cutoff;
+extern short *global_sharray;
 extern int *global_iarray;
 extern long *global_larray;
 extern long *input_data;
@@ -660,7 +706,7 @@ extern size_t pivot_rank(char *base, size_t first, size_t beyond, size_t size,
 extern void pivot_sample_rank(register char *middle, register size_t row_spacing,
     register size_t sample_spacing, register size_t size,
     register unsigned int idx, char *pivot, size_t *prank, char *base);
-extern void initialize_antiqsort(size_t n, char *pv, int type, const size_t sz, long *alt);
+extern void initialize_antiqsort(size_t n, char *pv, int type, size_t ratio, const size_t sz, long *alt);
 extern size_t antiqsort_ncmp; /* number of comparisons */
 extern size_t antiqsort_nsolid; /* number of solid items */
 
@@ -671,6 +717,9 @@ extern void bmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,cons
 extern int ilongcmp(const void *p1, const void *p2);
 extern int longcmp_s(const void *p1, const void *p2, void *unused);
 extern int ilongcmp_s(const void *p1, const void *p2, void *unused);
+extern int ishortcmp(const void *p1, const void *p2);
+extern int shortcmp_s(const void *p1, const void *p2, void *unused);
+extern int ishortcmp_s(const void *p1, const void *p2, void *unused);
 extern int iintcmp(const void *p1, const void *p2);
 extern int intcmp_s(const void *p1, const void *p2, void *unused);
 extern int iintcmp_s(const void *p1, const void *p2, void *unused);
@@ -681,6 +730,10 @@ extern int data_struct_strcmp(const void *p1, const void *p2);
 extern int idata_struct_strcmp(const void *p1, const void *p2);
 extern int data_struct_strcmp_s(const void *p1, const void *p2, void *unused);
 extern int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused);
+extern int date12dcmp(const void *p1, const void *p2);
+extern int idate12dcmp(const void *p1, const void *p2);
+extern int date12dcmp_s(const void *p1, const void *p2,void *unused);
+extern int idate12dcmp_s(const void *p1, const void *p2,void *unused);
 extern int timecmp(const void *p1, const void *p2);
 extern int itimecmp(const void *p1, const void *p2);
 extern int timecmp_s(const void *p1, const void *p2, void *unused);
@@ -692,61 +745,50 @@ extern int iindcmp_s(const void *p1, const void *p2, void *unused);
 extern int nocmp(void *unused1, void *unused2);
 
 /* correctness.c */
-extern size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, void (*f)(int, void *, const char *, ...), void *log_arg);
-extern size_t test_array_partition(const char *pv, size_t l, size_t pl, size_t pu, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, void(*f)(int, void *, const char *, ...), void *log_arg);
-extern size_t test_array_partition_s(const char *pv, size_t l, size_t pl, size_t pu, size_t u, size_t size, int(*compar)(const void *, const void *,void *), void *context, unsigned int options, void(*f)(int, void *, const char *, ...), void *log_arg);
-extern size_t test_array_median(const char *pv, size_t l, size_t m, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, void(*f)(int, void *, const char *, ...), void *log_arg);
-extern size_t test_array_sort(const char *pv, size_t l, size_t u, size_t size, int(*compar)(const void *, const void *), unsigned int options, unsigned int distinct, void(*f)(int, void *, const char *, ...), void *log_arg);
-extern unsigned int correctness_tests(int type, size_t size, long *refarray,
-    long *larray, int *array, double *darray, struct data_struct *data_array,
-    struct data_struct **parray, const char *typename,
-    int (*compar)(const void *,const void *),
-    int (*compar_s)(const void *,const void *,void *),
-    void (*swapf)(void *,void *,size_t), unsigned int options, const char *prog,
-    unsigned int func, size_t n, size_t count, unsigned int *psequences,
-    unsigned int *ptests, int col, double timeout,
+extern size_t test_array_partition(const char *pv, size_t l, size_t pl,
+    size_t pu, size_t u, size_t size,
+    int(*icompar)(const void *, const void *), unsigned int options,
+    void(*f)(int, void *, const char *, ...), void *log_arg);
+extern size_t test_array_sort(const char *pv, size_t l, size_t u, size_t size,
+    int(*compar)(const void *, const void *), unsigned int options,
+    unsigned int distinct, void(*f)(int, void *, const char *, ...),
+    void *log_arg);
+extern unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
+    unsigned int types, unsigned int options, const char *prog, size_t n,
+    size_t ratio, size_t count, int col, double timeout, uint_least64_t *s,
+    unsigned int p, unsigned int *plast_adv,
     void (*f)(int, void *, const char *, ...), void *log_arg,
-    unsigned char *flags, float **pwarray, float **puarray, float **psarray,
-    size_t *marray, size_t *pdn);
+    unsigned char *flags);
 
 /* debug.c */
 extern const char *debug_name(unsigned int value);
 
 /* dedicated_sort.c */
-extern void d_dedicated_sort(char *base, size_t first, size_t beyond, size_t size,
-    int(*compar)(const void *, const void *),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options);
 extern void dedsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *),unsigned int options);
 
 /* dual.c */
 extern void dpqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options);
 
 /* duplicate.c */
-extern void duplicate_test_data(long *refarray, char *pv, int type, size_t o, size_t n);
-extern void restore_test_data(size_t o, size_t n, long *refarray, char *pv, int type);
+extern void duplicate_test_data(long *refarray, char *pv, int type, size_t r, size_t o, size_t n);
+extern void restore_test_data(size_t r, size_t o, size_t n, long *refarray, char *pv, int type);
 
 /* factorial.c */
 extern size_t factorial(size_t n);
 
-/* floor_lg.c */
-extern size_t floor_lg(size_t n);
-
-/* fmed3.c */
-extern char *fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc,
-    int(*compar)(const void *,const void *), unsigned int options, char *base, size_t size);
-
 /* functions.c */
+extern int (*uninstrumented_comparator(int (*compar)(const void *,const void *,...)))(const void *, const void *,...);
+extern const char *comparator_name(int (*compar)(const void *, const void *,...));
+extern unsigned int ls_bit_number(unsigned int mask);
 extern const char *function_type(unsigned int func, unsigned int *ptests);
 extern const char *function_name(unsigned int func);
-extern unsigned int test_function(const char *prog, long *refarray, int *array,
-    struct data_struct *data_array, double *darray, long *larray,
-    struct data_struct **parray, unsigned int func, size_t n, size_t count,
-    unsigned int *pcsequences, unsigned int *ptsequences, unsigned int *ptests,
-    unsigned int options, int col, double timeout,
-    void (*f)(int, void *, const char *, ...), void *log_arg,
-    unsigned char *flags, float **pwarray, float **puarray, float **psarray,
-    size_t *marray, size_t *pdn);
+extern size_t type_alignment(unsigned int type);
+extern void *type_array(unsigned int type);
+extern int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, const void *);
+extern int (*type_context_comparator(unsigned int type, unsigned char *flags))(const void *, const void *, void *);
+extern uint_least64_t type_max(unsigned int type);
+extern const char *type_name(unsigned int type);
+extern size_t type_size(unsigned int type);
 
 /* glibc.c */
 extern void glibc_quicksort (void *const pbase, size_t total_elems, size_t size,
@@ -793,7 +835,11 @@ extern void logsort(void *base, size_t nmemb, size_t size, int(*compar)(const vo
 extern void mbmqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *),unsigned int options);
 
 /* mergesort.c */
+extern void runsort(char *base, size_t nmemb, const size_t size,
+    int (*compar)(const void *,const void *), unsigned int options);
 extern void xmergesort(char *base, size_t nmemb, const size_t size,
+    int (*compar)(const void *,const void *), unsigned int options);
+extern int d_indirect_mergesort(char *base, size_t nmemb, const size_t size,
     int (*compar)(const void *,const void *), unsigned int options);
 
 /* minmax.c */
@@ -826,59 +872,19 @@ extern void op_tests(const char *prefix, const char *prog,
 extern double parse_expr(const char *p, char **pendptr, int base);
 extern double parse_num(const char *p, char **pendptr, int base);
 
-/* partition.c */
-extern void merge_partitions(char *base, size_t first, size_t eq1,
-    size_t gt1, size_t mid, size_t eq2, size_t gt2,
-    size_t beyond, size_t size, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio, unsigned int options, size_t *peq,
-    size_t *pgt);
-extern void d_partition(char *base, size_t first, size_t beyond, char *pc, char *pd,
-    register char *pivot, char *pe, char *pf, register size_t size,
-    int(*compar)(const void *,const void*),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options, char *conditions,
-    size_t *indices, char *element, size_t *peq, size_t *pgt);
-
 /* plan9.c */
 extern void p9qsort(void *va, long n, long es, int (*cmp)(const void*, const void*));
 
 /* print.c */
-extern void print_int_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void print_long_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void print_data_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void print_indirect_keys(struct data_struct **target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void print_double_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void fprint_some_array(FILE *f, void *target, size_t l, size_t u, const char *prefix, const char *suffix,unsigned int options);
-extern void print_size_t_array(size_t *target, size_t l, size_t u, const char *prefix, const char *suffix);
-extern void print_some_array(void *target, size_t l, size_t u, const char *prefix, const char *suffix,unsigned int options);
+extern void fprint_some_array(FILE *f, char *target, size_t l, size_t u, const char *prefix, const char *suffix,unsigned int options);
+extern void print_size_t_array(size_t *target, size_t ratio, size_t l, size_t u, const char *prefix, const char *suffix);
 # if ASSERT_CODE + DEBUG_CODE
 extern FILE *start_log(const char *path);
 extern void close_log(FILE *f);
 #endif /* ASSERT_CODE */
 
 /* quickselect.c */
-extern unsigned int d_sample_index(struct sampling_table_struct *psts,
-    unsigned int idx, size_t nmemb);
-extern void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
-    size_t beyondk, size_t *pfk, size_t *pbk);
-extern void rank_tests(char *base, size_t first, size_t p, size_t q,
-    size_t beyond, size_t size, const size_t *pk, size_t firstk,
-    size_t beyondk, size_t *plk, size_t *prk, char **ppeq, char **ppgt);
-extern struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
-    const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
-    unsigned int *psort, unsigned int *pindex, size_t nmemb);
-extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
-    unsigned char *pf1, unsigned char *pf2);
-extern unsigned int d_should_repivot(size_t nmemb, size_t n, size_t cutoff,
-    struct sampling_table_struct *pst, unsigned int table_index,
-    const size_t *pk, int *pn2, char **ppeq);
-extern void d_quickselect_loop(char *base, size_t first, size_t beyond,
-    const size_t size, int(*compar)(const void *,const void *),
-    const size_t *pk, size_t firstk, size_t beyondk,
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t cutoff, unsigned int options, char *conditions,
-    size_t *indices, char *element, char **ppeq, char **ppgt);
-extern void quickselect_internal(char *base, size_t nmemb,
+extern QUICKSELECT_RETURN_TYPE quickselect_internal(char *base, size_t nmemb,
     /*const*/ size_t size, int (*compar)(const void *,const void *),
     size_t *pk, size_t nk, unsigned int options,
     char **ppeq, char **ppgt);
@@ -890,17 +896,11 @@ extern errno_t quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize
 extern errno_t qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
     int (*compar)(const void *,const void *, void *), void *context);
 
-/* select_pivot.c */
-extern char *d_select_pivot(register char *base, register size_t first, size_t beyond, register size_t size,
-    int (*compar)(const void *, const void*),
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    register unsigned int table_index, const size_t *pk, unsigned int options,
-    char **ppc, char **ppd, char **ppe, char **ppf);
-
 /* selsort.c */
 extern void selsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
 
 /* sequences.c */
+extern unsigned int sequence_is_randomized(unsigned int sequence);
 extern void permute(long *p, size_t l, size_t r, size_t *c, size_t *pt);
 extern int generate_long_test_array(long *p, size_t n, unsigned int testnum, long incr, uint64_t max_val, void(*f)(int, void *, const char *, ...), void *log_arg);
 extern const char *sequence_name(unsigned int testnum);
@@ -933,7 +933,7 @@ extern void sqsort(void *base, size_t nmemb, size_t size, int (*compar)(const vo
 
 /* swap.c */
 extern void (*iswapn(size_t alignsize))(char *, char *, size_t);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
 extern void swapd(void * restrict p1, void * restrict p2, register size_t size);
 extern void iswapd(void * restrict p1, void * restrict p2, register size_t size);
 #endif /* C99 */
@@ -947,14 +947,18 @@ extern const char *test_size(unsigned int tests);
 extern double test_factor(unsigned int tests, size_t n);
 
 /* timing.c */
-extern unsigned int timing_tests(int type, size_t size, long *refarray,
-    long *larray, int *array, double *darray, struct data_struct *data_array,
-    struct data_struct **parray, const char *typename,
-    int (*compar)(const void *,const void *),
-    int (*compar_s)(const void *,const void *,void *),
-    void (*swapf)(void *,void *,size_t), unsigned int options, const char *prog,
-    unsigned int func, size_t n, size_t count, unsigned int *psequences,
-    unsigned int *ptests, int col, double timeout,
+extern void reset_counters(unsigned int totals_too);
+extern void update_totals(size_t count, void (*f)(int, void *, const char *, ...),
+    void *log_arg);
+extern void update_counters(size_t size_ratio);
+extern void print_counters(const char *comment, int col, size_t n, size_t count,
+    double factor, const char *pcc, const char *pfunc, const char *psize,
+    const char *typename, const char *ptest, unsigned char *flags,
+    size_t size_ratio, void (*f)(int, void *, const char *, ...), void *log_arg);
+extern unsigned int timing_tests(unsigned int sequences, unsigned int functions,
+    unsigned int types, unsigned int options, const char *prog, size_t n,
+    size_t ratio, size_t count, int col, double timeout, uint_least64_t *s,
+    unsigned int p, unsigned int *plast_adv,
     void (*f)(int, void *, const char *, ...), void *log_arg,
     unsigned char *flags, float **pwarray, float **puarray, float **psarray,
     size_t *marray, size_t *pdn);
@@ -976,3 +980,72 @@ extern void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const vo
 /* yaroslavskiy.c */
 extern void yqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options);
 
+/* inline code */
+/* Insertion sort using linear search to locate insertion position for
+   out-of-order element, followed by rotation to insert the element in position.
+*/
+/* Included here as it is used in introsort (overall insertion sort) and in
+   mbmqsort (Bentley&McIlroy-like insertion sort when isort_bs and
+   dedicated_sort are not used).
+*/
+static
+QUICKSELECT_INLINE
+void isort_ls(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL,
+    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
+{
+    register size_t l, n, u=beyond-1UL;
+    char *pa, *pu=base+u*size;
+
+/* separate direct, indirect versions to avoid options checks in loops,
+   also cache dereferenced pa in inner loop
+*/
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            if (0<COMPAR(pa,pa+size)) { /* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(pa,pd)) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+#ifdef QUICKSELECT_COUNT_ROTATIONS
+                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
+#endif
+            }
+        }
+    } else { /* indirect */
+        register char *p;
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            p=*((char **)pa);
+            if (0<COMPAR(p,*((char**)(pa+size)))) {/* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(p,*((char**)pd))) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+#ifdef QUICKSELECT_COUNT_ROTATIONS
+                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
+#endif
+            }
+        }
+    }
+}
+
+#endif /* MEDIAN_TEST_CONFIG_H_INCLUDED */

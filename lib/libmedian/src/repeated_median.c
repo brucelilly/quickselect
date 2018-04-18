@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    repeated_median.c copyright 2016 - 2017 Bruce Lilly.   \ repeated_median.c $
+* $Id: ~|^` @(#)    repeated_median.c copyright 2016-2018 Bruce Lilly.   \ repeated_median.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repeated_median.c version 1.11 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is repeated_median.c version 1.13 dated 2018-03-06T23:27:01Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "repeated_median" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repeated_median.c */
@@ -45,10 +45,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repeated_median.c ~|^` @(#)"
 #define SOURCE_MODULE "repeated_median.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-03-06T23:27:01Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016 - 2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* configuration options */
 
@@ -60,7 +60,7 @@
 #endif
 
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600
 #else
 # define MIN_XOPEN_SOURCE_VERSION 500
@@ -116,7 +116,7 @@ static char repeated_median_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MEDIAN_INLINE inline
 #else
 # define MEDIAN_INLINE /**/
@@ -421,8 +421,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes,
             }
 #endif
             /* (inner) median slope for this point */
-            quickselect(px,k,sizeof(double),doublecmp,karray,2UL,
-                QUICKSELECT_NETWORK_MASK);
+            quickselect(px,k,sizeof(double),doublecmp,karray,2UL,0U);
             py[j] = (px[karray[0]]+px[karray[1]])/2.0;
 #if DEBUG_CODE
             if (px[karray[1]] < px[karray[0]] - 1.0e-5) {
@@ -442,8 +441,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes,
         /* (outer) median slope of w inner median slopes for this point = slope
            for this point
         */
-        quickselect(py,w,sizeof(double),doublecmp,marray,1UL,
-            QUICKSELECT_NETWORK_MASK);
+        quickselect(py,w,sizeof(double),doublecmp,marray,1UL,0U);
         m = py[marray[0]];
         if (NULL != pslopes) pslopes[i] = m;
 #if DEBUG_CODE
@@ -462,8 +460,7 @@ int repeated_median_filter(double *pd, double *pfiltered, double *pslopes,
         }
 #endif
         /* median intercept = filtered value */
-        quickselect(py,k,sizeof(double),doublecmp,marray,1UL,
-            QUICKSELECT_NETWORK_MASK);
+        quickselect(py,k,sizeof(double),doublecmp,marray,1UL,0U);
         b = py[marray[0]];
         if (NULL != pfiltered) pfiltered[i] = b;
     }

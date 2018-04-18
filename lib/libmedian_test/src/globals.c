@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is globals.c version 1.6 dated 2018-01-12T20:02:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is globals.c version 1.10 dated 2018-03-20T19:35:26Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.globals.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: globals.c ~|^` @(#)"
 #define SOURCE_MODULE "globals.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-01-12T20:02:58Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-03-20T19:35:26Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -59,16 +59,18 @@ int use_networks=0;
 int method_partition=QUICKSELECT_PARTITION_FAST;
 int method_pivot=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
 
-unsigned int network_mask=QUICKSELECT_NETWORK_MASK;
+unsigned int network_mask=0U; /* obsolete */
 unsigned int debug=0U;
 
-size_t quickselect_small_array_cutoff = 0UL;
+/* Special-case to permit diabling or limiting normal dedicated_sort. */
+size_t quickselect_small_array_cutoff = SIZE_MAX;
 
 long *input_data=NULL;
 /* for instrumented comparisons, swaps, rotations, etc.: */
 size_t nlt, neq, ngt, nsw, nmoves;
 size_t nrotations[MAXROTATION];
 size_t nmerges, npartitions, nrecursions, nrepivot;
+size_t npcopies, npderefs, npiconversions;
 
 /* insertion sort parameters */
 unsigned int introsort_final_insertion_sort = 1U;
@@ -97,6 +99,10 @@ size_t histogram[8][37];
 size_t histoswap[8];
 unsigned int do_histogram=0U;
 
+/* for modified Bentley&McIlroy qsort */
+unsigned int mbm_options=0U;
+
+/* for Yaroslavskiy qsort */
 size_t y_cutoff = 27UL; /* 11 seems to be optimal */
 
 /* in-place mergesort */
@@ -106,9 +112,14 @@ size_t merge_cutoff = 7UL; /* "optimization" for already-sorted input (average p
 size_t merge_cutoff = 1UL; /* 1UL for pure mergesort (for small_arrays table in paper), 3UL to use optimized decision tree */
 #endif
 
+size_t global_ratio = 1UL; /* size_ratio applied to all allocated data arrays */
+size_t global_sz = 0UL; /* elements (maximum nmemb*global_ratio) for allocated arrays */
+size_t global_count = 0UL; /* elements for allocated timing data arrays */
+
 int *global_iarray = NULL;
+short *global_sharray = NULL;
 long *global_larray = NULL;
-long *global_refarray = NULL;
+long *global_refarray = NULL; /* XXX could possibly be changed to uint_least64_t */
 struct data_struct **global_parray = NULL;
 double *global_darray = NULL;
 struct data_struct *global_data_array = NULL;

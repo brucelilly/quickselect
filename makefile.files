@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.files $
+#$Id: ~\|^` @(#)%M% copyright 2015-2018 %Q%. \ makefile.files $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -51,37 +51,27 @@ MAKEFILES_READ += makefile.files
 
 # There are several categories of executable files built from sources.
 # Each executable file is built from a main-program object file and is linked with libraries.
-# Those main-program object files are listed as C99OBJS or OBJS depending on whether or not C99FLAGS is required for compilation.
-# This group defines C99 vs. earlier compilation per main-program object file.
+# Those main-program object files are listed as C11OBJS or C99OBJS or OBJS depending on whether or not C11FLAGS or C99FLAGS is required for compilation.
+# This group defines C11 vs. C99 vs. earlier compilation per main-program object file.
 # Corresponding executable file targets should be added to makefile.targets
 #   to support independent executable builds.
 # median_test is C99 to use inline exchange
+C11OBJS =\
+#
 C99OBJS =\
- bstest.o\
  make_grap.o\
  median_test.o\
- swaptest.o\
- graphingtest.o\
  simple_config.o\
- generate_cutoff_table.o\
- malloc_test.o\
 # 
 OBJS =\
- heap_test.o\
- lemd.o\
- numtest.o\
- thermostatd.o\
-# udp.o\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += C99OBJS OBJS
+MACROS += C11OBJS C99OBJS OBJS
 
 # Header files used by main program source files, located in $(HDRDIR).
 HDRS =\
  compare.h\
- conform.h\
  exchange.h\
- lemd.h\
  zz_build_str.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -107,11 +97,16 @@ CONFIGFILES =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += CONFIGFILES
 
+# lemd_grap.c, lemd_config.c, thermostatd_config.c, thermostatd_graph.c need the path to rsync
+DEFS += -DRSYNC=\"$(RSYNC)\"
+
 # Object files other than executable main-program files are placed in library archives.
 # Library archive names and archive member object files (leave unused ones empty)
 #  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
-# C99-compiled object files are listed separately
-LIB1ARCH = liblemd.a
+# C11- and C99-compiled object files are listed separately
+LIB1ARCH = # liblemd.a
+C11LIB1OBJS =\
+#
 C99LIB1OBJS =\
  lemd_graph.o\
 #
@@ -131,9 +126,11 @@ LIB1HDRS =\
 LIB1MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB1ARCH C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
+MACROS += LIB1ARCH C11LIB1OBJS C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
 
-LIB2ARCH = libthermostatd.a
+LIB2ARCH = # libthermostatd.a
+C11LIB2OBJS =\
+#
 C99LIB2OBJS =\
  thermostatd_recv.o\
 #
@@ -155,17 +152,32 @@ LIB2HDRS =\
 LIB2MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB2ARCH C99LIB2OBJS LIB2OBJS LIB2HDRS LIB2MAN
+MACROS += LIB2ARCH C11LIB2OBJS C99LIB2OBJS LIB2OBJS LIB2HDRS LIB2MAN
 
 LIB3ARCH = # libradioclk.a
-C99LIB3OBJS =\
- config_thread.o\
- nmea_thread.o\
+C11LIB3OBJS =\
 #
-LIB3OBJS =\
+C99LIB3OBJS =\
+ char_encode.o\
  circular_buffer.o\
+ configure.o\
+ config_thread.o\
+ functions.o\
+ nmea_checksum.o\
+ $(NMEA_PREFIX_UNDERSCORE)lemon_parse.o\
+ $(NMEA_PREFIX_UNDERSCORE)ragel_lex.o\
+ nmea_thread.o\
+ parse.o\
+ ports.o\
  pps_thread.o\
- version.o\
+ sentences.o\
+ serial_pins.o\
+ token.o\
+ transition.o\
+#
+# illumos pukes if signals.c is compiled with c99
+LIB3OBJS =\
+ signals.o\
 #
 LIB3HDRS =\
  circular_buffer.h\
@@ -176,18 +188,22 @@ LIB3HDRS =\
  name_value.h\
  nmea.h\
  nmea_thread.h\
+ parse.h\
  ports.h\
  pps_thread.h\
  private.h\
  serial_pins.h\
+ token.h\
  transition.h\
 #
 LIB3MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB3ARCH C99LIB3OBJS LIB3OBJS LIB3HDRS LIB3MAN
+MACROS += LIB3ARCH C11LIB3OBJS C99LIB3OBJS LIB3OBJS LIB3HDRS LIB3MAN
 
 LIB4ARCH = # libautobaud.a
+C11LIB4OBJS =\
+#
 C99LIB4OBJS =\
  autobaud.o\
  baud.o\
@@ -212,9 +228,11 @@ LIB4HDRS =\
 LIB4MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB4ARCH C99LIB4OBJS LIB4OBJS LIB4HDRS LIB4MAN
+MACROS += LIB4ARCH C11LIB4OBJS C99LIB4OBJS LIB4OBJS LIB4HDRS LIB4MAN
 
 LIB5ARCH = # librefclock_fifo.a
+C11LIB5OBJS =\
+#
 C99LIB5OBJS =\
 #
 LIB5OBJS =\
@@ -227,9 +245,11 @@ LIB5HDRS =\
 LIB5MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB5ARCH C99LIB5OBJS LIB5OBJS LIB5HDRS LIB5MAN
+MACROS += LIB5ARCH C11LIB5OBJS C99LIB5OBJS LIB5OBJS LIB5HDRS LIB5MAN
 
 LIB6ARCH = # libusage.a
+C11LIB6OBJS =\
+#
 C99LIB6OBJS =\
 #
 LIB6OBJS =\
@@ -243,9 +263,11 @@ LIB6MAN =\
  usage.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB6ARCH C99LIB6OBJS LIB6OBJS LIB6HDRS LIB6MAN
+MACROS += LIB6ARCH C11LIB6OBJS C99LIB6OBJS LIB6OBJS LIB6HDRS LIB6MAN
 
 LIB7ARCH = #
+C11LIB7OBJS =\
+#
 C99LIB7OBJS =\
 #
 LIB7OBJS =\
@@ -255,9 +277,11 @@ LIB7HDRS =\
 LIB7MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB7ARCH C99LIB7OBJS LIB7OBJS LIB7HDRS LIB7MAN
+MACROS += LIB7ARCH C11LIB7OBJS C99LIB7OBJS LIB7OBJS LIB7HDRS LIB7MAN
 
 LIB8ARCH = libid.a
+C11LIB8OBJS =\
+#
 C99LIB8OBJS =\
 #
 LIB8OBJS =\
@@ -271,9 +295,11 @@ LIB8HDRS =\
 LIB8MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB8ARCH C99LIB8OBJS LIB8OBJS LIB8HDRS LIB8MAN
+MACROS += LIB8ARCH C11LIB8OBJS C99LIB8OBJS LIB8OBJS LIB8HDRS LIB8MAN
 
 LIB9ARCH = liblogger.a
+C11LIB9OBJS =\
+#
 C99LIB9OBJS =\
  logger.o\
 #
@@ -286,9 +312,11 @@ LIB9MAN =\
  logger.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB9ARCH C99LIB9OBJS LIB9OBJS LIB9HDRS LIB9MAN
+MACROS += LIB9ARCH C11LIB9OBJS C99LIB9OBJS LIB9OBJS LIB9HDRS LIB9MAN
 
 LIB10ARCH = libcivil_time.a
+C11LIB10OBJS =\
+#
 C99LIB10OBJS =\
  civil_time_normalize.o\
  civil_time_output.o\
@@ -303,9 +331,11 @@ LIB10MAN =\
  civil_time.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB10ARCH C99LIB10OBJS LIB10OBJS LIB10HDRS LIB10MAN
+MACROS += LIB10ARCH C11LIB10OBJS C99LIB10OBJS LIB10OBJS LIB10HDRS LIB10MAN
 
 LIB11ARCH = libutc_mktime.a
+C11LIB11OBJS =\
+#
 C99LIB11OBJS =\
  inverse_yday.o\
  local_utc_offset.o\
@@ -321,9 +351,11 @@ LIB11HDRS =\
 LIB11MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB11ARCH C99LIB11OBJS LIB11OBJS LIB11HDRS LIB11MAN
+MACROS += LIB11ARCH C11LIB11OBJS C99LIB11OBJS LIB11OBJS LIB11HDRS LIB11MAN
 
 LIB12ARCH = libleap_second.a
+C11LIB12OBJS =\
+#
 C99LIB12OBJS =\
  leap_second.o\
 #
@@ -336,9 +368,11 @@ LIB12MAN =\
  leap_second.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB12ARCH C99LIB12OBJS LIB12OBJS LIB12HDRS LIB12MAN
+MACROS += LIB12ARCH C11LIB12OBJS C99LIB12OBJS LIB12OBJS LIB12HDRS LIB12MAN
 
 LIB13ARCH = libsnn.a
+C11LIB13OBJS =\
+#
 C99LIB13OBJS =\
  snn_double.o\
  snn_int.o\
@@ -354,9 +388,11 @@ LIB13MAN =\
  snn.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB13ARCH C99LIB13OBJS LIB13OBJS LIB13HDRS LIB13MAN
+MACROS += LIB13ARCH C11LIB13OBJS C99LIB13OBJS LIB13OBJS LIB13HDRS LIB13MAN
 
 LIB14ARCH = libstrntol.a
+C11LIB14OBJS =\
+#
 C99LIB14OBJS =\
 #
 LIB14OBJS =\
@@ -369,9 +405,11 @@ LIB14MAN =\
  strntol.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB14ARCH C99LIB14OBJS LIB14OBJS LIB14HDRS LIB14MAN
+MACROS += LIB14ARCH C11LIB14OBJS C99LIB14OBJS LIB14OBJS LIB14HDRS LIB14MAN
 
 LIB15ARCH = # libastro.a
+C11LIB15OBJS =\
+#
 C99LIB15OBJS =\
  altitude.o\
  azimuth.o\
@@ -388,9 +426,11 @@ LIB15HDRS =\
 LIB15MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB15ARCH C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
+MACROS += LIB15ARCH C11LIB15OBJS C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
 
-LIB16ARCH = libangle.a
+LIB16ARCH = # libangle.a
+C11LIB16OBJS =\
+#
 C99LIB16OBJS =\
 #
 LIB16OBJS =\
@@ -403,9 +443,11 @@ LIB16HDRS =\
 LIB16MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB16ARCH C99LIB16OBJS LIB16OBJS LIB16HDRS LIB16MAN
+MACROS += LIB16ARCH C11LIB16OBJS C99LIB16OBJS LIB16OBJS LIB16HDRS LIB16MAN
 
 LIB17ARCH = libconfig.a
+C11LIB17OBJS =\
+#
 C99LIB17OBJS =\
 #
 LIB17OBJS =\
@@ -423,9 +465,11 @@ LIB17HDRS =\
 LIB17MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB17ARCH C99LIB17OBJS LIB17OBJS LIB17HDRS LIB17MAN
+MACROS += LIB17ARCH C11LIB17OBJS C99LIB17OBJS LIB17OBJS LIB17HDRS LIB17MAN
 
 LIB18ARCH = libpaths.a
+C11LIB18OBJS =\
+#
 C99LIB18OBJS =\
 #
 LIB18OBJS =\
@@ -445,9 +489,12 @@ LIB18MAN =\
 # XXX one or more man pages
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB18ARCH C99LIB18OBJS LIB18OBJS LIB18HDRS LIB18MAN
+MACROS += LIB18ARCH C11LIB18OBJS C99LIB18OBJS LIB18OBJS LIB18HDRS LIB18MAN
 
 LIB19ARCH = libtimespec.a
+C11LIB19OBJS =\
+#
+LIB19OBJS =\
 C99LIB19OBJS =\
 #
 LIB19OBJS =\
@@ -469,39 +516,41 @@ LIB19HDRS =\
 LIB19MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB19ARCH C99LIB19OBJS LIB19OBJS LIB19HDRS LIB19MAN
+MACROS += LIB19ARCH C11LIB19OBJS C99LIB19OBJS LIB19OBJS LIB19HDRS LIB19MAN
 
 LIB20ARCH = libmedian.a
 # order matters!
-C99LIB20OBJS =\
- indirect.o\
- rearrange.o\
- indirect_mergesort.o\
- options.o\
- repeated_median.o\
- quickselect_s.o\
- qsort_s.o\
+# some files use C11 alignment-qualifiers (directly or by inclusion)
+C11LIB20OBJS =\
  quickselect_lib_s.o\
- quickselect.o\
- qsort.o\
  quickselect_lib.o\
- dedicated_sort.o\
+ indirect.o\
+#
+C99LIB20OBJS =\
+ indirect_mergesort.o\
+ repeated_median.o\
+ options.o\
+ qsort_s.o\
+ quickselect_s.o\
+ qsort.o\
+ quickselect.o\
  repivot_tables.o\
  sampling_tables.o\
  selection_table.o\
- cutoff_value.o\
- cutoff_table.o\
+# dedicated_sort.o\
+# cutoff_value.o\
+# cutoff_table.o\
+# rearrange.o\
 #
 LIB20OBJS =\
 #
 LIB20HDRS =\
- cutoff_table.h\
- cutoff_value_decl.h\
  dedicated_sort_decl.h\
- dedicated_sort_s_decl.h\
  dedicated_sort_src.h\
  indirect.h\
  initialize_src.h\
+ insertion.h\
+ insertion_sort_src.h\
  klimits_decl.h\
  klimits_src.h\
  partition_decl.h\
@@ -509,7 +558,6 @@ LIB20HDRS =\
  pivot_src.h\
  qsort_src.h\
  quickselect_loop_decl.h\
- quickselect_loop_s_decl.h\
  quickselect_loop_src.h\
  quickselect_src.h\
  quickselect.h\
@@ -520,17 +568,23 @@ LIB20HDRS =\
  sampling_table.h\
  sampling_table_decl.h\
  sampling_table_src.h\
- select_pivot_decl.h\
  should_repivot_decl.h\
  tables.h\
+# cutoff_table.h\
+# cutoff_value_decl.h\
+# dedicated_sort_s_decl.h\
+# quickselect_loop_s_decl.h\
+# select_pivot_decl.h\
 #
 LIB20MAN =\
  quickselect.3\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB20ARCH C99LIB20OBJS LIB20OBJS LIB20HDRS LIB20MAN
+MACROS += LIB20ARCH C11LIB20OBJS C99LIB20OBJS LIB20OBJS LIB20HDRS LIB20MAN
 
 LIB21ARCH = # libstring.a
+C11LIB21OBJS =\
+#
 C99LIB21OBJS =\
 #
 LIB21OBJS =\
@@ -542,9 +596,11 @@ LIB21HDRS =\
 LIB21MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB21ARCH C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
+MACROS += LIB21ARCH C11LIB21OBJS C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
 
-LIB22ARCH = libpool.a
+LIB22ARCH = # libpool.a
+C11LIB22OBJS =\
+#
 C99LIB22OBJS =\
 #
 LIB22OBJS =\
@@ -558,9 +614,11 @@ LIB22HDRS =\
 LIB22MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB22ARCH C99LIB22OBJS LIB22OBJS LIB22HDRS LIB22MAN
+MACROS += LIB22ARCH C11LIB22OBJS C99LIB22OBJS LIB22OBJS LIB22HDRS LIB22MAN
 
 LIB23ARCH = libgraphing.a
+C11LIB23OBJS =\
+#
 C99LIB23OBJS =\
  graphing.o\
  trim.o\
@@ -574,9 +632,11 @@ LIB23HDRS =\
 LIB23MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB23ARCH C99LIB23OBJS LIB23OBJS LIB23HDRS LIB23MAN
+MACROS += LIB23ARCH C11LIB23OBJS C99LIB23OBJS LIB23OBJS LIB23HDRS LIB23MAN
 
 LIB24ARCH = librandom.a
+C11LIB24OBJS =\
+#
 C99LIB24OBJS =\
 #
 LIB24OBJS =\
@@ -588,10 +648,12 @@ LIB24HDRS =\
 LIB24MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB24ARCH C99LIB24OBJS LIB24OBJS LIB24HDRS LIB24MAN
+MACROS += LIB24ARCH C11LIB24OBJS C99LIB24OBJS LIB24OBJS LIB24HDRS LIB24MAN
 
 LIB25ARCH = libshuffle.a
 # shuffle is C99 to use inline exchange
+C11LIB25OBJS =\
+#
 C99LIB25OBJS =\
  shuffle.o\
 #
@@ -603,9 +665,11 @@ LIB25HDRS =\
 LIB25MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB25ARCH C99LIB25OBJS LIB25OBJS LIB25HDRS LIB25MAN
+MACROS += LIB25ARCH C11LIB25OBJS C99LIB25OBJS LIB25OBJS LIB25HDRS LIB25MAN
 
 LIB26ARCH = #
+C11LIB26OBJS =\
+#
 C99LIB26OBJS =\
 #
 LIB26OBJS =\
@@ -615,9 +679,11 @@ LIB26HDRS =\
 LIB26MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB26ARCH C99LIB26OBJS LIB26OBJS LIB26HDRS LIB26MAN
+MACROS += LIB26ARCH C11LIB26OBJS C99LIB26OBJS LIB26OBJS LIB26HDRS LIB26MAN
 
 LIB27ARCH = #
+C11LIB27OBJS =\
+#
 C99LIB27OBJS =\
 #
 LIB27OBJS =\
@@ -627,9 +693,11 @@ LIB27HDRS =\
 LIB27MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB27ARCH C99LIB27OBJS LIB27OBJS LIB27HDRS LIB27MAN
+MACROS += LIB27ARCH C11LIB27OBJS C99LIB27OBJS LIB27OBJS LIB27HDRS LIB27MAN
 
 LIB28ARCH = # libip.a
+C11LIB28OBJS =\
+#
 C99LIB28OBJS =\
 #
 LIB28OBJS =\
@@ -639,9 +707,11 @@ LIB28HDRS =\
 LIB28MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB28ARCH C99LIB28OBJS LIB28OBJS LIB28HDRS LIB28MAN
+MACROS += LIB28ARCH C11LIB28OBJS C99LIB28OBJS LIB28OBJS LIB28HDRS LIB28MAN
 
 LIB29ARCH = # libresolv.a
+C11LIB29OBJS =\
+#
 C99LIB29OBJS =\
 #
 LIB29OBJS =\
@@ -653,9 +723,11 @@ LIB29HDRS =\
 LIB29MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB29ARCH C99LIB29OBJS LIB29OBJS LIB29HDRS LIB29MAN
+MACROS += LIB29ARCH C11LIB29OBJS C99LIB29OBJS LIB29OBJS LIB29HDRS LIB29MAN
 
 LIB30ARCH = #
+C11LIB30OBJS =\
+#
 C99LIB30OBJS =\
 #
 LIB30OBJS =\
@@ -665,9 +737,11 @@ LIB30HDRS =\
 LIB30MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB30ARCH C99LIB30OBJS LIB30OBJS LIB30HDRS LIB30MAN
+MACROS += LIB30ARCH C11LIB30OBJS C99LIB30OBJS LIB30OBJS LIB30HDRS LIB30MAN
 
 LIB31ARCH = #
+C11LIB31OBJS =\
+#
 C99LIB31OBJS =\
 #
 LIB31OBJS =\
@@ -677,9 +751,11 @@ LIB31HDRS =\
 LIB31MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB31ARCH C99LIB31OBJS LIB31OBJS LIB31HDRS LIB31MAN
+MACROS += LIB31ARCH C11LIB31OBJS C99LIB31OBJS LIB31OBJS LIB31HDRS LIB31MAN
 
 LIB32ARCH = #
+C11LIB32OBJS =\
+#
 C99LIB32OBJS =\
 #
 LIB32OBJS =\
@@ -689,9 +765,11 @@ LIB32HDRS =\
 LIB32MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB32ARCH C99LIB32OBJS LIB32OBJS LIB32HDRS LIB32MAN
+MACROS += LIB32ARCH C11LIB32OBJS C99LIB32OBJS LIB32OBJS LIB32HDRS LIB32MAN
 
 LIB33ARCH = #
+C11LIB33OBJS =\
+#
 C99LIB33OBJS =\
 #
 LIB33OBJS =\
@@ -701,9 +779,11 @@ LIB33HDRS =\
 LIB33MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB33ARCH C99LIB33OBJS LIB33OBJS LIB33HDRS LIB33MAN
+MACROS += LIB33ARCH C11LIB33OBJS C99LIB33OBJS LIB33OBJS LIB33HDRS LIB33MAN
 
 LIB34ARCH = #
+C11LIB34OBJS =\
+#
 C99LIB34OBJS =\
 #
 LIB34OBJS =\
@@ -713,9 +793,11 @@ LIB34HDRS =\
 LIB34MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB34ARCH C99LIB34OBJS LIB34OBJS LIB34HDRS LIB34MAN
+MACROS += LIB34ARCH C11LIB34OBJS C99LIB34OBJS LIB34OBJS LIB34HDRS LIB34MAN
 
 LIB35ARCH = #
+C11LIB35OBJS =\
+#
 C99LIB35OBJS =\
 #
 LIB35OBJS =\
@@ -725,9 +807,11 @@ LIB35HDRS =\
 LIB35MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB35ARCH C99LIB35OBJS LIB35OBJS LIB35HDRS LIB35MAN
+MACROS += LIB35ARCH C11LIB35OBJS C99LIB35OBJS LIB35OBJS LIB35HDRS LIB35MAN
 
 LIB36ARCH = #
+C11LIB36OBJS =\
+#
 C99LIB36OBJS =\
 #
 LIB36OBJS =\
@@ -737,9 +821,11 @@ LIB36HDRS =\
 LIB36MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB36ARCH C99LIB36OBJS LIB36OBJS LIB36HDRS LIB36MAN
+MACROS += LIB36ARCH C11LIB36OBJS C99LIB36OBJS LIB36OBJS LIB36HDRS LIB36MAN
 
 LIB37ARCH = #
+C11LIB37OBJS =\
+#
 C99LIB37OBJS =\
 #
 LIB37OBJS =\
@@ -749,9 +835,11 @@ LIB37HDRS =\
 LIB37MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB37ARCH C99LIB37OBJS LIB37OBJS LIB37HDRS LIB37MAN
+MACROS += LIB37ARCH C11LIB37OBJS C99LIB37OBJS LIB37OBJS LIB37HDRS LIB37MAN
 
 LIB38ARCH = #
+C11LIB38OBJS =\
+#
 C99LIB38OBJS =\
 #
 LIB38OBJS =\
@@ -761,9 +849,13 @@ LIB38HDRS =\
 LIB38MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB38ARCH C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
+MACROS += LIB38ARCH C11LIB38OBJS C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
 
 LIB39ARCH = libmedian_test.a
+C11LIB39OBJS =\
+ dedicated_sort.o\
+ partition.o\
+#
 C99LIB39OBJS =\
  functions.o\
  correctness.o\
@@ -773,11 +865,11 @@ C99LIB39OBJS =\
  glibc.o\
  ibmqsort.o\
  mbmqsort.o\
- mergesort.o\
  introsort.o\
  heapsort.o\
  heap.o\
  logsort.o\
+ mergesort.o\
  minmaxsort.o\
  netbsd.o\
  plan9.o\
@@ -793,12 +885,8 @@ C99LIB39OBJS =\
  shellsort.o\
  network.o\
  isort.o\
- partition.o\
- select_pivot.o\
- fmed3.o\
  sequences.o\
  debug.o\
- dedicated_sort.o\
  dual.o\
  duplicate.o\
  sort5.o\
@@ -809,13 +897,15 @@ C99LIB39OBJS =\
  test_factor.o\
  test_size.o\
  factorial.o\
- floor_lg.o\
  is_even.o\
  ulsqrt.o\
  valid.o\
  parse.o\
  print.o\
  globals.o\
+# fmed3.o\
+# floor_lg.o\
+# select_pivot.o\
 #
 LIB39OBJS =\
 #
@@ -825,7 +915,7 @@ median_test_config.h\
 LIB39MAN =\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
-MACROS += LIB39ARCH C99LIB39OBJS LIB39OBJS LIB39HDRS LIB39MAN
+MACROS += LIB39ARCH C11LIB39OBJS C99LIB39OBJS LIB39OBJS LIB39HDRS LIB39MAN
 
 # Full paths to installed user programs using makefile.$(OS)-defined $(INSTALL_USER_BINDIR)
 # (dependencies and recipes to install these are automatically generated)
@@ -953,8 +1043,10 @@ MACROS += SHELLSCRIPTS AWKSCRIPTS SCRIPTS
 #OPTIMIZE = -Oz
 # One way to force C99 for all files...
 #C = $(C99)
+#C = $(C11)
 # Or force C89/90 for all...
 #C99 = $(C)
+#C11 = $(C)
 # profiling
 #PROFILE =
 #PROFILE = -pg

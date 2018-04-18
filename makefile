@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile $
+#$Id: ~\|^` @(#)%M% copyright 2015-2018 %Q%. \ makefile $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -125,7 +125,6 @@ host : start \
  $(MAKEFILES_DIR)/makefile.stage2 $(MAKEFILES_DIR)/makefile.include2 \
  $(MAKEFILES_DIR)/makefile.project $(MAKEFILES_DIR)/makefile.fqdn # also makefile.$(OS), but environment is not yet set
 	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2"
-	# $${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage2 2>&1 | egrep -v ' recipe for target | given more than once in the same |ing directory ' | cat"
 
 # combined dependencies and recipe
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
@@ -135,7 +134,7 @@ ccbase : host \
 	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(MAKEFILES_DIR)/makefile.stage3"
 
 # combined dependencies and recipe
-overrides : ccbase \
+overrides rmold-depend clean-depend : ccbase \
  $(MAKEFILES_DIR)/makefile.stage4 $(MAKEFILES_DIR)/makefile.include4 \
  $(MAKEFILES_DIR)/makefile.tools $(MAKEFILES_DIR)/makefile.overrides \
  # also makefile.$(OS)-$(FQDN), but environment is not yet set

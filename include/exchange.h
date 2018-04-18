@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    exchange.h copyright 2016-2017 Bruce Lilly. \ exchange.h $
+* $Id: ~|^` @(#)    exchange.h copyright 2016-2018 Bruce Lilly. \ exchange.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is exchange.h version 1.17 dated 2018-01-22T05:16:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is exchange.h version 1.20 dated 2018-03-07T01:53:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "exchange" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.exchange.h */
@@ -52,12 +52,12 @@
 */
 
 /* version-controlled header file version information */
-#define EXCHANGE_H_VERSION "exchange.h 1.17 2018-01-22T05:16:19Z"
+#define EXCHANGE_H_VERSION "exchange.h 1.20 2018-03-07T01:53:17Z"
 
 #include <sys/types.h>          /* *_t (size_t) */
 #include <limits.h>             /* *_MAX */
 #include <stddef.h>             /* size_t NULL */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # include <stdint.h>            /* *int*_t */
 #else
 # include <float.h>             /* DBL_MAX_10_EXP */
@@ -78,37 +78,43 @@
 # define SWAP_COUNT_STATEMENT /**/
 #endif
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 198901L )
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+# define EXCHANGE_INLINE inline
+#else
+# define EXCHANGE_INLINE /**/
+#endif /* C99 */
+
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 198901L )
 # define EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,mST)       \
     if (1UL==(msize_ratio)) {                                               \
         switch ((malignsize)) {                                             \
             case 1UL :                                                      \
-                { char t = *(ma);                                           \
-                  *(ma)=*(mb), *(mb)=t;                                     \
+                { char exch_t = *(ma);                                      \
+                  *(ma)=*(mb), *(mb)=exch_t;                                \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 2UL :                                                      \
-                { uint_least16_t t                                          \
+                { uint_least16_t exch_t                                     \
                   = (uint_least16_t)(*((uint_least16_t *)(ma)));            \
                   *((uint_least16_t *)(ma)) = *((uint_least16_t *)(mb)),    \
-                  *((uint_least16_t *)(mb)) = t;                            \
+                  *((uint_least16_t *)(mb)) = exch_t;                       \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 4UL :                                                      \
-                { uint_least32_t t                                          \
+                { uint_least32_t exch_t                                     \
                   = (uint_least32_t)(*((uint_least32_t *)(ma)));            \
                   *((uint_least32_t *)(ma)) = *((uint_least32_t *)(mb)),    \
-                  *((uint_least32_t *)(mb)) = t;                            \
+                  *((uint_least32_t *)(mb)) = exch_t;                       \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 8UL :                                                      \
-                { uint_least64_t t                                          \
+                { uint_least64_t exch_t                                     \
                   = (uint_least64_t)(*((uint_least64_t *)(ma)));            \
                   *((uint_least64_t *)(ma)) = *((uint_least64_t *)(mb)),    \
-                  *((uint_least64_t *)(mb)) = t;                            \
+                  *((uint_least64_t *)(mb)) = exch_t;                       \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
@@ -132,38 +138,38 @@
     if (1UL==(msize_ratio)) {                                               \
         switch ((malignsize)) {                                             \
             case 1UL :                                                      \
-                { char t = *(ma);                                           \
-                  *(ma)=*(mb), *(mb)=t;                                     \
+                { char exch_t = *(ma);                                      \
+                  *(ma)=*(mb), *(mb)=exch_t;                                \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 2UL :                                                      \
-                { unsigned short t                                          \
+                { unsigned short exch_t                                     \
                   = (unsigned short)(*((unsigned short *)(ma)));            \
                   *((unsigned short *)(ma)) = *((unsigned short *)(mb)),    \
-                  *((unsigned short *)(mb)) = t;                            \
+                  *((unsigned short *)(mb)) = exch_t;                       \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 4UL :                                                      \
-                { SWAP_TYPE4 t                                              \
+                { SWAP_TYPE4 exch_t                                         \
                   = (SWAP_TYPE4)(*((SWAP_TYPE4 *)(ma)));                    \
                   *((SWAP_TYPE4 *)(ma)) = *((SWAP_TYPE4 *)(mb)),            \
-                  *((SWAP_TYPE4 *)(mb)) = t;                                \
+                  *((SWAP_TYPE4 *)(mb)) = exch_t;                           \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             case 8UL :                                                      \
-                { SWAP_TYPE8 t                                              \
+                { SWAP_TYPE8 exch_t                                         \
                   = (SWAP_TYPE8)(*((SWAP_TYPE8 *)(ma)));                    \
                   *((SWAP_TYPE8 *)(ma)) = *((SWAP_TYPE8 *)(mb)),            \
-                  *((SWAP_TYPE8 *)(mb)) = t;                                \
+                  *((SWAP_TYPE8 *)(mb)) = exch_t;                           \
                 }                                                           \
                 mST;                                                        \
             break;                                                          \
             default :                                                       \
                 mswapf((ma),(mb),(msize));                                  \
-            break;                                                        \
+            break;                                                          \
         }                                                                   \
     } else mswapf((ma),(mb),(msize)) /* caller provides terminating semicolon */
 #endif
@@ -209,9 +215,7 @@ static const unsigned long bitmask[EXCHANGE_NTYPES] = {
    the above diagram.
 */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 char *blockmove(char *pa, char *pb, char *pc,
     void (*swapf)(char *, char *, size_t))
 {
@@ -226,9 +230,7 @@ char *blockmove(char *pa, char *pb, char *pc,
 
 /* Reverse the order of elements [first,beyond) in array at base by swapping. */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void reverse(char *base, size_t first, size_t beyond, size_t size,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
 {
@@ -252,9 +254,7 @@ void reverse(char *base, size_t first, size_t beyond, size_t size,
 #define USE_SPECIAL_CASE_ROTATION_BY_1 1
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void protate(register char *pf, register char *pm, register char *pb,
     size_t size, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio)
@@ -296,7 +296,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                 switch (alignsize) {
                     case 8UL :
                         for (; pm<pb; pm+=alignsize,pf+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least64_t t=*((uint_least64_t *)pm);
                             for (px=pm-size; px>=pf; px-=size) {
                                *((uint_least64_t *)(px+size))
@@ -335,7 +335,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                     break;
                     case 4UL : /* uint_least32_t */
                         for (; pm<pb; pm+=alignsize,pf+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least32_t t=*((uint_least32_t *)pm);
                             for (px=pm-size; px>=pf; px-=size) {
                                *((uint_least32_t *)(px+size))
@@ -366,7 +366,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                     break;
                     case 2UL : /* uint_least16_t */
                         for (; pm<pb; pm+=alignsize,pf+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least16_t t=*((uint_least16_t *)pm);
                             for (px=pm-size; px>=pf; px-=size) {
                                *((uint_least16_t *)(px+size))
@@ -431,7 +431,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                 switch (alignsize) {
                     case 8UL :
                         for (pb-=size; pf<pm; pf+=alignsize,pb+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least64_t t=*((uint_least64_t *)pf);
                             for (px=pf; px<pb; px+=size) {
                                *((uint_least64_t *)px)
@@ -470,7 +470,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                     break;
                     case 4UL : /* uint_least32_t */
                         for (pb-=size; pf<pm; pf+=alignsize,pb+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least32_t t=*((uint_least32_t *)pf);
                             for (px=pf; px<pb; px+=size) {
                                *((uint_least32_t *)px)
@@ -501,7 +501,7 @@ void protate(register char *pf, register char *pm, register char *pb,
                     break;
                     case 2UL : /* uint_least16_t */
                         for (pb-=size; pf<pm; pf+=alignsize,pb+=alignsize) {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
                             uint_least16_t t=*((uint_least16_t *)pf);
                             for (px=pf; px<pb; px+=size) {
                                *((uint_least16_t *)px)
@@ -558,9 +558,7 @@ void protate(register char *pf, register char *pm, register char *pb,
 
 /* rotation using element indices */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void irotate(register char *base, size_t f, size_t m, size_t b, size_t size,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
 {
@@ -575,9 +573,7 @@ void irotate(register char *base, size_t f, size_t m, size_t b, size_t size,
    suitable for swapping and rotation functions.
 */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 size_t alignment_size(char *base, size_t size)
 {
     int i, t;  /* general integer variables */
@@ -601,9 +597,7 @@ size_t alignment_size(char *base, size_t size)
 /* count is in chars */
 /* versions to swap by char (8 bits), int_least16_t, int_least32_t, int_least64_t */
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void swap1(register char *pa, register char *pb, register size_t count)
 {
     register char t;
@@ -611,12 +605,10 @@ void swap1(register char *pa, register char *pb, register size_t count)
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void swap2(char *pa, char *pb, register size_t count)
 {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     register int_least16_t *px=(int_least16_t *)pa, *py=(int_least16_t *)pb, t;
 #else
     register short *px=(short *)pa, *py=(short *)pb, t;
@@ -625,12 +617,10 @@ void swap2(char *pa, char *pb, register size_t count)
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void swap4(char *pa, char *pb, register size_t count)
 {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     register int_least32_t *px=(int_least32_t *)pa, *py=(int_least32_t *)pb, t;
 #else
 # if INT_MAX == 2147483647
@@ -643,12 +633,10 @@ void swap4(char *pa, char *pb, register size_t count)
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void swap8(char *pa, char *pb, register size_t count)
 {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     register int_least64_t *px=(int_least64_t *)pa, *py=(int_least64_t *)pb, t;
 #else
 # if DBL_MAX_10_EXP == 308
@@ -661,9 +649,7 @@ void swap8(char *pa, char *pb, register size_t count)
 }
 
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+EXCHANGE_INLINE
 void (*swapn(size_t alignsize))(char *, char *, size_t)
 {
     /* Determine size of data chunks to copy for element swapping.  Size is
@@ -678,9 +664,7 @@ void (*swapn(size_t alignsize))(char *, char *, size_t)
 }
 
 static /* prevent multiple definition conflicts */
-#if defined(__STDC__) && __STDC_VERSION__ > 199900UL
-inline /* only applicable for C99 et. seq. */
-#endif
+EXCHANGE_INLINE
 void exchange(char *array, register size_t i, register size_t j, size_t count, register size_t size)
 {
     char *pa, *pb;
@@ -697,6 +681,8 @@ void exchange(char *array, register size_t i, register size_t j, size_t count, r
     printf("\n");
 #endif /* DEBUG_EXCHANGE */
 }
+
+#undef EXCHANGE_INLINE
 
 #if UNDEFINE_DEBUG_EXCHANGE
 #undef DEBUG_EXCHANGE

@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.15 2017-11-21T05:23:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is zz_build_str.h version 1.16 2018-03-06T20:05:42Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "zz_build_str" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/relaymail/include/s.zz_build_str.h */
 
 /* version-controlled header file version information */
-#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.15 2017-11-21T05:23:23Z"
+#define ZZ_BUILD_STR_H_VERSION "zz_build_str.h 1.16 2018-03-06T20:05:42Z"
 
 /* Some preprocessors and/or compilers generate strings for __func__ or __FUNCTION__ */
 /* ANSI/ISO C99 defines __func__ as a pre-defined identifier which
@@ -105,7 +105,7 @@
 #endif
 /* __STDC__, __STDC_VERSION__ >= 199001L */
 #ifndef PP__FUNCTION__
-# if ( defined(__STDC__) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199001L))
+# if ( defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199001L))
 #  define PP__FUNCTION__
 # endif
 #endif

@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2017 %Q%. \ makefile.overrides $
+#$Id: ~\|^` @(#)%M% copyright 2017-2018 %Q%. \ makefile.overrides $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -62,8 +62,10 @@ MAKEFILES_READ += makefile.overrides.$(CCBASE)-$(OS)-$(FQDN)
 #OPTIMIZE = -Oz
 # One way to force C99 for all files...
 #C = $(C99)
+#C = $(C11)
 # Or force C89/90 for all...
 #C99 = $(C)
+#C11 = $(C)
 # profiling
 #PROFILE =
 #PROFILE = -pg

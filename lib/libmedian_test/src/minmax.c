@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    minmax.c copyright 2016-2017 Bruce Lilly.   \ minmax.c $
+* $Id: ~|^` @(#)    minmax.c copyright 2016-2018 Bruce Lilly.   \ minmax.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is minmax.c version 1.5 dated 2017-12-15T21:49:15Z. \ $ */
+/* $Id: ~|^` @(#)   This is minmax.c version 1.8 dated 2018-03-20T19:29:03Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.minmax.c */
@@ -46,19 +46,17 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: minmax.c ~|^` @(#)"
 #define SOURCE_MODULE "minmax.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-12-15T21:49:15Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-03-20T19:29:03Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void find_minmax(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *,const void *), unsigned int options,
     char **pmn, char **pmx)
@@ -84,21 +82,20 @@ __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
                 find_minmax(base,first+na,beyond,size,compar,options,&mnb,&mxb);
                 /* overall min is smaller of *mna, *mnb; similarly for max */
                 /* stability requires choosing mna if mna compares equal to mnb */
-                if (0<OPT_COMPAR(mna,mnb,options,/**/)) mn=mnb; else mn=mna;
+                if (0<OPT_COMPAR(mna,mnb,options)) mn=mnb; else mn=mna;
                 /* stability requires choosing mxb if mxa compares equal to mxb */
-                if (0<OPT_COMPAR(mxa,mxb,options,/**/)) mx=mxa; else mx=mxb;
+                if (0<OPT_COMPAR(mxa,mxb,options)) mx=mxa; else mx=mxb;
             } else { /* nmemb==2UL */
                 char *a, *z;
                 /* first and last (i.e. second) elements */
                 a=base+first*size,z=a+size;
-                if (0<OPT_COMPAR(a,z,options,/**/)) mn=z,mx=a; else mn=a,mx=z; /* stable */
+                if (0<OPT_COMPAR(a,z,options)) mn=z,mx=a; else mn=a,mx=z; /* stable */
             }
 #if DEBUG_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu, min=%lu, max=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,
 (mn-base)/size,(mx-base)/size);
-print_some_array(base,first,beyond-1UL,"/* "," */",options);
 }
 #endif
             *pmn=mn, *pmx=mx;
@@ -107,9 +104,7 @@ print_some_array(base,first,beyond-1UL,"/* "," */",options);
     }
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void select_minmax(char *base,size_t first,size_t beyond,size_t size,
     int(*compar)(const void *,const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,

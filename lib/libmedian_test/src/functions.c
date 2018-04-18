@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    functions.c copyright 2016-2017 Bruce Lilly.   \ functions.c $
+* $Id: ~|^` @(#)    functions.c copyright 2016-2018 Bruce Lilly.   \ functions.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.5 dated 2017-12-28T22:17:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.14 dated 2018-04-15T02:34:28Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,15 +46,27 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2017-12-28T22:17:34Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-04-15T02:34:28Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+/* return bit number of least-significant 1 bit in mask
+   0x01U -> 0U, 0x02U -> 1U, 0x03U -> 0U, etc.
+*/
+extern unsigned int ls_bit_number(unsigned int mask)
+{
+    unsigned int ret;
+
+    for (ret=0U; ret<32U; ret++)
+        if (0U!=(mask&(0x01U<<ret))) break;
+    return ret;
+}
 
 /* name of the type of test for a particular function
    side-effect: sets appropriate tests, unsets inappropriate tests
@@ -89,6 +101,7 @@ const char *function_type(unsigned int func, unsigned int *ptests)
         case FUNCTION_NETWORKSORT :        /*FALLTHROUGH*/
         case FUNCTION_P9QSORT :            /*FALLTHROUGH*/
         case FUNCTION_QSORT :              /*FALLTHROUGH*/
+        case FUNCTION_RUNSORT :            /*FALLTHROUGH*/
         case FUNCTION_SELSORT :            /*FALLTHROUGH*/
         case FUNCTION_SHELLSORT :          /*FALLTHROUGH*/
         case FUNCTION_SMOOTHSORT :         /*FALLTHROUGH*/
@@ -114,8 +127,9 @@ const char *function_name(unsigned int func)
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     switch (func) {
-        case FUNCTION_IBMQSORT :           /*FALLTHROUGH*/
-        case FUNCTION_BMQSORT :            ret = "Bentley&McIlroy qsort";
+        case FUNCTION_IBMQSORT :           ret = "Bentley&McIlroy qsort";
+        break;
+        case FUNCTION_BMQSORT :            ret = "uninstrumented Bentley&McIlroy qsort";
         break;
         case FUNCTION_DEDSORT :            ret = "dedicated sort";
         break;
@@ -133,7 +147,7 @@ const char *function_name(unsigned int func)
         break;
         case FUNCTION_LOGSORT :            ret = "log sort";
         break;
-        case FUNCTION_MBMQSORT :           ret = "modified Bentley&McIlroy qsort";
+        case FUNCTION_MBMQSORT :           ret = "modified qsort";
         break;
         case FUNCTION_MERGESORT :          ret = "in-place mergesort";
         break;
@@ -145,12 +159,15 @@ const char *function_name(unsigned int func)
         break;
         case FUNCTION_P9QSORT :            ret = "plan9 qsort";
         break;
-        case FUNCTION_QSELECT_SORT :       /*FALLTHROUGH*/
-        case FUNCTION_QSELECT :            ret = "quickselect";
+        case FUNCTION_QSELECT_SORT :       ret = "quickselect-sort";
+        break;
+        case FUNCTION_QSELECT :            ret = "multiple quickselect";
         break;
         case FUNCTION_QSORT :              ret = "library qsort";
         break;
         case FUNCTION_QSORT_WRAPPER :      ret = "qsort_wrapper";
+        break;
+        case FUNCTION_RUNSORT :            ret = "merge runs";
         break;
         case FUNCTION_SELSORT :            ret = "selection sort";
         break;
@@ -164,218 +181,351 @@ const char *function_name(unsigned int func)
         break;
         case FUNCTION_SYSMERGESORT :       ret = "system mergesort";
         break;
-        case FUNCTION_WQSORT :             ret = "lopsided quickselect";
+        case FUNCTION_WQSORT :             ret = "lopsided";
         break;
-        case FUNCTION_YQSORT :             ret = "Yaroslavskiy's dual-pivot sort";
+        case FUNCTION_YQSORT :             ret = "Yaroslavskiy's sort";
         break;
         case FUNCTION_QSELECT_S :          ret = "quickselect_s";
         break;
         default :
-            (V)fprintf(stderr, "// %s: %s line %d: unrecognized func %u\n", __func__, source_file, __LINE__, func);
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized func %u */\n", __func__, source_file, __LINE__, func);
             errno = EINVAL;
         break;
     }
     return ret;
 }
 
-unsigned int test_function(const char *prog, long *refarray, int *array,
-    struct data_struct *data_array, double *darray, long *larray,
-    struct data_struct **parray, unsigned int func, size_t n, size_t count,
-    unsigned int *pcsequences, unsigned int *ptsequences, unsigned int *ptests,
-    unsigned int options, int col, double timeout,
-    void (*f)(int, void *, const char *, ...), void *log_arg,
-    unsigned char *flags, float **pwarray, float **puarray, float **psarray,
-    size_t *marray, size_t *pdn)
+int (*type_context_comparator(unsigned int type, unsigned char *flags))(const void *, const void *, void *)
 {
-    unsigned char c;
-    unsigned int errs=0U;
-    int type;
-    size_t size;
-    int (*compar)(const void *, const void *);
-    int (*compar_s)(const void *, const void *, void *);
-    void (*swapf)(void *, void *, size_t);
-#if DEBUG_CODE
-    const char *fname = function_name(func);
-#endif
-    const char *ftype = function_type(func, ptests), *typename
-#if SILENCE_WHINEY_COMPILERS
-        ="gcc-fodder"
-#endif
-        ;
+    int (*ret)(const void *, const void *, void *)=NULL;
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (type) {
+        case DATA_TYPE_CHAR :           return NULL;
+        break;
+        case DATA_TYPE_SHORT :
+            if (0U!=flags['i']) return ishortcmp_s; else return shortcmp_s;
+        break;
+        case DATA_TYPE_INT :
+            if (0U!=flags['i']) return iintcmp_s; else return intcmp_s;
+        break;
+        case DATA_TYPE_LONG :
+            if (0U!=flags['i']) return ilongcmp_s; else return longcmp_s;
+        break;
+        case DATA_TYPE_FLOAT :          return NULL;
+        break;
+        case DATA_TYPE_DOUBLE :
+            if (0U!=flags['i']) return idoublecmp_s; else return doublecmp_s;
+        break;
+        case DATA_TYPE_STRUCT :
+            if (0U!=flags['<']) {
+                if (0U!=flags['i']) return idate12dcmp_s; else return date12dcmp_s;
+            } else {
+                if (0U!=flags['i']) return itimecmp_s; else return timecmp_s;
+            }
+        break;
+        case DATA_TYPE_STRING :
+            if (0U!=flags['i']) return idata_struct_strcmp_s; else return data_struct_strcmp_s;
+        break;
+        case DATA_TYPE_POINTER :
+            if (0U!=flags['i']) return iindcmp_s; else return indcmp_s;
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : return NULL;
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
+    }
+    return ret;
+}
+
+int (*uninstrumented_comparator(int (*compar)(const void *,const void *,...)))(const void *, const void *,...)
+{
+    if (compar==(int (*)(const void *,const void *,...))ishortcmp) return shortcmp;
+    if (compar==(int (*)(const void *,const void *,...))iintcmp) return intcmp;
+    if (compar==(int (*)(const void *,const void *,...))ilongcmp) return longcmp;
+    if (compar==(int (*)(const void *,const void *,...))idoublecmp) return doublecmp;
+    if (compar==(int (*)(const void *,const void *,...))idate12dcmp) return date12dcmp;
+    if (compar==(int (*)(const void *,const void *,...))itimecmp) return timecmp;
+    if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp) return data_struct_strcmp;
+    if (compar==(int (*)(const void *,const void *,...))iindcmp) return indcmp;
+    if (compar==(int (*)(const void *,const void *,...))ishortcmp_s) return shortcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))iintcmp_s) return intcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))ilongcmp_s) return longcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))idoublecmp_s) return doublecmp_s;
+    if (compar==(int (*)(const void *,const void *,...))idate12dcmp_s) return date12dcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))itimecmp_s) return timecmp_s;
+    if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp_s) return data_struct_strcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return indcmp_s;
+    return compar;
+}
+
+const char *comparator_name(int (*compar)(const void *, const void *,...))
+{
+    if (compar==(int (*)(const void *,const void *,...))shortcmp) return "shortcmp";
+    if (compar==(int (*)(const void *,const void *,...))ishortcmp) return "ishortcmp";
+    if (compar==(int (*)(const void *,const void *,...))intcmp) return "intcmp";
+    if (compar==(int (*)(const void *,const void *,...))iintcmp) return "iintcmp";
+    if (compar==(int (*)(const void *,const void *,...))longcmp) return "longcmp";
+    if (compar==(int (*)(const void *,const void *,...))ilongcmp) return "ilongcmp";
+    if (compar==(int (*)(const void *,const void *,...))doublecmp) return "doublecmp";
+    if (compar==(int (*)(const void *,const void *,...))idoublecmp) return "idoublecmp";
+    if (compar==(int (*)(const void *,const void *,...))date12dcmp) return "date12dcmp";
+    if (compar==(int (*)(const void *,const void *,...))idate12dcmp) return "idate12dcmp";
+    if (compar==(int (*)(const void *,const void *,...))timecmp) return "timecmp";
+    if (compar==(int (*)(const void *,const void *,...))itimecmp) return "itimecmp";
+    if (compar==(int (*)(const void *,const void *,...))data_struct_strcmp) return "data_struct_strcmp";
+    if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp) return "idata_struct_strcmp";
+    if (compar==(int (*)(const void *,const void *,...))indcmp) return "indcmp";
+    if (compar==(int (*)(const void *,const void *,...))iindcmp) return "iindcmp";
+    if (compar==(int (*)(const void *,const void *,...))shortcmp_s) return "shortcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))ishortcmp_s) return "ishortcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))intcmp_s) return "intcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))iintcmp_s) return "iintcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))longcmp_s) return "longcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))ilongcmp_s) return "ilongcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))doublecmp_s) return "doublecmp_s";
+    if (compar==(int (*)(const void *,const void *,...))idoublecmp_s) return "idoublecmp_s";
+    if (compar==(int (*)(const void *,const void *,...))date12dcmp_s) return "date12dcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))idate12dcmp_s) return "idate12dcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))timecmp_s) return "timecmp_s";
+    if (compar==(int (*)(const void *,const void *,...))itimecmp_s) return "itimecmp_s";
+    if (compar==(int (*)(const void *,const void *,...))data_struct_strcmp_s) return "data_struct_strcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp_s) return "idata_struct_strcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))indcmp_s) return "indcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return "iindcmp_s";
+    return "unknown";
+}
+
+int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, const void *)
+{
+    int (*ret)(const void *, const void *)=NULL;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
-        if ((0U==flags['h'])&&(NULL!=f))
-            f(LOG_INFO, log_arg,
-                "%s: %s %s start: array=%p, data_array=%p, darray=%p",
-                prog, fname, ftype,(void *)array,(void *)data_array,
-                (void *)darray);
+        (V)fprintf(stderr,"/* %s: type=%u, flags['i']=%u */\n",__func__,type,flags['i']);
 #endif
-    /* check flags, modify tests as requested */
-    /* first pass for test types */
-    for (c=0U; ; c++) {
-        /* supported flags */
-        switch (c) {
-            case 'a' :
-                if (0U != flags[c]) *ptests |= TEST_TYPE_ADVERSARY ;
-            break;
-            case 'C' :
-                if (0U != flags[c]) *ptests |= TEST_TYPE_CORRECTNESS ;
-            break;
-            case 't' :
-                if (0U != flags[c]) *ptests |= TEST_TYPE_THOROUGH ;
-            break;
-            case 'T' :
-                if (0U != flags[c]) *ptests |= TEST_TYPE_TIMING ;
-            break;
-        }
-        if (c == UCHAR_MAX) break; /* That's All Folks! */
-    }
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG))
-        if ((0U==flags['h'])&&(NULL!=f))
-            f(LOG_INFO, log_arg, "%s: %s %s flags 1st pass completed",
-                prog, fname, ftype);
-#endif
-    /* second pass for tests with data types */
-    for (c=0U; ; c++) {
-        /* supported flags */
-        switch (c) {
-            case 'A' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "string";
-                    type = DATA_TYPE_STRING;
-                    size = sizeof(struct data_struct);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = idata_struct_strcmp,
-                        compar_s = idata_struct_strcmp_s,
-                        swapf=NULL;
-                    else
-                        compar = data_struct_strcmp,
-                        compar_s = data_struct_strcmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            case 'F' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "double";
-                    type = DATA_TYPE_DOUBLE;
-                    size = sizeof(double);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = idoublecmp,
-                        compar_s = idoublecmp_s,
-                        swapf=NULL;
-                    else
-                        compar = doublecmp,
-                        compar_s = doublecmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            case 'I' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "integer";
-                    type = DATA_TYPE_INT;
-                    size = sizeof(int);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = iintcmp, compar_s = iintcmp_s,
-                        swapf=NULL;
-                    else
-                        compar = intcmp, compar_s = intcmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            case 'L' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "long";
-                    type = DATA_TYPE_LONG;
-                    size = sizeof(long);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = ilongcmp, compar_s = ilongcmp_s,
-                        swapf=NULL;
-                    else
-                        compar = longcmp, compar_s = longcmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            case 'P' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "pointer";
-                    type = DATA_TYPE_POINTER;
-                    size = sizeof(struct data_struct *);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = iindcmp, compar_s = iindcmp_s,
-                        swapf=NULL;
-                    else
-                        compar = indcmp, compar_s = indcmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            case 'S' :
-                if (0U != flags[c]) { /* test requested */
-                    typename = "structure";
-                    type = DATA_TYPE_STRUCT;
-                    size = sizeof(struct data_struct);
-                    if (0U != flags['i']) /* comparison/swap counts */
-                        compar = itimecmp, compar_s = itimecmp_s,
-                        swapf=NULL;
-                    else
-                        compar = timecmp, compar_s = timecmp_s,
-                        swapf=NULL;
-                } else { /* test not requested */
-                    continue;
-                }
-            break;
-            default : /* not a relevant flag */
-                if (c != UCHAR_MAX) continue;
-            break;
-        }
-        if (c == UCHAR_MAX) break; /* That's All Folks! */
-        /* typename is guaranteed to have been assigned a value by the above
-           switch statement whether or not (:-/) gcc's authors realize it...
-        */
-#if DEBUG_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG))
-            if (NULL!=f)
-                f(LOG_INFO, log_arg, "%s: %s %s flag %c tests",
-                    prog, fname, ftype, c);
-#endif
-        if (0U == errs) {
-            if (TEST_TYPE_CORRECTNESS == (TEST_TYPE_CORRECTNESS & *ptests)) {
-                errs +=  correctness_tests(type, size, refarray, larray, array,
-                    darray, data_array, parray, typename, compar, compar_s,
-                    swapf, options, prog, func, n, count,
-                    pcsequences, ptests, col, timeout, f, log_arg, flags,
-                    pwarray, puarray, psarray, marray, pdn);
+    switch (type) {
+        case DATA_TYPE_CHAR :          return NULL;
+        break;
+        case DATA_TYPE_SHORT :
+            if (0U!=flags['i']) return ishortcmp; else return shortcmp;
+        break;
+        case DATA_TYPE_INT :
+            if (0U!=flags['i']) return iintcmp; else return intcmp;
+        break;
+        case DATA_TYPE_LONG :
+            if (0U!=flags['i']) return ilongcmp; else return longcmp;
+        break;
+        case DATA_TYPE_FLOAT :          return NULL;
+        break;
+        case DATA_TYPE_DOUBLE :
+            if (0U!=flags['i']) return idoublecmp; else return doublecmp;
+        break;
+        case DATA_TYPE_STRUCT :
+            if (0U!=flags['<']) {
+                if (0U!=flags['i']) return idate12dcmp; else return date12dcmp;
+            } else {
+                if (0U!=flags['i']) return itimecmp; else return timecmp;
             }
-        }
-        if (0U == errs) {
-            if (TEST_TYPE_TIMING == (TEST_TYPE_TIMING & *ptests)) {
-                errs +=  timing_tests(type, size, refarray, larray, array,
-                    darray, data_array, parray, typename, compar, compar_s,
-                    swapf, options, prog, func, n, count,
-                    ptsequences, ptests, col, timeout, f, log_arg, flags,
-                    pwarray, puarray, psarray, marray, pdn);
-            }
-        }
+        break;
+        case DATA_TYPE_STRING :
+            if (0U!=flags['i']) return idata_struct_strcmp; else return data_struct_strcmp;
+        break;
+        case DATA_TYPE_POINTER :
+            if (0U!=flags['i']) return iindcmp; else return indcmp;
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : return NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : return NULL;
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
     }
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)) if ((0U==flags['h'])&&(NULL!=f)) {
-        if (0U!=flags['K']) fprintf(stderr, "/* ");
-        f(LOG_INFO, log_arg, "%s: %s %s %s tests completed: errs %u", prog,
-            fname, ftype, typename, errs);
-        if (0U!=flags['K']) fprintf(stderr, " */");
+    return ret;
+}
+
+size_t type_size(unsigned int type)
+{
+    size_t ret=0UL;
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (type) {
+        case DATA_TYPE_CHAR :           ret = sizeof(char);
+        break;
+        case DATA_TYPE_SHORT :          ret = sizeof(short);
+        break;
+        case DATA_TYPE_INT :            ret = sizeof(int);
+        break;
+        case DATA_TYPE_LONG :           ret = sizeof(long);
+        break;
+        case DATA_TYPE_FLOAT :          ret = sizeof(float);
+        break;
+        case DATA_TYPE_DOUBLE :         ret = sizeof(double);
+        break;
+        case DATA_TYPE_STRUCT :         ret = sizeof(struct data_struct);
+        break;
+        case DATA_TYPE_STRING :         ret = sizeof(struct data_struct);
+        break;
+        case DATA_TYPE_POINTER :        ret = sizeof(struct data_struct *);
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  ret = sizeof(uint_least8_t);
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : ret = sizeof(uint_least16_t);
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : ret = sizeof(uint_least32_t);
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : ret = sizeof(uint_least64_t);
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
     }
-#endif
-    return errs;
+    return ret;
+}
+
+void *type_array(unsigned int type)
+{
+    void *ret=NULL;
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (type) {
+        case DATA_TYPE_CHAR :           ret = NULL;
+        break;
+        case DATA_TYPE_SHORT :          ret = (void *)global_sharray;
+        break;
+        case DATA_TYPE_INT :            ret = (void *)global_iarray;
+        break;
+        case DATA_TYPE_LONG :           ret = (void *)global_larray;
+        break;
+        case DATA_TYPE_FLOAT :          ret = NULL;
+        break;
+        case DATA_TYPE_DOUBLE :         ret = (void *)global_darray;
+        break;
+        case DATA_TYPE_STRUCT :         ret = (void *)global_data_array;
+        break;
+        case DATA_TYPE_STRING :         ret = (void *)global_data_array;
+        break;
+        case DATA_TYPE_POINTER :        ret = (void *)global_parray;
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  ret = NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : ret = NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : ret = NULL;
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : ret = NULL;
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
+    }
+    return ret;
+}
+
+size_t type_alignment(unsigned int type)
+{
+    size_t size=type_size(type);
+    char *array=(char *)type_array(type);
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    if ((NULL==array)||(size==0UL)) return 0UL;
+    return alignment_size(array,size);
+}
+
+/* name of the data type to be tested */
+uint_least64_t type_max(unsigned int type)
+{
+    uint_least64_t ret=0;
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (type) {
+        case DATA_TYPE_CHAR :           ret = CHAR_MAX;
+        break;
+        case DATA_TYPE_SHORT :          ret = SHRT_MAX;
+        break;
+        case DATA_TYPE_INT :            ret = INT_MAX;
+        break;
+        case DATA_TYPE_LONG :           ret = LONG_MAX;
+        break;
+        case DATA_TYPE_FLOAT :          ret = LONG_MAX;
+        break;
+        case DATA_TYPE_DOUBLE :         ret = LONG_MAX;
+        break;
+        case DATA_TYPE_STRUCT :         ret = LONG_MAX;
+        break;
+        case DATA_TYPE_STRING :         ret = LONG_MAX;
+        break;
+        case DATA_TYPE_POINTER :        ret = LONG_MAX;
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  ret = UINT_LEAST8_MAX;
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : ret = UINT_LEAST16_MAX;
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : ret = UINT_LEAST32_MAX;
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : ret = UINT_LEAST64_MAX;
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
+    }
+    return ret;
+}
+
+const char *type_name(unsigned int type)
+{
+    const char *ret="unknown";
+
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (type) {
+        case DATA_TYPE_CHAR :           ret = "char";
+        break;
+        case DATA_TYPE_SHORT :          ret = "short";
+        break;
+        case DATA_TYPE_INT :            ret = "int";
+        break;
+        case DATA_TYPE_LONG :           ret = "long";
+        break;
+        case DATA_TYPE_FLOAT :          ret = "float";
+        break;
+        case DATA_TYPE_DOUBLE :         ret = "double";
+        break;
+        case DATA_TYPE_STRUCT :         ret = "struct";
+        break;
+        case DATA_TYPE_STRING :         ret = "string";
+        break;
+        case DATA_TYPE_POINTER :        ret = "pointer";
+        break;
+        case DATA_TYPE_UINT_LEAST8_T :  ret = "uint_least8_t";
+        break;
+        case DATA_TYPE_UINT_LEAST16_T : ret = "uint_least16_t";
+        break;
+        case DATA_TYPE_UINT_LEAST32_T : ret = "uint_least32_t";
+        break;
+        case DATA_TYPE_UINT_LEAST64_T : ret = "uint_least64_t";
+        break;
+        default :
+            (V)fprintf(stderr, "/* %s: %s line %d: unrecognized type %u */\n", __func__, source_file, __LINE__, type);
+            errno = EINVAL;
+        break;
+    }
+    return ret;
 }

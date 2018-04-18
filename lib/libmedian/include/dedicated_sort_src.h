@@ -1,3 +1,5 @@
+#ifndef DEDICATED_SORT_SRC_H_INCLUDED
+# define DEDICATED_SORT_SRC_H_INCLUDED 1
 /*INDENT OFF*/
 
 /* Description: common C source code for dedicated_sort and dedicated_sort_s */
@@ -9,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    dedicated_sort_src.h copyright 2017 Bruce Lilly.   \ dedicated_sort_src.h $
+* $Id: ~|^` @(#)    dedicated_sort_src.h copyright 2017-2018 Bruce Lilly.   \ dedicated_sort_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.9 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.12 dated 2018-04-18T01:15:25Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -48,7 +50,7 @@
 /* Minimum _XOPEN_SOURCE version for C99 (else illumos compilation fails) */
 #undef MAX_XOPEN_SOURCE_VERSION
 #undef MIN_XOPEN_SOURCE_VERSION
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
 # define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
@@ -94,30 +96,40 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-04-18T01:15:25Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017"
+#define COPYRIGHT_DATE "2017-2018"
 
 
 /* local header files needed */
 #include "quickselect_config.h" /* QUICKSELECT_INLINE */
 #include "exchange.h"           /* irotate protate EXCHANGE_SWAP */
+#include "indirect.h"           /* inplace_merge pointer_mergesort
+                                   rearrange_array
+                                */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-
-/* for assert.h */
-#if ! ASSERT_CODE
-# define NDEBUG 1
-#endif
 
 /* system header files */
 #include <assert.h>             /* assert */
 #include <errno.h>              /* errno E* (maybe errno_t [N1570 K3.2]) */
 #include <limits.h>             /* *_MAX */
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
+# include <stdalign.h>          /* alignas alignof etc. */
+#endif /* C11 */
 #include <stddef.h>             /* size_t NULL (maybe rsize_t) */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1 ) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L )
+# include <stdint.h>            /* (header not standardized pre-C99) SIZE_MAX
+                                   (maybe RSIZE_MAX (C11))
+                                */
+#endif /* C99 or later */
+#ifndef SIZE_MAX /* not standardized pre-C99 */
+# include <limits.h>            /* ULONG_MAX */
+# define SIZE_MAX ULONG_MAX
+#endif /* SIZE_MAX */
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # include <stdint.h>            /* *int*_t (maybe RSIZE_MAX [N1570 K3.4]) */
 # if __STDC_VERSION__ >= 201001L
     /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
@@ -125,714 +137,1610 @@
 #  include <stdlib.h>           /* (maybe errno_t rsize_t constraint_handler_t
                                    [N1570 K3.6]) */
 # endif /* N1570 */
-#else
+#else /* pre-C99 */
 # include <float.h>             /* DBL_MAX_10_EXP */
 #endif /* C99 or later */
-
-/* conformance */
-#ifndef SIZE_MAX /* not standardized pre-C99 */
-# define SIZE_MAX ULONG_MAX
+#if ASSERT_CODE + DEBUG_CODE
+# include <stdio.h>
 #endif
 
-/* macros */
-/* Comparison-exchange primitive macro used for sorting networks */
-#undef COMPARE_EXCHANGE
-#if SILENCE_WHINEY_COMPILERS /* no ambiguity here... */
-# define COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,msize_ratio) \
-   if(0<OPT_COMPAR(ma,mb,mopts,mc)) {                                         \
-       EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,/**/); }
-   /* Programmer's terminating semicolon is now an excess statement.
-      And this precludes a following "else".
-      Thanks :-/ gcc.
-   */
-#else
-# define COMPARE_EXCHANGE(ma,mb,mopts,mc,msize,mswapf,malignsize,msize_ratio) \
-   if(0<OPT_COMPAR(ma,mb,mopts,mc))                                           \
-       EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,/**/)
-    /* caller provides terminating semicolon */
-#endif
-
-/* Insertion sort using binary search to locate insertion position for
-   out-of-order element, followed by rotation to insert the element in position.
-   Adaptive search would use linear search for a sorted region of 3 or fewer
-      elements and binary search over 4 or more elements.  Linear search in
-      3 sorted elements requires 1-3 comparisons (average 2) whereas binary
-      search requires 2 comparisons always, but with slightly higher overhead.
-      At 4 elements, linear search requires 1-4 comparisons (average 2.5) and
-      binary search requires 2-3 comparisons (average log2(5) ~ 2.322) which
-      is a bit better.  But eliminating the test for the sorted region size and
-      always using binary search runs faster; eliminating the test compensates
-      for the overhead of binary search.
-   N.B. This works well for small arrays, but not for large nearly-sorted
-      arrays, where linear search is better due to the expectation that the
-      insertion point is closer than half the size of the sorted region.
-*/
-static QUICKSELECT_INLINE
-void isort_bs(char *base, size_t first, size_t beyond, size_t size, COMPAR_DECL,
-    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options)
-{
-    register size_t l, m, h, n, u=beyond-1UL;
-    char *pa, *pu=base+u*size;
-
-#if QUICKSELECT_INDIRECT
-    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
-#endif /* QUICKSELECT_INDIRECT */
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            if (0<COMPAR(pa,pa+size,context)) { /* skip over in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* binary search for insertion position */
-                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
-                        if (0>=COMPAR(pa,base+m*size,context)) h=m-1UL;
-                        else l=m+1UL;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating
-                   elements [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-            }
-        }
-#if QUICKSELECT_INDIRECT
-    } else { /* indirect */
-        register char *p;
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            p=*((char **)pa);
-            if (0<COMPAR(p,*((char**)(pa+size)),context)) {/* skip in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* binary search for insertion position */
-                    for (h=u,m=l+((h-l)>>1); l<=h; m=l+((h-l)>>1)) {
-                        if (0>=COMPAR(p,*((char**)(base+m*size)),context))
-                            h=m-1UL;
-                        else l=m+1UL;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating
-                   elements [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-            }
-        }
-    }
-#endif /* QUICKSELECT_INDIRECT */
-}
-
-/* In-place merge of two adjacent sorted sub-arrays using rotation of displaced
-   elements.
-   --------------------     -------------------
-   |  first  | second |  => | merged (sorted) |
-   --------------------     -------------------
-   _f___a_____b___c____u
-   |   |     |   |    |
-   --------------------
-   [f,a) is already merged
-   [a,b) is the remainder of the first sorted section
-   [b,c) contains (sorted) elements displaced from first section
-   [c,u) is the remainder of the second sorted section
-   initially a=f, b=c
-   While b==c (no elements displaced from first section), compare a,c.
-   When at least one element has been displaced from the first section, the
-      smallest displaced element is smaller than the element at a (because the
-      first section was in sorted order), so compare b,c to determine which
-      should be swapped with a.
-   Rotations are required to maintain [b,c) in sorted order when a is swapped
-      with b; this is expensive for large arrays.
-   When a reaches b, start new merge of [a,c) with [c,u) by setting b=c.
-   Merge is complete when a==c or b==u.
-*/
-static QUICKSELECT_INLINE
-void inplace_merge(char *base, size_t l, size_t m, size_t u, size_t size,
-    COMPAR_DECL,
-    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options)
-{
-    char *pl, *pm, *pr, *pu;  /* left, middle, right pointers to elements */
-    int c;
-
-    pl=base+l*size;
-    pr=pm=base+m*size;
-    pu=base+u*size;
-#if QUICKSELECT_INDIRECT
-    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
-#endif /* QUICKSELECT_INDIRECT */
-        while (pr<pu) {
-            A(l<=m);A(m<u);
-            /* Find and swap the first element of the left side which is larger
-               than the first element of the right side.  That element is almost
-               always within the first few elements, so use a linear scan
-               (binary search would be counterproductive).
-            */
-            for (; pl<pm; pl+=size) {
-                A(pl>=base+l*size);A(pl<pm);
-                c=COMPAR(pl,pm,context);
-                A(c>-2);A(c<2);
-                if (0<c) {
-                    /* *pl>*pm: displace it */
-                    EXCHANGE_SWAP(swapf,pl,pm,size,alignsize,size_ratio,/**/);
-                    pr+=size;
-                    break;
-                }
-            }
-            if (pl==pm) break; /* all on left <= smallest on right (@m); done */
-            pl+=size;
-            /* displaced element @pm, 2nd region start @pr, next to merge @pl */
-            while (pl<pm) {
-                if ((pr<pu)&&(0<COMPAR(pm,pr,context))) {
-                    EXCHANGE_SWAP(swapf,pl,pr,size,alignsize,size_ratio,/**/);
-                    pr+=size;
-                } else {
-                    EXCHANGE_SWAP(swapf,pl,pm,size,alignsize,size_ratio,/**/);
-                    if (pr>pm+size)
-                        protate(pm,pm+size,pr,size,swapf,alignsize,size_ratio);
-                }
-                pl+=size;
-            }
-            pm=pr;
-        }
-#if QUICKSELECT_INDIRECT
-    } else { /* indirect */
-        while (pr<pu) {
-            register char *p;
-            p=*((char **)pm);
-            A(l<=m);A(m<u);
-            /* Find and swap the first element of the left side which is larger
-               than the first element of the right side.  That element is almost
-               always within the first few elements, so use a linear scan
-               (binary search would be counterproductive).
-            */
-            for (; pl<pm; pl+=size) {
-                A(pl>=base+l*size);A(pl<pm);
-                c=COMPAR(*((char**)(pl)),p,context);
-                A(c>-2);A(c<2);
-                if (0<c) {
-                    /* *pl>*pm: displace it */
-                    EXCHANGE_SWAP(swapf,pl,pm,size,alignsize,size_ratio,/**/);
-                    pr+=size;
-                    break;
-                }
-            }
-            if (pl==pm) break; /* all on left <= smallest on right (@m); done */
-            pl+=size;
-            /* displaced element @pm, 2nd region start @pr, next to merge @pl */
-            while (pl<pm) {
-                if ((pr<pu)&&(0<COMPAR(p,*((char**)(pr)),context))) {
-                    EXCHANGE_SWAP(swapf,pl,pr,size,alignsize,size_ratio,/**/);
-                    pr+=size;
-                } else {
-                    EXCHANGE_SWAP(swapf,pl,pm,size,alignsize,size_ratio,/**/);
-                    if (pr>pm+size)
-                        protate(pm,pm+size,pr,size,swapf,alignsize,size_ratio);
-                }
-                pl+=size;
-            }
-            pm=pr;
-        }
-    }
-#endif /* QUICKSELECT_INDIRECT */
-}
-
-/* clutter removal */
-#undef PREFIX
-#undef RETURN
-#undef SUFFIX1
-#undef SUFFIX2
-#undef SUFFIX3
-#undef TEST
+/* shared data */
 #if __STDC_WANT_LIB_EXT1__
-# define PREFIX A(0==ret);ret=
-# define RETURN return ret
-# define SUFFIX1 A(NULL!=pivot);if(NULL==pivot)return ret=errno;
-# define SUFFIX2 A(0==ret);if(0!=ret)return ret;
-# define SUFFIX3 A(0==ret);return ret;
-# define TEST A(0==ret)
+# ifndef QUICKSELECT_LOOP
+#  define QUICKSELECT_LOOP quickselect_loop_s
+# endif
 #else
-# define PREFIX /**/
-# define RETURN return
-# define SUFFIX1 /**/
-# define SUFFIX2 /**/
-# define SUFFIX3 /**/
-# define TEST /**/
+# ifndef QUICKSELECT_LOOP
+#  define QUICKSELECT_LOOP quickselect_loop
+# endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
+#ifndef DEDICATED_SORT_SRC_FILE_HERE
+extern char dedicated_sort_src_file[];
+extern char dedicated_sort_src_file_initialized;
+#else
+/* not static; referenced by inline functions */
+char dedicated_sort_src_file[PATH_MAX];
+char dedicated_sort_src_file_initialized=0;
+#endif
+
+/* static data */
+static const size_t pointer_and_a_half = sizeof(char *)+(sizeof(char *)>>1);
+
+/* quickselect_loop declaration */
+#if ! defined(QUICKSELECT_LOOP_DECLARED)
+QUICKSELECT_EXTERN
+# include "quickselect_loop_decl.h"
+;
+# define QUICKSELECT_LOOP_DECLARED 1
+#endif /* QUICKSELECT_LOOP_DECLARED */
+
+/* insertion sort is used for size_ratio 2, modest nmemb */
+#include "insertion_sort_src.h" /* isort_bs */
+
+/* static functions */
+/* Indirect mergesort using a limited-size array of pointers/indices; the
+   size limit arises because the function is called for limited size
+   sub-arrays.
+*/
+/* Merge sort is stable, uses minimal comparisons (except for some input
+   sequences, such as binary (ones and zeros) and constant-value).
+*/
+static QUICKSELECT_INLINE
+int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
+    size_t nmemb, size_t size, COMPAR_DECL, size_t alignsize, size_t size_ratio,
+    unsigned int table_index, size_t cache_sz, size_t pbeyond,
+    unsigned int options)
+{
+    int r=0;
+    if ((NULL==base)
+    || (0UL==size)
+    || (NULL==compar)
+    ) {
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
+            /* F'ing whiney compilers bitch about printing compar pointer */
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: ERROR: size=%lu, base=%p, compar=%s */\n",
+                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)size,
+                (void *)base,comparator_name(compar));
+        }
+#endif
+        r=errno=EINVAL;
+    } else {
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
+                "size=%lu, size_ratio=%lu, pbeyond=%lu, compar=%s, options=0x%x"
+                " */\n",__func__,dedicated_sort_src_file,__LINE__,
+                (unsigned long)first,(unsigned long)beyond,(unsigned long)nmemb,
+                (unsigned long)size,(unsigned long)size_ratio,
+                (unsigned long)pbeyond,comparator_name(compar),options);
+        }
+#endif
+        if (1UL<nmemb) {
+            if (NULL==pointerswap) pointerswap=swapn(sizeof(char *));
+            if (NULL==pointerswap) abort();
+            options&=~(QUICKSELECT_RESTRICT_RANK);
+            if ((0UL!=pbeyond) /* initally zero, non-zero in callees */
+#if 0 /* pbeyond != 0UL may be sufficient */
+                /* size_ratio==1 and size==sizeof(char*) are logically necessary
+                   conditions if pointers have indeed been allocated; but they
+                   could also apply under other circumstances (i.e. they are not
+                   conclusive).
+                */
+            &&(1UL==size_ratio)&&(size==sizeof(char *))
+                /* indirection option is another non-conclusive condition */
+            &&((QUICKSELECT_INDIRECT)==(options&(QUICKSELECT_INDIRECT)))
+#endif
+            ) { /* already have pointers for indirect mergesort */
+                pointer_mergesort((char **)base,first,base,beyond-first,pbeyond,
+                    COMPAR_ARGS,table_index,cache_sz,options);
+            } else {
+                size_t n, *indices, npointers=nmemb+((nmemb+1UL)>>1);
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
+                _Alignas((QUICKSELECT_DEFAULT_ALIGNMENT))
+#endif /* C11 */
+                char *pointers[npointers];
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) {
+                    (V)fprintf(stderr,
+                        "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
+                        "npointers=%lu, pointers@%p */\n",
+                        __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+                        (unsigned long)beyond,(unsigned long)nmemb,
+                        (unsigned long)npointers,(void *)pointers);
+print_some_array(base,first,beyond-1UL,"/* base array: "," */",options);
+                }
+#endif
+                /* initialize pointers */
+                (V)set_array_pointers(pointers,npointers,base,size,first,beyond);
+                /* mergesort using indirection; pointers moved, not data */
+                pointer_mergesort(pointers,0UL,base,nmemb,nmemb,COMPAR_ARGS,
+                    table_index,cache_sz,options|(QUICKSELECT_INDIRECT));
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
+print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: "," */",options|(QUICKSELECT_INDIRECT));
+#endif
+                /* rearrangement of data elements is more efficiently performed
+                   using indices to the data elements, rather than pointers
+                */
+                indices=convert_pointers_to_indices(base,nmemb,size,pointers,
+                    nmemb,(size_t *)pointers,first,beyond);
+                A(NULL!=indices);
+#if defined(DEBUGGING)
+                npiconversions+=nmemb;
+#endif
+                /* Rearrange the data elements according to sorted order using
+                   the indices derived from the sorted pointers. No data element
+                   is moved more than once.  However, there is poor locality of
+                   access for random original data order.
+                */
+                n=rearrange_array(base,nmemb,size,indices,nmemb,first,beyond,
+                    alignsize);
+                if (n>npointers) r=errno;
+#if defined(DEBUGGING)
+                nmoves+=n;
+if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
+print_some_array(base,first,beyond-1UL,"/* rearranged base array: "," */",options);
+#endif
+            }
+        }
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+                "options=0x%x */\n",__func__,dedicated_sort_src_file,__LINE__,
+                first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return r;
+}
+
+static QUICKSELECT_INLINE
+int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    register char *pa, *pb, *pc;
+
+    A(first+3UL==beyond);
+    pa=base+first*size, pb=pa+size, pc=pb+size;
+    /* Unrolled merge sort and decision tree each use the same average number of
+       comparisons for random input; unrolled merge sort favors already-sorted
+       input (2 comparisons) at the expense of inverted organ-pipe inputs (3
+       comparisons) whereas the decision tree favors inverted organ-pipe inputs
+       (2 comparisons) at the expense of already-sorted inputs (3 comparisons).
+       Both methods use 3 comparisons for reverse-sorted inputs and 2
+       comparisons for (non-inverted) organ-pipe inputs.  The decision tree is
+       slightly faster (but lacks partial order stability) for large element
+       size (size_ratio).
+       Divide-and-conquer is slower than decision tree and in-place merge sort;
+       it is not used.
+       Indirect merge sort is slowest; it is not used.
+       Insertion sort is stable and slightly faster than unrolled merge sort for
+       very high size_ratio (> ~ 200); at 3 elements it uses the same average
+       number of comparisons as merge sort and the decision tree.
+       If partial order stability is required, the stable unrolled merge sort is
+       used except at very high size_ratio (where stable insertion sort is
+       used); otherwise the slightly faster decision tree is used.
+    */
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+        /* simplified merge for 3 elements */
+        /* split */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,3UL,options);
+        }
+#endif
+        CX(pb,pc);
+        if (0<OPT_COMPAR(pa,pb,options)) {
+            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,SWAP_COUNT_STATEMENT);
+            CX(pb,pc);
+        }
+#if defined(DEBUGGING)
+        nmerges++; /* this was a merge */
+#endif
+    } else {
+        /* decision tree (minimum comparisons (same as in-place merge sort)
+           and slightly faster than stable divide-and-conquer for large
+           size_ratio, but not stable)
+        */
+        /* Optimized comparison-based sort:
+           average 32/13 comparisons and 11/13 swaps over all
+           possible inputs (including duplicate and all-equal
+           values), 8/3 comparisons and 7/6 swaps averaged
+           over distinct-valued inputs.  Bitonic and right-rotated
+           inputs use 2 comparisons.  Already-sorted, left-rotated,
+           and reversed inputs require 3 comparisons.  Favoring
+           bitonic inputs here slightly offsets the disadvantage
+           for those inputs of uniform sampling, which favors
+           reversed inputs.
+        */
+        register int c, d;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: non-stable decision tree: first=%lu, beyond"
+                "=%lu, size_ratio=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+                (unsigned long)beyond,(unsigned long)size_ratio);
+        }
+#endif
+        c=OPT_COMPAR(pa,pc,options), d=OPT_COMPAR(pb,pc,options);
+        if (0>=c) { /*c>=a*/
+            if (0<d) { /*b>c*/
+                EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
+                    SWAP_COUNT_STATEMENT);
+            } else if (0>d) { /*b<c*/
+                if ((0==c)
+                ||(0<OPT_COMPAR(pa,pb,options))
+                ) { /*a==c||a>b*/
+                    EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,
+                        size_ratio,SWAP_COUNT_STATEMENT);
+                }
+            }
+        } else { /*a>c*/
+            if (0>d) { /*b<c*/
+                EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
+                    SWAP_COUNT_STATEMENT);
+            } else if ((0<d)
+            &&(0>OPT_COMPAR(pa,pb,options))
+            ) { /*c<a<b*/
+                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                    SWAP_COUNT_STATEMENT);
+            }
+            EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,
+                SWAP_COUNT_STATEMENT);
+        }
+    }
+#if ASSERT_CODE > 1
+    A(0>=OPT_COMPAR(pa,pb,options));
+    A(0>=OPT_COMPAR(pb,pc,options));
+#endif
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+static QUICKSELECT_INLINE
+int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+
+    A(first+4UL==beyond);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond,(unsigned long)size_ratio);
+    }
+#endif
+#if QUICKSELECT_MAX_NETWORK > 3
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE)))
+#endif
+    {
+        /* unrolled in-place merge sort */
+        /* simplified in-place merge sort for 4 elements */
+        /* split */
+        register char *pa, *pb, *pc, *pd;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,4UL);
+        }
+# endif
+        pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+        /* These compare-exchanges can be performed in parallel. */
+        CX(pa,pb); CX(pc,pd);
+        /* merge pieces */
+        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+#if QUICKSELECT_MAX_NETWORK > 3
+    } else {
+        /* sorting network */
+        /* sorting network: 5 comparisons in 3 parallel groups */
+        register char *pa, *pb, *pc, *pd;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "first=%lu, beyond=%lu, options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,4UL,first,beyond,options);
+        }
+# endif
+        pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+        /* parallel group 1 */
+        CX(pa,pc); CX(pb,pd);
+        /* parallel group 2 */
+        CX(pa,pb); CX(pc,pd);
+        /* parallel group 3 */
+        CX(pb,pc);
+# if ASSERT_CODE > 1
+        A(0>=OPT_COMPAR(pa,pb,options));
+        A(0>=OPT_COMPAR(pb,pc,options));
+        A(0>=OPT_COMPAR(pc,pd,options));
+# endif
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+static QUICKSELECT_INLINE
+int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    A(first+5UL==beyond);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond,(unsigned long)size_ratio);
+    }
+#endif
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+        /* Simplified merge for 5 elements; average 7.5 comparisons. */
+        char *pa, *pb;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,5UL);
+        }
+#endif
+        pa=base+first*size, pb=pa+size;
+        /* split 2-3 elements */
+        CX(pa,pb);
+        ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+    } else {
+#if QUICKSELECT_MAX_NETWORK < 5
+        /* Simplified merge for 5 elements; average 7.5 comparisons (but more data movement than d&c or network). */
+        char *pa, *pb;
+#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,5UL);
+        }
+#  endif
+        pa=base+first*size, pb=pa+size;
+        /* split 2-3 elements */
+        CX(pa,pb);
+        ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+#else
+        /* network sort for small subarrays */
+        /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
+        /* non-stable, not optimized for expensive comparisons */
+        /* 9 comparisons with 4 parallelizable groups */
+        register char *pa, *pb, *pc, *pd, *pe;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,5UL,options);
+        }
+# endif
+        pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
+        pe=pd+size;
+        /* not stable (Batcher merge-exchange network) */
+        /* parallel group 1 */
+        CX(pa,pe);
+        /* parallel group 2 */
+        CX(pa,pc); CX(pb,pd);
+        /* parallel group 3 */
+        CX(pa,pb); CX(pc,pe);
+        /* parallel group 4 */
+        CX(pc,pd); CX(pb,pe);
+        /* parallel group 5 */
+        CX(pb,pc); CX(pd,pe);
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+
+static QUICKSELECT_INLINE
+int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    A(first+6UL==beyond);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond,(unsigned long)size_ratio);
+    }
+#endif
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+        /* Simplified merge for 6 elements; average 10.576 comparisons. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,6UL);
+        }
+#endif
+        /* split 3-3 elements */
+        ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+    } else {
+#if QUICKSELECT_MAX_NETWORK < 6
+        /* Simplified merge for 6 elements; average 10.576 comparisons (but more data movement than d&c or network). */
+#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,6UL);
+        }
+#  endif
+        /* split 3-3 elements */
+        ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+#else
+        /* network sort for small subarrays */
+        /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
+        /* non-stable, not optimized for expensive comparisons */
+        /* 12 comparisons with 6 parallelizable groups */
+        register char *pa, *pb, *pc, *pd, *pe, *pf;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,6UL,options);
+        }
+# endif
+        pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
+        pe=pd+size, pf=pe+size;
+        /* parallel group 1 */
+        CX(pa,pe); CX(pb,pf);
+        /* parallel group 2 */
+        CX(pa,pc); CX(pb,pd);
+        /* parallel group 3 */
+        CX(pa,pb); CX(pc,pe); CX(pd,pf);
+        /* parallel group 4 */
+        CX(pc,pd); CX(pe,pf);
+        /* parallel group 5 */
+        CX(pb,pe);
+        /* parallel group 6 */
+        CX(pb,pc); CX(pd,pe);
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+static QUICKSELECT_INLINE
+int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    A(first+7UL==beyond);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond,(unsigned long)size_ratio);
+    }
+#endif
+    /* In-place merge sort w/ binary search if stability or minimum comparisons
+       is required; otherwise sorting network is faster. Divide-and-conquer by
+       partitioning is slower; it is not used.
+    */
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+            /* Simplified merge for 7 elements; average 14.034 comparisons and 9.077 swap equivalents. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+            if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: unrolled in-place mergesort "
+                    "nmemb=%lu */\n",
+                    __func__,dedicated_sort_src_file,__LINE__,7UL);
+            }
+#endif
+            /* split 3-4 elements */
+            ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
+                alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+            ret= ded_sort4(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
+                alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+            /* merge pieces */
+            inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
+                swapf,alignsize,size_ratio,options);
+    } else {
+#if QUICKSELECT_MAX_NETWORK < 7
+        return EAGAIN;
+#else
+        /* network sort for small subarrays */
+        /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
+        /* Can't return EAGAIN because ded_sort8 is called to sort pieces
+           for merging.  Can't call quickselect_loop because that will simply
+           return here, causing an infinite loop until the stack overflows.
+           Divide-and-conquer by partitoning would only have a small run-time
+           advantage, and only for very high (> 1720) size_ratio.
+        */
+        /* non-stable, not optimized for expensive comparisons */
+        /* 16 comparisons with 6 parallelizable groups; average 6.196 swaps */
+        register char *pa, *pb, *pc, *pd, *pe, *pf, *pg;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,7UL,options);
+        }
+# endif
+        pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
+        pe=pd+size, pf=pe+size, pg=pf+size;
+        /* not stable (! Batcher merge-exchange network) */
+        /* parallel group 1 */
+        CX(pa,pe); CX(pb,pf); CX(pc,pg);
+        /* parallel group 2 */
+        CX(pa,pc); CX(pb,pd); CX(pe,pg);
+        /* parallel group 3 */
+        CX(pa,pb); CX(pc,pe); CX(pd,pf);
+        /* parallel group 4 */
+        CX(pc,pd); CX(pe,pf);
+        /* parallel group 5 */
+        CX(pb,pe); CX(pd,pg);
+        /* parallel group 6 */
+        CX(pb,pc); CX(pd,pe); CX(pf,pg);
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+static QUICKSELECT_INLINE
+int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
+    size_t size_ratio, unsigned int table_index, size_t cache_sz,
+    size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    A(first+8UL==beyond);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond,(unsigned long)size_ratio);
+    }
+#endif
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+        /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,8UL);
+        }
+#endif
+        /* split 4-4 elements */
+        ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+    } else {
+#if QUICKSELECT_MAX_NETWORK < 8
+# if 1
+        return EAGAIN;
+# else
+        /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
+#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,8UL);
+        }
+#  endif
+        /* split 4-4 elements */
+        ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
+# endif
+#else
+        /* network sort for small subarrays */
+        /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
+        /* Can't return EAGAIN because ded_sort8 is called to sort pieces
+           for merging.  Can't call quickselect_loop because that will simply
+           return here, causing an infinite loop until the stack overflows.
+           Divide-and-conquer by partitoning would only have a small run-time
+           advantage, and only for very high (> 8192) size_ratio.
+        */
+        /* non-stable, not optimized for expensive comparisons */
+        /* 19 comparisons with 6 parallelizable groups; 8.295 average swaps */
+        register char *pa, *pb, *pc, *pd, *pe, *pf, *pg, *ph;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                "options=0x%x */\n",__func__,
+                dedicated_sort_src_file,__LINE__,8UL,options);
+        }
+# endif
+        pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
+        pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size;
+        /* parallel group 1 */
+        CX(pa,pe); CX(pb,pf); CX(pc,pg); CX(pd,ph);
+        /* parallel group 2 */
+        CX(pa,pc); CX(pb,pd); CX(pe,pg); CX(pf,ph);
+        /* parallel group 3 */
+        CX(pa,pb); CX(pc,pe); CX(pd,pf); CX(pg,ph);
+        /* parallel group 4 */
+        CX(pc,pd); CX(pe,pf);
+        /* parallel group 5 */
+        CX(pb,pe); CX(pd,pg);
+        /* parallel group 6 */
+        CX(pb,pc); CX(pd,pe); CX(pf,pg);
+#endif
+    }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+/* In-place top-down merge sort.  The in-place merge uses rotations to
+   maintain displaced elements in sorted order; the rotations can be
+   expensive for large arrays.
+*/
+static QUICKSELECT_INLINE
+int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
+    size_t size, COMPAR_DECL, void (*swapf)(char *, char *, size_t),
+    size_t alignsize, size_t size_ratio, unsigned int table_index,
+    size_t cache_sz, size_t pbeyond, unsigned int options)
+{
+    register int ret=0;
+    register size_t mid, na;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, size_ratio=%lu, "
+            "pbeyond=%lu, options=0x%x */\n",__func__,dedicated_sort_src_file,__LINE__,
+            (unsigned long)nmemb,(unsigned long)size_ratio,
+            (unsigned long)pbeyond,options);
+    }
+#endif
+    /* split */
+    na=(nmemb>>1); mid=first+na;
+    /* No median-of-medians for sub-arrays (if divide-and-conquer is used) */
+    options&=~(QUICKSELECT_RESTRICT_RANK);
+    /* Sorting pieces could proceed in parallel.  */
+    ret= QUICKSELECT_LOOP(base,first,mid,size,COMPAR_ARGS,NULL,0UL,0UL,
+        swapf,alignsize,size_ratio,table_index,cache_sz,pbeyond,options,
+        NULL,NULL);
+    ret= QUICKSELECT_LOOP(base,mid,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
+        swapf,alignsize,size_ratio,table_index,cache_sz,pbeyond,options,
+        NULL,NULL);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        nmemb=test_array_sort(base,first,mid-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=mid-1UL) {
+            fprintf(stderr,"/* %s: %s line %d: first=%lu, mid=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,first,mid,options);
+            print_some_array(base,first,mid-1UL,"/* "," */",options);
+            abort();
+        }
+        nmemb=test_array_sort(base,mid,beyond-1UL,size,compar,
+            options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: %s line %d: mid=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,mid,beyond,options);
+            print_some_array(base,mid,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    /* merge pieces */
+    inplace_merge(base,first,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
+        size_ratio,options);
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        nmemb=test_array_sort(base,first,beyond-1UL,size,
+            compar,options,0U,NULL,NULL);
+        if (nmemb!=beyond-1UL) {
+            fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,first,beyond,options);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+            abort();
+        }
+    }
+#endif
+    return ret;
+}
+
+/* Dedicated (not divide-and-conquer) sorting.
+   Return zero if sorting is completed.
+   Return EAGAIN to direct caller to use divide-and-conquer.
+   Return EINVAL for caller error (shouldn't happen for internal calls).
+*/
 /* definition */
-#if __STDC_WANT_LIB_EXT1__
-# include "dedicated_sort_s_decl.h"
-#else /* __STDC_WANT_LIB_EXT1__ */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static
+#endif
 # include "dedicated_sort_decl.h"
-#endif /* __STDC_WANT_LIB_EXT1__ */
 {
-#if __STDC_WANT_LIB_EXT1__
-    errno_t ret=0;
-#endif /* __STDC_WANT_LIB_EXT1__ */
+    DEDICATED_SORT_RETURN_TYPE ret=0;
+    size_t nmemb;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-    if ((char)0==file_initialized) initialize_file();
+    if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-    if (beyond>first) {
-        size_t n=beyond-first;
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if ((char)0==dedicated_sort_src_file_initialized) {
+        (V)path_basename(__FILE__,dedicated_sort_src_file,PATH_MAX);
+        dedicated_sort_src_file_initialized++;
+    }
+#endif
+    A(256UL<=cache_sz); A(beyond>first);
+    if (beyond<=first+1UL) { /* nmemb <= 1UL */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: ERROR: first=%lu >= beyond=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+                (unsigned long)beyond);
+        }
+#endif
+        A(beyond>first+1UL);
+        return EINVAL; /* shouldn't happen */
+    } else if (((nmemb=beyond-first)>7UL)&&(nmemb>(cache_sz>>2))/*no overflow*/
+    && (((nmemb*pointer_and_a_half>cache_sz)) /* indirect mergesort */
+    || (nmemb*size>cache_sz)) /* others */
+    ) {
+    /* N.B. Never return EAGAIN for nmemb<8 (network sort 2-7 is faster than
+       divide-and-conquer, even for huge element sizes, and in-place merge sort
+       is faster than stable partition sort and uses fewer comparisons)
+    */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: EAGAIN for divide-and-conquer nmemb=%lu, "
+                " size=%lu, cache_sz=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb,
+                (unsigned long)size,(unsigned long)cache_sz);
+        }
+#endif
+        return EAGAIN; /* caller should use divide-and-conquer */
+    } else { /* at least 2 elements */
         char *pa, *pb;
 
-        /* Sorting networks are only implemented for 2<=n<=12;
-           n==1 is by definition sorted (don't attempt to split/merge) --
-           options determine whether to use a network or merge or insertion
-           sort.
-        */
-        if ((12UL<n)
-        ||((2UL<n)
-          &&((0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
-             ||(0U==(options&(0x01U<<n)&(QUICKSELECT_NETWORK_MASK)))
-            )
-          )
-        ) {
-            /* Insertion sort (for speed in some cases) or merge sort (for
-               minimum number of comparisons); both are stable.
-            */
-            if ((INPLACE_MERGE_CUTOFF<=n)
-               ||(0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
-            ) {
-                /* in-place merge sort using rotation */
-                size_t mid, na;
-                /* split */
-                na=(n>>1); mid=first+na;
-                /* use recursion to sort pieces */
-                if (1UL<na) {
-                    PREFIX DEDICATED_SORT(base,first,mid,size,COMPAR_ARGS,swapf,
-                        alignsize, size_ratio, options); SUFFIX2
-                }
-                A(first+na+1UL<beyond);
-                PREFIX DEDICATED_SORT(base,mid,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize, size_ratio, options); SUFFIX2
-                /* merge pieces */
-                inplace_merge(base,first,mid,beyond,size,COMPAR_ARGS,
-                    swapf,alignsize,size_ratio,options);
-            } else {
-                /* Insertion sort iterative loop. */
-                /* Implementation by insertion of first out-of-place element
-                   into sorted remainder (except for trivial case).
-                */
-                /* Find extent of rightmost sorted run of elements. */
-                /* n is the index of the out-of-place element immediately to
-                   the left of the rightmost sorted run of elements
-                */
-                isort_bs(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
-                    size_ratio,options);
-            }
-            RETURN ;
-        }
-#define CX(ma,mb) COMPARE_EXCHANGE(ma,mb,options,context,size,swapf,alignsize,\
-   size_ratio)
-        switch (n) {
+        switch (nmemb) {
+#if ASSERT_CODE
+            /* cases should be excluded by outer if test */
+            case 0UL : /*FALLTHROUGH*/
             case 1UL : /* shouldn't happen... */
-                A(2UL<=n);
-                PREFIX errno=EINVAL;
-            RETURN ;
+                A(2UL<=nmemb);
+                ret= errno=EINVAL;
+            break;
+#endif /* ASSERT_CODE */
             case 2UL : /* 1 comparison, <=1 swap; low overhead; stable */
                 pa=base+first*size;
                 pb=pa+size;
-                CX(pa,pb); /* 0,1 */
-            RETURN ;
-#if QUICKSELECT_NETWORK_MASK & 0x08U
-            case 3UL : /* stable network or optimized decision tree sort of 3 */
-# if QUICKSELECT_STABLE
-                if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
-                    char *pc;
-                    pa=base+first*size; pb=pa+size; pc=pb+size;
-                    /* stable, but always 3 comparisons, cannot be parallelized */
-                    CX(pa,pb); /* 0,1 */
-                    CX(pb,pc); /* 1,2 */
-                    CX(pa,pb); /* 0,1 */
-                } else
-# endif /* QUICKSELECT_STABLE */
-# if FAVOR_SORTED /* favor already-sorted, reverse-sorted input sequences */
-                {   /* Optimized comparison-based sort:
-                       average 32/13 comparisons and 11/13 swaps over all
-                       possible inputs (including duplicate and all-equal
-                       values), 8/3 comparisons and 7/6 swaps averaged
-                       over distinct-valued inputs.  Already-sorted and
-                       reversed inputs use 2 comparisons.  Bitonic and rotated
-                       inputs require 3 comparisons.
-                    */
-                    /* not stable */
-                    char *pc;
-                    int c, d;
-                    pa=base+first*size; pb=pa+size; pc=pb+size;
-                    c=OPT_COMPAR(pa,pb,options,context),
-                        d=OPT_COMPAR(pb,pc,options,context);
-                    if (0>=c) { /*b>=a*/
-                        if (0<d) { /*b>c*/
-                            if (0==c) { /*a==b*/
-                                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,
-                                    size_ratio,/**/); /* 0,2 */
-                            } else { /*b>a,b>c*/
-                                if (0<OPT_COMPAR(pa,pc,options,context)) /*a>c*/
-                                    EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,
-                                        size_ratio,/**/); /* 0,2 */
-                                EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,
-                                    size_ratio,/**/); /* 1,2 */
-                            }
-                        }
-                    } else { /*a>b*/
-                        if (0<=d) /*b>=c*/
-                            EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,
-                                /**/); /* 0,2 */
-                        else { /*c>b*/
-                            if (0<OPT_COMPAR(pa,pc,options,context)) /*a>c*/
-                                EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,
-                                    size_ratio,/**/); /* 0,2 */
-                            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
-                                /**/); /* 0,1 */
-                        }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    (V)fprintf(stderr,
+                        "/* %s: %s line %d: compare-exchange nmemb=%lu, first="
+                        "%lu */\n",__func__,dedicated_sort_src_file,__LINE__,
+                        (unsigned long)nmemb,(unsigned long)first);
+                }
+#endif
+                CX(pa,pb);
+            break;
+            case 3UL :
+                ret = ded_sort3(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 4UL :
+                ret = ded_sort4(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 5UL :
+                ret = ded_sort5(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
+                    size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 6UL :
+                ret = ded_sort6(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
+                    size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 7UL :
+                ret = ded_sort7(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
+                    size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 8UL :
+                ret = ded_sort8(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
+                    size_ratio,table_index,cache_sz,pbeyond,options);
+            break;
+            case 9UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE)))
+                ) {
+#if QUICKSELECT_MAX_NETWORK > 8
+                    /* 25 comparisons in 9 parallel groups; average 12.811 swaps. */
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
                     }
-                }
-# else /* ! FAVOR_SORTED */
-                {   /* Optimized comparison-based sort:
-                       average 32/13 comparisons and 11/13 swaps over all
-                       possible inputs (including duplicate and all-equal
-                       values), 8/3 comparisons and 7/6 swaps averaged
-                       over distinct-valued inputs.  Bitonic and right-rotated
-                       inputs use 2 comparisons.  Already-sorted, left-rotated,
-                       and reversed inputs require 3 comparisons.  Favoring
-                       bitonic inputs here slightly offsets the disadvantage
-                       for those inputs of uniform sampling, which favors
-                       reversed inputs.
-                    */
-                    /* not stable */
-                    char *pc;
-                    int c, d;
-                    pa=base+first*size; pb=pa+size; pc=pb+size;
-                    c=OPT_COMPAR(pa,pc,options,context),
-                        d=OPT_COMPAR(pb,pc,options,context);
-                    if (0>=c) { /*c>=a*/
-                        if (0<d) { /*b>c*/
-                            EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
-                                /**/); /* 1,2 */
-                        } else if (0>d) { /*b<c*/
-                            if ((0==c)
-                            ||(0<OPT_COMPAR(pa,pb,options,context))
-                            ) { /*a==c||a>b*/
-                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,
-                                    size_ratio,/**/); /* 0,1 */
-                            }
-                        }
-                    } else { /*a>c*/
-                        if (0>d) { /*b<c*/
-                            EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
-                                /**/); /* 1,2 */
-                        } else if ((0<d)
-                        &&(0>OPT_COMPAR(pa,pb,options,context))
-                        ) { /*c<a<b*/
-                            EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
-                                /**/); /* 0,1 */
-                        }
-                        EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,
-                            /**/); /* 0,2 */
-                    }
-                }
-# endif /* FAVOR_SORTED */
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x08U */
-#if QUICKSELECT_NETWORK_MASK & 0x010U
-            case 4UL : /* 6 or 5 comparisons with 1 or 2 parallelizable groups */
-# if QUICKSELECT_STABLE
-                if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
-                    char *pc, *pd;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    /* 6 comparisons, 5 groups (only one of which contains more than one comparison) */
-                    CX(pa,pb); /* 0,1 */ CX(pb,pc); /* 1,2 */
-                    /* parallel group */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
-                    /* end of group */
-                    CX(pb,pc); /* 1,2 */
-                    CX(pa,pb); /* 0,1 */
-                } else
-# endif /* QUICKSELECT_STABLE */
-                {
-                    char *pc, *pd;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    /* not stable (Batcher merge-exchange network) */
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size, pj=ph+size;
                     /* parallel group 1 */
-                    CX(pa,pc); /* 0,2 */ CX(pb,pd); /* 1,3 */
+                    CX(pa,pb); CX(pd,pe); CX(pg,ph);
                     /* parallel group 2 */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
+                    CX(pb,pc); CX(pe,pf); CX(ph,pj);
                     /* parallel group 3 */
-                    CX(pb,pc); /* 1,2 */
-                }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x010U */
-#if QUICKSELECT_NETWORK_MASK & 0x020U
-            case 5UL : /* 10 or 9 comparisons with 3 or 4 parallelizable groups */
-# if QUICKSELECT_STABLE
-                if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
-                    char *pc, *pd, *pe;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    pe=pd+size;
-                    /* 10 comparisons, 3 opportunities for parallelism */
-                    CX(pa,pb); /* 0,1 */
-                    CX(pb,pc); /* 1,2 */
-                    /* parallel group */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
-                    /* end of group */
-                    CX(pb,pc); /* 1,2 */
-                    CX(pa,pb); /* 0,1 */
-                } else
-# endif /* QUICKSELECT_STABLE */
-                {
-                    char *pc, *pd, *pe;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    pe=pd+size;
-                    /* not stable (Batcher merge-exchange network) */
-                    /* parallel group 1 */
-                    CX(pa,pe); /* 0,4 */
-                    /* parallel group 2 */
-                    CX(pa,pc); /* 0,2 */ CX(pb,pd); /* 1,3 */
-                    /* parallel group 3 */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pe); /* 2,4 */
+                    CX(pa,pb); CX(pd,pe); CX(pg,ph); CX(pc,pf);
                     /* parallel group 4 */
-                    CX(pc,pd); /* 2,3 */ CX(pb,pe); /* 1,4 */
+                    CX(pa,pd); CX(pb,pe); CX(pf,pj);
                     /* parallel group 5 */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
-                }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x020U */
-#if QUICKSELECT_NETWORK_MASK & 0x040U
-            case 6UL : /* 15 or 12 comparisons w/ 5 or 6 parallelizable groups */
-# if QUICKSELECT_STABLE
-                if (0U!=(options&(QUICKSELECT_STABLE))) { /* request stable sort */
-                    char *pc, *pd, *pe, *pf;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    pe=pd+size; pf=pe+size;
-                    /* 15 comparisons (more than average quicksort),
-                       5 opportunities for parallelism
-                    */
-                    /* equivalent to unrolled insertion sort or bubble sort */
-                    CX(pa,pb); /* 0,1 */
-                    CX(pb,pc); /* 1,2 */
-                    /* parallel group */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pa,pb);/* 0,1 */ CX(pc,pd);/* 2,3 */ CX(pe,pf);/* 4,5 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
-                    /* end of group */
-                    /* parallel group */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pd); /* 2,3 */
-                    /* end of group */
-                    CX(pb,pc); /* 1,2 */
-                    CX(pa,pb); /* 0,1 */
-                } else
-# endif /* QUICKSELECT_STABLE */
-                {
-                    char *pc, *pd, *pe, *pf;
-                    pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                    pe=pd+size; pf=pe+size;
-                    /* not stable (Batcher merge-exchange network) */
-                    /* parallel group 1 */
-                    CX(pa,pe); /* 0,4 */ CX(pb,pf); /* 1,5 */
-                    /* parallel group 2 */
-                    CX(pa,pc); /* 0,2 */ CX(pb,pd); /* 1,3 */
-                    /* parallel group 3 */
-                    CX(pa,pb);/* 0,1 */ CX(pc,pe);/* 2,4 */ CX(pd,pf);/* 3,5 */
-                    /* parallel group 4 */
-                    CX(pc,pd); /* 2,3 */ CX(pe,pf); /* 4,5 */
-                    /* parallel group 5 */
-                    CX(pb,pe); /* 1,4 */
+                    CX(pd,pg); CX(pe,ph); CX(pc,pf);
                     /* parallel group 6 */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
+                    CX(pa,pd); CX(pb,pe); CX(pf,ph); CX(pc,pg);
+                    /* parallel group 7 */
+                    CX(pb,pd); CX(pe,pg);
+                    /* parallel group 8 */
+                    CX(pc,pe); CX(pf,pg);
+                    /* parallel group 9 */
+                    CX(pc,pd);
+#else
+                    return EAGAIN;
+#endif
+                } else { /* simplified in-place merge sort for 9 elements */
+                    /* split 4-5 using ded_sort4 and ded_sort5 */
+                    /* average 20.326 comparisons and 14.58 swap equivalents */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    /* These sorts can be performed in parallel. */
+                    (V)ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort5(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x040U */
-#if QUICKSELECT_NETWORK_MASK & 0x080U
-            case 7UL : /* 16 comparisons in 6 parallel groups */ /* not stable */
-                { char *pc, *pd, *pe, *pf, *pg;
-                pa=base+first*size; pb=pa+size;
-                pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size; pg=pf+size;
-                /* parallel group 1 */
-                    CX(pa,pe);/* 0,4 */ CX(pb,pf);/* 1,5 */ CX(pc,pg);/* 2,6 */
-                /* parallel group 2 */
-                    CX(pa,pc);/* 0,2 */ CX(pb,pd);/* 1,3 */ CX(pe,pg);/* 4,6 */
-                /* parallel group 3 */
-                    CX(pa,pb);/* 0,1 */ CX(pc,pe);/* 2,4 */ CX(pd,pf);/* 3,5 */
-                /* parallel group 4 */
-                    CX(pc,pd); /* 2,3 */ CX(pe,pf); /* 4,5 */
-                /* parallel group 5 */
-                    CX(pb,pe); /* 1,4 */ CX(pd,pg); /* 3,6 */
-                /* parallel group 6 */
-                    CX(pb,pc);/* 1,2 */ CX(pd,pe);/* 3,4 */ CX(pf,pg);/* 5,6 */
+            break;
+            case 10UL : /* 29 comparisons in 9 parallel groups */
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 9
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size, pj=ph+size;
+                    pk=pj+size;
+                    /* parallel group 1 */
+                    CX(pa,pf); CX(pb,pg); CX(pc,ph); CX(pd,pj); CX(pe,pk);
+                    /* parallel group 2 */
+                    CX(pa,pd); CX(pb,pe); CX(pf,pj); CX(pg,pk);
+                    /* parallel group 3 */
+                    CX(pa,pc); CX(pd,pg); CX(ph,pk);
+                    /* parallel group 4 */
+                    CX(pa,pb); CX(pc,pe); CX(pf,ph); CX(pj,pk);
+                    /* parallel group 5 */
+                    CX(pb,pc); CX(pd,pf); CX(pe,pg); CX(ph,pj);
+                    /* parallel group 6 */
+                    CX(pb,pd); CX(pc,pf); CX(pe,ph); CX(pg,pj);
+                    /* parallel group 7 */
+                    CX(pc,pd); CX(pg,ph);
+                    /* parallel group 8 */
+                    CX(pd,pe); CX(pf,pg);
+                    /* parallel group 9 */
+                    CX(pe,pf);
+#else
+                    return EAGAIN;
+#endif
+                } else {
+                    /* simplified in-place merge sort for 10 elements */
+                    /* split 5-5 using ded_sort5 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort5(base,first,first+5UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort5(base,first+5UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+5UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x080U */
-#if QUICKSELECT_NETWORK_MASK & 0x0100U
-            case 8UL : /* 19 comparisons in 6 parallel groups */ /* not stable */
-                { char *pc, *pd, *pe, *pf, *pg, *ph;
-                pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                pe=pd+size; pf=pe+size; pg=pf+size; ph=pg+size;
-                /* parallel group 1 */
-                    CX(pa,pe); /* 0,4 */ CX(pb,pf); /* 1,5 */
-                    CX(pc,pg); /* 2,6 */ CX(pd,ph); /* 3,7 */
-                /* parallel group 2 */
-                    CX(pa,pc); /* 0,2 */ CX(pb,pd); /* 1,3 */
-                    CX(pe,pg); /* 4,6 */ CX(pf,ph); /* 5,7 */
-                /* parallel group 3 */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pe); /* 2,4 */
-                    CX(pd,pf); /* 3,5 */ CX(pg,ph); /* 6,7 */
-                /* parallel group 4 */
-                    CX(pc,pd); /* 2,3 */ CX(pe,pf); /* 4,5 */
-                /* parallel group 5 */
-                    CX(pb,pe); /* 1,4 */ CX(pd,pg); /* 3,6 */
-                /* parallel group 6 */
-                    CX(pb,pc);/* 1,2 */ CX(pd,pe);/* 3,4 */ CX(pf,pg);/* 5,6 */
+            break;
+            case 11UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 10
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size, pj=ph+size;
+                    pk=pj+size, pl=pk+size;
+                    /* parallel group 1 */
+                    CX(pb,pl); CX(pc,pk); CX(pd,pj); CX(pe,ph); CX(pf,pg); 
+                    /* parallel group 2 */
+                    CX(pa,pg); CX(pb,pe); CX(pc,pd); CX(ph,pl); CX(pj,pk);
+                    /* parallel group 3 */
+                    CX(pa,pb); CX(pc,pf); CX(pd,pe); CX(ph,pj); CX(pk,pl);
+                    /* parallel group 4 */
+                    CX(pa,pc); CX(pb,pf); CX(pe,pg); CX(pj,pk);
+                    /* parallel group 5 */
+                    CX(pb,pj); CX(pc,pd); CX(pe,ph); CX(pf,pk); CX(pg,pl);
+                    /* parallel group 6 */
+                    CX(pb,pe); CX(pd,pf); CX(pg,pk); CX(ph,pj);
+                    /* parallel group 7 */
+                    CX(pb,pc); CX(pd,pe); CX(pf,ph); CX(pg,pj);
+                    /* parallel group 8 */
+                    CX(pc,pd); CX(pe,pf); CX(pg,ph);
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+                        nmemb=test_array_sort(base,first,beyond-1UL,size,
+                            compar,options,0U,NULL,NULL);
+                        if (nmemb!=beyond-1UL) {
+                            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                                __func__,__LINE__,first,beyond,options);
+                            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+                            abort();
+                        }
+                    }
+# endif
+#else
+                    return EAGAIN;
+#endif
+                } else {
+                    /* simplified in-place merge sort for 11 elements */
+                    /* split 5-6 using ded_sort5 and ded_sort6 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort5(base,first,first+5UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort6(base,first+5UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+5UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x0100U */
-#if QUICKSELECT_NETWORK_MASK & 0x0200U
-            case 9UL : /* 25 comparisons in 9 parallel groups */ /* not stable */
-                { char *pc, *pd, *pe, *pf, *pg, *ph, *pj;
-                pa=base+first*size; pb=pa+size; pc=pb+size; pd=pc+size;
-                pe=pd+size; pf=pe+size; pg=pf+size; ph=pg+size; pj=ph+size;
-                /* parallel group 1 */
-                    CX(pa,pb);/* 0,1 */ CX(pd,pe);/* 3,4 */ CX(pg,ph);/* 6,7 */
-                /* parallel group 2 */
-                    CX(pb,pc);/* 1,2 */ CX(pe,pf);/* 4,5 */ CX(ph,pj);/* 7,8 */
-                /* parallel group 3 */
-                    CX(pa,pb); /* 0,1 */ CX(pd,pe); /* 3,4 */
-                    CX(pg,ph); /* 6,7 */ CX(pc,pf); /* 2,5 */
-                /* parallel group 4 */
-                    CX(pa,pd);/* 0,3 */ CX(pb,pe);/* 1,4 */ CX(pf,pj);/* 5,8 */
-                /* parallel group 5 */
-                    CX(pd,pg);/* 3,6 */ CX(pe,ph);/* 4,7 */ CX(pc,pf);/* 2,5 */
-                /* parallel group 6 */
-                    CX(pa,pd); /* 0,3 */ CX(pb,pe); /* 1,4 */
-                    CX(pf,ph); /* 5,7 */ CX(pc,pg); /* 2,6 */
-                /* parallel group 7 */
-                    CX(pb,pd); /* 1,3 */ CX(pe,pg); /* 4,6 */
-                /* parallel group 8 */
-                    CX(pc,pe); /* 2,4 */ CX(pf,pg); /* 5,6 */
-                /* parallel group 9 */
-                    CX(pc,pd); /* 2,3 */
+            break;
+            case 12UL :
+#if QUICKSELECT_MAX_NETWORK > 11
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size,
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size,
+                    pj=ph+size, pk=pj+size, pl=pk+size, pm=pl+size;
+                    /* parallel group 1 */
+                    CX(pa,pb);CX(pc,pd);CX(pe,pf);CX(pg,ph);CX(pj,pk);CX(pl,pm);
+                    /* parallel group 2 */
+                    CX(pa,pc);CX(pb,pd);CX(pe,pg);CX(pf,ph);CX(pj,pl);CX(pk,pm);
+                    /* parallel group 3 */
+                    CX(pa,pe); CX(pb,pc); CX(pf,pg); CX(ph,pm); CX(pk,pl);
+                    /* parallel group 4 */
+                    CX(pb,pf); CX(pd,ph); CX(pe,pj); CX(pg,pl);
+                    /* parallel group 5 */
+                    CX(pa,pe); CX(pc,pg); CX(pd,pj); CX(pf,pk); CX(ph,pm);
+                    /* parallel group 6 */
+                    CX(pb,pf); CX(pc,pd); CX(pg,pl); CX(pj,pk);
+                    /* parallel group 7 */
+                    CX(pb,pe); CX(pd,pf); CX(pg,pj); CX(ph,pl);
+                    /* parallel group 8 */
+                    CX(pc,pe); CX(pf,pg); CX(ph,pk);
+                    /* parallel group 9 */
+                    CX(pd,pe); CX(ph,pj);
+                } else
+#endif
+                {
+                    /* simplified in-place merge sort for 12 elements */
+                    /* split 6-6 using ded_sort6 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort6(base,first,first+6UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort6(base,first+6UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+6UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x0200U */
-#if QUICKSELECT_NETWORK_MASK & 0x0400U
-            case 10UL : /* 29 comparisons in 9 parallel groups */ /* not stable */
-                { char *pc, *pd, *pe, *pf, *pg, *ph, *pj, *pk;
-                pa=base+first*size; pb=pa+size;
-                pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size; pg=pf+size;
-                ph=pg+size; pj=ph+size; pk=pj+size;
-                /* parallel group 1 */
-                    CX(pa,pf);/* 0,5 */ CX(pb,pg);/* 1,6 */ CX(pc,ph);/* 2,7 */
-                    CX(pd,pj); /* 3,8 */ CX(pe,pk); /* 4,9 */
-                /* parallel group 2 */
-                    CX(pa,pd); /* 0,3 */ CX(pb,pe); /* 1,4 */
-                    CX(pf,pj); /* 5,8 */ CX(pg,pk); /* 6,9 */
-                /* parallel group 3 */
-                    CX(pa,pc);/* 0,2 */ CX(pd,pg);/* 3,6 */ CX(ph,pk);/* 7,9 */
-                /* parallel group 4 */
-                    CX(pa,pb); /* 0,1 */ CX(pc,pe); /* 2,4 */
-                    CX(pf,ph); /* 5,7 */ CX(pj,pk); /* 8,9 */
-                /* parallel group 5 */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pf); /* 3,5 */
-                    CX(pe,pg); /* 4,6 */ CX(ph,pj); /* 7,8 */
-                /* parallel group 6 */
-                    CX(pb,pd); /* 1,3 */ CX(pc,pf); /* 2,5 */
-                    CX(pe,ph); /* 4,7 */ CX(pg,pj); /* 6,8 */
-                /* parallel group 7 */
-                    CX(pc,pd); /* 2,3 */ CX(pg,ph); /* 6,7 */
-                /* parallel group 8 */
-                    CX(pd,pe); /* 3,4 */ CX(pf,pg); /* 5,6 */
-                /* parallel group 9 */
-                    CX(pe,pf); /* 4,5 */
+            break;
+            case 13UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 12
+                    /* 45 comparisons in 10 parallel groups (maybe not optimal) */
+                    /* http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
+                    /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size,
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size, pj=ph+size,
+                    pk=pj+size, pl=pk+size, pm=pl+size, pn=pm+size;
+                    /* parallel group 1 */
+                    CX(pb,pg); CX(pj,pk); CX(pc,pm); CX(pa,pf); CX(ph,pn);
+                    CX(pe,pl);
+                    /* parallel group 2 */
+                    CX(pb,pc); CX(ph,pj); CX(pk,pn); CX(pa,pe); CX(pg,pm);
+                    CX(pf,pl);
+                    /* parallel group 3 */
+                    CX(pf,pj); CX(pl,pn); CX(pa,ph); CX(pd,pm); CX(pe,pk);
+                    /* parallel group 4 */
+                    CX(pd,pl); CX(pm,pn); CX(pg,pj); CX(pc,pk);
+                    /* parallel group 5 */
+                    CX(pb,pd); CX(pe,pg); CX(pk,pm); CX(pc,pf); CX(pj,pl);
+                    /* parallel group 6 */
+                    CX(pa,pb); CX(pd,ph); CX(pj,pk); CX(pl,pm);
+                    /* parallel group 7 */
+                    CX(pf,pj); CX(pb,pc); CX(pd,pe); CX(pg,ph); CX(pk,pl);
+                    /* parallel group 8 */
+                    CX(pc,pe); CX(pf,pg); CX(ph,pj); CX(pb,pd);
+                    /* parallel group 9 */
+                    CX(pc,pd); CX(pe,pf); CX(pg,ph); CX(pj,pk);
+                    /* parallel group 10 */
+                    CX(pd,pe); CX(pf,pg);
+#else
+                    return EAGAIN;
+#endif
+                } else {
+                    /* simplified in-place merge sort for 13 elements */
+                    /* split 6-7 using ded_sort6 and ded_sort7 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort6(base,first,first+6UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort7(base,first+6UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+6UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x0400U */
-#if QUICKSELECT_NETWORK_MASK & 0x0800U
-            case 11UL : /* 35 comparisons in 9 groups (optimal depth, maybe not
-                           # comparisons, not stable)
-                        */
-                /* source: http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
-                { char *pc, *pd, *pe, *pf, *pg, *ph, *pj, *pk, *pl;
-                pa=base+first*size; pb=pa+size;
-                pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size; pg=pf+size;
-                ph=pg+size; pj=ph+size; pk=pj+size; pl=pk+size;
-                /* parallel group 1 */
-                    CX(pb,pl);/* 1,10 */ CX(pc,pk);/* 2,9 */ CX(pd,pj);/* 3,8 */
-                    CX(pe,ph); /* 4,7 */ CX(pf,pg); /* 5,6 */
-                /* parallel group 2 */
-                    CX(pa,pg);/* 0,6 */ CX(pb,pe);/* 1,4 */ CX(pc,pd);/* 2,3 */
-                    CX(ph,pl); /* 7,10 */ CX(pj,pk); /* 8,9 */
-                /* parallel group 3 */
-                    CX(pa,pb);/* 0,1 */ CX(pc,pf);/* 2,5 */ CX(pd,pe);/* 3,4 */
-                    CX(ph,pj); /* 7,8 */ CX(pk,pl); /* 9,10 */
-                /* parallel group 4 */
-                    CX(pa,pc); /* 0,2 */ CX(pb,pf); /* 1,5 */
-                    CX(pe,pg); /* 4,6 */ CX(pj,pk); /* 8,9 */
-                /* parallel group 5 */
-                    CX(pb,pj);/* 1,8 */ CX(pc,pd);/* 2,3 */ CX(pe,ph);/* 4,7 */
-                    CX(pf,pk); /* 5,9 */ CX(pg,pl); /* 6,10 */
-                /* parallel group 6 */
-                    CX(pb,pe); /* 1,4 */ CX(pd,pf); /* 3,5 */
-                    CX(pg,pk); /* 6,9 */ CX(ph,pj); /* 7,8 */
-                /* parallel group 7 */
-                    CX(pb,pc); /* 1,2 */ CX(pd,pe); /* 3,4 */
-                    CX(pf,ph); /* 5,7 */ CX(pg,pj); /* 6,8 */
-                /* parallel group 8 */
-                    CX(pc,pd);/* 2,3 */ CX(pe,pf);/* 4,5 */ CX(pg,ph);/* 6,7 */
+            break;
+            case 14UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 13
+                    /* 51 comparisons in 10 parallel groups (maybe not optimal) */
+                    /* http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
+                    /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn,
+                        *po;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size,
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size, pj=ph+size,
+                    pk=pj+size, pl=pk+size, pm=pl+size, pn=pm+size, po=pn+size;
+                    /* parallel group 1 */
+                    CX(pa,pb); CX(pc,pd); CX(pe,pf); CX(pg,ph); CX(pj,pk);
+                    CX(pl,pm); CX(pn,po);
+                    /* parallel group 2 */
+                    CX(pa,pc); CX(pe,pg); CX(pj,pl); CX(pb,pd); CX(pf,ph);
+                    CX(pk,pm);
+                    /* parallel group 3 */
+                    CX(pa,pe); CX(pj,pn); CX(pb,pf); CX(pk,po); CX(pc,pg);
+                    CX(pd,ph);
+                    /* parallel group 4 */
+                    CX(pa,pj); CX(pb,pk); CX(pc,pl); CX(pd,pm); CX(pe,pn);
+                    CX(pf,po);
+                    /* parallel group 5 */
+                    CX(pf,pl); CX(pg,pk); CX(pd,pn); CX(ph,pm); CX(pb,pc);
+                    CX(pe,pj);
+                    /* parallel group 6 */
+                    CX(pb,pe); CX(ph,po); CX(pc,pj);
+                    /* parallel group 7 */
+                    CX(pc,pe); CX(pf,pg); CX(pk,pl); CX(pm,po); CX(pd,pj);
+                    CX(ph,pn);
+                    /* parallel group 8 */
+                    CX(pd,pf); CX(pg,pj); CX(ph,pk); CX(pl,pn);
+                    /* parallel group 9 */
+                    CX(pd,pe); CX(pf,pg); CX(ph,pj); CX(pk,pl); CX(pm,pn);
+                    /* parallel group 10 */
+                    CX(pg,ph); CX(pj,pk);
+#else
+                    return EAGAIN;
+#endif
+                } else if (128UL<size_ratio) {
+                    ret=limited_indirect_mergesort(base,first,beyond,nmemb,
+                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        cache_sz,pbeyond,options);
+                } else {
+                    /* simplified in-place merge sort for 13 elements */
+                    /* split 7-7 using ded_sort7 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort7(base,first,first+7UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort7(base,first+7UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+7UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x0800U */
-#if QUICKSELECT_NETWORK_MASK & 0x01000U
-            case 12UL : /* 39 comparisons in 9 parallel groups (not optimal or stable) */
-                { char *pc, *pd, *pe, *pf, *pg, *ph, *pj, *pk, *pl, *pm;
-                pa=base+first*size; pb=pa+size;
-                pc=pb+size; pd=pc+size; pe=pd+size; pf=pe+size; pg=pf+size;
-                ph=pg+size; pj=ph+size; pk=pj+size; pl=pk+size; pm=pl+size;
-                /* parallel group 1 */
-                    CX(pa,pb);/* 0,1 */ CX(pc,pd);/* 2,3 */ CX(pe,pf);/* 4,5 */
-                    CX(pg,ph);/* 6,7 */ CX(pj,pk);/* 8,9 */ CX(pl,pm);/* 10,11 */
-                /* parallel group 2 */
-                    CX(pa,pc);/* 0,2 */ CX(pb,pd);/* 1,3 */ CX(pe,pg);/* 4,6 */
-                    CX(pf,ph);/* 5,7 */ CX(pj,pl);/* 8,10 */ CX(pk,pm);/* 9,11 */
-                /* parallel group 3 */
-                    CX(pa,pe);/* 0,4 */ CX(pb,pc);/* 1,2 */ CX(pf,pg);/* 5,6 */
-                    CX(ph,pm); /* 7,11 */ CX(pk,pl); /* 9,10 */
-                /* parallel group 4 */
-                    CX(pb,pf); /* 1,5 */ CX(pd,ph); /* 3,7 */
-                    CX(pe,pj); /* 4,8 */ CX(pg,pl); /* 6,10 */
-                /* parallel group 5 */
-                    CX(pa,pe);/* 0,4 */ CX(pc,pg);/* 2,6 */ CX(pd,pj);/* 3,8 */
-                    CX(pf,pk); /* 5,9 */ CX(ph,pm); /* 7,11 */
-                /* parallel group 6 */
-                    CX(pb,pf); /* 1,5 */ CX(pc,pd); /* 2,3 */
-                    CX(pg,pl); /* 6,10 */ CX(pj,pk); /* 8,9 */
-                /* parallel group 7 */
-                    CX(pb,pe); /* 1,4 */ CX(pd,pf); /* 3,5 */
-                    CX(pg,pj); /* 6,8 */ CX(ph,pl); /* 7,10 */
-                /* parallel group 8 */
-                    CX(pc,pe);/* 2,4 */ CX(pf,pg);/* 5,6 */ CX(ph,pk);/* 7,9 */
-                /* parallel group 9 */
-                    CX(pd,pe); /* 3,4 */ CX(ph,pj); /* 7,8 */
+            break;
+            case 15UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 14
+                    /* 56 comparisons in 10 parallel groups (maybe not optimal) */
+                    /* http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
+                    /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
+                         *pn, *po, *pp;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size,
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size,
+                    pj=ph+size, pk=pj+size, pl=pk+size, pm=pl+size,
+                    pn=pm+size, po=pn+size, pp=po+size;
+                    /* parallel group 1 */
+                    CX(pa,pb); CX(pc,pd); CX(pe,pf); CX(pg,ph); CX(pj,pk);
+                    CX(pl,pm); CX(pn,po);
+                    /* parallel group 2 */
+                    CX(pa,pc); CX(pe,pg); CX(pj,pl); CX(pn,pp); CX(pb,pd);
+                    CX(pf,ph); CX(pk,pm);
+                    /* parallel group 3 */
+                    CX(pa,pe); CX(pj,pn); CX(pb,pf); CX(pk,po); CX(pc,pg);
+                    CX(pl,pp); CX(pd,ph);
+                    /* parallel group 4 */
+                    CX(pa,pj); CX(pb,pk); CX(pc,pl); CX(pd,pm); CX(pe,pn);
+                    CX(pf,po); CX(pg,pp);
+                    /* parallel group 5 */
+                    CX(pf,pl); CX(pg,pk); CX(pd,pn); CX(po,pp); CX(ph,pm);
+                    CX(pb,pc); CX(pe,pj);
+                    /* parallel group 6 */
+                    CX(pb,pe); CX(ph,po); CX(pc,pj); CX(pm,pp);
+                    /* parallel group 7 */
+                    CX(pc,pe); CX(pf,pg); CX(pk,pl); CX(pm,po); CX(pd,pj);
+                    CX(ph,pn);
+                    /* parallel group 8 */
+                    CX(pd,pf); CX(pg,pj); CX(ph,pk); CX(pl,pn);
+                    /* parallel group 9 */
+                    CX(pd,pe); CX(pf,pg); CX(ph,pj); CX(pk,pl); CX(pm,pn);
+                    /* parallel group 10 */
+                    CX(pg,ph); CX(pj,pk);
+#else
+                    return EAGAIN;
+#endif
+                } else if (128UL<size_ratio) {
+                    ret=limited_indirect_mergesort(base,first,beyond,nmemb,
+                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        cache_sz,pbeyond,options);
+                } else {
+                    /* simplified in-place merge sort for 13 elements */
+                    /* split 7-8 using ded_sort7 and ded_sort8 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort7(base,first,first+7UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort8(base,first+7UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+7UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 }
-            RETURN ;
-#endif /* QUICKSELECT_NETWORK_MASK & 0x01000U */
+            break;
+            case 16UL :
+                if (0U==(options&(
+                (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                )) {
+#if QUICKSELECT_MAX_NETWORK > 15
+                    /* 45 comparisons in 10 parallel groups (maybe not optimal) */
+                    /* http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
+                    /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
+                    char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
+                         *pn, *po, *pp, *pq;
+# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
+                            "options=0x%x */\n",__func__,
+                            dedicated_sort_src_file,__LINE__,
+                            (unsigned long)nmemb,options);
+                    }
+# endif
+                    pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size,
+                    pe=pd+size, pf=pe+size, pg=pf+size, ph=pg+size,
+                    pj=ph+size, pk=pj+size, pl=pk+size, pm=pl+size,
+                    pn=pm+size, po=pn+size, pp=po+size, pq=pp+size;
+                    /* parallel group 1 */
+                    CX(pa,pb); CX(pc,pd); CX(pe,pf); CX(pg,ph); CX(pj,pk);
+                    CX(pl,pm); CX(pn,po); CX(pp,pq);
+                    /* parallel group 2 */
+                    CX(pa,pc); CX(pe,pg); CX(pj,pl); CX(pn,pp); CX(pb,pd);
+                    CX(pf,ph); CX(pk,pm); CX(po,pq);
+                    /* parallel group 3 */
+                    CX(pa,pe); CX(pj,pn); CX(pb,pf); CX(pk,po); CX(pc,pg);
+                    CX(pl,pp); CX(pd,ph); CX(pm,pq);
+                    /* parallel group 4 */
+                    CX(pa,pj); CX(pb,pk); CX(pc,pl); CX(pd,pm); CX(pe,pn);
+                    CX(pf,po); CX(pg,pp); CX(ph,pq);
+                    /* parallel group 5 */
+                    CX(pf,pl); CX(pg,pk); CX(pd,pn); CX(po,pp); CX(ph,pm);
+                    CX(pb,pc); CX(pe,pj);
+                    /* parallel group 6 */
+                    CX(pb,pe); CX(ph,po); CX(pc,pj); CX(pm,pp);
+                    /* parallel group 7 */
+                    CX(pc,pe); CX(pf,pg); CX(pk,pl); CX(pm,po); CX(pd,pj);
+                    CX(ph,pn);
+                    /* parallel group 8 */
+                    CX(pd,pf); CX(pg,pj); CX(ph,pk); CX(pl,pn);
+                    /* parallel group 9 */
+                    CX(pd,pe); CX(pf,pg); CX(ph,pj); CX(pk,pl); CX(pm,pn);
+                    /* parallel group 10 */
+                    CX(pg,ph); CX(pj,pk);
+#else
+                    return EAGAIN;
+#endif
+                } else if (25UL<size_ratio) {
+                    ret=limited_indirect_mergesort(base,first,beyond,nmemb,
+                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        cache_sz,pbeyond,options);
+                } else {
+                    /* simplified in-place merge sort for 13 elements */
+                    /* split 8-8 using ded_sort8 */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                        (V)fprintf(stderr,
+                            "/* %s: %s line %d: unrolled in-place mergesort "
+                            "nmemb=%lu */\n",
+                            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb);
+                    }
+#endif
+                    (V)ded_sort8(base,first,first+8UL,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    (V)ded_sort8(base,first+8UL,beyond,size,COMPAR_ARGS,swapf,
+                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    /* merge pieces */
+                    inplace_merge(base,first,first+8UL,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
+                }
+            break;
             default :
-                A(0==1);
-                PREFIX errno = EINVAL;
-            RETURN ;
+                switch (size_ratio) {
+                    case 1UL :
+                        if (0U!=(options&(
+                        (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                        )) {
+                            if (70UL<nmemb)
+                                ret=limited_indirect_mergesort(base,first,
+                                    beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    options);
+                            else
+                                ret=inplace_mergesort(base,first,beyond,nmemb,
+                                    size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                    table_index,cache_sz,pbeyond,options);
+                        } else return EAGAIN;
+                    break;
+                    case 2UL :
+                        /* insertion sort (stable, but not minimum comparisons)
+                           is faster than merge sorts for a range of array sizes
+                           at size_ratio 2 (but only an insignificant range and
+                           insignificant time difference for size_ratio 1, and
+                           never at size_ratio > 2).
+                        */
+                        switch (options&(
+                        (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE)
+                        )) {
+                            case 0U :
+                            return EAGAIN;
+                            case QUICKSELECT_STABLE :
+                                if (60UL<nmemb)
+                                    ret=limited_indirect_mergesort(base,first,
+                                        beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        options);
+                                else if (25UL<nmemb)
+                                    isort_bs(base,first,beyond,size,COMPAR_ARGS,
+                                        swapf,alignsize,size_ratio,options);
+                                else
+                                    ret=inplace_mergesort(base,first,beyond,
+                                        nmemb,size,COMPAR_ARGS,swapf,alignsize,
+                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        options);
+                            break;
+                            default : /* OPTIMIZE_COMPARISONS w/ or w/o STABLE */
+                                if (60UL<nmemb)
+                                    ret=limited_indirect_mergesort(base,first,
+                                        beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        options);
+                                else
+                                    ret=inplace_mergesort(base,first,beyond,
+                                        nmemb,size,COMPAR_ARGS,swapf,alignsize,
+                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        options);
+                            break;
+                        }
+                    break;
+                    case 3UL : /*FALLTHROUGH*/
+                    case 4UL :
+                        if (0U!=(options&(
+                        (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                        )) {
+                            if (40UL<nmemb)
+                                ret=limited_indirect_mergesort(base,first,
+                                    beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    options);
+                            else
+                                ret=inplace_mergesort(base,first,beyond,nmemb,
+                                    size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                    table_index,cache_sz,pbeyond,options);
+                        } else return EAGAIN;
+                    break;
+                    case 5UL : /*FALLTHROUGH*/
+                    case 6UL :
+                        if (0U!=(options&(
+                        (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                        )) {
+                            if (32UL<nmemb)
+                                ret=limited_indirect_mergesort(base,first,
+                                    beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    options);
+                            else
+                                ret=inplace_mergesort(base,first,beyond,nmemb,
+                                    size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                    table_index,cache_sz,pbeyond,options);
+                        } else return EAGAIN;
+                    break;
+                    default :
+                        if (0U!=(options&(
+                        (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
+                        )) {
+                            if (23UL<nmemb)
+                                ret=limited_indirect_mergesort(base,first,
+                                    beyond,nmemb,size,COMPAR_ARGS,alignsize,
+                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    options);
+                            else
+                                ret=inplace_mergesort(base,first,beyond,nmemb,
+                                    size,COMPAR_ARGS,swapf,alignsize,size_ratio,
+                                    table_index,cache_sz,pbeyond,options);
+                        } else return EAGAIN;
+                    break;
+                }
+            break;
         }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+# if ASSERT_CODE < 2
+        if ((ret!=EAGAIN)&&(DEBUGGING(CORRECTNESS_DEBUG))) {
+# endif
+            nmemb=test_array_sort(base,first,beyond-1UL,size,
+                compar,options,0U,NULL,NULL);
+            if (nmemb!=beyond-1UL) {
+                fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
+                    __func__,__LINE__,first,beyond,options);
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
+                A(0==1);
+                abort();
+            }
+# if ASSERT_CODE < 2
+        }
+# endif
+#endif
     }
-    RETURN ;
+    return ret ;
 }
+#endif /* DEDICATED_SORT_SRC_H_INCLUDED */

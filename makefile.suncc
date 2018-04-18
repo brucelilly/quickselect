@@ -37,12 +37,16 @@
 .PRECIOUS : $(MAKEFILES_DIR)/makefile.$(CCBASE)
 MAKEFILES_READ += makefile.$(CCBASE)
 
-# C and C99 are essentially two different programming languages...
+# C and C99 and C11 are essentially different programming languages...
 # compiling pre-C99 flags
 C = 
 
 # C99 flags
 C99 = -xc99
+
+# Some people never learn... 2-digit year numbers are going to be a problem...
+# C11 flags (C11 > C99...)
+C11 = -xc11
 
 # flags for making dependency files
 MAKE_DEPEND_ARG = -xM1
@@ -74,6 +78,7 @@ DP_OPTIMIZE = $(OPTIMIZE)
 # Should NOT include $(INCLUDE), $(SYS_INCLUDE), or $(OS_INCLUDE)
 CFLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C) $(XTRAS)
 C99FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C99) $(XTRAS)
+C11FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C11) $(XTRAS)
 
 # Floating-point option
 FFLAG =

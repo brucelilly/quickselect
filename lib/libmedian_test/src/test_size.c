@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    test_size.c copyright 2016-2017 Bruce Lilly.   \ test_size.c $
+* $Id: ~|^` @(#)    test_size.c copyright 2016-2018 Bruce Lilly.   \ test_size.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is test_size.c version 1.1 dated 2017-09-29T14:34:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is test_size.c version 1.2 dated 2018-03-11T20:43:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.test_size.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: test_size.c ~|^` @(#)"
 #define SOURCE_MODULE "test_size.c"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2017-09-29T14:34:11Z"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2018-03-11T20:43:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -60,9 +60,6 @@
 const char *test_size(unsigned int tests)
 {
     if ((char)0==file_initialized) initialize_file(__FILE__);
-#if 0
-    if (TEST_TYPE_ADVERSARY == (TEST_TYPE_ADVERSARY & tests)) return "N^2";
-#endif
     if (TEST_TYPE_SORT == (TEST_TYPE_SORT & tests)) return "N log(N)";
     return "N";
 }

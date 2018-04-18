@@ -7,7 +7,7 @@
 # The zlib/libpng license is a recognized "\"free\"" software license by the
 # Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 ################### Copyright notice (part of the license) ###################
-#$Id: ~\|^` @(#)%M% copyright 2015 - 2016 %Q%. \ makefile.depend $
+#$Id: ~\|^` @(#)%M% copyright 2015-2018 %Q%. \ makefile.depend $
 # This software is provided 'as-is', without any express or implied warranty.
 # In no event will the authors be held liable for any damages arising from the
 # use of this software.
@@ -116,7 +116,7 @@ $(PRE_DEPEND) :
 			if test -f "$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" ; then \
 				echo ".PRECIOUS : $(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
 				echo "$(MANDIR)/$${base}.$${sect} : $(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
-				echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $$@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+				echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $$@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm -f $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
 				echo '	if test -f '"$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MANDIR)/$(SCCSDIR)/s.$${base}.$${sect}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 			fi ;\
 			for inst in $(INSTMAN1) $(INSTMAN2) $(INSTMAN3) $(INSTMAN4) $(INSTMAN5) $(INSTMAN6) $(INSTMAN7) $(INSTMAN8) $(INSTMAN9) fumble ; do \
@@ -186,7 +186,7 @@ $(PRE_DEPEND) :
 				if test -f "$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" ; then \
 					echo ".PRECIOUS : $(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
 					echo "$(MAKEFILES_DIR)/$${dir}/$${base}.$${sect}"' : '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}" >> $@.$${PPID}.temp ;\
-					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test  ; fi'"-f $(MAKEFILES_DIR)/$${dir}/$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/p.$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/p.$${base}.$${sect} ; then rm"' $$@ ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test '"-f $(MAKEFILES_DIR)/$${dir}/$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/p.$${base}.$${sect} -a ! -f $(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/p.$${base}.$${sect} ; then rm -f"' $$@ ; fi ; fi' >> $@.$${PPID}.temp ;\
 					echo '	if test -f '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$${dir}/$(SCCSDIR)/s.$${base}.$${sect}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 				fi ;\
 				for inst in $(INSTMAN1) $(INSTMAN2) $(INSTMAN3) $(INSTMAN4) $(INSTMAN5) $(INSTMAN6) $(INSTMAN7) $(INSTMAN8) $(INSTMAN9) jumble ; do \
@@ -232,7 +232,7 @@ $(PRE_DEPEND) :
 				if test -f "$(HDRDIR)/$(SCCSDIR)/s.$${file}" ; then \
 					echo ".PRECIOUS : $(HDRDIR)/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
 					echo "$(HDRDIR)/$${file} : $(HDRDIR)/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
-					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm -f $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
 					echo '	if test -f '"$(HDRDIR)/$(SCCSDIR)/s.$${file}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(HDRDIR)/$(SCCSDIR)/s.$${file}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 				fi ;\
 			fi ;\
@@ -304,7 +304,7 @@ $(PRE_DEPEND) :
 					if test -f "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" ; then \
 						echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
 						echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$${file} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}" >> $@.$${PPID}.temp ;\
-						echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+						echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test -f $@ -a ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm -f $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
 						echo '	if test -f '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${hdrdir}/$(SCCSDIR)/s.$${file}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 					fi ;\
 				fi ;\
@@ -327,51 +327,53 @@ $(PRE_DEPEND) :
 	> $(DEPEND_DIR)/object_database64
 	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
 		case $${lib} in \
-			1) arch="$(LIB1ARCH)" ; c99objs="$(C99LIB1OBJS)" ; objs="$(LIB1OBJS)" ; libdir="$(LIB1DIR)" ; objdir="$(LIB1OBJDIR)" ; srcdir="$(LIB1SRCDIR)" ;; \
-			2) arch="$(LIB2ARCH)" ; c99objs="$(C99LIB2OBJS)" ; objs="$(LIB2OBJS)" ; libdir="$(LIB2DIR)" ; objdir="$(LIB2OBJDIR)" ; srcdir="$(LIB2SRCDIR)" ;; \
-			3) arch="$(LIB3ARCH)" ; c99objs="$(C99LIB3OBJS)" ; objs="$(LIB3OBJS)" ; libdir="$(LIB3DIR)" ; objdir="$(LIB3OBJDIR)" ; srcdir="$(LIB3SRCDIR)" ;; \
-			4) arch="$(LIB4ARCH)" ; c99objs="$(C99LIB4OBJS)" ; objs="$(LIB4OBJS)" ; libdir="$(LIB4DIR)" ; objdir="$(LIB4OBJDIR)" ; srcdir="$(LIB4SRCDIR)" ;; \
-			5) arch="$(LIB5ARCH)" ; c99objs="$(C99LIB5OBJS)" ; objs="$(LIB5OBJS)" ; libdir="$(LIB5DIR)" ; objdir="$(LIB5OBJDIR)" ; srcdir="$(LIB5SRCDIR)" ;; \
-			6) arch="$(LIB6ARCH)" ; c99objs="$(C99LIB6OBJS)" ; objs="$(LIB6OBJS)" ; libdir="$(LIB6DIR)" ; objdir="$(LIB6OBJDIR)" ; srcdir="$(LIB6SRCDIR)" ;; \
-			7) arch="$(LIB7ARCH)" ; c99objs="$(C99LIB7OBJS)" ; objs="$(LIB7OBJS)" ; libdir="$(LIB7DIR)" ; objdir="$(LIB7OBJDIR)" ; srcdir="$(LIB7SRCDIR)" ;; \
-			8) arch="$(LIB8ARCH)" ; c99objs="$(C99LIB8OBJS)" ; objs="$(LIB8OBJS)" ; libdir="$(LIB8DIR)" ; objdir="$(LIB8OBJDIR)" ; srcdir="$(LIB8SRCDIR)" ;; \
-			9) arch="$(LIB9ARCH)" ; c99objs="$(C99LIB9OBJS)" ; objs="$(LIB9OBJS)" ; libdir="$(LIB9DIR)" ; objdir="$(LIB9OBJDIR)" ; srcdir="$(LIB9SRCDIR)" ;; \
-			10) arch="$(LIB10ARCH)" ; c99objs="$(C99LIB10OBJS)" ; objs="$(LIB10OBJS)" ; libdir="$(LIB10DIR)" ; objdir="$(LIB10OBJDIR)" ; srcdir="$(LIB10SRCDIR)" ;; \
-			11) arch="$(LIB11ARCH)" ; c99objs="$(C99LIB11OBJS)" ; objs="$(LIB11OBJS)" ; libdir="$(LIB11DIR)" ; objdir="$(LIB11OBJDIR)" ; srcdir="$(LIB11SRCDIR)" ;; \
-			12) arch="$(LIB12ARCH)" ; c99objs="$(C99LIB12OBJS)" ; objs="$(LIB12OBJS)" ; libdir="$(LIB12DIR)" ; objdir="$(LIB12OBJDIR)" ; srcdir="$(LIB12SRCDIR)" ;; \
-			13) arch="$(LIB13ARCH)" ; c99objs="$(C99LIB13OBJS)" ; objs="$(LIB13OBJS)" ; libdir="$(LIB13DIR)" ; objdir="$(LIB13OBJDIR)" ; srcdir="$(LIB13SRCDIR)" ;; \
-			14) arch="$(LIB14ARCH)" ; c99objs="$(C99LIB14OBJS)" ; objs="$(LIB14OBJS)" ; libdir="$(LIB14DIR)" ; objdir="$(LIB14OBJDIR)" ; srcdir="$(LIB14SRCDIR)" ;; \
-			15) arch="$(LIB15ARCH)" ; c99objs="$(C99LIB15OBJS)" ; objs="$(LIB15OBJS)" ; libdir="$(LIB15DIR)" ; objdir="$(LIB15OBJDIR)" ; srcdir="$(LIB15SRCDIR)" ;; \
-			16) arch="$(LIB16ARCH)" ; c99objs="$(C99LIB16OBJS)" ; objs="$(LIB16OBJS)" ; libdir="$(LIB16DIR)" ; objdir="$(LIB16OBJDIR)" ; srcdir="$(LIB16SRCDIR)" ;; \
-			17) arch="$(LIB17ARCH)" ; c99objs="$(C99LIB17OBJS)" ; objs="$(LIB17OBJS)" ; libdir="$(LIB17DIR)" ; objdir="$(LIB17OBJDIR)" ; srcdir="$(LIB17SRCDIR)" ;; \
-			18) arch="$(LIB18ARCH)" ; c99objs="$(C99LIB18OBJS)" ; objs="$(LIB18OBJS)" ; libdir="$(LIB18DIR)" ; objdir="$(LIB18OBJDIR)" ; srcdir="$(LIB18SRCDIR)" ;; \
-			19) arch="$(LIB19ARCH)" ; c99objs="$(C99LIB19OBJS)" ; objs="$(LIB19OBJS)" ; libdir="$(LIB19DIR)" ; objdir="$(LIB19OBJDIR)" ; srcdir="$(LIB19SRCDIR)" ;; \
-			20) arch="$(LIB20ARCH)" ; c99objs="$(C99LIB20OBJS)" ; objs="$(LIB20OBJS)" ; libdir="$(LIB20DIR)" ; objdir="$(LIB20OBJDIR)" ; srcdir="$(LIB20SRCDIR)" ;; \
-			21) arch="$(LIB21ARCH)" ; c99objs="$(C99LIB21OBJS)" ; objs="$(LIB21OBJS)" ; libdir="$(LIB21DIR)" ; objdir="$(LIB21OBJDIR)" ; srcdir="$(LIB21SRCDIR)" ;; \
-			22) arch="$(LIB22ARCH)" ; c99objs="$(C99LIB22OBJS)" ; objs="$(LIB22OBJS)" ; libdir="$(LIB22DIR)" ; objdir="$(LIB22OBJDIR)" ; srcdir="$(LIB22SRCDIR)" ;; \
-			23) arch="$(LIB23ARCH)" ; c99objs="$(C99LIB23OBJS)" ; objs="$(LIB23OBJS)" ; libdir="$(LIB23DIR)" ; objdir="$(LIB23OBJDIR)" ; srcdir="$(LIB23SRCDIR)" ;; \
-			24) arch="$(LIB24ARCH)" ; c99objs="$(C99LIB24OBJS)" ; objs="$(LIB24OBJS)" ; libdir="$(LIB24DIR)" ; objdir="$(LIB24OBJDIR)" ; srcdir="$(LIB24SRCDIR)" ;; \
-			25) arch="$(LIB25ARCH)" ; c99objs="$(C99LIB25OBJS)" ; objs="$(LIB25OBJS)" ; libdir="$(LIB25DIR)" ; objdir="$(LIB25OBJDIR)" ; srcdir="$(LIB25SRCDIR)" ;; \
-			26) arch="$(LIB26ARCH)" ; c99objs="$(C99LIB26OBJS)" ; objs="$(LIB26OBJS)" ; libdir="$(LIB26DIR)" ; objdir="$(LIB26OBJDIR)" ; srcdir="$(LIB26SRCDIR)" ;; \
-			27) arch="$(LIB27ARCH)" ; c99objs="$(C99LIB27OBJS)" ; objs="$(LIB27OBJS)" ; libdir="$(LIB27DIR)" ; objdir="$(LIB27OBJDIR)" ; srcdir="$(LIB27SRCDIR)" ;; \
-			28) arch="$(LIB28ARCH)" ; c99objs="$(C99LIB28OBJS)" ; objs="$(LIB28OBJS)" ; libdir="$(LIB28DIR)" ; objdir="$(LIB28OBJDIR)" ; srcdir="$(LIB28SRCDIR)" ;; \
-			29) arch="$(LIB29ARCH)" ; c99objs="$(C99LIB29OBJS)" ; objs="$(LIB29OBJS)" ; libdir="$(LIB29DIR)" ; objdir="$(LIB29OBJDIR)" ; srcdir="$(LIB29SRCDIR)" ;; \
-			30) arch="$(LIB30ARCH)" ; c99objs="$(C99LIB30OBJS)" ; objs="$(LIB30OBJS)" ; libdir="$(LIB30DIR)" ; objdir="$(LIB30OBJDIR)" ; srcdir="$(LIB30SRCDIR)" ;; \
-			31) arch="$(LIB31ARCH)" ; c99objs="$(C99LIB31OBJS)" ; objs="$(LIB31OBJS)" ; libdir="$(LIB31DIR)" ; objdir="$(LIB31OBJDIR)" ; srcdir="$(LIB31SRCDIR)" ;; \
-			32) arch="$(LIB32ARCH)" ; c99objs="$(C99LIB32OBJS)" ; objs="$(LIB32OBJS)" ; libdir="$(LIB32DIR)" ; objdir="$(LIB32OBJDIR)" ; srcdir="$(LIB32SRCDIR)" ;; \
-			33) arch="$(LIB33ARCH)" ; c99objs="$(C99LIB33OBJS)" ; objs="$(LIB33OBJS)" ; libdir="$(LIB33DIR)" ; objdir="$(LIB33OBJDIR)" ; srcdir="$(LIB33SRCDIR)" ;; \
-			34) arch="$(LIB34ARCH)" ; c99objs="$(C99LIB34OBJS)" ; objs="$(LIB34OBJS)" ; libdir="$(LIB34DIR)" ; objdir="$(LIB34OBJDIR)" ; srcdir="$(LIB34SRCDIR)" ;; \
-			35) arch="$(LIB35ARCH)" ; c99objs="$(C99LIB35OBJS)" ; objs="$(LIB35OBJS)" ; libdir="$(LIB35DIR)" ; objdir="$(LIB35OBJDIR)" ; srcdir="$(LIB35SRCDIR)" ;; \
-			36) arch="$(LIB36ARCH)" ; c99objs="$(C99LIB36OBJS)" ; objs="$(LIB36OBJS)" ; libdir="$(LIB36DIR)" ; objdir="$(LIB36OBJDIR)" ; srcdir="$(LIB36SRCDIR)" ;; \
-			37) arch="$(LIB37ARCH)" ; c99objs="$(C99LIB37OBJS)" ; objs="$(LIB37OBJS)" ; libdir="$(LIB37DIR)" ; objdir="$(LIB37OBJDIR)" ; srcdir="$(LIB37SRCDIR)" ;; \
-			38) arch="$(LIB38ARCH)" ; c99objs="$(C99LIB38OBJS)" ; objs="$(LIB38OBJS)" ; libdir="$(LIB38DIR)" ; objdir="$(LIB38OBJDIR)" ; srcdir="$(LIB38SRCDIR)" ;; \
-			39) arch="$(LIB39ARCH)" ; c99objs="$(C99LIB39OBJS)" ; objs="$(LIB39OBJS)" ; libdir="$(LIB39DIR)" ; objdir="$(LIB39OBJDIR)" ; srcdir="$(LIB39SRCDIR)" ;; \
+			1) arch="$(LIB1ARCH)";c11objs="$(C11LIB1OBJS)";c99objs="$(C99LIB1OBJS)";objs="$(LIB1OBJS)";libdir="$(LIB1DIR)";objdir="$(LIB1OBJDIR)";srcdir="$(LIB1SRCDIR)" ;; \
+			2) arch="$(LIB2ARCH)";c11objs="$(C11LIB2OBJS)";c99objs="$(C99LIB2OBJS)";objs="$(LIB2OBJS)";libdir="$(LIB2DIR)";objdir="$(LIB2OBJDIR)";srcdir="$(LIB2SRCDIR)" ;; \
+			3) arch="$(LIB3ARCH)";c11objs="$(C11LIB3OBJS)";c99objs="$(C99LIB3OBJS)";objs="$(LIB3OBJS)";libdir="$(LIB3DIR)";objdir="$(LIB3OBJDIR)";srcdir="$(LIB3SRCDIR)" ;; \
+			4) arch="$(LIB4ARCH)";c11objs="$(C11LIB4OBJS)";c99objs="$(C99LIB4OBJS)";objs="$(LIB4OBJS)";libdir="$(LIB4DIR)";objdir="$(LIB4OBJDIR)";srcdir="$(LIB4SRCDIR)" ;; \
+			5) arch="$(LIB5ARCH)";c11objs="$(C11LIB5OBJS)";c99objs="$(C99LIB5OBJS)";objs="$(LIB5OBJS)";libdir="$(LIB5DIR)";objdir="$(LIB5OBJDIR)";srcdir="$(LIB5SRCDIR)" ;; \
+			6) arch="$(LIB6ARCH)";c11objs="$(C11LIB6OBJS)";c99objs="$(C99LIB6OBJS)";objs="$(LIB6OBJS)";libdir="$(LIB6DIR)";objdir="$(LIB6OBJDIR)";srcdir="$(LIB6SRCDIR)" ;; \
+			7) arch="$(LIB7ARCH)";c11objs="$(C11LIB7OBJS)";c99objs="$(C99LIB7OBJS)";objs="$(LIB7OBJS)";libdir="$(LIB7DIR)";objdir="$(LIB7OBJDIR)";srcdir="$(LIB7SRCDIR)" ;; \
+			8) arch="$(LIB8ARCH)";c11objs="$(C11LIB8OBJS)";c99objs="$(C99LIB8OBJS)";objs="$(LIB8OBJS)";libdir="$(LIB8DIR)";objdir="$(LIB8OBJDIR)";srcdir="$(LIB8SRCDIR)" ;; \
+			9) arch="$(LIB9ARCH)";c11objs="$(C11LIB9OBJS)";c99objs="$(C99LIB9OBJS)";objs="$(LIB9OBJS)";libdir="$(LIB9DIR)";objdir="$(LIB9OBJDIR)";srcdir="$(LIB9SRCDIR)" ;; \
+			10) arch="$(LIB10ARCH)";c11objs="$(C11LIB10OBJS)";c99objs="$(C99LIB10OBJS)";objs="$(LIB10OBJS)";libdir="$(LIB10DIR)";objdir="$(LIB10OBJDIR)";srcdir="$(LIB10SRCDIR)" ;; \
+			11) arch="$(LIB11ARCH)";c11objs="$(C11LIB11OBJS)";c99objs="$(C99LIB11OBJS)";objs="$(LIB11OBJS)";libdir="$(LIB11DIR)";objdir="$(LIB11OBJDIR)";srcdir="$(LIB11SRCDIR)" ;; \
+			12) arch="$(LIB12ARCH)";c11objs="$(C11LIB12OBJS)";c99objs="$(C99LIB12OBJS)";objs="$(LIB12OBJS)";libdir="$(LIB12DIR)";objdir="$(LIB12OBJDIR)";srcdir="$(LIB12SRCDIR)" ;; \
+			13) arch="$(LIB13ARCH)";c11objs="$(C11LIB13OBJS)";c99objs="$(C99LIB13OBJS)";objs="$(LIB13OBJS)";libdir="$(LIB13DIR)";objdir="$(LIB13OBJDIR)";srcdir="$(LIB13SRCDIR)" ;; \
+			14) arch="$(LIB14ARCH)";c11objs="$(C11LIB14OBJS)";c99objs="$(C99LIB14OBJS)";objs="$(LIB14OBJS)";libdir="$(LIB14DIR)";objdir="$(LIB14OBJDIR)";srcdir="$(LIB14SRCDIR)" ;; \
+			15) arch="$(LIB15ARCH)";c11objs="$(C11LIB15OBJS)";c99objs="$(C99LIB15OBJS)";objs="$(LIB15OBJS)";libdir="$(LIB15DIR)";objdir="$(LIB15OBJDIR)";srcdir="$(LIB15SRCDIR)" ;; \
+			16) arch="$(LIB16ARCH)";c11objs="$(C11LIB16OBJS)";c99objs="$(C99LIB16OBJS)";objs="$(LIB16OBJS)";libdir="$(LIB16DIR)";objdir="$(LIB16OBJDIR)";srcdir="$(LIB16SRCDIR)" ;; \
+			17) arch="$(LIB17ARCH)";c11objs="$(C11LIB17OBJS)";c99objs="$(C99LIB17OBJS)";objs="$(LIB17OBJS)";libdir="$(LIB17DIR)";objdir="$(LIB17OBJDIR)";srcdir="$(LIB17SRCDIR)" ;; \
+			18) arch="$(LIB18ARCH)";c11objs="$(C11LIB18OBJS)";c99objs="$(C99LIB18OBJS)";objs="$(LIB18OBJS)";libdir="$(LIB18DIR)";objdir="$(LIB18OBJDIR)";srcdir="$(LIB18SRCDIR)" ;; \
+			19) arch="$(LIB19ARCH)";c11objs="$(C11LIB19OBJS)";c99objs="$(C99LIB19OBJS)";objs="$(LIB19OBJS)";libdir="$(LIB19DIR)";objdir="$(LIB19OBJDIR)";srcdir="$(LIB19SRCDIR)" ;; \
+			20) arch="$(LIB20ARCH)";c11objs="$(C11LIB20OBJS)";c99objs="$(C99LIB20OBJS)";objs="$(LIB20OBJS)";libdir="$(LIB20DIR)";objdir="$(LIB20OBJDIR)";srcdir="$(LIB20SRCDIR)" ;; \
+			21) arch="$(LIB21ARCH)";c11objs="$(C11LIB21OBJS)";c99objs="$(C99LIB21OBJS)";objs="$(LIB21OBJS)";libdir="$(LIB21DIR)";objdir="$(LIB21OBJDIR)";srcdir="$(LIB21SRCDIR)" ;; \
+			22) arch="$(LIB22ARCH)";c11objs="$(C11LIB22OBJS)";c99objs="$(C99LIB22OBJS)";objs="$(LIB22OBJS)";libdir="$(LIB22DIR)";objdir="$(LIB22OBJDIR)";srcdir="$(LIB22SRCDIR)" ;; \
+			23) arch="$(LIB23ARCH)";c11objs="$(C11LIB23OBJS)";c99objs="$(C99LIB23OBJS)";objs="$(LIB23OBJS)";libdir="$(LIB23DIR)";objdir="$(LIB23OBJDIR)";srcdir="$(LIB23SRCDIR)" ;; \
+			24) arch="$(LIB24ARCH)";c11objs="$(C11LIB24OBJS)";c99objs="$(C99LIB24OBJS)";objs="$(LIB24OBJS)";libdir="$(LIB24DIR)";objdir="$(LIB24OBJDIR)";srcdir="$(LIB24SRCDIR)" ;; \
+			25) arch="$(LIB25ARCH)";c11objs="$(C11LIB25OBJS)";c99objs="$(C99LIB25OBJS)";objs="$(LIB25OBJS)";libdir="$(LIB25DIR)";objdir="$(LIB25OBJDIR)";srcdir="$(LIB25SRCDIR)" ;; \
+			26) arch="$(LIB26ARCH)";c11objs="$(C11LIB26OBJS)";c99objs="$(C99LIB26OBJS)";objs="$(LIB26OBJS)";libdir="$(LIB26DIR)";objdir="$(LIB26OBJDIR)";srcdir="$(LIB26SRCDIR)" ;; \
+			27) arch="$(LIB27ARCH)";c11objs="$(C11LIB27OBJS)";c99objs="$(C99LIB27OBJS)";objs="$(LIB27OBJS)";libdir="$(LIB27DIR)";objdir="$(LIB27OBJDIR)";srcdir="$(LIB27SRCDIR)" ;; \
+			28) arch="$(LIB28ARCH)";c11objs="$(C11LIB28OBJS)";c99objs="$(C99LIB28OBJS)";objs="$(LIB28OBJS)";libdir="$(LIB28DIR)";objdir="$(LIB28OBJDIR)";srcdir="$(LIB28SRCDIR)" ;; \
+			29) arch="$(LIB29ARCH)";c11objs="$(C11LIB29OBJS)";c99objs="$(C99LIB29OBJS)";objs="$(LIB29OBJS)";libdir="$(LIB29DIR)";objdir="$(LIB29OBJDIR)";srcdir="$(LIB29SRCDIR)" ;; \
+			30) arch="$(LIB30ARCH)";c11objs="$(C11LIB20OBJS)";c99objs="$(C99LIB30OBJS)";objs="$(LIB30OBJS)";libdir="$(LIB30DIR)";objdir="$(LIB30OBJDIR)";srcdir="$(LIB30SRCDIR)" ;; \
+			31) arch="$(LIB31ARCH)";c11objs="$(C11LIB31OBJS)";c99objs="$(C99LIB31OBJS)";objs="$(LIB31OBJS)";libdir="$(LIB31DIR)";objdir="$(LIB31OBJDIR)";srcdir="$(LIB31SRCDIR)" ;; \
+			32) arch="$(LIB32ARCH)";c11objs="$(C11LIB32OBJS)";c99objs="$(C99LIB32OBJS)";objs="$(LIB32OBJS)";libdir="$(LIB32DIR)";objdir="$(LIB32OBJDIR)";srcdir="$(LIB32SRCDIR)" ;; \
+			33) arch="$(LIB33ARCH)";c11objs="$(C11LIB33OBJS)";c99objs="$(C99LIB33OBJS)";objs="$(LIB33OBJS)";libdir="$(LIB33DIR)";objdir="$(LIB33OBJDIR)";srcdir="$(LIB33SRCDIR)" ;; \
+			34) arch="$(LIB34ARCH)";c11objs="$(C11LIB34OBJS)";c99objs="$(C99LIB34OBJS)";objs="$(LIB34OBJS)";libdir="$(LIB34DIR)";objdir="$(LIB34OBJDIR)";srcdir="$(LIB34SRCDIR)" ;; \
+			35) arch="$(LIB35ARCH)";c11objs="$(C11LIB35OBJS)";c99objs="$(C99LIB35OBJS)";objs="$(LIB35OBJS)";libdir="$(LIB35DIR)";objdir="$(LIB35OBJDIR)";srcdir="$(LIB35SRCDIR)" ;; \
+			36) arch="$(LIB36ARCH)";c11objs="$(C11LIB36OBJS)";c99objs="$(C99LIB36OBJS)";objs="$(LIB36OBJS)";libdir="$(LIB36DIR)";objdir="$(LIB36OBJDIR)";srcdir="$(LIB36SRCDIR)" ;; \
+			37) arch="$(LIB37ARCH)";c11objs="$(C11LIB37OBJS)";c99objs="$(C99LIB37OBJS)";objs="$(LIB37OBJS)";libdir="$(LIB37DIR)";objdir="$(LIB37OBJDIR)";srcdir="$(LIB37SRCDIR)" ;; \
+			38) arch="$(LIB38ARCH)";c11objs="$(C11LIB38OBJS)";c99objs="$(C99LIB38OBJS)";objs="$(LIB38OBJS)";libdir="$(LIB38DIR)";objdir="$(LIB38OBJDIR)";srcdir="$(LIB38SRCDIR)" ;; \
+			39) arch="$(LIB39ARCH)";c11objs="$(C11LIB39OBJS)";c99objs="$(C99LIB39OBJS)";objs="$(LIB39OBJS)";libdir="$(LIB39DIR)";objdir="$(LIB39OBJDIR)";srcdir="$(LIB39SRCDIR)" ;; \
 		esac ;\
 		if test -n "$${arch}" ; then \
 			echo "ARCHES32 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR32BIT)/$${arch}" >> $@.$${PPID}.temp ;\
 			echo "ARCHES64 += $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)$(LIBDIR64BIT)/$${arch}" >> $@.$${PPID}.temp ;\
-			for type in c99 c ; do \
-				if test "$${type}" = "c99" ; then \
+			for type in c11 c99 c ; do \
+				if test "$${type}" = "c11" ; then \
+					files="$${c11objs}" ; flags='$$(C11FLAGS)' ;\
+				elif test "$${type}" = "c99" ; then \
 					files="$${c99objs}" ; flags='$$(C99FLAGS)' ;\
 				else	files="$${objs}" ; flags='$$(CFLAGS)' ;\
 				fi ;\
@@ -402,7 +404,7 @@ $(PRE_DEPEND) :
 						if test -f $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source} ; then \
 							echo ".PRECIOUS : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
 							echo "$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${source} : $(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
-							echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+							echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm -f $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
 							echo '	if test -f '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/s.$${source}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/s.$${source}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 						fi ;\
 					fi ;\
@@ -455,8 +457,10 @@ $(PRE_DEPEND) :
 	@echo "$(DEPEND_DIR)/archive_tsort64 : $(DEPEND_DIR)/archive_lorder64" >> $@.$${PPID}.temp
 	@echo '	-$$(TSORT) < $$? > $$@' >> $@.$${PPID}.temp
 	@echo '# makefile.depend $@ stage 3b: main programs ' "`date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
-	@for type in c99 c ; do \
-		if test "$${type}" = "c99" ; then \
+	@for type in c11 c99 c ; do \
+		if test "$${type}" = "c11" ; then \
+			files="$(C11OBJS)" ; flags='$$(C11FLAGS)' ;\
+		elif test "$${type}" = "c99" ; then \
 			files="$(C99OBJS)" ; flags='$$(C99FLAGS)' ;\
 		else	files="$(OBJS)" ; flags='$$(CFLAGS)' ;\
 		fi ;\
@@ -489,7 +493,7 @@ $(PRE_DEPEND) :
 				if test -f $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source} ; then \
 					echo ".PRECIOUS : $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
 					echo "$(MAKEFILES_DIR)/$(SRCDIR)/$${file} : $(MAKEFILES_DIR)/$(SRCDIR)/$(SCCSDIR)/s.$${source}" >> $@.$${PPID}.temp ;\
-					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
+					echo '	if test -n "$$(GET)" ; then if test -n "$$(DEGET)" ; then $$(DEGET) -D $$(SCCSDIR) $$@ ; else if test ! -f $$(@D)/p.$$(@F) -a ! -f $$(@D)/$$(SCCSDIR)/p.$$(@F) ; then rm -f $$@ ; fi ; fi ; fi' >> $@.$${PPID}.temp ;\
 					echo '	if test -f '"$(MAKEFILES_DIR)/$(SRCDIR)/s.$${source}"' -a ! -f $$@ -a -n "$$(GET)" ; then $$(GET) -p '"$(MAKEFILES_DIR)/$(SRCDIR)/s.$${source}"' > $$@ ; fi' >> $@.$${PPID}.temp ;\
 				fi ;\
 			fi ;\
@@ -591,10 +595,10 @@ $(PRE_DEPEND) :
 				echo '	-$(CHMOD) a+rx $$@' >> $@.$${PPID}.temp ;\
 			else	if test -n "$(ISAEXEC)" ; then \
 					dir=`$(DIRNAME) $${file}` ;\
-					echo "$${file}"' : '"$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
-					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR32BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
-					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
-					echo "$${dir}/"'$(ARCHDIR)/$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(ARCHDIR)/$(EXECSUBDIR64BIT)/'"$${base}"' :' >> $@.$${PPID}.temp ;\
+					echo "$${file}"' : '"$${dir}/"'$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(EXECSUBDIR32BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR32BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(EXECSUBDIR64BIT)/'"$${base}"' : $(BINDIR)/$(EXECSUBDIR64BIT)/'"$${base}" >> $@.$${PPID}.temp ;\
+					echo "$${dir}/"'$(EXECSUBDIR32BIT)/'"$${base} $${dir}/"'$(EXECSUBDIR64BIT)/'"$${base}"' :' >> $@.$${PPID}.temp ;\
 					echo '	@if test -n $$(ISAEXEC) ; then \' >> $@.$${PPID}.temp ;\
 					echo '		if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi ;\' >> $@.$${PPID}.temp ;\
 					echo '		if test -f $$? ; then \' >> $@.$${PPID}.temp ;\
@@ -786,7 +790,7 @@ $(PRE_DEPEND) :
 				echo '		$$(GREP) -h -i '"'send bug report'"' $$? | $$(GREP) -v "$$(GREP) -h -i " | $$(AWK) -f $(AWKSCRIPTSDIR)/decomment.awk | $$(SORT) -u >> $$@ ;\' >> $@.$${PPID}.temp ;\
 				echo '	fi' >> $@.$${PPID}.temp ;\
 				echo '	echo "press q to accept" >> $$@' >> $@.$${PPID}.temp ;\
-				echo '	$(PAGER) $$@' >> $@.$${PPID}.temp ;\
+				echo '	$$$${PAGER:less} $$@' >> $@.$${PPID}.temp ;\
 				echo '$$(DEPEND) : '"$${dir}" >> $@.$${PPID}.temp ;\
 			fi ;\
 		done ;\
@@ -842,7 +846,7 @@ $(DEPEND) :
 	@echo "" >> $@.$${PPID}.temp
 	@echo "# makefile.depend: $@ : dependencies for making defined main-program object files `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
 	@if test ! -d $(DEPEND_DIR)/$(SRCDIR) ; then $(MKDIR) -p -m $(DIRMODE) $(DEPEND_DIR)/$(SRCDIR) ; fi
-	@for file in $(OBJS) $(C99OBJS) crumble ; do \
+	@for file in $(OBJS) $(C99OBJS) $(C11OBJS) crumble ; do \
 		if test "$${file}" = "crumble" ; then break ; fi ;\
 		base=`$(BASENAME) $${file} .o` ;\
 		$(AWK) -f $(AWKSCRIPTSDIR)/depend.awk -v BASE="$(OBJDIR)" -v SUBDIR32BIT="$(EXECSUBDIR32BIT)" -v SUBDIR64BIT="$(EXECSUBDIR64BIT)" -v FQDN=$(FQDN) -v MAKEFILES_READ="$(MAKEFILES_READ)" $(DEPEND_DIR)/$(SRCDIR)/$${base}.d >> $@.$${PPID}.temp ;\
@@ -851,49 +855,49 @@ $(DEPEND) :
 	@echo "# makefile.depend: $@ : dependencies for making defined library object files `date -u +%Y-%m-%dT%TZ`" >> $@.$${PPID}.temp
 	@for lib in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 ; do \
 		case $${lib} in \
-			1) arch="$(LIB1ARCH)" ; c99objs="$(C99LIB1OBJS)" ; objs="$(LIB1OBJS)" ; libdir="$(LIB1DIR)" ; objdir="$(LIB1OBJDIR)" ; srcdir="$(LIB1SRCDIR)" ;; \
-			2) arch="$(LIB2ARCH)" ; c99objs="$(C99LIB2OBJS)" ; objs="$(LIB2OBJS)" ; libdir="$(LIB2DIR)" ; objdir="$(LIB2OBJDIR)" ; srcdir="$(LIB2SRCDIR)" ;; \
-			3) arch="$(LIB3ARCH)" ; c99objs="$(C99LIB3OBJS)" ; objs="$(LIB3OBJS)" ; libdir="$(LIB3DIR)" ; objdir="$(LIB3OBJDIR)" ; srcdir="$(LIB3SRCDIR)" ;; \
-			4) arch="$(LIB4ARCH)" ; c99objs="$(C99LIB4OBJS)" ; objs="$(LIB4OBJS)" ; libdir="$(LIB4DIR)" ; objdir="$(LIB4OBJDIR)" ; srcdir="$(LIB4SRCDIR)" ;; \
-			5) arch="$(LIB5ARCH)" ; c99objs="$(C99LIB5OBJS)" ; objs="$(LIB5OBJS)" ; libdir="$(LIB5DIR)" ; objdir="$(LIB5OBJDIR)" ; srcdir="$(LIB5SRCDIR)" ;; \
-			6) arch="$(LIB6ARCH)" ; c99objs="$(C99LIB6OBJS)" ; objs="$(LIB6OBJS)" ; libdir="$(LIB6DIR)" ; objdir="$(LIB6OBJDIR)" ; srcdir="$(LIB6SRCDIR)" ;; \
-			7) arch="$(LIB7ARCH)" ; c99objs="$(C99LIB7OBJS)" ; objs="$(LIB7OBJS)" ; libdir="$(LIB7DIR)" ; objdir="$(LIB7OBJDIR)" ; srcdir="$(LIB7SRCDIR)" ;; \
-			8) arch="$(LIB8ARCH)" ; c99objs="$(C99LIB8OBJS)" ; objs="$(LIB8OBJS)" ; libdir="$(LIB8DIR)" ; objdir="$(LIB8OBJDIR)" ; srcdir="$(LIB8SRCDIR)" ;; \
-			9) arch="$(LIB9ARCH)" ; c99objs="$(C99LIB9OBJS)" ; objs="$(LIB9OBJS)" ; libdir="$(LIB9DIR)" ; objdir="$(LIB9OBJDIR)" ; srcdir="$(LIB9SRCDIR)" ;; \
-			10) arch="$(LIB10ARCH)" ; c99objs="$(C99LIB10OBJS)" ; objs="$(LIB10OBJS)" ; libdir="$(LIB10DIR)" ; objdir="$(LIB10OBJDIR)" ; srcdir="$(LIB10SRCDIR)" ;; \
-			11) arch="$(LIB11ARCH)" ; c99objs="$(C99LIB11OBJS)" ; objs="$(LIB11OBJS)" ; libdir="$(LIB11DIR)" ; objdir="$(LIB11OBJDIR)" ; srcdir="$(LIB11SRCDIR)" ;; \
-			12) arch="$(LIB12ARCH)" ; c99objs="$(C99LIB12OBJS)" ; objs="$(LIB12OBJS)" ; libdir="$(LIB12DIR)" ; objdir="$(LIB12OBJDIR)" ; srcdir="$(LIB12SRCDIR)" ;; \
-			13) arch="$(LIB13ARCH)" ; c99objs="$(C99LIB13OBJS)" ; objs="$(LIB13OBJS)" ; libdir="$(LIB13DIR)" ; objdir="$(LIB13OBJDIR)" ; srcdir="$(LIB13SRCDIR)" ;; \
-			14) arch="$(LIB14ARCH)" ; c99objs="$(C99LIB14OBJS)" ; objs="$(LIB14OBJS)" ; libdir="$(LIB14DIR)" ; objdir="$(LIB14OBJDIR)" ; srcdir="$(LIB14SRCDIR)" ;; \
-			15) arch="$(LIB15ARCH)" ; c99objs="$(C99LIB15OBJS)" ; objs="$(LIB15OBJS)" ; libdir="$(LIB15DIR)" ; objdir="$(LIB15OBJDIR)" ; srcdir="$(LIB15SRCDIR)" ;; \
-			16) arch="$(LIB16ARCH)" ; c99objs="$(C99LIB16OBJS)" ; objs="$(LIB16OBJS)" ; libdir="$(LIB16DIR)" ; objdir="$(LIB16OBJDIR)" ; srcdir="$(LIB16SRCDIR)" ;; \
-			17) arch="$(LIB17ARCH)" ; c99objs="$(C99LIB17OBJS)" ; objs="$(LIB17OBJS)" ; libdir="$(LIB17DIR)" ; objdir="$(LIB17OBJDIR)" ; srcdir="$(LIB17SRCDIR)" ;; \
-			18) arch="$(LIB18ARCH)" ; c99objs="$(C99LIB18OBJS)" ; objs="$(LIB18OBJS)" ; libdir="$(LIB18DIR)" ; objdir="$(LIB18OBJDIR)" ; srcdir="$(LIB18SRCDIR)" ;; \
-			19) arch="$(LIB19ARCH)" ; c99objs="$(C99LIB19OBJS)" ; objs="$(LIB19OBJS)" ; libdir="$(LIB19DIR)" ; objdir="$(LIB19OBJDIR)" ; srcdir="$(LIB19SRCDIR)" ;; \
-			20) arch="$(LIB20ARCH)" ; c99objs="$(C99LIB20OBJS)" ; objs="$(LIB20OBJS)" ; libdir="$(LIB20DIR)" ; objdir="$(LIB20OBJDIR)" ; srcdir="$(LIB20SRCDIR)" ;; \
-			21) arch="$(LIB21ARCH)" ; c99objs="$(C99LIB21OBJS)" ; objs="$(LIB21OBJS)" ; libdir="$(LIB21DIR)" ; objdir="$(LIB21OBJDIR)" ; srcdir="$(LIB21SRCDIR)" ;; \
-			22) arch="$(LIB22ARCH)" ; c99objs="$(C99LIB22OBJS)" ; objs="$(LIB22OBJS)" ; libdir="$(LIB22DIR)" ; objdir="$(LIB22OBJDIR)" ; srcdir="$(LIB22SRCDIR)" ;; \
-			23) arch="$(LIB23ARCH)" ; c99objs="$(C99LIB23OBJS)" ; objs="$(LIB23OBJS)" ; libdir="$(LIB23DIR)" ; objdir="$(LIB23OBJDIR)" ; srcdir="$(LIB23SRCDIR)" ;; \
-			24) arch="$(LIB24ARCH)" ; c99objs="$(C99LIB24OBJS)" ; objs="$(LIB24OBJS)" ; libdir="$(LIB24DIR)" ; objdir="$(LIB24OBJDIR)" ; srcdir="$(LIB24SRCDIR)" ;; \
-			25) arch="$(LIB25ARCH)" ; c99objs="$(C99LIB25OBJS)" ; objs="$(LIB25OBJS)" ; libdir="$(LIB25DIR)" ; objdir="$(LIB25OBJDIR)" ; srcdir="$(LIB25SRCDIR)" ;; \
-			26) arch="$(LIB26ARCH)" ; c99objs="$(C99LIB26OBJS)" ; objs="$(LIB26OBJS)" ; libdir="$(LIB26DIR)" ; objdir="$(LIB26OBJDIR)" ; srcdir="$(LIB26SRCDIR)" ;; \
-			27) arch="$(LIB27ARCH)" ; c99objs="$(C99LIB27OBJS)" ; objs="$(LIB27OBJS)" ; libdir="$(LIB27DIR)" ; objdir="$(LIB27OBJDIR)" ; srcdir="$(LIB27SRCDIR)" ;; \
-			28) arch="$(LIB28ARCH)" ; c99objs="$(C99LIB28OBJS)" ; objs="$(LIB28OBJS)" ; libdir="$(LIB28DIR)" ; objdir="$(LIB28OBJDIR)" ; srcdir="$(LIB28SRCDIR)" ;; \
-			29) arch="$(LIB29ARCH)" ; c99objs="$(C99LIB29OBJS)" ; objs="$(LIB29OBJS)" ; libdir="$(LIB29DIR)" ; objdir="$(LIB29OBJDIR)" ; srcdir="$(LIB29SRCDIR)" ;; \
-			30) arch="$(LIB30ARCH)" ; c99objs="$(C99LIB30OBJS)" ; objs="$(LIB30OBJS)" ; libdir="$(LIB30DIR)" ; objdir="$(LIB30OBJDIR)" ; srcdir="$(LIB30SRCDIR)" ;; \
-			31) arch="$(LIB31ARCH)" ; c99objs="$(C99LIB31OBJS)" ; objs="$(LIB31OBJS)" ; libdir="$(LIB31DIR)" ; objdir="$(LIB31OBJDIR)" ; srcdir="$(LIB31SRCDIR)" ;; \
-			32) arch="$(LIB32ARCH)" ; c99objs="$(C99LIB32OBJS)" ; objs="$(LIB32OBJS)" ; libdir="$(LIB32DIR)" ; objdir="$(LIB32OBJDIR)" ; srcdir="$(LIB32SRCDIR)" ;; \
-			33) arch="$(LIB33ARCH)" ; c99objs="$(C99LIB33OBJS)" ; objs="$(LIB33OBJS)" ; libdir="$(LIB33DIR)" ; objdir="$(LIB33OBJDIR)" ; srcdir="$(LIB33SRCDIR)" ;; \
-			34) arch="$(LIB34ARCH)" ; c99objs="$(C99LIB34OBJS)" ; objs="$(LIB34OBJS)" ; libdir="$(LIB34DIR)" ; objdir="$(LIB34OBJDIR)" ; srcdir="$(LIB34SRCDIR)" ;; \
-			35) arch="$(LIB35ARCH)" ; c99objs="$(C99LIB35OBJS)" ; objs="$(LIB35OBJS)" ; libdir="$(LIB35DIR)" ; objdir="$(LIB35OBJDIR)" ; srcdir="$(LIB35SRCDIR)" ;; \
-			36) arch="$(LIB36ARCH)" ; c99objs="$(C99LIB36OBJS)" ; objs="$(LIB36OBJS)" ; libdir="$(LIB36DIR)" ; objdir="$(LIB36OBJDIR)" ; srcdir="$(LIB36SRCDIR)" ;; \
-			37) arch="$(LIB37ARCH)" ; c99objs="$(C99LIB37OBJS)" ; objs="$(LIB37OBJS)" ; libdir="$(LIB37DIR)" ; objdir="$(LIB37OBJDIR)" ; srcdir="$(LIB37SRCDIR)" ;; \
-			38) arch="$(LIB38ARCH)" ; c99objs="$(C99LIB38OBJS)" ; objs="$(LIB38OBJS)" ; libdir="$(LIB38DIR)" ; objdir="$(LIB38OBJDIR)" ; srcdir="$(LIB38SRCDIR)" ;; \
-			39) arch="$(LIB39ARCH)" ; c99objs="$(C99LIB39OBJS)" ; objs="$(LIB39OBJS)" ; libdir="$(LIB39DIR)" ; objdir="$(LIB39OBJDIR)" ; srcdir="$(LIB39SRCDIR)" ;; \
+			1) arch="$(LIB1ARCH)";c11objs="$(C11LIB1OBJS)";c99objs="$(C99LIB1OBJS)";objs="$(LIB1OBJS)";libdir="$(LIB1DIR)";objdir="$(LIB1OBJDIR)";srcdir="$(LIB1SRCDIR)" ;; \
+			2) arch="$(LIB2ARCH)";c11objs="$(C11LIB2OBJS)";c99objs="$(C99LIB2OBJS)";objs="$(LIB2OBJS)";libdir="$(LIB2DIR)";objdir="$(LIB2OBJDIR)";srcdir="$(LIB2SRCDIR)" ;; \
+			3) arch="$(LIB3ARCH)";c11objs="$(C11LIB3OBJS)";c99objs="$(C99LIB3OBJS)";objs="$(LIB3OBJS)";libdir="$(LIB3DIR)";objdir="$(LIB3OBJDIR)";srcdir="$(LIB3SRCDIR)" ;; \
+			4) arch="$(LIB4ARCH)";c11objs="$(C11LIB4OBJS)";c99objs="$(C99LIB4OBJS)";objs="$(LIB4OBJS)";libdir="$(LIB4DIR)";objdir="$(LIB4OBJDIR)";srcdir="$(LIB4SRCDIR)" ;; \
+			5) arch="$(LIB5ARCH)";c11objs="$(C11LIB5OBJS)";c99objs="$(C99LIB5OBJS)";objs="$(LIB5OBJS)";libdir="$(LIB5DIR)";objdir="$(LIB5OBJDIR)";srcdir="$(LIB5SRCDIR)" ;; \
+			6) arch="$(LIB6ARCH)";c11objs="$(C11LIB6OBJS)";c99objs="$(C99LIB6OBJS)";objs="$(LIB6OBJS)";libdir="$(LIB6DIR)";objdir="$(LIB6OBJDIR)";srcdir="$(LIB6SRCDIR)" ;; \
+			7) arch="$(LIB7ARCH)";c11objs="$(C11LIB7OBJS)";c99objs="$(C99LIB7OBJS)";objs="$(LIB7OBJS)";libdir="$(LIB7DIR)";objdir="$(LIB7OBJDIR)";srcdir="$(LIB7SRCDIR)" ;; \
+			8) arch="$(LIB8ARCH)";c11objs="$(C11LIB8OBJS)";c99objs="$(C99LIB8OBJS)";objs="$(LIB8OBJS)";libdir="$(LIB8DIR)";objdir="$(LIB8OBJDIR)";srcdir="$(LIB8SRCDIR)" ;; \
+			9) arch="$(LIB9ARCH)";c11objs="$(C11LIB9OBJS)";c99objs="$(C99LIB9OBJS)";objs="$(LIB9OBJS)";libdir="$(LIB9DIR)";objdir="$(LIB9OBJDIR)";srcdir="$(LIB9SRCDIR)" ;; \
+			10) arch="$(LIB10ARCH)";c11objs="$(C11LIB10OBJS)";c99objs="$(C99LIB10OBJS)";objs="$(LIB10OBJS)";libdir="$(LIB10DIR)";objdir="$(LIB10OBJDIR)";srcdir="$(LIB10SRCDIR)" ;; \
+			11) arch="$(LIB11ARCH)";c11objs="$(C11LIB11OBJS)";c99objs="$(C99LIB11OBJS)";objs="$(LIB11OBJS)";libdir="$(LIB11DIR)";objdir="$(LIB11OBJDIR)";srcdir="$(LIB11SRCDIR)" ;; \
+			12) arch="$(LIB12ARCH)";c11objs="$(C11LIB12OBJS)";c99objs="$(C99LIB12OBJS)";objs="$(LIB12OBJS)";libdir="$(LIB12DIR)";objdir="$(LIB12OBJDIR)";srcdir="$(LIB12SRCDIR)" ;; \
+			13) arch="$(LIB13ARCH)";c11objs="$(C11LIB13OBJS)";c99objs="$(C99LIB13OBJS)";objs="$(LIB13OBJS)";libdir="$(LIB13DIR)";objdir="$(LIB13OBJDIR)";srcdir="$(LIB13SRCDIR)" ;; \
+			14) arch="$(LIB14ARCH)";c11objs="$(C11LIB14OBJS)";c99objs="$(C99LIB14OBJS)";objs="$(LIB14OBJS)";libdir="$(LIB14DIR)";objdir="$(LIB14OBJDIR)";srcdir="$(LIB14SRCDIR)" ;; \
+			15) arch="$(LIB15ARCH)";c11objs="$(C11LIB15OBJS)";c99objs="$(C99LIB15OBJS)";objs="$(LIB15OBJS)";libdir="$(LIB15DIR)";objdir="$(LIB15OBJDIR)";srcdir="$(LIB15SRCDIR)" ;; \
+			16) arch="$(LIB16ARCH)";c11objs="$(C11LIB16OBJS)";c99objs="$(C99LIB16OBJS)";objs="$(LIB16OBJS)";libdir="$(LIB16DIR)";objdir="$(LIB16OBJDIR)";srcdir="$(LIB16SRCDIR)" ;; \
+			17) arch="$(LIB17ARCH)";c11objs="$(C11LIB17OBJS)";c99objs="$(C99LIB17OBJS)";objs="$(LIB17OBJS)";libdir="$(LIB17DIR)";objdir="$(LIB17OBJDIR)";srcdir="$(LIB17SRCDIR)" ;; \
+			18) arch="$(LIB18ARCH)";c11objs="$(C11LIB18OBJS)";c99objs="$(C99LIB18OBJS)";objs="$(LIB18OBJS)";libdir="$(LIB18DIR)";objdir="$(LIB18OBJDIR)";srcdir="$(LIB18SRCDIR)" ;; \
+			19) arch="$(LIB19ARCH)";c11objs="$(C11LIB19OBJS)";c99objs="$(C99LIB19OBJS)";objs="$(LIB19OBJS)";libdir="$(LIB19DIR)";objdir="$(LIB19OBJDIR)";srcdir="$(LIB19SRCDIR)" ;; \
+			20) arch="$(LIB20ARCH)";c11objs="$(C11LIB20OBJS)";c99objs="$(C99LIB20OBJS)";objs="$(LIB20OBJS)";libdir="$(LIB20DIR)";objdir="$(LIB20OBJDIR)";srcdir="$(LIB20SRCDIR)" ;; \
+			21) arch="$(LIB21ARCH)";c11objs="$(C11LIB21OBJS)";c99objs="$(C99LIB21OBJS)";objs="$(LIB21OBJS)";libdir="$(LIB21DIR)";objdir="$(LIB21OBJDIR)";srcdir="$(LIB21SRCDIR)" ;; \
+			22) arch="$(LIB22ARCH)";c11objs="$(C11LIB22OBJS)";c99objs="$(C99LIB22OBJS)";objs="$(LIB22OBJS)";libdir="$(LIB22DIR)";objdir="$(LIB22OBJDIR)";srcdir="$(LIB22SRCDIR)" ;; \
+			23) arch="$(LIB23ARCH)";c11objs="$(C11LIB23OBJS)";c99objs="$(C99LIB23OBJS)";objs="$(LIB23OBJS)";libdir="$(LIB23DIR)";objdir="$(LIB23OBJDIR)";srcdir="$(LIB23SRCDIR)" ;; \
+			24) arch="$(LIB24ARCH)";c11objs="$(C11LIB24OBJS)";c99objs="$(C99LIB24OBJS)";objs="$(LIB24OBJS)";libdir="$(LIB24DIR)";objdir="$(LIB24OBJDIR)";srcdir="$(LIB24SRCDIR)" ;; \
+			25) arch="$(LIB25ARCH)";c11objs="$(C11LIB25OBJS)";c99objs="$(C99LIB25OBJS)";objs="$(LIB25OBJS)";libdir="$(LIB25DIR)";objdir="$(LIB25OBJDIR)";srcdir="$(LIB25SRCDIR)" ;; \
+			26) arch="$(LIB26ARCH)";c11objs="$(C11LIB26OBJS)";c99objs="$(C99LIB26OBJS)";objs="$(LIB26OBJS)";libdir="$(LIB26DIR)";objdir="$(LIB26OBJDIR)";srcdir="$(LIB26SRCDIR)" ;; \
+			27) arch="$(LIB27ARCH)";c11objs="$(C11LIB27OBJS)";c99objs="$(C99LIB27OBJS)";objs="$(LIB27OBJS)";libdir="$(LIB27DIR)";objdir="$(LIB27OBJDIR)";srcdir="$(LIB27SRCDIR)" ;; \
+			28) arch="$(LIB28ARCH)";c11objs="$(C11LIB28OBJS)";c99objs="$(C99LIB28OBJS)";objs="$(LIB28OBJS)";libdir="$(LIB28DIR)";objdir="$(LIB28OBJDIR)";srcdir="$(LIB28SRCDIR)" ;; \
+			29) arch="$(LIB29ARCH)";c11objs="$(C11LIB29OBJS)";c99objs="$(C99LIB29OBJS)";objs="$(LIB29OBJS)";libdir="$(LIB29DIR)";objdir="$(LIB29OBJDIR)";srcdir="$(LIB29SRCDIR)" ;; \
+			30) arch="$(LIB30ARCH)";c11objs="$(C11LIB30OBJS)";c99objs="$(C99LIB30OBJS)";objs="$(LIB30OBJS)";libdir="$(LIB30DIR)";objdir="$(LIB30OBJDIR)";srcdir="$(LIB30SRCDIR)" ;; \
+			31) arch="$(LIB31ARCH)";c11objs="$(C11LIB31OBJS)";c99objs="$(C99LIB31OBJS)";objs="$(LIB31OBJS)";libdir="$(LIB31DIR)";objdir="$(LIB31OBJDIR)";srcdir="$(LIB31SRCDIR)" ;; \
+			32) arch="$(LIB32ARCH)";c11objs="$(C11LIB32OBJS)";c99objs="$(C99LIB32OBJS)";objs="$(LIB32OBJS)";libdir="$(LIB32DIR)";objdir="$(LIB32OBJDIR)";srcdir="$(LIB32SRCDIR)" ;; \
+			33) arch="$(LIB33ARCH)";c11objs="$(C11LIB33OBJS)";c99objs="$(C99LIB33OBJS)";objs="$(LIB33OBJS)";libdir="$(LIB33DIR)";objdir="$(LIB33OBJDIR)";srcdir="$(LIB33SRCDIR)" ;; \
+			34) arch="$(LIB34ARCH)";c11objs="$(C11LIB34OBJS)";c99objs="$(C99LIB34OBJS)";objs="$(LIB34OBJS)";libdir="$(LIB34DIR)";objdir="$(LIB34OBJDIR)";srcdir="$(LIB34SRCDIR)" ;; \
+			35) arch="$(LIB35ARCH)";c11objs="$(C11LIB35OBJS)";c99objs="$(C99LIB35OBJS)";objs="$(LIB35OBJS)";libdir="$(LIB35DIR)";objdir="$(LIB35OBJDIR)";srcdir="$(LIB35SRCDIR)" ;; \
+			36) arch="$(LIB36ARCH)";c11objs="$(C11LIB36OBJS)";c99objs="$(C99LIB36OBJS)";objs="$(LIB36OBJS)";libdir="$(LIB36DIR)";objdir="$(LIB36OBJDIR)";srcdir="$(LIB36SRCDIR)" ;; \
+			37) arch="$(LIB37ARCH)";c11objs="$(C11LIB37OBJS)";c99objs="$(C99LIB37OBJS)";objs="$(LIB37OBJS)";libdir="$(LIB37DIR)";objdir="$(LIB37OBJDIR)";srcdir="$(LIB37SRCDIR)" ;; \
+			38) arch="$(LIB38ARCH)";c11objs="$(C11LIB38OBJS)";c99objs="$(C99LIB38OBJS)";objs="$(LIB38OBJS)";libdir="$(LIB38DIR)";objdir="$(LIB38OBJDIR)";srcdir="$(LIB38SRCDIR)" ;; \
+			39) arch="$(LIB39ARCH)";c11objs="$(C11LIB39OBJS)";c99objs="$(C99LIB39OBJS)";objs="$(LIB39OBJS)";libdir="$(LIB39DIR)";objdir="$(LIB39OBJDIR)";srcdir="$(LIB39SRCDIR)" ;; \
 		esac ;\
 		if test -n "$${arch}" ; then \
 			if test ! -d $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir} ; then $(MKDIR) -p -m $(DIRMODE) $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir} ; fi ;\
-			for file in $${c99objs} $${objs} stumble ; do \
+			for file in $${c11objs} $${c99objs} $${objs} stumble ; do \
 				if test "$${file}" = "stumble" ; then break ; fi ;\
 				base=`$(BASENAME) $${file} .o` ;\
 				$(AWK) -f $(AWKSCRIPTSDIR)/depend.awk -v BASE="$(MAKEFILES_DIR)/$(LIBDIR)/$${libdir}/$(ARCHDIR)" -v SUBDIR32BIT="$(LIBDIR32BIT)/$${objdir}" -v SUBDIR64BIT="$(LIBDIR64BIT)/$${objdir}" -v FQDN=$(FQDN) -v MAKEFILES_READ="$(MAKEFILES_READ)" $(DEPEND_DIR)/$(LIBDIR)/$${libdir}/$${srcdir}/$${base}.d >> $@.$${PPID}.temp ;\

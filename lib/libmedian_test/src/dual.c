@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.10 dated 2018-01-22T05:44:56Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.17 dated 2018-04-16T05:48:23Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,18 +46,32 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-01-22T05:44:56Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-04-16T05:48:23Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
+
+#define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
+#define QUICKSELECT_LOOP d_quickselect_loop
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
+/* quickselect_loop declaration */
+#if ! defined(QUICKSELECT_LOOP_DECLARED)
+QUICKSELECT_EXTERN
+# include "quickselect_loop_decl.h"
+;
+# define QUICKSELECT_LOOP_DECLARED 1
+#endif /* QUICKSELECT_LOOP_DECLARED */
+
 /* turn on (or off) debugging code */
 #define DPDEBUG 0
+
+/* Data cache size (bytes), initialized on first run */
+extern size_t quickselect_cache_size;
 
 /* Partition array starting at base with nmemb elements of size size around
    2 pivots at pivot1, pivot2 (0>=compar(pivot1,pivot2), pivot1!=pivot2) using
@@ -133,7 +147,7 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
 #endif /* DPDEBUG */
     /* partition element at pa while pa<pc */
     while (pa<pc) {
-        c=OPT_COMPAR(pa,base,options,foo); /* pivot1 at base */
+        c=OPT_COMPAR(pa,base,options); /* pivot1 at base */
         if (0>c) { /* element at pa is < pivot1 */
             pa+=size;
         } else if (0==c) { /* element at pa compares equal to pivot1 */
@@ -149,7 +163,7 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
                 EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,nsw++);
             }
             A(pc!=pe);
-            d=OPT_COMPAR(pc,pe,options,foo); /* pe is same as pivot2 */
+            d=OPT_COMPAR(pc,pe,options); /* pe is same as pivot2 */
             /* if pivot1<*pc<pivot2 (0>d), element is now in place */
             if (0<=d) { /* element >= pivot2 */
                 pd-=size;
@@ -158,8 +172,10 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
                 }
                 if (0==d) { /* element compares equal to pivot2 */
                     pe-=size;
-                    if (pd!=pe)
-                        EXCHANGE_SWAP(swapf,pd,pe,size,alignsize,size_ratio,nsw++);
+                    if (pd!=pe) {
+                        EXCHANGE_SWAP(swapf,pd,pe,size,alignsize,size_ratio,
+                            nsw++);
+                    }
                 }
             }
         }
@@ -177,48 +193,48 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
             (void *)pd,(pd-base)/size,*((int *)pd));
         print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
         for (pa=base; pa<pb; pa+=size) {
-            c=OPT_COMPAR(pa,pb,options,foo);
+            c=OPT_COMPAR(pa,pb,options);
             if (0<=c)
                 (V)fprintf(stderr,
-                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu/\n",
-                    __func__,source_file,__LINE__,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 "
+                    "at %lu/\n", __func__,source_file,__LINE__,
                     (pa-base)/size,(pb-base)/size);
             A(0>c);
         }
         for (pa=pb+size; pa<pc; pa+=size) {
-            c=OPT_COMPAR(pa,pb,options,foo);
+            c=OPT_COMPAR(pa,pb,options);
             if (0!=c)
                 (V)fprintf(stderr,
-                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu/\n",
-                    __func__,source_file,__LINE__,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 "
+                    "at %lu/\n", __func__,source_file,__LINE__,
                     (pa-base)/size,(pb-base)/size);
             A(0==c);
         }
         for (pa=pc; pa<pd; pa+=size) {
-            c=OPT_COMPAR(pa,pb,options,foo);
-            d=OPT_COMPAR(pa,pd,options,foo);
+            c=OPT_COMPAR(pa,pb,options);
+            d=OPT_COMPAR(pa,pd,options);
             if ((0>=c)||(0<=d))
                 (V)fprintf(stderr,
-                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 at %lu, pivot 2 at %lu/\n",
-                    __func__,source_file,__LINE__,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 1 "
+                    "at %lu, pivot 2 at %lu/\n", __func__,source_file,__LINE__,
                     (pa-base)/size,(pb-base)/size,(pd-base)/size);
             A((0<c)&&(0>d));
         }
         for (pa=pd+size; pa<pe; pa+=size) {
-            d=OPT_COMPAR(pa,pd,options,foo);
+            d=OPT_COMPAR(pa,pd,options);
             if (0!=d)
                 (V)fprintf(stderr,
-                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 at %lu/\n",
-                    __func__,source_file,__LINE__,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 "
+                    "at %lu/\n", __func__,source_file,__LINE__,
                     (pa-base)/size,(pd-base)/size);
             A(0==d);
         }
         for (pa=pe; pa<pu; pa+=size) {
-            d=OPT_COMPAR(pa,pd,options,foo);
+            d=OPT_COMPAR(pa,pd,options);
             if (0>=d)
                 (V)fprintf(stderr,
-                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 at %lu/\n",
-                    __func__,source_file,__LINE__,
+                    "/* %s: %s line %d: partitioning error at %lu vs. pivot 2 "
+                    "at %lu/\n", __func__,source_file,__LINE__,
                     (pa-base)/size,(pd-base)/size);
             A(0<d);
         }
@@ -285,14 +301,36 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
     }
 #endif /* DPDEBUG */
     for (;;) {
-        pu=base+(nmemb-1UL)*size; /* last element */
-        if (nmemb<=dp_cutoff) { /* small-array sort */
-            nfrozen=0UL, pivot_minrank=nmemb;
-            if (0!=use_networks) networksort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
-            else if (0!=use_shell) shellsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio);
-            else
-                d_dedicated_sort(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,options);
-    /* <- */return; /* Done; */
+        /* Use dedicated sort if array is small enough.
+           d_dedicated sort uses the best sorting method based on the expected
+           number of comparisons and swaps, taking size_ratio into account as a
+           multiplier for the swap cost, and based on divide-and-conquer using
+           single-pivot quicksort with 3 samples for pivot selection.  The
+           choice might not be optimum for dual-pivot quicksort because dual-
+           pivot divide-and-conquer uses about 5% more comparisons than single-
+           pivot quicksort, and dual-pivot quicksort uses many more swaps than
+           single-pivot quicksort. In particular, d_dedicated_sort may return
+           non-zero to indicate continued divide-and-conquer in cases where some
+           dedicated sorting method might yield better performance than dual-
+           pivot quicksort (but not better than single-pivot quicksort).
+           Because dual-pivot quicksort is inherently less efficient than
+           single-pivot quicksort (dual-pivot uses at least 5% more comparisons
+           and many more swaps) it's not worthwhile developing a special-case
+           dedicated sort for dual-pivot quicksort (such a dedicated sort which
+           selects the most efficient sorting method for array size and element
+           size_ratio would use single-pivot quicksort rather than returning for
+           continued dual-pivot processing; no point -- just use single-pivot
+           quicksort in the first place).  Use of dedicated_sort is really a
+           cheat here (in keeping with the dual-pivot approach, merge sort
+           should use a 3-way merge, insertion sort should use some sort of
+           ternary search, etc., all of which would likely also be more costly
+           than single-choice methods), so it isn't used for nmemb > dp_cutoff.
+        */
+        if (nmemb<=dp_cutoff) {
+            (V)QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
+                swapf,alignsize,size_ratio,0U,quickselect_cache_size,0UL,
+                options,NULL,NULL);
+    /* <- */    return; /* Done; else continue divide-and-conquer */
         }
 #if ADAPTIVE_SAMPLING
         /* number of samples for pivot selection */
@@ -331,20 +369,22 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         if (s<5UL) r=1UL,s=5UL;
 # if DPDEBUG
         if (DEBUGGING(DPQSORT_DEBUG)) {
-            (V)fprintf(stderr,"%s: %s line %d: %lu elements, %lu samples, r=%lu\n",__func__,source_file,__LINE__,nmemb,s,r);
+            (V)fprintf(stderr,"%s: %s line %d: %lu elements, %lu samples, "
+                "r=%lu\n",__func__,source_file,__LINE__,nmemb,s,r);
         }
 # endif /* DPDEBUG */
 #else
         s=5UL;
 #endif
-        pu+=size; /* past last element */
+        pu=base+nmemb*size; /* past last element */
 #if SAMPLE_SELECTION
         /* Aumuller & Dietzfelbinger suggest s/2 and s/4 */
         /* but it's slower in practice */
         karray[0]=r;
         karray[1]=(r<<1)+1UL;
         if (DEBUGGING(DPQSORT_DEBUG)) {
-            (V)fprintf(stderr,"%s: %s line %d: karray[0]=%lu, karray[1]=%lu\n",__func__,source_file,__LINE__,karray[0],karray[1]);
+            (V)fprintf(stderr,"%s: %s line %d: karray[0]=%lu, karray[1]=%lu\n",
+                __func__,source_file,__LINE__,karray[0],karray[1]);
         }
         /* swap sample elements to beginning of array for selection */
         /* There are s uniformly-spaced samples taken from nmemb elements.
@@ -379,14 +419,15 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
            would have to determine the extents of those ranges.  And it would
            produce ~ sqrt(nmemb) smaller partitions which would have to be
            processed.
-        */
-        quickselect_internal(base,s,size,compar,karray,2UL,
-            QUICKSELECT_NETWORK_MASK,NULL,NULL); /* bootstrap with quickselect */
-        /* Samples are partitioned, and could be moved to the appropriate
-           regions w/o recomparisons (except for the fact that some sample
-           elements might compare equal to one (or both) of the pivots, and
-           selection provides no indication of that, so recomparison would be
-           necessary).
+        */ /* bootstrap with quickselect; select pivots from samples */
+        /* table_index will be small (s samples, 2 ranks) */
+        d_quickselect_loop(base,0UL,s,size,compar,karray,0UL,2UL,swapf,
+            alignsize,size_ratio,2U,quickselect_cache_size,0UL,0U,NULL,NULL);
+        /* Samples are partitioned, and one might think that they could be moved
+           to the appropriate regions w/o recomparisons (except for the fact
+           that some sample elements might compare equal to one (or both) of the
+           pivots, and selection provides no indication of that, so recomparison
+           would be necessary).
         */
 #else
         /* for 5 samples only, simply identify pivots using sort5 */
@@ -416,9 +457,11 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         regions[0].base=base, regions[0].nmemb=(pivot1-base)/size;
         regions[1].base=pa, regions[1].nmemb=(pivot2-pa)/size;
         regions[2].base=ps, regions[2].nmemb=(pu-ps)/size;
-        /* sort regions by size (3 regions; use dedicated sort) */
-        d_dedicated_sort(regions,0UL,3UL,regionsize,regioncmp,regionswap,
-            regionsize,1UL,QUICKSELECT_NETWORK_MASK);
+        /* sort regions by size (3 regions; use quickselect_loop) */
+        /* size 3 dedicated sort always completes sorting (ignore return) */
+        (V)QUICKSELECT_LOOP((char *)regions,0UL,3UL,regionsize,regioncmp,NULL,
+            0UL,0UL,regionswap,regionsize,1UL,0U,quickselect_cache_size,0UL,
+            options,NULL,NULL);
         A(regions[0].nmemb<=regions[1].nmemb);
         A(regions[1].nmemb<=regions[2].nmemb);
         /* process small regions recursively, large iteratively */
@@ -436,9 +479,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
     }
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void dpqsort(void *base, size_t nmemb, size_t size,
     int(*compar)(const void *, const void *), unsigned int options)
 {
@@ -447,6 +488,8 @@ void dpqsort(void *base, size_t nmemb, size_t size,
     void (*swapf)(char *, char *, size_t);
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
+    /* Determine cache size once on first call. */
+    if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
     if (4UL>dp_cutoff) dp_cutoff=4UL; /* need at least 5 elements for samples */

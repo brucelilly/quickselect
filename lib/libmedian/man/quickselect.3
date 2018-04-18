@@ -1,4 +1,4 @@
-.\" Description: quickselect.3 version 1.9 man page 2017-12-16T04:03:05Z
+.\" Description: quickselect.3 version 1.11 man page 2018-02-24T22:32:49Z
 .\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
 .\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
 .\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
@@ -29,7 +29,7 @@ delim $$
 .\" package name in string xx
 .ds xx quickselect
 .\" copyright year(s) in string xy
-.ds xy "2016-2017
+.ds xy "2016-2018
 .TH \*(xx 3 ""
 .SH NAME	\" 1 line	name \- explanatory text
 .B \*(xx
@@ -40,7 +40,7 @@ delim $$
 .PP
 .B unsigned int \*(xx_options(void);
 .PP
-.B void \*(xx(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), size_t *pk, size_t nk, unsigned int options);
+.B int \*(xx(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), size_t *pk, size_t nk, unsigned int options);
 .PP
 .B errno_t \*(xx_s(void *base, rsize_t nmemb, rsize_t size, int (*compar)(const void *, const void *, void *), void *context, size_t *pk, size_t nk, unsigned int options);
 '\" QUICKSELECT_EXTERN void quickselect(/*const*/ void *, size_t, /*const*/ size_t, int (*)(const void *, const void *), /*const*/ size_t /*const*/ *, /*const*/ size_t, unsigned int);
@@ -174,23 +174,6 @@ direct sorting is also automatic, and the final
 .I O(N)
 .B base
 array reordering is efficient (though not cache-friendly).
-.IP "bits in QUICKSELECT_NETWORK_MASK" 0.5i
-specify the ability to use sorting networks for
-arrays of size 3 through 12 elements, corresponding
-to bit 0x01\ <<\ size.
-A sorting network is always used to sort
-sub\-arrays of size 2.
-Sorting networks for arrays of size 7 or larger
-are not applicable when
-.B QUICKSELECT_STABLE
-is set, and are silently ignored.
-When
-.B QUICKSELECT_OPTIMIZE_COMPARISONS
-is set, only the size 2 sorting network is used;
-all others are silently ignored.
-Sorting networks are fast due to low overhead,
-but are unable to take advantage of pre\-existing
-order in the input (e.g. already-sorted input).
 .PP
 Options may have been limited at library compile time
 to more restrictive values than those found in
@@ -212,8 +195,17 @@ to
 .BR EINVAL .
 .PP
 .SH RETURN VALUES
-none
-for \*(xx and QSORT_FUNCTION_NAME.
+none for QSORT_FUNCTION_NAME.
+.B \*(xx
+returns zero on normal execution
+and
+'\"  a non-zero value
+sets the global variable
+.I errno
+to
+.B EINVAL
+and returns that value
+if there is an argument error.
 If 
 .B __STDC_WANT_LIB_EXT1__
 is defined with non-zero value when
@@ -269,6 +261,8 @@ is set to
 .br
 #include <errno.h>
 .br
+int r;
+.br
 size_t karray[2];
 .br
 unsigned int options;
@@ -281,7 +275,7 @@ options = \*(xx_options();
 .br
 
 .br
-\*(xx(base, nmemb, size, compar, NULL, karray, 2UL, QUICKSELECT_NETWORK_MASK & options);
+r=\*(xx(base, nmemb, size, compar, NULL, karray, 2UL, 0U);
 .br
 
 .br
@@ -298,7 +292,7 @@ regarding duplicated order statistic ranks.
 .br
 
 .br
-\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, QUICKSELECT_NETWORK_MASK & options);
+(void)\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, 0U);
 .br
 
 .br
@@ -310,7 +304,7 @@ QSORT_FUNCTION_NAME(base, nmemb, size, compar);
 .br
 errno = 0;
 .br
-\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, QUICKSELECT_NETWORK_MASK | QUICKSELECT_STABLE);
+r=\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, QUICKSELECT_STABLE);
 .br
 
 .br
@@ -319,9 +313,22 @@ if that option is unavailable,
 the array
 .B base
 will be unaltered, and
+.I r
+and
 .I errno
 will be set to
 .BR EINVAL .
+.br
+
+.br
+r=\*(xx(base, nmemb, size, compar, NULL, NULL, 0UL, options & QUICKSELECT_STABLE);
+.br
+
+.br
+requests a stable sort
+if that option is available,
+avoiding error return
+if the option is unavailable.
 .PP
 .SH APPLICATION USAGE
 If the macro
@@ -366,7 +373,7 @@ and there is no
 '\" optimized element swapping function
 .\" or
 means to adjust the algorithm to
-compensate for expensive comparisons.
+compensate for expensive comparisons or swaps.
 Few libraries provide a function for selection of order statistics.
 Those libraries that do provide a selection function
 usually only permit selection of a single order statistic per function call.
@@ -420,7 +427,7 @@ or additional size\-related temporary memory may be used if available.
 Compiled library code might have been built with
 .B QUICKSELECT_STABLE
 and/or
-.B QUICKSELECT_NETWORK_MASK
+.B QUICKSELECT_INDIRECT
 set to values other than those which appear in
 .IR \*(xx.h .
 If the library was built without the option
@@ -435,8 +442,8 @@ will not be effective;
 to
 .B EINVAL
 and the array will not be sorted.
-Similarly, support for sorting network sizes may have been
-limited when the library object files were built.
+Likewise for
+.BR QUICKSELECT_INDIRECT .
 It is strongly recommended to call
 .I \*(xx_options
 to determine which option bits are available.
@@ -446,7 +453,10 @@ by running external programs such as
 or
 .I ident
 on the library archive containing
-.IR \*(xx .
+.IR \*(xx ;
+suitable strings indicating compile\-time
+build options are encoded
+in the object files.
 .SH FUTURE DIRECTIONS
 none
 .SH SEE ALSO
@@ -455,10 +465,10 @@ what,
 ident
 .SH CHANGE HISTORY
 Function implementation initial version June 2016.
-Implementation backward\-compatible updates through December 2017.
+Implementation backward\-compatible updates through February 2018.
 .PP
 Manual page initial version January 2017.
-Latest manual page update December 2017.
+Latest manual page update February 2018.
 .SH AUTHOR
 Bruce Lilly <bruce.lilly@gmail.com>
 .SH LICENSE
@@ -479,7 +489,7 @@ Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 .po
 .lt
 .br
-@(#)quickselect.3 1.9 2017-12-16T04:03:05Z copyright \*(xy Bruce Lilly
+@(#)quickselect.3 1.11 2018-02-24T22:32:49Z copyright \*(xy Bruce Lilly
 .br
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the

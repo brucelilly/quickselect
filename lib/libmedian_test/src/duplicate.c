@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    duplicate.c copyright 2016-2017 Bruce Lilly.   \ duplicate.c $
+* $Id: ~|^` @(#)    duplicate.c copyright 2016-2018 Bruce Lilly.   \ duplicate.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is duplicate.c version 1.6 dated 2017-12-28T22:17:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is duplicate.c version 1.8 dated 2018-02-06T19:58:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.duplicate.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: duplicate.c ~|^` @(#)"
 #define SOURCE_MODULE "duplicate.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2017-12-28T22:17:34Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-02-06T19:58:29Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -57,8 +57,8 @@
 #include "initialize_src.h"
 
 /* duplicate (as far as possible) long data in larray to another array */
-/* n items; source starts at index 0UL, copies at index o */
-void duplicate_test_data(long *refarray, char *pv, int type, size_t o, size_t n)
+/* n items; source starts at index 0UL, copies at index o, increment by ratio r */
+void duplicate_test_data(long *refarray, char *pv, int type, size_t r, size_t o, size_t n)
 {
     long f, l;
     int i;
@@ -76,25 +76,28 @@ void duplicate_test_data(long *refarray, char *pv, int type, size_t o, size_t n)
         l = refarray[j];
         switch (type) {
             case DATA_TYPE_UINT_LEAST8_T :
-                ((uint_least8_t *)pv)[o+j] = l % 0x0FFL;
+                ((uint_least8_t *)pv)[o+r*j] = l % 0x0FFL;
             break;
             case DATA_TYPE_UINT_LEAST16_T :
-                ((uint_least16_t *)pv)[o+j] = l % 0x0FFFFL;
+                ((uint_least16_t *)pv)[o+r*j] = l % 0x0FFFFL;
             break;
             case DATA_TYPE_UINT_LEAST32_T :
-                ((uint_least32_t *)pv)[o+j] = (uint_least64_t)l % 0x0FFFFFFFFUL;
+                ((uint_least32_t *)pv)[o+r*j] = (uint_least64_t)l % 0x0FFFFFFFFUL;
             break;
             case DATA_TYPE_UINT_LEAST64_T :
-                ((uint_least64_t *)pv)[o+j] = l;
+                ((uint_least64_t *)pv)[o+r*j] = l;
             break;
             case DATA_TYPE_LONG :
-                ((long *)pv)[o+j] = l;
+                ((long *)pv)[o+r*j] = l;
             break;
             case DATA_TYPE_INT :
-                ((int *)pv)[o+j] = l % INT_MAX;
+                ((int *)pv)[o+r*j] = l % INT_MAX;
+            break;
+            case DATA_TYPE_SHORT :
+                ((short *)pv)[o+r*j] = l % SHRT_MAX;
             break;
             case DATA_TYPE_DOUBLE :
-                ((double *)pv)[o+j] = (double)l;
+                ((double *)pv)[o+r*j] = (double)l;
             break;
             case DATA_TYPE_STRUCT :
             /*FALLTHROUGH*/
@@ -103,10 +106,10 @@ void duplicate_test_data(long *refarray, char *pv, int type, size_t o, size_t n)
             case DATA_TYPE_POINTER :
                 switch (type) {
                     case DATA_TYPE_POINTER :
-                        pds=((struct data_struct **)pv)[o+j];
+                        pds=((struct data_struct **)pv)[o+r*j];
                     break;
                     default :
-                        pds=&(((struct data_struct *)pv)[o+j]);
+                        pds=&(((struct data_struct *)pv)[o+r*j]);
                     break;
                 }
                 t = (time_t)l/(time_t)f;
@@ -181,7 +184,7 @@ void duplicate_test_data(long *refarray, char *pv, int type, size_t o, size_t n)
     }
 }
 
-void restore_test_data(size_t o, size_t n, long *refarray, char *pv, int type)
+void restore_test_data(size_t r, size_t o, size_t n, long *refarray, char *pv, int type)
 {
-    duplicate_test_data(refarray, pv, type, o, n);
+    duplicate_test_data(refarray, pv, type, r, o, n);
 }

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sizes.c copyright 2016-2017 Bruce Lilly.   \ sizes.c $
+* $Id: ~|^` @(#)    sizes.c copyright 2016-2018 Bruce Lilly.   \ sizes.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sizes.c version 1.4 dated 2017-12-28T22:44:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is sizes.c version 1.6 dated 2018-03-06T20:50:44Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sizes.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sizes.c ~|^` @(#)"
 #define SOURCE_MODULE "sizes.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-12-28T22:44:59Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-03-06T20:50:44Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -59,7 +59,7 @@
 /* print some size statistics to stdout */
 void print_sizes(const char *prefix, const char *prog)
 {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     _Bool xb;
     int_least8_t xl8;
     int_fast8_t xf8;
@@ -115,54 +115,54 @@ void print_sizes(const char *prefix, const char *prog)
 #define PT(mtype,maddr) sz=sizeof(mtype), as=alignment_size((char *)(maddr),sz), r=sz/as; (V)fprintf(stdout, FMT2 ,prefix, xbuildstr(mtype), (unsigned long)sz,(unsigned long)as,(unsigned long)r) /* caller supplies terminating semicolon */
 
     /* common standard (as of C99) types */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(_Bool,&xb);
 #endif /* C99 */
     PT(char,&xc);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(int_least8_t,&xl8);
     PT(int_fast8_t,&xf8);
 #endif /* C99 */
     PT(unsigned char,&xuc);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(uint_least8_t,&xul8);
     PT(uint_fast8_t,&xuf8);
 #endif /* C99 */
     PT(short,&xs);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(int_least16_t,&xl16);
     PT(int_fast16_t,&xf16);
 #endif /* C99 */
     PT(unsigned short,&xus);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(uint_least16_t,&xul16);
     PT(uint_fast16_t,&xuf16);
 #endif /* C99 */
     PT(int,&xi);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(int_least32_t,&xl32);
     PT(int_fast32_t,&xf32);
 #endif /* C99 */
     PT(unsigned int,&xu);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(uint_least32_t,&xul32);
     PT(uint_fast32_t,&xuf32);
 #endif /* C99 */
     PT(long,&xl);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(long long,&xll);
     PT(int_least64_t,&xl64);
     PT(int_fast64_t,&xf64);
 #endif /* C99 */
     PT(unsigned long,&xul);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(unsigned long long,&xull);
     PT(uint_least64_t,&xul64);
     PT(uint_fast64_t,&xuf64);
 #endif /* C99 */
     PT(float,&xf);
     PT(double,&xd);
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     PT(long double,&xld);
     PT(float _Complex,&xfc);
     PT(double _Complex,&xdc);
@@ -175,7 +175,7 @@ void print_sizes(const char *prefix, const char *prog)
 
     /* print maximum date string */
     xl=LONG_MAX;
-    duplicate_test_data(&xl,(char *)(&xstruct),DATA_TYPE_STRUCT,0UL,1UL);
+    duplicate_test_data(&xl,(char *)(&xstruct),DATA_TYPE_STRUCT,1UL,0UL,1UL);
     (V)fprintf(stdout,
         "latest date-time string for %ld is %s\n",
         xl, xstruct.string);

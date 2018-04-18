@@ -59,16 +59,16 @@ MAKEFILES_READ += makefile.targets
 # some dependencies (e.g. makefile.$(OS)) cannot be listed here as environment has not yet been set
 #  those are listed in makefile.files
 # NetBSD /usr/bin/make gets lost easily; it needs the full path to the makefiles
-.PRECIOUS : make_grap median_test lemd bstest malloc_test generate_cutoff_table graphingtest swaptest thermostatd
+.PRECIOUS : make_grap median_test lemd bstest malloc_test memcpy_test generate_cutoff_table graphingtest swaptest thermostatd
 .PRECIOUS : simple_config
-heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest swaptest \
+heap_test lemd make_grap median_test numtest bstest malloc_test memcpy_test generate_cutoff_table graphingtest swaptest \
  simple_config thermostatd udp windows linux junk5.ps junk5.pdf junk5.svg\
  : depend $(LAST_STAGE) $(LAST_INCLUDE) $(MAKEFILES_DIR)/makefile.build # also $(DEPEND) 
 
 # dependencies
 # executable programs depend on depend.awk
 #sunrise : $(AWKSCRIPTSDIR)/depend.awk
-heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
+heap_test lemd make_grap median_test numtest bstest malloc_test memcpy_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
  : $(AWKSCRIPTSDIR)/depend.awk
 
 # dependencies
@@ -83,14 +83,19 @@ heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_
 #   below.  Therefore executables depend on ALWAYS.
 #sunrise : ALWAYS
 #make_grap median_test 
-heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
+heap_test lemd make_grap median_test numtest bstest malloc_test memcpy_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp \
  : ALWAYS
 
 gprof.out : median_test
 	gprof -A -Q -L -C -p -q -y -r -x -l ./median_test gmon.out > $@
 
-# update FAKE_TARGETS list before including makefile.include1
-FAKE_TARGETS += windows linux
+# gcov is not useful:
+#   1. it REQUIRES gcc, and therefore is unusable with other compilers
+#   2. it is based on the assumption that final linking is with a long
+#      list of object files and only system libraries, not application
+#      libraries
+#   3. it requires disabling optimization, which doesn't reflect
+#      operation of optimized code
 
 # targets with recipes given here depend on this file
 # but exclude raw data files, as they require rebuilding median_test with specific compile-time settings
@@ -100,7 +105,7 @@ bmqsort.grap data4 data4.grap junk5.ps junk5.pdf junk5.svg paper.troff paper.ps 
 # recipe
 # add environment variables via $(SCRIPTSDIR)/ident.sh to identify host, OS, etc.
 # override environment $SHELL with something sane (defined above)
-heap_test lemd make_grap median_test numtest bstest malloc_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp windows linux \
+heap_test lemd make_grap median_test numtest bstest malloc_test memcpy_test generate_cutoff_table graphingtest simple_config swaptest thermostatd udp windows linux \
  :
 	$${SHELL} -c ". $(SCRIPTSDIR)/ident.sh -p $(SCRIPTSDIR)/ident.sh ; SHELL=$${SHELL} MAKE='$(MAKE)' $(MAKE) -f $(LAST_STAGE) $@"
 
@@ -143,3 +148,19 @@ clean : docsclean targetsclean
 cleaner : docscleaner targetscleaner
 
 cleanest : docscleanest targetscleanest
+
+# github maintenance
+update : ALWAYS update.sh
+	${SHELL} update.sh
+
+status : ALWAYS
+	git status
+
+diffs : ALWAYS
+	git diff --color > $@
+
+commit : ALWAYS
+	git commit -a
+
+push : ALWAYS
+	git push

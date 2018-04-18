@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    compare.h copyright 2016-2017 Bruce Lilly. \ compare.h $
+* $Id: ~|^` @(#)    compare.h copyright 2016-2018 Bruce Lilly. \ compare.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,17 +30,20 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.h version 1.6 dated 2017-09-17T02:29:07Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.h version 1.8 dated 2018-03-07T22:04:03Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "compare" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.compare.h */
 
 /* version-controlled header file version information */
-#define COMPARE_H_VERSION "compare.h 1.6 2017-09-17T02:29:07Z"
+#define COMPARE_H_VERSION "compare.h 1.8 2018-03-07T22:04:03Z"
 
 #include <stddef.h>             /* size_t NULL */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # include <stdint.h>            /* *int*_t */
+# define COMPARE_INLINE inline
+#else
+# define COMPARE_INLINE /**/
 #endif /* C99 */
 
 /* Generic macro. Implementation avoids overflow. */
@@ -55,64 +58,32 @@
     return 0;                                                      \
 }
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int charcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int charcmp(const void *p1, const void *p2)
 typecmp(char)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int doublecmp(const void *p1, const void *p2)
+static COMPARE_INLINE int doublecmp(const void *p1, const void *p2)
 typecmp(double)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int floatcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int floatcmp(const void *p1, const void *p2)
 typecmp(float)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int intcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int intcmp(const void *p1, const void *p2)
 typecmp(int)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int shortcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int shortcmp(const void *p1, const void *p2)
 typecmp(short)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int longcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int longcmp(const void *p1, const void *p2)
 typecmp(long)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int ulcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int ulcmp(const void *p1, const void *p2)
 typecmp(unsigned long)
 
-static
-#if defined(__STDC__) && __STDC_VERSION__ >= 199901UL
-inline
-#endif
-int size_tcmp(const void *p1, const void *p2)
+static COMPARE_INLINE int size_tcmp(const void *p1, const void *p2)
 typecmp(size_t)
 
 /* C99 mandatory specific-size types */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 static inline int int_least8_tcmp(const void *p1, const void *p2)
 typecmp(int_least8_t)
 
@@ -163,5 +134,7 @@ typecmp(uint_fast64_t)
 #endif /* C99 */
 
 #undef typecmp
+#undef COMPARE_INLINE
+
 #define	COMPARE_H_INCLUDED
 #endif

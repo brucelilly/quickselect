@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    wqsort.c copyright 2016-2017 Bruce Lilly.   \ wqsort.c $
+* $Id: ~|^` @(#)    wqsort.c copyright 2016-2018 Bruce Lilly.   \ wqsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.8 dated 2017-12-15T21:35:32Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.17 dated 2018-04-16T05:48:23Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,20 +46,40 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2017-12-15T21:35:32Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-04-16T05:48:23Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
+
+#define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
+#define QUICKSELECT_LOOP d_quickselect_loop
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
+/* quickselect_loop declaration */
+#if ! defined(QUICKSELECT_LOOP_DECLARED)
+QUICKSELECT_EXTERN
+# include "quickselect_loop_decl.h"
+;
+# define QUICKSELECT_LOOP_DECLARED 1
+#endif /* QUICKSELECT_LOOP_DECLARED */
+
+#include "pivot_src.h"
+
+extern void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
+    size_t beyondk, size_t *pfk, size_t *pbk);
+extern struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
+    const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
+    unsigned int *psort, unsigned int *pindex, size_t nmemb);
+
+/* Data cache size (bytes), initialized on first run */
+extern size_t quickselect_cache_size;
+
 static
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 /* spacings are in elements */
 /* remedian does not modify the value pointed to by middle, but it is not
    declared as const to avoid spurious compiler warnings about discarding the
@@ -74,11 +94,12 @@ char *low_remedian(register char *middle, register size_t row_spacing,
     register size_t o;
     if (aqcmp!=compar) return NULL;
 #if DEBUG_CODE
-if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
-(V)fprintf(stderr,
-"/* %s: %s line %d: middle=%p[%lu], row_spacing=%lu, sample_spacing=%lu, idx=%u */\n",
-__func__,source_file,__LINE__,(const void *)middle,(middle-base)/size,(unsigned long)row_spacing,(unsigned long)sample_spacing,idx);
-}
+    if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: middle=%p[%lu], row_spacing=%lu, "
+            "sample_spacing=%lu, idx=%u */\n",__func__,source_file,__LINE__,
+            (const void *)middle,(middle-base)/size,(unsigned long)row_spacing,
+            (unsigned long)sample_spacing,idx);
+    }
 #endif
     A((SAMPLING_TABLE_SIZE)>idx);
     if ((0U<idx)&&(0U < --idx)) {
@@ -103,9 +124,7 @@ __func__,source_file,__LINE__,(const void *)middle,(middle-base)/size,(unsigned 
 }
 
 /* pivot selection using remedian or median-of-medians */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 char *freeze_some_samples(register char *base, register size_t first,
     size_t beyond, register size_t size,
     int (*compar)(const void *, const void*),
@@ -123,8 +142,9 @@ char *freeze_some_samples(register char *base, register size_t first,
     A((SAMPLING_TABLE_SIZE)>table_index);
 #if DEBUG_CODE
     if (DEBUGGING(WQSORT_DEBUG))
-        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, table_index=%u, options=0x%x */\n",
-            __func__,source_file,__LINE__,first,beyond,table_index,options);
+        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+            "table_index=%u, options=0x%x */\n",__func__,source_file,__LINE__,
+            first,beyond,table_index,options);
 #endif
     switch (options&((QUICKSELECT_STABLE)|(QUICKSELECT_RESTRICT_RANK))) {
 #if QUICKSELECT_STABLE
@@ -148,8 +168,10 @@ char *freeze_some_samples(register char *base, register size_t first,
             nfrozen=0UL, pivot_minrank=minimum_remedian_rank(table_index);
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, table_index=%u, options=0x%x, pivot_minrank=%lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,options,pivot_minrank);
+                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+                    "table_index=%u, options=0x%x, pivot_minrank=%lu */\n",
+                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    options,pivot_minrank);
 #endif
             /* pre-freeze before pivot selection */
             p=count_frozen(base,first,beyond,size);
@@ -162,8 +184,12 @@ char *freeze_some_samples(register char *base, register size_t first,
             pivot_sample_rank(pivot,r,r,size,table_index,pivot,&t,base);
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, table_index=%u, options=0x%x, pivot_minrank=%lu: pre-freeze %lu frozen elements, overall pivot rank %lu/%lu, pivot rank within samples ([%lu,%lu) by %lu) %lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,options,pivot_minrank,p,q,nmemb,x,u,w,t);
+                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+                    "table_index=%u, options=0x%x, pivot_minrank=%lu: "
+                    "pre-freeze %lu frozen elements, overall pivot rank %lu/%lu"
+                    ", pivot rank within samples ([%lu,%lu) by %lu) %lu */\n",
+                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    options,pivot_minrank,p,q,nmemb,x,u,w,t);
 #endif
             /* freeze low-address samples which will be used for pivot selection */
             /* mandatory elements (corresponding to minimum possible pivot rank) */
@@ -175,8 +201,11 @@ char *freeze_some_samples(register char *base, register size_t first,
                     if (nfrozen<pivot_minrank) {
 #if DEBUG_CODE
                         if (DEBUGGING(WQSORT_DEBUG))
-                            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, x=%lu, x+r=%lu */\n",
-                                __func__,source_file,__LINE__,first,beyond,nfrozen,pivot_minrank,x,x+r);
+                            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
+                                "beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, "
+                                "x=%lu, x+r=%lu */\n",__func__,source_file,
+                                __LINE__,first,beyond,nfrozen,pivot_minrank,x,
+                                x+r);
 #endif
                         pb=base+size*x;
                         A(pb>=pl);
@@ -188,8 +217,11 @@ char *freeze_some_samples(register char *base, register size_t first,
                     if (nfrozen<pivot_minrank) {
 #if DEBUG_CODE
                         if (DEBUGGING(WQSORT_DEBUG))
-                            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, x=%lu, x+r=%lu */\n",
-                                __func__,source_file,__LINE__,first,beyond,nfrozen,pivot_minrank,x,x+r);
+                            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
+                                "beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, x="
+                                "%lu, x+r=%lu */\n",__func__,source_file,
+                                __LINE__,first,beyond,nfrozen,pivot_minrank,x,
+                                x+r);
 #endif
                         pb=base+size*x;
                         A(pb>=pl);
@@ -213,8 +245,12 @@ char *freeze_some_samples(register char *base, register size_t first,
             pivot_sample_rank(pivot,r,r,size,table_index,pivot,&t,base);
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, table_index=%u, options=0x%x, pivot_minrank=%lu: post-freeze %lu frozen elements, overall pivot rank %lu/%lu, pivot rank within %lu samples %lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,options,pivot_minrank,p,q,nmemb,s*3UL,t);
+                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+                    "table_index=%u, options=0x%x, pivot_minrank=%lu: post-"
+                    "freeze %lu frozen elements, overall pivot rank %lu/%lu, "
+                    "pivot rank within %lu samples %lu */\n",__func__,
+                    source_file,__LINE__,first,beyond,table_index,options,
+                    pivot_minrank,p,q,nmemb,s*3UL,t);
 #endif
         break;
         case (QUICKSELECT_RESTRICT_RANK) : /* median-of-medians */
@@ -224,8 +260,11 @@ char *freeze_some_samples(register char *base, register size_t first,
             q=pivot_rank(base,first,beyond,size,pivot);
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, table_index=%u, options=0x%x, pivot_minrank=%lu: pre-selection %lu frozen elements, pivot rank %lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,options,pivot_minrank,p,q);
+                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
+                    "table_index=%u, options=0x%x, pivot_minrank=%lu: pre-"
+                    "selection %lu frozen elements, pivot rank %lu */\n",
+                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    options,pivot_minrank,p,q);
 #endif
         break;
     }
@@ -241,35 +280,39 @@ size_t minimum_remedian_rank(unsigned int table_index)
 }
 
 /* modified quickselect sort; always get worst-case pivot for given
-   repivot_factor and repivot_cutoff that would just avoid repivoting
+   repivot_factor that would just avoid repivoting
 */
 static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    size_t cutoff, size_t *pk, size_t firstk, size_t beyondk,
-    unsigned int options, int c)
+    size_t *pk, size_t firstk, size_t beyondk,
+    unsigned int table_index, size_t pbeyond, unsigned int options, int c)
 {
     char *pc, *pd, *pe, *pf, *pivot;
     size_t nmemb, r, ratio=0, s, samples, t;
     auto size_t lk=firstk, p, q, rk=beyondk;
-    auto unsigned int sort, table_index=2U;
+    auto unsigned int sort;
     struct sampling_table_struct *psts;
         
     for (;;) {
 #if DEBUG_CODE
         if (DEBUGGING(WQSORT_DEBUG))
-            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu */\n",
-                __func__,source_file,__LINE__,first,beyond,firstk,beyondk);
+            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, firstk"
+                "=%lu, beyondk=%lu */\n",__func__,source_file,__LINE__,first,
+                beyond,firstk,beyondk);
 #endif
         nmemb=beyond-first;
-        if (nmemb<=cutoff) {
-            if (1UL<nmemb) {
-                nfrozen=0UL, pivot_minrank=nmemb;
-                d_dedicated_sort(base,first,beyond,size,compar,swapf,alignsize,
-                    size_ratio,options);
+        if (1UL<nmemb) {
+            nfrozen=0UL, pivot_minrank=nmemb;
+            if ((nmemb<=quickselect_small_array_cutoff)
+            && (nmemb<5UL) /* must avoid indirection */
+            ) {
+                (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,
+                    0UL,swapf,alignsize,size_ratio,table_index,
+                    quickselect_cache_size,0UL,options,NULL,NULL);
+                return;
             }
-            return;
-        }
+        } else return;
         A(table_index < (SAMPLING_TABLE_SIZE));
         psts=d_sampling_table(first,beyond,pk,firstk,beyondk,NULL,&sort,
             &table_index,nmemb);
@@ -282,18 +325,23 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
 
         /* normal pivot selection (for comparison and swap counts) */
         pivot=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
-            size_ratio,table_index,NULL,options,&pc,&pd,&pe,&pf);
-t=pivot_minrank;
+            size_ratio,table_index,NULL,quickselect_cache_size,pbeyond,options,
+            &pc,&pd,&pe,&pf);
+#if DEBUG_CODE
+        t=pivot_minrank;
+#endif
         pivot_minrank=nmemb;
         /* XXX no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
-            alignsize,size_ratio,options,NULL,NULL,NULL,&p,&q);
+            alignsize,size_ratio,quickselect_cache_size,options,&p,&q);
 #if DEBUG_CODE
-if (p+1UL!=q) {
-(V)fprintf(stderr, "/* %s: %s line %d: nmemb=%lu, first=%lu, p=%lu, q=%lu, beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), nfrozen=%lu */\n",
-__func__,source_file,__LINE__,nmemb,first,p,q,beyond,samples,pivot_minrank,t,nfrozen);
-print_some_array(base,first,beyond-1UL, "/* "," */",options);
-}
+        if (p+1UL!=q) {
+            (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, first=%lu, p=%lu, "
+                "q=%lu, beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), "
+                "nfrozen=%lu */\n",__func__,source_file,__LINE__,nmemb,first,p,
+                q,beyond,samples,pivot_minrank,t,nfrozen);
+            print_some_array(base,first,beyond-1UL,"/* "," */",options);
+        }
 #endif
         if (p>first) s=p-first; else s=0UL; /* size of the < region */
         if (beyond>q) r=beyond-q; else r=0UL;  /* size of the > region */
@@ -304,7 +352,8 @@ print_some_array(base,first,beyond-1UL, "/* "," */",options);
         }
 #if DEBUG_CODE
         if (DEBUGGING(WQSORT_DEBUG))
-            (V)fprintf(stderr,"/* %s: %s line %d: p=%lu, q=%lu, pivot rank=s=%lu, r=%lu, ratio=%lu */\n",
+            (V)fprintf(stderr,"/* %s: %s line %d: p=%lu, q=%lu, pivot rank=s="
+                "%lu, r=%lu, ratio=%lu */\n",
                 __func__,source_file,__LINE__,p,q,s,r,ratio);
 #endif
         if (NULL!=pk) d_klimits(p,q,pk,firstk,beyondk,&lk,&rk);
@@ -313,22 +362,25 @@ print_some_array(base,first,beyond-1UL, "/* "," */",options);
         /* > region indices [q,beyond), order statistics [rk,beyondk) */
 #if DEBUG_CODE
         if (DEBUGGING(WQSORT_DEBUG)) {
-            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, p=%lu, q=%lu, beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), nfrozen=%lu, firstk=%lu, lk=%lu, rk=%lu, beyondk=%lu */\n",
-                __func__,source_file,__LINE__,first,p,q,beyond,samples,pivot_minrank,t,nfrozen,firstk,lk,rk,beyondk);
+            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, p=%lu, q=%lu, "
+                "beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), nfrozen=%lu, "
+                "firstk=%lu, lk=%lu, rk=%lu, beyondk=%lu */\n",
+                __func__,source_file,__LINE__,first,p,q,beyond,samples,
+                pivot_minrank,t,nfrozen,firstk,lk,rk,beyondk);
         }
 #endif
         if (s<r) { /* > region is larger */
             if (1UL<s) {
                 nrecursions++;
                 wqsort_internal(base,first,p,size,compar,swapf,alignsize,
-                    size_ratio,cutoff,pk,firstk,lk,options,0);
+                    size_ratio,pk,firstk,lk,table_index,pbeyond,options,0);
             }
             first=q, firstk=lk;
         } else { /* < region is larger, or regions are the same size */
             if (1UL<r) {
                 nrecursions++;
                 wqsort_internal(base,q,beyond,size,compar,swapf,alignsize,
-                    size_ratio,cutoff,pk,rk,beyondk,options,0);
+                    size_ratio,pk,rk,beyondk,table_index,pbeyond,options,0);
             }
             beyond=p, beyondk=rk;
         }
@@ -342,13 +394,16 @@ void wqsort(void *base, size_t nmemb, size_t size,
     size_t alignsize=alignment_size((char *)base,size);
     size_t size_ratio=size/alignsize;
     void (*swapf)(char *, char *, size_t);
-    size_t cutoff=2UL;
+    unsigned int table_index;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
+    /* Determine cache size once on first call. */
+    if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
 #if DEBUG_CODE
-    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) {
+        /* for graphing worst-case partition ratios */
         size_t q;
         for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++)
             stats_table[q].max_ratio=stats_table[q].repivot_ratio=0UL,
@@ -356,12 +411,27 @@ void wqsort(void *base, size_t nmemb, size_t size,
     }
 #endif
 
+    table_index=nmemb<=
+#if ( SIZE_MAX < 65535 )
+# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
+#elif ( SIZE_MAX == 65535 ) /* 16 bits */
+        sorting_sampling_table[2].max_nmemb?1UL:3UL
+#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
+        sorting_sampling_table[5].max_nmemb?2UL:7UL
+#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
+        sorting_sampling_table[10].max_nmemb?5UL:15UL
+#else
+# error "strange SIZE_MAX " SIZE_MAX
+#endif /* word size */
+    ; /* starting point; refined by sample_index() */
+
     nfrozen=0UL, pivot_minrank=nmemb;
-    wqsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,cutoff,
-        pk,0UL,nk,options,0);
+    wqsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
+        pk,0UL,nk,table_index,0UL,options,0);
 
 #if DEBUG_CODE
-    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) {
+        /* for graphing worst-case partition ratios */
         size_t q;
         for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++) {
             if (0UL<stats_table[q].max_ratio)

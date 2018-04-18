@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sorted_array.c copyright 2011 - 2016 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    sorted_array.c copyright 2011-2018 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sorted_array.c version 1.6 2016-05-31T14:22:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is sorted_array.c version 1.7 2018-02-05T17:32:35Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "sorted_array" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libconfig/src/s.sorted_array.c */
@@ -55,10 +55,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sorted_array.c ~|^` @(#)"
 #define SOURCE_MODULE "sorted_array.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2016-05-31T14:22:59Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-02-05T17:32:35Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2011 - 2016"
+#define COPYRIGHT_DATE "2011-2018"
 
 /* configuration (which might affect feature test macros) */
 /* to include a main entry point for testing, compile with -DTESTING=1 */
@@ -126,10 +126,10 @@ int arrayfind(void **arr, size_t nelem, size_t *pindex, void *it,
             c = compar(it, arr[m]);
             if (c < 0) {
                 u = m - 1;
-                m = l + (m - l)>>1;
+                m = l + ((m - l)>>1);
             } else if (c > 0) {
                 l = m + 1;
-                m += 1 + (u-m)>>1;
+                m += 1 + ((u-m)>>1);
             } else {
                 l = m;
                 break;

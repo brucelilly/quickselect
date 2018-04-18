@@ -40,11 +40,15 @@ MAKEFILES_READ += makefile.$(CCBASE)
 # N.B. pcc barfs on gcc-specific cruft in linux /usr/include/bits/mathinline.h
 # N.B. pcc barfs on gcc-specific cruft in NetBSD /usr/include/unistd.h
 
-# C and C99 are essentially two different programming languages...
+# C and C99 and C11 are essentially different programming languages...
 C = 
 
 # C99 flags
 C99 = 
+
+# Some people never learn... 2-digit year numbers are going to be a problem...
+# C11 flags (C11 > C99...)
+C11 = 
 
 # flags for making dependency files
 MAKE_DEPEND_ARG = -MM
@@ -71,6 +75,7 @@ XTRAS +=
 # Should NOT include $(INCLUDE), $(SYS_INCLUDE), or $(OS_INCLUDE)
 CFLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C) $(XTRAS)
 C99FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C99) $(XTRAS)
+C11FLAGS = $(PROFILE) $(DEBUG_SYM) $(OPTIMIZE) $(DEFS) $(OS_DEFS) $(C11) $(XTRAS)
 
 # Floating-point option
 FFLAG =

@@ -247,6 +247,21 @@ case ${OS} in
 	*bsd)
 		NETWORKS=`netstat -r -f inet -n | egrep -v "^127|fwip[0-9]" | grep "^[0-9][0-9./]*[ 	]" | awk '{print $1}' | sed -e "s,/24,.0," | head -1`
 		DEFAULT_ROUTE=`netstat -r -f inet -n | grep "^default[ 	]" | awk '{print $2}'`
+		# try to fix missing default route
+		if test -z "${DEFAULT_ROUTE}"
+		then
+			if test -a -r /etc/mygate -a -s /etc/mygate
+			then
+				uid=`id -u`
+				if test ${uid} -eq 0
+				then
+					route add default `cat /etc/mygate`
+				else
+					echo -n "set default route: route add default "
+					cat /etc/mygate
+				fi
+			fi
+		fi
 	;;
 	linux)
 		NETWORKS=`netstat -A inet -r | grep "^[0-9][0-9.]*[ 	]" | awk '{print $1}' | sort -u`

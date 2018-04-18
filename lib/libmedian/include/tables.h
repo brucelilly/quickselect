@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    tables.h 1.3 copyright 2017 Bruce Lilly.   \ tables.h $
+* $Id: ~|^` @(#)    tables.h 1.5 copyright 2017-2018 Bruce Lilly.   \ tables.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is tables.h version 1.3 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is tables.h version 1.5 dated 2018-04-18T00:42:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.tables.h */
@@ -84,10 +84,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define TABLES_H_VERSION "tables.h 1.3 2017-12-22T04:14:04Z"
-
-/* local header files needed */
-#include "quickselect_config.h" /* quickselect QSORT_FUNCTION_NAME */
+#define TABLES_H_VERSION "tables.h 1.5 2018-04-18T00:42:19Z"
 
 /* system header files */
 #include <stddef.h>             /* size_t */
@@ -197,6 +194,7 @@ extern unsigned char selection_distribution_remap[8];
                                    +1-(SELECTION_BREAKPOINT_OFFSET))
 
 extern unsigned char selection_breakpoint[SELECTION_BREAKPOINTS][SELECTION_TYPES];
+extern unsigned char stable_selection_breakpoint[SELECTION_BREAKPOINTS][SELECTION_TYPES];
 
 /*
    Repivoting with median-of medians always results in a ratio of the large
@@ -250,4 +248,4 @@ extern struct repivot_table_struct selection_repivot_table[];
 extern const size_t repivot_table_size;
 
 #define	TABLES_H_INCLUDED
-#endif
+#endif /* TABLES_H_INCLUDED */

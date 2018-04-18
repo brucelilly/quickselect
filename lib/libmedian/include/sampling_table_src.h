@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sampling_table_src.h copyright 2017 Bruce Lilly.   \ sampling_table_src.h $
+* $Id: ~|^` @(#)    sampling_table_src.h copyright 2017-2018 Bruce Lilly.   \ sampling_table_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.4 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.7 dated 2018-04-18T00:42:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,10 +97,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-04-18T00:42:19Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017"
+#define COPYRIGHT_DATE "2017-2018"
 
 /* local header files needed */
 #include "quickselect_config.h" /* quickselect QSORT_FUNCTION_NAME */
@@ -119,6 +119,12 @@
 #include <limits.h>             /* *_MAX */
 #include <stddef.h>             /* size_t NULL */
 
+#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+/* not static; referenced by inline functions */
+char sampling_table_src_file[PATH_MAX];
+char sampling_table_src_file_initialized=0;
+#endif
+
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 /* klimits declaration */
 #include "klimits_decl.h"
@@ -134,7 +140,7 @@
 */
 /* called from sampling_table and quicksort */
 #if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
+QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "sample_index_decl.h"
 {
@@ -169,10 +175,15 @@ static QUICKSELECT_INLINE
     unsigned char distribution, raw, sort=1U;
     struct sampling_table_struct *psts=sorting_sampling_table;
 
-    A(NULL!=pindex);
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
+#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+    if ((char)0==sampling_table_src_file_initialized) {
+        (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
+        sampling_table_src_file_initialized++;
+    }
+#endif
     if (NULL!=pk) { /* selection, not sorting */
         size_t bk, fk, m1, m2, nk, nr, qk, x;
         A(beyondk>firstk);
@@ -182,13 +193,30 @@ static QUICKSELECT_INLINE
         /* median(s): lower(m1) and upper (m2) */
         m1=first+((nmemb-1UL)>>1); m2=first+(nmemb>>1);
         x=(nmemb>>3)+1UL; /* nmemb/8 + 1 */
-        klimits(m1-x,m2+x,pk,firstk,beyondk,&fk,&bk);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SAMPLING_DEBUG)
+        ||DEBUGGING(REPARTITION_DEBUG)
+        ||DEBUGGING(REPIVOT_DEBUG)
+        )
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: nmemb=%lu, nk=%lu, x(%s)=%lu, first=%lu, "
+                "m1=%lu, m2=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, pk[%lu]="
+                "%lu, pk[%lu]=%lu */\n",__func__,sampling_table_src_file,__LINE__,
+                (unsigned long)nmemb,(unsigned long)nk,
+                16UL<=nk?"nmemb/32+1":1UL<nk?"nmemb/2/nk+1":"nmemb/4+1",
+                (unsigned long)x,(unsigned long)first,(unsigned long)m1,
+                (unsigned long)m2,(unsigned long)beyond,(unsigned long)firstk,
+                (unsigned long)beyondk,(unsigned long)firstk,
+                (unsigned long)pk[firstk],(unsigned long)beyondk-1UL,
+                (unsigned long)pk[beyondk-1UL]);
+#endif
+        KLIMITS_FUNCTION_NAME(m1-x,m2+x,pk,firstk,beyondk,&fk,&bk);
         nr = ((bk>fk)?bk-fk:0UL); /* ranks in [3/8-,5/8+) */
         if (0UL!=nr) raw|=2U;
         qk=nk>>2; /* 1/4 */
         if ((1UL<nk)&&(qk<=nr+1UL)&&(nr<=qk+1UL)) {
             /* nr OK for distributed ranks; check for ends,separated */
-            klimits(first,m2+x,pk,firstk,beyondk,&fk,&bk);
+            KLIMITS_FUNCTION_NAME(first,m2+x,pk,firstk,beyondk,&fk,&bk);
             qk = ((bk>fk)?bk-fk:0UL); /* ranks in [0,3/8-) */
             if (0UL!=qk) raw|=4U;
             nr += qk; /* now ranks in [0,5/8+) */
@@ -196,8 +224,33 @@ static QUICKSELECT_INLINE
             if ((qk<=nr+1UL)&&(nr<=qk+1UL))
                 raw|=1U;
         }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SAMPLING_DEBUG)
+        ||DEBUGGING(REPARTITION_DEBUG)
+        ||DEBUGGING(REPIVOT_DEBUG)
+        )
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, raw "
+                "distribution=%u, ppeq=%p, firstk=%lu, beyondk=%lu, pk[%lu]=%lu"
+                ", pk[%lu]=%lu */\n",__func__,sampling_table_src_file,__LINE__,
+                (unsigned long)first,(unsigned long)beyond,(unsigned long)nmemb,
+                raw,(void *)ppeq,(unsigned long)firstk,(unsigned long)beyondk,
+                (unsigned long)firstk,(unsigned long)pk[firstk],
+                (unsigned long)beyondk-1UL,(unsigned long)pk[beyondk-1UL]);
+#endif
         /* convert raw distribution to enumerated value */
         distribution=sampling_distribution_remap[raw];
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SAMPLING_DEBUG)
+        ||DEBUGGING(REPARTITION_DEBUG)
+        ||DEBUGGING(REPIVOT_DEBUG)
+        )
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, remapped "
+                "distribution=%u, ppeq=%p */\n",__func__,sampling_table_src_file,__LINE__,
+                (unsigned long)first,(unsigned long)beyond,(unsigned long)nmemb,
+                distribution,(void *)ppeq);
+#endif
         if (NULL==ppeq) {
             /* Worst-case sort of 3 elements costs 3 comparisons and at most
                2 swaps.  Worst-case selection of minimum or maximum of 3
@@ -212,10 +265,15 @@ static QUICKSELECT_INLINE
             if (SELECTION_BREAKPOINT_OFFSET<=nmemb) { /* possibly select */
                 if ((SELECTION_BREAKPOINT_TABLE_MAX_NMEMB)>=nmemb) {
                     /* table breakpoints determine sorting vs. selection */
-                    if (selection_breakpoint
-                        [nmemb-SELECTION_BREAKPOINT_OFFSET]
-                        [selection_distribution_remap[raw]]
-                    >=nk)
+                    if (0U!=(options&(QUICKSELECT_STABLE)))
+                        x=stable_selection_breakpoint
+                            [nmemb-SELECTION_BREAKPOINT_OFFSET]
+                            [selection_distribution_remap[raw]];
+                    else
+                        x=selection_breakpoint
+                            [nmemb-SELECTION_BREAKPOINT_OFFSET]
+                            [selection_distribution_remap[raw]];
+                    if (x>=nk)
                         sort=0U;
                 } else { /* large sub-arrays */
                     /* 1/8, 15/16 sorting vs. selection rules of thumb */
@@ -225,7 +283,7 @@ static QUICKSELECT_INLINE
                         if (nk<=nmemb-(nmemb>>4)) sort=0U; /* <=15/16 nmemb */
                     }
                 }
-            } /* sort/select equivalent @2 elements (extents irrelevant) */
+            } /* sort/select equivalent @2-3 elements (extents irrelevant) */
         } else {
             /* no sort if == region extents are required */
             sort=0U;
@@ -233,14 +291,49 @@ static QUICKSELECT_INLINE
                necessarily the desired order statistic rank element.
             */
         }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SAMPLING_DEBUG)
+        ||DEBUGGING(REPARTITION_DEBUG)
+        ||DEBUGGING(REPIVOT_DEBUG)
+        )
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: nmemb=%lu, distribution=%u */\n",
+                __func__,sampling_table_src_file,__LINE__,(unsigned long)nmemb,
+                distribution);
+#endif
     } /* else sorting */
-    if (NULL!=psort) *psort=sort;
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SAMPLING_DEBUG)
+    ||DEBUGGING(REPARTITION_DEBUG)
+    ||DEBUGGING(REPIVOT_DEBUG)
+    )
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: nmemb=%lu, sort=%u */\n",
+            __func__,sampling_table_src_file,__LINE__,(unsigned long)nmemb,sort);
+#endif
     /* Select sampling table based on whether sorting or selecting, and if the
        latter, on the distribution of the desired order statistic ranks.
        If sort!=1U (i.e. it has been reset to 0U), distribution has been set.
     */
     A((0U!=sort)||((SAMPLING_TABLES)>distribution));
-    if (0U==sort) psts=sampling_tables[distribution];
-    *pindex=sample_index(psts, *pindex, nmemb);
+    if (0U==sort) psts=sampling_tables[distribution]; /* selection */
+    else *ppk=NULL; /* sorting */
+#if ASSERT_CODE
+    if ((psts!=sorting_sampling_table)
+    &&(psts!=ends_sampling_table)
+    &&(psts!=middle_sampling_table)
+    ) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: nmemb=%lu, pk=%p, firstk=%lu, beyondk=%lu, sort"
+            "=%u, distribution=%u */\n",__func__,sampling_table_src_file,__LINE__,
+            (unsigned long)nmemb,(const void *)pk,(unsigned long)firstk,
+            (unsigned long)beyondk,sort,distribution);
+    }
+#endif
+    A((psts==sorting_sampling_table)
+    ||(psts==ends_sampling_table)
+    ||(psts==middle_sampling_table)
+    );
+    /* table_index is only determined if divide-and-conquer is used */
     return psts;
 }

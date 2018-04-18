@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    simple_config.c copyright 2016 Bruce Lilly.   \ simple_config.c $
+* $Id: ~|^` @(#)    simple_config.c copyright 2016-2018 Bruce Lilly.   \ simple_config.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is simple_config.c version 1.6 dated 2017-09-21T16:10:30Z. \ $ */
+/* $Id: ~|^` @(#)   This is simple_config.c version 1.7 dated 2018-03-06T20:05:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "simple_config" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/src/s.simple_config.c */
@@ -52,16 +52,16 @@ command-line arguments.
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: simple_config.c ~|^` @(#)"
 #define SOURCE_MODULE "simple_config.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2017-09-21T16:10:30Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-03-06T20:05:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* configuration (which might affect feature test macros) */
 
 /* feature test macros must appear before any header file inclusion */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600
 #else
 # define MIN_XOPEN_SOURCE_VERSION 500
@@ -129,7 +129,7 @@ command-line arguments.
 "
 
 /* static data and function definitions */
-static char simple_config_version_string[] = "$Id: ~|^` @(#) simple_config version 1.6\\ $";
+static char simple_config_version_string[] = "$Id: ~|^` @(#) simple_config version 1.7\\ $";
 static char simple_config_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *simple_config_version = NULL;
@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = "simple_config main";
-    ls.swVersion = "1.6";       /* maintained by version control system */
+    ls.swVersion = "1.7";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;

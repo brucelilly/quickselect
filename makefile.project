@@ -1,7 +1,7 @@
 # Description: makefile for project-specific settings
 
 # Project name
-PROJECT = quickselect
+PROJECT = lemd
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += PROJECT
 
@@ -55,7 +55,7 @@ MACROS += PROJECT_MAINTAINER PROJECT_MAINTAINER_EMAIL_ADDRESS
 #DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" 
 #DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)/\"
 #DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)\" -Dstrcopy=stpcpy
-DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)\" -DOS=\"${OS}\" -DOSVERSION=\"${OSVERSION}\" -DDISTRIBUTION=\"${DISTRIBUTION}\"
+DEFS = -DZONE_OFFSET=\"${ZONE}\" -DHOST_FQDN=\"${FQDN}\" -DPUBLIC_CONFIGDIR=\"$(PUBLIC_CONFIGDIR)\" -DLEMD_PUBLIC_CONFIGDIR=\"$(LEMD_PUBLIC_CONFIGDIR)\" -DTHERMOSTATD_PUBLIC_CONFIGDIR=\"$(THERMOSTATD_PUBLIC_CONFIGDIR)\" -DOS=\"${OS}\" -DOSVERSION=\"${OSVERSION}\" -DDISTRIBUTION=\"${DISTRIBUTION}\"
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += DEFS
 
@@ -69,10 +69,10 @@ PROJECT_SID = $(PROJECT_RELEASE)$(PROJECT_LEVEL)$(PROJECT_BRANCH)$(PROJECT_SEQUE
 MACROS += PROJECT_RELEASE PROJECT_LEVEL PROJECT_BRANCH PROJECT_SEQUENCE PROJECT_SID
 
 # project-related naming
-#NMEA_PREFIX = nmea
-#NMEA_PREFIX_UNDERSCORE = $(NMEA_PREFIX)_
 NAME_PREFIX = $(PROJECT)_
 MACROS += NAME_PREFIX
+NMEA_PREFIX_UNDERSCORE = nmea_
+MACROS += NMEA_PREFIX_UNDERSCORE
 # UC_NAME_PREFIX (all upper-case translation of NAME_PREFIX) is generated
 #   when makefile.$(OS)-$(FQDN) is built
 
@@ -273,7 +273,8 @@ RAGEL_CODE_OPT = -G1
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += RAGEL_CODE_OPT
 
-PROJECT_TOOLS += RSYNC,rsync
+# RSYNC (full path to rsync) is needed for thermostatd and lemd
+PROJECT_TOOLS += RSYNC!rsync
 # rsync options
 # beware 'rsync -g' (as included by '-a') vs. different OS group naming
 RSYNC_ARCHIVE = -rplotD

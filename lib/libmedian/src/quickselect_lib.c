@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_lib.c copyright 2016-2017 Bruce Lilly.   \ quickselect.c $
+* $Id: ~|^` @(#)    quickselect_lib.c copyright 2016-2018 Bruce Lilly.   \ quickselect.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_lib.c version 1.4 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_lib.c version 1.7 dated 2018-03-07T04:26:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect_lib.c */
@@ -90,6 +90,5 @@
 #include "klimits_src.h"
 #include "sampling_table_src.h"
 #include "repivot_src.h"
-#include "pivot_src.h"
 #include "partition_src.h"
 #include "quickselect_loop_src.h"

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is debug.c version 1.5 dated 2018-01-12T14:33:41Z. \ $ */
+/* $Id: ~|^` @(#)   This is debug.c version 1.9 dated 2018-03-20T19:45:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.debug.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: debug.c ~|^` @(#)"
 #define SOURCE_MODULE "debug.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-01-12T14:33:41Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-03-20T19:45:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -101,6 +101,14 @@ const char *debug_name(unsigned int value)
         return "merge";
         case DPQSORT_DEBUG :
         return "dpqsort";
+        case CACHE_DEBUG :
+        return "cache";
+        case MEMORY_DEBUG :
+        return "memory";
+        case METHOD_DEBUG :
+        return "method";
+        case CORRECTNESS_DEBUG :
+        return "correctness";
     }
     (V)snul(buf, sizeof(buf), "unknown value 0x", NULL, value, 16, '0', 8, NULL, NULL);
     return buf;

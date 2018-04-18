@@ -1,4 +1,5 @@
 /*INDENT OFF*/
+#error "obsolete file"
 
 /* Description: C source code for quickselect */
 /******************************************************************************
@@ -9,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    cutoff_table.c copyright 2017 Bruce Lilly.   \ cutoff_table.c $
+* $Id: ~|^` @(#)    cutoff_table.c copyright 2017-2018 Bruce Lilly.   \ cutoff_table.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is cutoff_table.c version 1.4 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is cutoff_table.c version 1.5 dated 2018-02-03T17:33:01Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.cutoff_table.c */
@@ -54,10 +55,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: cutoff_table.c ~|^` @(#)"
 #define SOURCE_MODULE "cutoff_table.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-02-03T17:33:01Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017"
+#define COPYRIGHT_DATE "2017-2018"
 
 /* local header files needed */
 #include "quickselect_config.h" /* QUICKSELECT_STABLE */
@@ -73,6 +74,7 @@
 /* default table (non-stable sort/selection, cutoffs for best run-time) */
 struct cutoff_table_struct cutoff_table[] =
 { /* ratio cutoff */
+#if 0
  {    1UL,    17UL },
  {    2UL,    16UL },
  {    3UL,    14UL },
@@ -85,11 +87,15 @@ struct cutoff_table_struct cutoff_table[] =
  {   16UL,     5UL },
  {   22UL,     4UL },
  { (SIZE_MAX), 4UL }
+#else
+ { (SIZE_MAX), 9UL }
+#endif
 };
 
 /* table for optimized comparisons (in-place merge sort) */
 struct cutoff_table_struct cutoff_table_c[] =
 { /* ratio cutoff */
+#if 0
  {    1UL,    24UL },
  {    2UL,    13UL },
  {    4UL,    12UL },
@@ -102,12 +108,16 @@ struct cutoff_table_struct cutoff_table_c[] =
  {   62UL,     5UL },
  { 1000UL,     4UL },
  { (SIZE_MAX), 4UL }
+#else
+ { (SIZE_MAX), 9UL }
+#endif
 };
 
 #if QUICKSELECT_STABLE
 /* table for stable sort */
 struct cutoff_table_struct cutoff_table_s[] =
 { /* ratio cutoff */
+#if 0
  {    1UL,   433UL },
  {    2UL,    87UL },
  {    3UL,    58UL },
@@ -125,11 +135,15 @@ struct cutoff_table_struct cutoff_table_s[] =
  {   41UL,     5UL },
  {   54UL,     4UL },
  { (SIZE_MAX), 4UL }
+#else
+ { (SIZE_MAX), 9UL }
+#endif
 };
 
 /* table for stable sort with optimized comparisons (in-place merge sort) */
 struct cutoff_table_struct cutoff_table_sc[] =
 { /* ratio cutoff */
+#if 0
  {       1UL,  2904UL },
  {       2UL,   823UL },
  {       3UL,   660UL },
@@ -155,5 +169,8 @@ struct cutoff_table_struct cutoff_table_sc[] =
  { 1600000UL,    28UL },
  /* This should decrease, but very slowly... */
  { (SIZE_MAX), 4UL }
+#else
+ { (SIZE_MAX), 9UL }
+#endif
 };
 #endif /* QUICKSELECT_STABLE */

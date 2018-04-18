@@ -42,7 +42,8 @@ MAKEFILES_READ += makefile.$(OS)
 
 # NetBSD default "ksh" is the incomplete "pdksh" implementation
 # use the real ksh, installed via `pkgin install ast-ksh`
-#SHELL = /usr/pkg/bin/ksh93
+# pdksh fails on ${PAGER:less} from $${PAGER:less} in makefiles
+SHELL = /usr/pkg/bin/ksh93
 
 # NetBSD "make" (really bmake) is broken (e.g. doesn't handle include); use gmake instead
 #MAKE = gmake
@@ -93,6 +94,8 @@ MACROS += PROFILE_LIBDIR
 # where to install and find configuration files
 #PUBLIC_CONFIGDIR = /etc/$(PROJECT)
 PUBLIC_CONFIGDIR = $(PROJECT_DIR)
+#LEMD_PUBLIC_CONFIGDIR = $(LEMD_PROJECT_DIR)
+#THERMOSTATD_PUBLIC_CONFIGDIR = $(THERMOSTATD_PROJECT_DIR)
 MACROS += PUBLIC_CONFIGDIR
 
 # where to install shared resources

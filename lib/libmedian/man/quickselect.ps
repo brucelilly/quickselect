@@ -1,6 +1,6 @@
 %!PS-Adobe-3.0
 %%Creator: groff version 1.22.3
-%%CreationDate: Fri Dec 15 23:03:19 2017
+%%CreationDate: Sat Feb 24 17:32:52 2018
 %%DocumentNeededResources: font Times-Roman
 %%+ font Times-Bold
 %%+ font Times-Italic
@@ -240,10 +240,10 @@ BP
 SF -.219(NA)72 84 S(ME).219 E/F2 10/Times-Bold@0 SF(quickselect)108 96 Q
 F0 2.5<ad6d>2.5 G(ultiple selection of order statistics and sorting)-2.5
 E F1(SYNOPSIS)72 112.8 Q F2(#include <quickselect.h>)108 124.8 Q
-(unsigned int quickselect_options\(v)108 141.6 Q(oid\);)-.1 E -.1(vo)108
-158.4 S .035(id quickselect\(v).1 F .035
+(unsigned int quickselect_options\(v)108 141.6 Q(oid\);)-.1 E .505
+(int quickselect\(v)108 158.4 R .504
 (oid *base, size_t nmemb, size_t size, int \(*compar\)\(const v)-.1 F
-.035(oid *, const v)-.1 F .035(oid *\), size_t)-.1 F
+.504(oid *, const v)-.1 F .504(oid *\), size_t)-.1 F
 (*pk, size_t nk, unsigned int options\);)108 170.4 Q(err)108 187.2 Q
 .717(no_t quickselect_s\(v)-.15 F .717
 (oid *base, rsize_t nmemb, rsize_t size, int \(*compar\)\(const v)-.1 F
@@ -331,241 +331,229 @@ one which dereferences pointers; allocating, initializing,)4.038 F 1.548
 681.6 R 4.049(,f)-.4 G 1.549(allback to direct sorting is also)-4.149 F
 (automatic, and the f)144 693.6 Q(inal)-.2 E F3(O\(N\))2.4 E F2(base)
 2.56 E F0(array reordering is ef)2.5 E -.2(fi)-.25 G
-(cient \(though not cache-friendly\).).2 E(1)535 768 Q 0 Cg EP
+(cient \(though not cache-friendly\).).2 E 1.927(Options may ha)108
+710.4 R 2.227 -.15(ve b)-.2 H 1.926
+(een limited at library compile time to more restricti).15 F 2.226 -.15
+(ve v)-.25 H 1.926(alues than those found in)-.1 F F3(quic)108 722.4 Q
+(kselect.h)-.2 E F0 5.501(.F).28 G(unction)-5.501 E F2
+(quickselect_options)3.001 E F0 .502
+(may be called to determine the options a)3.001 F -.25(va)-.2 G .502
+(ilable at run-time:).25 F(1)535 768 Q 0 Cg EP
 %%Page: 2 2
 %%BeginPageSetup
 BP
 %%EndPageSetup
 /F0 10/Times-Roman@0 SF 122.355(quickselect\(3\) Library)72 48 R
-(Functions Manual)2.5 E(quickselect\(3\))124.855 E(bits in Q)108 84 Q
-(UICKSELECT_NETW)-.1 E(ORK_MASK)-.1 E .337
-(specify the ability to use sorting netw)144 96 R .336
-(orks for arrays of size 3 through 12 elements, corresponding)-.1 F
-2.201(to bit 0x01)144 108 R(<< size.)2.5 E 4.701(As)7.201 G 2.201
-(orting netw)-4.701 F 2.201(ork is al)-.1 F -.1(wa)-.1 G 2.202
-(ys used to sort sub\255arrays of size 2.).1 F(Sorting)7.202 E(netw)144
-120 Q .226(orks for arrays of size 7 or lar)-.1 F .226
-(ger are not applicable when)-.18 F/F1 10/Times-Bold@0 SF -.1(QU)2.725 G
-(ICKSELECT_ST).1 E(ABLE)-.9 E F0 .225(is set,)2.725 F 1.722
-(and are silently ignored.)144 132 R(When)6.722 E F1 -.1(QU)4.223 G
-(ICKSELECT_OPTIMIZE_COMP).1 E(ARISONS)-.74 E F0 1.723(is set, only)4.223
-F .357(the size 2 sorting netw)144 144 R .357
-(ork is used; all others are silently ignored.)-.1 F .357(Sorting netw)
-5.357 F .357(orks are f)-.1 F .357(ast due to)-.1 F(lo)144 156 Q 3.724
-(wo)-.25 G -.15(ve)-3.874 G 1.224(rhead, b).15 F 1.224
-(ut are unable to tak)-.2 F 3.725(ea)-.1 G(dv)-3.725 E 1.225
-(antage of pre\255e)-.25 F 1.225
-(xisting order in the input \(e.g. already-)-.15 F(sorted input\).)144
-168 Q 1.927(Options may ha)108 184.8 R 2.227 -.15(ve b)-.2 H 1.926
-(een limited at library compile time to more restricti).15 F 2.226 -.15
-(ve v)-.25 H 1.926(alues than those found in)-.1 F/F2 10/Times-Italic@0
-SF(quic)108 196.8 Q(kselect.h)-.2 E F0 5.501(.F).28 G(unction)-5.501 E
-F1(quickselect_options)3.001 E F0 .502
-(may be called to determine the options a)3.001 F -.25(va)-.2 G .502
-(ilable at run-time:).25 F 1.477(bits not present in the returned v)108
-208.8 R 1.477(alue pro)-.25 F 1.477(vided from)-.15 F F1
-(quickselect_options)3.977 E F0 1.476(should not be included in the)
-3.977 F F2(options)108.23 220.8 Q F0(ar)2.77 E(gument to)-.18 E F1
-(quickselect)2.5 E F0 2.5(;t)C(he)-2.5 E 2.5(yw)-.15 G(ill cause)-2.5 E
-F1(quickselect)2.5 E F0(to f)2.5 E(ail and set)-.1 E F2(errno)2.69 E F0
-(to)2.68 E F1(EINV)2.5 E(AL)-1.35 E F0(.)A/F3 10.95/Times-Bold@0 SF
-(RETURN V)72 237.6 Q(ALUES)-1.478 E F0 2.145
-(none for quickselect and QSOR)108 249.6 R(T_FUNCTION_N)-.6 E 4.645
-(AME. If)-.35 F F1(__STDC_W)4.645 E(ANT_LIB_EXT1__)-1.2 E F0 2.145
-(is def)4.645 F(ined)-.2 E .183(with non-zero v)108 261.6 R .183
-(alue when)-.25 F F2(quic)2.933 E(kselect.h)-.2 E F0 .183
-(is included, quickselect_s and QSOR)2.963 F(T_S_FUNCTION_N)-.6 E .183
-(AME are)-.35 F(pro)108 273.6 Q 1.416
-(vided, which return zero on normal e)-.15 F -.15(xe)-.15 G 1.416
-(ction and non-zero if there is an ar).15 F 1.416(gument error)-.18 F
-6.416(.A)-.55 G -.18(rg)-6.416 G(uments).18 E F1(nmemb)108 285.6 Q F0
-(and)3.952 E F1(size)3.952 E F0 1.452(are compared to)3.952 F F1
-(RSIZE_MAX)3.952 E F0 3.952(,a)C(nd)-3.952 E F1(compar)3.952 E F0 1.452
-(is compared to)3.952 F F1(NULL)3.952 E F0 6.452(.I)C 3.952(na)-6.452 G
-1.452(ddition, the)-3.952 F 2.176(comparison function)108 297.6 R F1
-(compar)4.676 E F0 2.176(is e)4.676 F 2.176(xpected to tak)-.15 F 4.677
-(eat)-.1 G 2.177(hird ar)-4.677 F 2.177(gument, which is pro)-.18 F
-2.177(vided by the)-.15 F F1(contect)4.677 E F0(ar)108 309.6 Q(gument.)
--.18 E F3(ERR)72 326.4 Q(ORS)-.329 E F0(If)108 338.4 Q F1(base)3.04 E F0
-(is)3.04 E F2(NULL)3.04 E F0(,).53 E F1(nmemb)3.04 E F0 .54(is 0UL,)3.04
-F F1(size)3.04 E F0 .539(is 0UL,)3.039 F F1(compar)3.039 E F0(is)3.039 E
-F2(NULL)3.039 E F0 3.039(,o).53 G(r)-3.039 E F1(options)3.039 E F0 .539
-(requests una)3.039 F -.25(va)-.2 G .539(ilable options,).25 F
-(the global v)108 350.4 Q(ariable)-.25 E F2(errno)2.69 E F0(is set to)
-2.68 E F1(EINV)2.5 E(AL)-1.35 E F0(.)A F3(EXAMPLES)72 367.2 Q F0
-(#include "quickselect.h")108 379.2 Q(#include <errno.h>)108 391.2 Q
-(size_t karray[2];)108 403.2 Q(unsigned int options;)108 415.2 Q
-(karray[0] = \(nmemb-1UL\)/2UL;)108 427.2 Q(karray[1] = nmemb/2UL;)108
-439.2 Q(options = quickselect_options\(\);)108 451.2 Q 2.325
-(quickselect\(base, nmemb, size, compar)108 475.2 R 4.825(,N)-.4 G 2.325
-(ULL, karray)-4.825 F 4.825(,2)-.65 G 2.325(UL, Q)-4.825 F
-(UICKSELECT_NETW)-.1 E 2.325(ORK_MASK &)-.1 F(options\);)108 487.2 Q
-.455(places the median \()108 511.2 R F1(nmemb)A F0 .455
+(Functions Manual)2.5 E(quickselect\(3\))124.855 E 1.477
+(bits not present in the returned v)108 84 R 1.477(alue pro)-.25 F 1.477
+(vided from)-.15 F/F1 10/Times-Bold@0 SF(quickselect_options)3.977 E F0
+1.476(should not be included in the)3.977 F/F2 10/Times-Italic@0 SF
+(options)108.23 96 Q F0(ar)2.77 E(gument to)-.18 E F1(quickselect)2.5 E
+F0 2.5(;t)C(he)-2.5 E 2.5(yw)-.15 G(ill cause)-2.5 E F1(quickselect)2.5
+E F0(to f)2.5 E(ail and set)-.1 E F2(errno)2.69 E F0(to)2.68 E F1(EINV)
+2.5 E(AL)-1.35 E F0(.)A/F3 10.95/Times-Bold@0 SF(RETURN V)72 112.8 Q
+(ALUES)-1.478 E F0 .692(none for QSOR)108 124.8 R(T_FUNCTION_N)-.6 E
+(AME.)-.35 E F1(quickselect)5.692 E F0 .692(returns zero on normal e)
+3.192 F -.15(xe)-.15 G .693(cution and sets the global).15 F -.25(va)108
+136.8 S(riable).25 E F2(errno)10.417 E F0(to)10.407 E F1(EINV)10.227 E
+(AL)-1.35 E F0 7.727(and returns that v)10.227 F 7.726
+(alue if there is an ar)-.25 F 7.726(gument error)-.18 F 12.726(.I)-.55
+G(f)-12.726 E F1(__STDC_W)108 148.8 Q(ANT_LIB_EXT1__)-1.2 E F0 5.156
+(is def)7.656 F 5.157(ined with non-zero v)-.2 F 5.157(alue when)-.25 F
+F2(quic)7.907 E(kselect.h)-.2 E F0 5.157(is included,)7.937 F .165
+(quickselect_s and QSOR)108 160.8 R(T_S_FUNCTION_N)-.6 E .165
+(AME are pro)-.35 F .164(vided, which return zero on normal e)-.15 F
+-.15(xe)-.15 G .164(ction and).15 F .904(non-zero if there is an ar)108
+172.8 R .904(gument error)-.18 F 5.904(.A)-.55 G -.18(rg)-5.904 G
+(uments).18 E F1(nmemb)3.404 E F0(and)3.404 E F1(size)3.404 E F0 .904
+(are compared to)3.404 F F1(RSIZE_MAX)3.404 E F0 3.404(,a)C(nd)-3.404 E
+F1(compar)108 184.8 Q F0 .891(is compared to)3.391 F F1(NULL)3.391 E F0
+5.891(.I)C 3.391(na)-5.891 G .891(ddition, the comparison function)
+-3.391 F F1(compar)3.391 E F0 .89(is e)3.39 F .89(xpected to tak)-.15 F
+3.39(eat)-.1 G(hird)-3.39 E(ar)108 196.8 Q(gument, which is pro)-.18 E
+(vided by the)-.15 E F1(contect)2.5 E F0(ar)2.5 E(gument.)-.18 E F3(ERR)
+72 213.6 Q(ORS)-.329 E F0(If)108 225.6 Q F1(base)3.039 E F0(is)3.039 E
+F2(NULL)3.039 E F0(,).53 E F1(nmemb)3.039 E F0 .539(is 0UL,)3.039 F F1
+(size)3.039 E F0 .539(is 0UL,)3.039 F F1(compar)3.039 E F0(is)3.04 E F2
+(NULL)3.04 E F0 3.04(,o).53 G(r)-3.04 E F1(options)3.04 E F0 .54
+(requests una)3.04 F -.25(va)-.2 G .54(ilable options,).25 F
+(the global v)108 237.6 Q(ariable)-.25 E F2(errno)2.69 E F0(is set to)
+2.68 E F1(EINV)2.5 E(AL)-1.35 E F0(.)A F3(EXAMPLES)72 254.4 Q F0
+(#include "quickselect.h")108 266.4 Q(#include <errno.h>)108 278.4 Q
+(int r;)108 290.4 Q(size_t karray[2];)108 302.4 Q(unsigned int options;)
+108 314.4 Q(karray[0] = \(nmemb-1UL\)/2UL;)108 326.4 Q
+(karray[1] = nmemb/2UL;)108 338.4 Q(options = quickselect_options\(\);)
+108 350.4 Q(r=quickselect\(base, nmemb, size, compar)108 374.4 Q 2.5(,N)
+-.4 G(ULL, karray)-2.5 E 2.5(,2)-.65 G(UL, 0U\);)-2.5 E .455
+(places the median \()108 398.4 R F1(nmemb)A F0 .455
 (odd\) or medians \()5 F F1(nmemb)A F0 -2.15 -.25(ev e)5 H .455
 (n\) in the middle element\(s\) of the array pointed).25 F(to by)108
-523.2 Q F1(base.)2.5 E F0(Refer to the B)5 E(UGS and CA)-.1 E(VEA)-1.35
+410.4 Q F1(base.)2.5 E F0(Refer to the B)5 E(UGS and CA)-.1 E(VEA)-1.35
 E(TS section re)-1.11 E -.05(ga)-.15 G
-(rding duplicated order statistic ranks.).05 E 2.103
-(quickselect\(base, nmemb, size, compar)108 547.2 R 4.604(,N)-.4 G 2.104
-(ULL, NULL, 0UL, Q)-4.604 F(UICKSELECT_NETW)-.1 E 2.104(ORK_MASK &)-.1 F
-(options\);)108 559.2 Q(sorts the array)108 583.2 Q 2.5(,a)-.65 G
-(nd is equi)-2.5 E -.25(va)-.25 G(lent to).25 E(QSOR)108 595.2 Q
+(rding duplicated order statistic ranks.).05 E(\(v)108 434.4 Q
+(oid\)quickselect\(base, nmemb, size, compar)-.2 E 2.5(,N)-.4 G
+(ULL, NULL, 0UL, 0U\);)-2.5 E(sorts the array)108 458.4 Q 2.5(,a)-.65 G
+(nd is equi)-2.5 E -.25(va)-.25 G(lent to).25 E(QSOR)108 470.4 Q
 (T_FUNCTION_N)-.6 E(AME\(base, nmemb, size, compar\);)-.35 E(errno = 0;)
-108 619.2 Q 2.827(quickselect\(base, nmemb, size, compar)108 631.2 R
-5.326(,N)-.4 G 2.826(ULL, NULL, 0UL, Q)-5.326 F(UICKSELECT_NETW)-.1 E
-2.826(ORK_MASK |)-.1 F -.1(QU)108 643.2 S(ICKSELECT_ST).1 E(ABLE\);)-.93
-E .245(requests a stable sort; if that option is una)108 667.2 R -.25
-(va)-.2 G .245(ilable, the array).25 F F1(base)2.746 E F0 .246
-(will be unaltered, and)2.746 F F2(errno)2.936 E F0 .246(will be set to)
-2.926 F F1(EINV)108 679.2 Q(AL)-1.35 E F0(.)A F3(APPLICA)72 696 Q
-(TION USA)-1.04 E(GE)-.602 E F0 .003(If the macro)108 708 R F1(QSOR)
-2.503 E(T_FUNCTION_N)-.4 E(AME)-.2 E F0 .003(is def)2.503 F .003
-(ined before)-.2 F F2(quic)2.752 E(kselect.h)-.2 E F0 .002
-(is included when compiling the)2.782 F F2(quic)108.25 720 Q(kselect.c)
--.2 E F0 .683(source, a sorting function with the same semantics as)
-3.493 F F1(qsort)3.183 E F0 .684(is generated, using the specif)3.184 F
-(ied)-.2 E(2)535 768 Q 0 Cg EP
+108 494.4 Q(r=quickselect\(base, nmemb, size, compar)108 506.4 Q 2.5(,N)
+-.4 G(ULL, NULL, 0UL, Q)-2.5 E(UICKSELECT_ST)-.1 E(ABLE\);)-.93 E .234
+(requests a stable sort; if that option is una)108 530.4 R -.25(va)-.2 G
+.234(ilable, the array).25 F F1(base)2.735 E F0 .235
+(will be unaltered, and)2.735 F F2(r)2.785 E F0(and)3.465 E F2(errno)
+2.925 E F0 .235(will be)2.915 F(set to)108 542.4 Q F1(EINV)2.5 E(AL)
+-1.35 E F0(.)A(r=quickselect\(base, nmemb, size, compar)108 566.4 Q 2.5
+(,N)-.4 G(ULL, NULL, 0UL, options & Q)-2.5 E(UICKSELECT_ST)-.1 E
+(ABLE\);)-.93 E(requests a stable sort if that option is a)108 590.4 Q
+-.25(va)-.2 G(ilable, a).25 E -.2(vo)-.2 G
+(iding error return if the option is una).2 E -.25(va)-.2 G(ilable.).25
+E F3(APPLICA)72 607.2 Q(TION USA)-1.04 E(GE)-.602 E F0 .003
+(If the macro)108 619.2 R F1(QSOR)2.503 E(T_FUNCTION_N)-.4 E(AME)-.2 E
+F0 .003(is def)2.503 F .003(ined before)-.2 F F2(quic)2.752 E(kselect.h)
+-.2 E F0 .002(is included when compiling the)2.782 F F2(quic)108.25
+631.2 Q(kselect.c)-.2 E F0 .683
+(source, a sorting function with the same semantics as)3.493 F F1(qsort)
+3.183 E F0 .684(is generated, using the specif)3.184 F(ied)-.2 E 2.738
+(name. A)108 643.2 R .238(library implementation of)2.738 F F1(qsort)
+2.738 E F0 .237(may be generated by def)2.738 F(ining)-.2 E F1(QSOR)
+2.737 E(T_FUNCTION_N)-.4 E(AME)-.2 E F0(as)2.737 E F1(qsort)108 655.2 Q
+F0(.)A F3(RA)72 672 Q(TION)-1.04 E(ALE)-.219 E F0 .177(While man)108 684
+R 2.677(yl)-.15 G .177(ibraries include a standard)-2.677 F F1(qsort)
+2.677 E F0 .177(function, those)2.677 F F1(qsort)2.677 E F0 .177
+(implementations may tend to quadratic)2.677 F 2.757(performance on adv)
+108 696 R 2.757(erse inputs.)-.15 F(Man)7.757 E 5.257(yi)-.15 G 2.757
+(mplementations e)-5.257 F 2.756
+(xhibit poor performance for some types of)-.15 F 2.447
+(structured input sequences, such as re)108 708 R -.15(ve)-.25 G 2.447
+(rse-sorted or rotated sequences.).15 F(Most)7.448 E F1(qsort)4.948 E F0
+(implementations)4.948 E(pro)108 720 Q 1.08
+(vide no guarantee of stablilty \(in the sense of preserv)-.15 F 1.079
+(ation of partial order\), and there is no means to)-.25 F(2)535 768 Q 0
+Cg EP
 %%Page: 3 3
 %%BeginPageSetup
 BP
 %%EndPageSetup
 /F0 10/Times-Roman@0 SF 122.355(quickselect\(3\) Library)72 48 R
-(Functions Manual)2.5 E(quickselect\(3\))124.855 E 2.738(name. A)108 84
-R .238(library implementation of)2.738 F/F1 10/Times-Bold@0 SF(qsort)
-2.738 E F0 .237(may be generated by def)2.738 F(ining)-.2 E F1(QSOR)
-2.737 E(T_FUNCTION_N)-.4 E(AME)-.2 E F0(as)2.737 E F1(qsort)108 96 Q F0
-(.)A/F2 10.95/Times-Bold@0 SF(RA)72 112.8 Q(TION)-1.04 E(ALE)-.219 E F0
-.177(While man)108 124.8 R 2.677(yl)-.15 G .177
-(ibraries include a standard)-2.677 F F1(qsort)2.677 E F0 .177
-(function, those)2.677 F F1(qsort)2.677 E F0 .177
-(implementations may tend to quadratic)2.677 F 2.757(performance on adv)
-108 136.8 R 2.757(erse inputs.)-.15 F(Man)7.757 E 5.257(yi)-.15 G 2.757
-(mplementations e)-5.257 F 2.756
-(xhibit poor performance for some types of)-.15 F 2.447
-(structured input sequences, such as re)108 148.8 R -.15(ve)-.25 G 2.447
-(rse-sorted or rotated sequences.).15 F(Most)7.448 E F1(qsort)4.948 E F0
-(implementations)4.948 E(pro)108 160.8 Q 1.08
-(vide no guarantee of stablilty \(in the sense of preserv)-.15 F 1.079
-(ation of partial order\), and there is no means to)-.25 F 2.56
-(adjust the algorithm to compensate for e)108 172.8 R(xpensi)-.15 E
-2.861 -.15(ve c)-.25 H 5.061(omparisons. Fe).15 F 5.061(wl)-.25 G 2.561
-(ibraries pro)-5.061 F 2.561(vide a function for)-.15 F 2.419
-(selection of order statistics.)108 184.8 R 2.419
-(Those libraries that do pro)7.419 F 2.418
+(Functions Manual)2.5 E(quickselect\(3\))124.855 E .698
+(adjust the algorithm to compensate for e)108 84 R(xpensi)-.15 E .999
+-.15(ve c)-.25 H .699(omparisons or sw).15 F 3.199(aps. Fe)-.1 F 3.199
+(wl)-.25 G .699(ibraries pro)-3.199 F .699(vide a function)-.15 F 1.314
+(for selection of order statistics.)108 96 R 1.313
+(Those libraries that do pro)6.314 F 1.313
 (vide a selection function usually only permit)-.15 F
-(selection of a single order statistic per function call.)108 196.8 Q F2
--.11(BU)72 213.6 S(GS and CA).11 E(VEA)-1.588 E(TS)-1.04 E F0(Array)108
-225.6 Q F1(pk)4.878 E F0 2.378(may be sorted by)4.878 F F1(quickselect)
-4.878 E F0 2.378
+(selection of a single order statistic per function call.)108 108 Q/F1
+10.95/Times-Bold@0 SF -.11(BU)72 124.8 S(GS and CA).11 E(VEA)-1.588 E
+(TS)-1.04 E F0(Array)108 136.8 Q/F2 10/Times-Bold@0 SF(pk)4.878 E F0
+2.378(may be sorted by)4.878 F F2(quickselect)4.878 E F0 2.378
 (and therefore initially unsorted order statistic ranks may be)4.878 F
-.095(permuted by a call to)108 237.6 R F1(quickselect)2.595 E F0 5.095
+.095(permuted by a call to)108 148.8 R F2(quickselect)2.595 E F0 5.095
 (.I)C 2.595(ti)-5.095 G 2.595(sr)-2.595 G .095(ecommended \(b)-2.595 F
-.095(ut not required\) that the order statistics array)-.2 F F1(pk)2.595
-E F0(be)2.595 E(supplied in sorted order)108 249.6 Q(.)-.55 E 2.1
-(If array)108 266.4 R F1(pk)4.6 E F0 2.1(contains duplicated ranks, tho\
+.095(ut not required\) that the order statistics array)-.2 F F2(pk)2.595
+E F0(be)2.595 E(supplied in sorted order)108 160.8 Q(.)-.55 E 2.1
+(If array)108 177.6 R F2(pk)4.6 E F0 2.1(contains duplicated ranks, tho\
 se duplicates will be ignored during processing and will be)4.6 F .87
-(grouped together by sorting after processing.)108 278.4 R .87
+(grouped together by sorting after processing.)108 189.6 R .87
 (This may be e)5.87 F(xpensi)-.15 E 1.17 -.15(ve i)-.25 H 3.37(fal).15 G
 (ar)-3.37 E .87(ge number of order statistics)-.18 F 2.091(are specif)
-108 290.4 R 2.091(ied and there is at least one duplicate.)-.2 F 2.091
+108 201.6 R 2.091(ied and there is at least one duplicate.)-.2 F 2.091
 (It is recommended \(b)7.091 F 2.092(ut not required\) that the order)
--.2 F(statistics array)108 302.4 Q F1(pk)2.5 E F0
-(contain no duplicates.)2.5 E F1(quickselect)108 319.2 Q F0 .362(has e)
+-.2 F(statistics array)108 213.6 Q F2(pk)2.5 E F0
+(contain no duplicates.)2.5 E F2(quickselect)108 230.4 Q F0 .362(has e)
 2.862 F .362(xpected and w)-.15 F .362(orst\255case linear comple)-.1 F
 .362(xity for f)-.15 F .361(inding a single order statistic.)-.2 F -.8
 (Wo)5.361 G(rst\255case).8 E 1.018
 (non-stable selection of multiple order statistics is linearithmic.)108
-331.2 R F1(quickselect)6.018 E F0 1.019(has e)3.519 F 1.019
-(xpected and w)-.15 F(orst\255case)-.1 E(linearithmic comple)108 343.2 Q
+242.4 R F2(quickselect)6.018 E F0 1.019(has e)3.519 F 1.019
+(xpected and w)-.15 F(orst\255case)-.1 E(linearithmic comple)108 254.4 Q
 (xity for non-stable sorting.)-.15 E .059
-(When stable sorting or selection is specif)108 360 R .059
-(ied by setting)-.2 F F1 -.1(QU)2.559 G(ICKSELECT_ST).1 E(ABLE)-.9 E F0
+(When stable sorting or selection is specif)108 271.2 R .059
+(ied by setting)-.2 F F2 -.1(QU)2.559 G(ICKSELECT_ST).1 E(ABLE)-.9 E F0
 2.559(,s)C .059(election may become)-2.559 F 1.533
-(linearithmic and sorting may become)108 372.432 R/F3 10/Times-Italic@0
+(linearithmic and sorting may become)108 283.632 R/F3 10/Times-Italic@0
 SF(O)3.933 E F0(\().27 E F3(N).7 E F0(log)2.8 E/F4 7/Times-Roman@0 SF(2)
 -4.2 I F3(N)2.9 4.2 M F0 4.033(\)d)1.1 G 1.533(ue to additional data mo)
 -4.033 F -.15(ve)-.15 G 1.533(ment \(the comple).15 F 1.534(xity of)-.15
-F 3.97(comparisons is unchanged\).)108 384.432 R(Moreo)8.969 E -.15(ve)
+F 3.97(comparisons is unchanged\).)108 295.632 R(Moreo)8.969 E -.15(ve)
 -.15 G 4.769 -.4(r, l).15 H 3.969(ocality of access may be poor).4 F
 6.469(,r)-.4 G 3.969(esulting in performance)-6.469 F 3.591
-(deterioration due to cache size ef)108 396.432 R 6.091(fects. Sorting)
+(deterioration due to cache size ef)108 307.632 R 6.091(fects. Sorting)
 -.25 F 3.592(and selection may remain in\255place, or additional)6.092 F
-(size\255related temporary memory may be used if a)108 408.432 Q -.25
-(va)-.2 G(ilable.).25 E 9.498(Compiled library code might ha)108 425.232
-R 9.798 -.15(ve b)-.2 H 9.498(een b).15 F 9.498(uilt with)-.2 F F1 -.1
-(QU)11.997 G(ICKSELECT_ST).1 E(ABLE)-.9 E F0(and/or)11.997 E F1 -.1(QU)
-108 437.232 S(ICKSELECT_NETW).1 E(ORK_MASK)-.1 E F0 1.127(set to v)3.627
-F 1.127(alues other than those which appear in)-.25 F F3(quic)3.628 E
-(kselect.h)-.2 E F0 6.128(.I).28 G(f)-6.128 E .308(the library w)108
-449.232 R .308(as b)-.1 F .307(uilt without the option to sort or selec\
-t while maintaining partial order stability)-.2 F 2.807(,s)-.65 G
-(pecifying)-2.807 E F1 -.1(QU)108 461.232 S(ICKSELECT_ST).1 E(ABLE)-.9 E
+(size\255related temporary memory may be used if a)108 319.632 Q -.25
+(va)-.2 G(ilable.).25 E 9.498(Compiled library code might ha)108 336.432
+R 9.798 -.15(ve b)-.2 H 9.498(een b).15 F 9.498(uilt with)-.2 F F2 -.1
+(QU)11.997 G(ICKSELECT_ST).1 E(ABLE)-.9 E F0(and/or)11.997 E F2 -.1(QU)
+108 348.432 S(ICKSELECT_INDIRECT).1 E F0 .52(set to v)3.02 F .52
+(alues other than those which appear in)-.25 F F3(quic)3.02 E(kselect.h)
+-.2 E F0 5.52(.I).28 G 3.02(ft)-5.52 G .52(he library)-3.02 F -.1(wa)108
+360.432 S 5.986(sb).1 G 3.486(uilt without the option to sort or select\
+ while maintaining partial order stability)-6.186 F 5.985(,s)-.65 G
+(pecifying)-5.985 E F2 -.1(QU)108 372.432 S(ICKSELECT_ST).1 E(ABLE)-.9 E
 F0(in)2.595 E F3(options)2.825 E F0 .096(will not be ef)2.865 F(fecti)
 -.25 E -.15(ve)-.25 G 2.596(;q).15 G .096(uickselect will set)-2.596 F
-F3(errno)2.786 E F0(to)2.776 E F1(EINV)2.596 E(AL)-1.35 E F0 .096
-(and the)2.596 F 1.673(array will not be sorted.)108 473.232 R
-(Similarly)6.673 E 4.173(,s)-.65 G 1.673(upport for sorting netw)-4.173
-F 1.672(ork sizes may ha)-.1 F 1.972 -.15(ve b)-.2 H 1.672
-(een limited when the).15 F .747(library object f)108 485.232 R .748
-(iles were b)-.2 F 3.248(uilt. It)-.2 F .748
-(is strongly recommended to call)3.248 F F3(quic)3.498 E
-(kselect_options)-.2 E F0 .748(to determine which)3.518 F .492
-(option bits are a)108 497.232 R -.25(va)-.2 G 2.992(ilable. Compiled)
-.25 F .491(options may also be determined by running e)2.992 F .491
-(xternal programs such as)-.15 F F3(what)108.34 509.232 Q F0(or)3.18 E
-F3(ident)2.51 E F0(on the library archi)3.18 E .3 -.15(ve c)-.25 H
-(ontaining).15 E F3(quic)2.5 E(kselect)-.2 E F0(.).68 E F2
-(FUTURE DIRECTIONS)72 526.032 Q F0(none)108 538.032 Q F2(SEE ALSO)72
-554.832 Q F0(qsort, what, ident)108 566.832 Q F2(CHANGE HIST)72 583.632
+F3(errno)2.786 E F0(to)2.776 E F2(EINV)2.596 E(AL)-1.35 E F0 .096
+(and the)2.596 F .469(array will not be sorted.)108 384.432 R(Lik)5.469
+E -.25(ew)-.1 G .469(ise for).25 F F2 -.1(QU)2.968 G(ICKSELECT_INDIRECT)
+.1 E F0 5.468(.I)C 2.968(ti)-5.468 G 2.968(ss)-2.968 G .468
+(trongly recommended to call)-2.968 F F3(quic)108.25 396.432 Q
+(kselect_options)-.2 E F0 3.837(to determine which option bits are a)
+6.607 F -.25(va)-.2 G 6.338(ilable. Compiled).25 F 3.838
+(options may also be)6.338 F 3.2(determined by running e)108 408.432 R
+3.199(xternal programs such as)-.15 F F3(what)6.039 E F0(or)6.379 E F3
+(ident)5.709 E F0 3.199(on the library archi)6.379 F 3.499 -.15(ve c)
+-.25 H(ontaining).15 E F3(quic)108 420.432 Q(kselect)-.2 E F0 2.5(;s).68
+G(uitable strings indicating compile\255time b)-2.5 E
+(uild options are encoded in the object f)-.2 E(iles.)-.2 E F1
+(FUTURE DIRECTIONS)72 437.232 Q F0(none)108 449.232 Q F1(SEE ALSO)72
+466.032 Q F0(qsort, what, ident)108 478.032 Q F1(CHANGE HIST)72 494.832
 Q(OR)-.197 E(Y)-.383 E F0 .151(Function implementation initial v)108
-595.632 R .151(ersion June 2016.)-.15 F .151(Implementation backw)5.151
-F .151(ard\255compatible updates through)-.1 F(December 2017.)108
-607.632 Q(Manual page initial v)108 624.432 Q(ersion January 2017.)-.15
-E(Latest manual page update December 2017.)5 E F2 -.548(AU)72 641.232 S
-(THOR).548 E F0(Bruce Lilly <bruce.lilly@gmail.com>)108 653.232 Q F2
-(LICENSE)72 670.032 Q F0(The follo)108 682.032 Q(wing license co)-.25 E
+506.832 R .151(ersion June 2016.)-.15 F .151(Implementation backw)5.151
+F .151(ard\255compatible updates through)-.1 F(February 2018.)108
+518.832 Q(Manual page initial v)108 535.632 Q(ersion January 2017.)-.15
+E(Latest manual page update February 2018.)5 E F1 -.548(AU)72 552.432 S
+(THOR).548 E F0(Bruce Lilly <bruce.lilly@gmail.com>)108 564.432 Q F1
+(LICENSE)72 581.232 Q F0(The follo)108 593.232 Q(wing license co)-.25 E
 -.15(ve)-.15 G(rs this softw).15 E(are, including mak)-.1 E(ef)-.1 E
-(iles and documentation:)-.2 E(This softw)108 698.832 Q(are is co)-.1 E
+(iles and documentation:)-.2 E(This softw)108 610.032 Q(are is co)-.1 E
 -.15(ve)-.15 G(red by the zlib/libpng license.).15 E 5.724(The zlib/lib\
 png license is a recognized open source license by the Open Source Init\
-iati)108 710.832 R -.15(ve)-.25 G(:).15 E(http://opensource.or)108
-722.832 Q(g/licenses/Zlib)-.18 E(3)535 768 Q 0 Cg EP
+iati)108 622.032 R -.15(ve)-.25 G(:).15 E(http://opensource.or)108
+634.032 Q(g/licenses/Zlib)-.18 E 3.683
+(The zlib/libpng license is a recognized "free" softw)108 646.032 R
+3.683(are license by the Free Softw)-.1 F 3.684(are F)-.1 F(oundation:)
+-.15 E(https://directory)108 658.032 Q(.fsf.or)-.65 E
+(g/wiki/License:Zlib)-.18 E 104.135(*************** Cop)50.4 670.032 R
+(yright notice \(part of the license\))-.1 E(***************)106.635 E
+(@\(#\)quickselect.3 1.11 2018-02-24T22:32:49Z cop)108 682.032 Q
+(yright 2016-2018 Bruce Lilly)-.1 E .483(This softw)108 694.032 R .483
+(are is pro)-.1 F .483(vided 'as-is', without an)-.15 F 2.983(ye)-.15 G
+.483(xpress or implied w)-3.133 F(arranty)-.1 E 5.483(.I)-.65 G 2.983
+(nn)-5.483 G 2.983(oe)-2.983 G -.15(ve)-3.233 G .483
+(nt will the authors be).15 F(held liable for an)108 706.032 Q 2.5(yd)
+-.15 G(amages arising from the use of this softw)-2.5 E(are.)-.1 E .968
+(Permission is granted to an)108 722.832 R .968(yone to use this softw)
+-.15 F .969(are for an)-.1 F 3.469(yp)-.15 G .969
+(urpose, including commercial applications,)-3.469 F(3)535 768 Q 0 Cg EP
 %%Page: 4 4
 %%BeginPageSetup
 BP
 %%EndPageSetup
 /F0 10/Times-Roman@0 SF 122.355(quickselect\(3\) Library)72 48 R
-(Functions Manual)2.5 E(quickselect\(3\))124.855 E 3.683
-(The zlib/libpng license is a recognized "free" softw)108 84 R 3.683
-(are license by the Free Softw)-.1 F 3.684(are F)-.1 F(oundation:)-.15 E
-(https://directory)108 96 Q(.fsf.or)-.65 E(g/wiki/License:Zlib)-.18 E
-104.135(*************** Cop)50.4 108 R
-(yright notice \(part of the license\))-.1 E(***************)106.635 E
-(@\(#\)quickselect.3 1.9 2017-12-16T04:03:05Z cop)108 120 Q
-(yright 2016-2017 Bruce Lilly)-.1 E .483(This softw)108 132 R .483
-(are is pro)-.1 F .483(vided 'as-is', without an)-.15 F 2.983(ye)-.15 G
-.483(xpress or implied w)-3.133 F(arranty)-.1 E 5.483(.I)-.65 G 2.983
-(nn)-5.483 G 2.983(oe)-2.983 G -.15(ve)-3.233 G .483
-(nt will the authors be).15 F(held liable for an)108 144 Q 2.5(yd)-.15 G
-(amages arising from the use of this softw)-2.5 E(are.)-.1 E .968
-(Permission is granted to an)108 160.8 R .968(yone to use this softw)
--.15 F .969(are for an)-.1 F 3.469(yp)-.15 G .969
-(urpose, including commercial applications,)-3.469 F
-(and to alter it and redistrib)108 172.8 Q(ute it freely)-.2 E 2.5(,s)
--.65 G(ubject to the follo)-2.5 E(wing restrictions:)-.25 E(1.)108 189.6
-Q .048(The origin of this softw)129.6 189.6 R .048(are must not be misr\
-epresented; you must not claim that you wrote the original)-.1 F(softw)
-129.6 201.6 Q 1.573(are. If you use this softw)-.1 F 1.574
+(Functions Manual)2.5 E(quickselect\(3\))124.855 E
+(and to alter it and redistrib)108 84 Q(ute it freely)-.2 E 2.5(,s)-.65
+G(ubject to the follo)-2.5 E(wing restrictions:)-.25 E(1.)108 100.8 Q
+.048(The origin of this softw)129.6 100.8 R .048(are must not be misrep\
+resented; you must not claim that you wrote the original)-.1 F(softw)
+129.6 112.8 Q 1.573(are. If you use this softw)-.1 F 1.574
 (are in a product, an ackno)-.1 F 1.574
-(wledgment in the product documentation)-.25 F -.1(wo)129.6 213.6 S
-(uld be appreciated b).1 E(ut is not required.)-.2 E(2.)108 230.4 Q .375
-(Altered source v)129.6 230.4 R .375(ersions must be plainly mark)-.15 F
+(wledgment in the product documentation)-.25 F -.1(wo)129.6 124.8 S
+(uld be appreciated b).1 E(ut is not required.)-.2 E(2.)108 141.6 Q .375
+(Altered source v)129.6 141.6 R .375(ersions must be plainly mark)-.15 F
 .374(ed as such, and must not be misrepresented as being the)-.1 F
-(original softw)129.6 242.4 Q(are.)-.1 E(3.)108 259.2 Q
-(This notice may not be remo)129.6 259.2 Q -.15(ve)-.15 G 2.5(do).15 G
+(original softw)129.6 153.6 Q(are.)-.1 E(3.)108 170.4 Q
+(This notice may not be remo)129.6 170.4 Q -.15(ve)-.15 G 2.5(do).15 G
 2.5(ra)-2.5 G(ltered from an)-2.5 E 2.5(ys)-.15 G(ource distrib)-2.5 E
-(ution.)-.2 E 97(************************* \(end)50.4 271.2 R
-(of license\))2.5 E(*************************)99.5 E -1.1(Yo)108 288 S
+(ution.)-.2 E 97(************************* \(end)50.4 182.4 R
+(of license\))2.5 E(*************************)99.5 E -1.1(Yo)108 199.2 S
 2.5(um)1.1 G(ay send b)-2.5 E
 (ug reports to bruce.lilly@gmail.com with subject "quickselect".)-.2 E
 (4)535 768 Q 0 Cg EP

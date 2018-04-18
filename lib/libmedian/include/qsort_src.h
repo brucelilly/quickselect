@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    qsort_src.h copyright 2017 Bruce Lilly.   \ qsort_src.h $
+* $Id: ~|^` @(#)    qsort_src.h copyright 2017-2018 Bruce Lilly.   \ qsort_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is qsort_src.h version 1.11 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is qsort_src.h version 1.16 dated 2018-04-16T05:52:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.qsort_src.h */
@@ -54,7 +54,7 @@
 /* Minimum _XOPEN_SOURCE version for C99 (else illumos compilation fails) */
 #undef MAX_XOPEN_SOURCE_VERSION
 #undef MIN_XOPEN_SOURCE_VERSION
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
 # define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
@@ -100,15 +100,15 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: qsort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "qsort_src.h"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2017-12-22T04:14:04Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2018-04-16T05:52:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017"
+#define COPYRIGHT_DATE "2017-2018"
 
 /* local header files needed */
 #include "quickselect_config.h"
 #include "exchange.h"           /* alignment_size blockmove reverse rotate swapn */
-#include "indirect.h"           /* set_array_pointers rearrange_array */
+#include "indirect.h"           /* set_array_pointers */
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
 #include "initialize_src.h"     /* last local header file */
 
@@ -122,7 +122,7 @@
 #include <errno.h>              /* errno E* (maybe errno_t [N1570 K3.2]) */
 #include <limits.h>             /* *_MAX */
 #include <stddef.h>             /* size_t NULL (maybe rsize_t) */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # include <stdint.h>            /* *int*_t (maybe RSIZE_MAX [N1570 K3.4]) */
 # if __STDC_VERSION__ >= 201001L
     /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
@@ -138,6 +138,9 @@
 #define xbuildstr(s) buildstr(s)
 #undef buildstr
 #define buildstr(s) #s
+
+/* Data cache size (bytes), initialized on first run */
+extern size_t quickselect_cache_size;
 
 #if __STDC_WANT_LIB_EXT1__
 /* Preliminary support for 9899:201x draft N1570 qsort_s w/ "context".
@@ -186,6 +189,11 @@
          called for the initial strings, the copies could have been made
          appropriate sizes (assuming that one still naively wished to make, then
          discard such copies).
+      5. "context" is declared as void *, not const void *, which implies that
+         either the qsort_s implementation or the called comparison function
+         may modify the object pointed to by "context", which invites
+         non-deterministic, non-repeatable, (i.e. unspecified and undefined)
+         behavior.
       * a possibly-valid use of "context" *might* be to provide the maximum
         string length, avoiding magic numbers and failure to fully compare
         strings which have long identical leading substrings... *if* one
@@ -205,15 +213,15 @@
    ). In summary, there is no convincing use-case for "context" to justify
    doubling the size of library code.
 
-   Runtime-constraint violation detection is OK, but handling is poorly defined.
-   It is unclear whether the handler is supposed to be global, or per-process,
-   or per-thread.  The only interface is set_constraint_handler_s, which changes
-   the handler; there is no way to determine what the handler is (e.g. in order
-   to actually call it) without (at least potentially) changing it.  It may be
-   possible to reset it (provided no other process or thread made an intervening
-   change), but there is an inherent window of vulnerability.  No provision is
-   made for mutexes or other synchronization mechanisms to avoid the
-   vulnerability.
+   Runtime-constraint violation detection is OK, but error handling is poorly
+   defined.  It is unclear whether the handler is supposed to be global, or
+   per-process, or per-thread.  The only interface is set_constraint_handler_s,
+   which changes the handler; there is no way to determine what the handler is
+   (e.g. in order to actually call it) without (at least potentially) changing
+   it.  It may be possible to reset it (provided no other process or thread made
+   an intervening change), but there is an inherent window of vulnerability.
+   No provision is made for mutexes or other synchronization mechanisms to avoid
+   the vulnerability.
 */
 
 # if QUICKSELECT_PROVIDE_HANDLER && ! QUICKSELECT_HANDLER_PROVIDED
@@ -255,7 +263,7 @@ static constraint_handler_t get_constraint_handler_s(void)
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* public interface */
-/* calls: alignment_size, swapn, cutoff_value, QUICKSELECT_LOOP */
+/* calls: alignment_size, swapn, QUICKSELECT_LOOP */
 QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
     /*const*/ NMEMB_SIZE_TYPE size,
     COMPAR_DECL)
@@ -327,123 +335,39 @@ QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
         /* Initialization of strings is performed here (rather than in
            quickselect_loop) so that quickselect_loop can be made inline.
         */
-        size_t cutoff, size_ratio;
-        unsigned int options = QUICKSELECT_NETWORK_MASK;
-#if QUICKSELECT_INDIRECT
-        char **pointers = NULL;
-        char *element = NULL;
-#endif /* QUICKSELECT_INDIRECT */
+        size_t size_ratio;
+        unsigned int table_index=nmemb<=
+#if ( SIZE_MAX < 65535 )
+# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
+#elif ( SIZE_MAX == 65535 ) /* 16 bits */
+            sorting_sampling_table[2].max_nmemb?1UL:3UL
+#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
+            sorting_sampling_table[5].max_nmemb?2UL:7UL
+#elif ( SIZE_MAX == 18446744073709551615 ) /* 64 bits */
+            sorting_sampling_table[10].max_nmemb?5UL:15UL
+#else
+# error "strange SIZE_MAX " SIZE_MAX
+#endif /* word size */
+        ; /* starting point; refined by sample_index() */
 
         if ((char)0==file_initialized) initialize_file(__FILE__);
+
+        /* Determine cache size once on first call. */
+        if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
 
         /* base array alignment size and size_ratio */
         alignsize=alignment_size(base,size);
         size_ratio=size/alignsize;
 
-#if QUICKSELECT_INDIRECT > QUICKSELECT_NETWORK_MASK
-# error "some reasonable heuristic for deciding when to sort indirectly is needed"
-        /* (N.B. Unreliable) example: Direct or indirect sorting based on nmemb
-           and size_ratio.
-        */
-        if ((1UL<size_ratio)&&(7UL<nmemb+size_ratio))
-            options|=(QUICKSELECT_INDIRECT);
-#endif /* QUICKSELECT_INDIRECT */
-
-#if QUICKSELECT_INDIRECT
-        /* If indirect sorting, alignment size and size_ratio are reset to
-           appropriate values for pointers.
-        */
-        if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-            pointers=set_array_pointers(pointers,nmemb,base,nmemb,size,0UL,
-                nmemb);
-            if (NULL==pointers) {
-                free(pointers);
-                pointers=NULL;
-                options&=~(QUICKSELECT_INDIRECT);
-            } else {
-                element=malloc(size);
-                if (NULL==element) {
-                    free(pointers);
-                    pointers=NULL;
-                    options&=~(QUICKSELECT_INDIRECT);
-                } else {
-                    alignsize=alignment_size((char *)pointers,sizeof(char *));
-                    size_ratio=sizeof(char *)/alignsize; /* 1UL */
-                    A(1UL==size_ratio);
-                    A(pointers[0]==base);
-                }
-            }
-        }
-#endif /* QUICKSELECT_INDIRECT */
-
         /* no user options: no stable sort */
 
-        /* Initialize the dedicated sorting cutoff based on array element size
-           and alignment (swapping cost relative to comparisons).
-        */
+        /* Assign a swap function based on array element size and alignment. */
         swapf=swapn(alignsize);
-        cutoff=cutoff_value(size_ratio,options);
 
-        /* Use dedicated sort if nmemb<=cutoff. */
-        if (nmemb<=cutoff) {
-#if QUICKSELECT_INDIRECT
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                size_t *indices = (size_t *)pointers;
-                PREFIX DEDICATED_SORT((char *)pointers,0UL,nmemb,sizeof(char *),
-                    COMPAR_ARGS,swapf,alignsize,size_ratio,options);
-                indices=convert_pointers_to_indices(base,nmemb,size,pointers,
-                    nmemb,indices,0UL,nmemb);
-                A(NULL!=indices);
-                size_ratio=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,
-                    element);
-                free(element);
-                free(pointers);
-                if ((void *)indices==(void *)pointers) indices=NULL;
-                if (nmemb<(size_ratio>>1)) { /* indirection failed; use direct sort */
-                    options&=~(QUICKSELECT_INDIRECT);
-                    alignsize=alignment_size(base,size);
-                    size_ratio=size/alignsize;
-                    swapf=swapn(alignsize);
-                    PREFIX DEDICATED_SORT(base,0UL,nmemb,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,options);
-                }
-            } else
-#endif /* QUICKSELECT_INDIRECT */
-                PREFIX DEDICATED_SORT(base,0UL,nmemb,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,options);
-        } else {
-            /* Special-case sorting is handled in quickselect_loop. */
-#if QUICKSELECT_INDIRECT
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                size_t *indices = (size_t *)pointers;
-                PREFIX QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
-                    COMPAR_ARGS,NULL,0UL,0UL,swapf,alignsize,size_ratio,cutoff,
-                    options,NULL,NULL,NULL,NULL,NULL);
-                if (NULL==indices) indices=(size_t *)pointers;
-                indices=convert_pointers_to_indices(base,nmemb,size,pointers,
-                    nmemb,(size_t *)pointers,0UL,nmemb);
-                A(NULL!=indices);
-                size_ratio=rearrange_array(base,nmemb,size,indices,nmemb,0UL,nmemb,
-                    element);
-                free(element);
-                free(pointers);
-                if ((void *)indices==(void *)pointers) indices=NULL;
-                if (nmemb<(size_ratio>>1)) { /* indirection NG; direct sort */
-                    options&=~(QUICKSELECT_INDIRECT);
-                    alignsize=alignment_size(base,size);
-                    size_ratio=size/alignsize;
-                    swapf=swapn(alignsize);
-                    cutoff=cutoff_value(size_ratio,options);
-                    PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,
-                        NULL,0UL,0UL,swapf,alignsize,size_ratio,cutoff,options,
-                        NULL,NULL,NULL,NULL,NULL);
-                }
-            } else
-#endif /* QUICKSELECT_INDIRECT */
-                PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,
-                    0UL,0UL,swapf,alignsize,size_ratio,cutoff,options,
-                    NULL,NULL,NULL,NULL,NULL);
-        }
+        /* Special-case sorting is handled in quickselect_loop. */
+        PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
+            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            0U,NULL,NULL);
     }
     SUFFIX3
 }

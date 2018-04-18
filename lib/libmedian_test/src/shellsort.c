@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    shellsort.c copyright 2016-2017 Bruce Lilly.   \ shellsort.c $
+* $Id: ~|^` @(#)    shellsort.c copyright 2016-2018 Bruce Lilly.   \ shellsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is shellsort.c version 1.3 dated 2017-11-03T19:37:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is shellsort.c version 1.4 dated 2018-03-06T21:46:43Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.shellsort.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: shellsort.c ~|^` @(#)"
 #define SOURCE_MODULE "shellsort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-11-03T19:37:48Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2018-03-06T21:46:43Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -59,9 +59,7 @@
 size_t gaps[] = { 1, 4, 10, 23, (SIZE_MAX) }; /* for small nmemb */
 size_t ngaps = sizeof(gaps)/sizeof(size_t);
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void shellsort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
@@ -89,9 +87,7 @@ void shellsort_internal(char *base, size_t first, size_t beyond, size_t size,
     }
 }
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
+QUICKSELECT_INLINE
 void shellsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
     size_t alignsize=alignment_size(base,size);

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    operations.c copyright 2016-2017 Bruce Lilly.   \ operations.c $
+* $Id: ~|^` @(#)    operations.c copyright 2016-2018 Bruce Lilly.   \ operations.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is operations.c version 1.2 dated 2017-10-03T07:28:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is operations.c version 1.3 dated 2018-03-06T22:10:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.operations.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: operations.c ~|^` @(#)"
 #define SOURCE_MODULE "operations.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-10-03T07:28:05Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2018-03-06T22:10:12Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -61,7 +61,7 @@ __attribute__((optimize(0)))
 void op_tests(const char *prefix, const char *prog,
     void (*f)(int, void *, const char *,...), void *log_arg)
 {
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define OPTYPES 34
 #else
 # define OPTYPES 11
@@ -69,54 +69,54 @@ void op_tests(const char *prefix, const char *prog,
 #define NOPS   34
     char buf[1024], numbuf[64];
     char testmatrix[OPTYPES][NOPS] = {      /* applicability matrix */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* _Bool */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* char */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_least8_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_fast8_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* unsigned char */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_least8_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_fast8_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* short */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_least16_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_fast16_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* unsigned short */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_least16_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_fast16_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* int */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_least32_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_fast32_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* unsigned */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_least32_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_fast32_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* long */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* long long */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_least64_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* int_fast64_t */
 #endif /* C99 */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", /* unsigned long */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* unsigned long long */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_least64_t */
         "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyynyyy", /* uint_fast64_t */
 #endif /* C99 */
         "yyyyyyyyyyyyynyyyyyyynnnnnnnnnyyyy", /* float */
         "yyyyyyyyyyyyynyyyyyyynnnnnnnnnyyyy", /* double */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
         "yyyyyyyyyyyyynyyyyyyynnnnnnnnnnyyy", /* long double */
         "yyynnnnnyyyynnnnyyyyynnnnnnnnnnyyy", /* float _Complex */
         "yyynnnnnyyyynnnnyyyyynnnnnnnnnnyyy", /* double _Complex */
@@ -126,45 +126,45 @@ void op_tests(const char *prefix, const char *prog,
     };
     const char *pcc, *pcc2;
     const char *typename[OPTYPES][2] = { /* 2 rows of text for type name */
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "", "_Bool" },
 #endif /* C99 */
        { "", "char" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "int_", "least8_t" }, { "int_", "fast8_t" },
 #endif /* C99 */
        { "unsigned", "char" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "uint_", "least8_t" }, { "uint_", "fast8_t" },
 #endif /* C99 */
        { "short", "int" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "int_", "least16_t" }, { "int_", "fast16_t" },
 #endif /* C99 */
        { "unsigned", "short" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "uint_", "least16_t" }, { "uint_", "fast16_t" },
 #endif /* C99 */
        { "plain", "int"},
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "int_", "least32_t" }, { "int_", "fast32_t" },
 #endif /* C99 */
        { "unsigned", "int" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "uint_", "least32_t" }, { "uint_", "fast32_t" },
 #endif /* C99 */
        { "long", "int" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "long", "long" },
        { "int_", "least64_t" }, { "int_", "fast64_t" },
 #endif /* C99 */
        { "unsigned", "long" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "unsigned", "long long" },
        { "uint_", "least64_t" }, { "uint_", "fast64_t" },
 #endif /* C99 */
        { "", "float" }, { "", "double" },
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
        { "long", "double" }, { "float", "_Complex" },
        { "double", "_Complex" }, { "long double", "_Complex" },
 #endif /* C99 */
@@ -295,48 +295,48 @@ void op_tests(const char *prefix, const char *prog,
     }
 
     typenum=0U;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     /* _Bool type can be treated as an integer, if careful */
     I(_Bool,                0,    1,    1,    nocmp)             typenum++;
 #endif /* C99 */
     I(char,                '0',  '1',  '2',   charcmp)           typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(int_least8_t,        '0',  '1',  '2',   int_least8_tcmp)   typenum++;
     I(int_fast8_t,         '0',  '1',  '2',   int_fast8_tcmp)    typenum++;
 #endif /* C99 */
     I(unsigned char,       '0',  '1',  '2',   nocmp)             typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(uint_least8_t,       '0',  '1',  '2',   uint_least8_tcmp)  typenum++;
     I(uint_fast8_t,        '0',  '1',  '2',   uint_fast8_tcmp)   typenum++;
 #endif /* C99 */
     I(short,                0,    1,    2,    shortcmp)          typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(int_least16_t,       '0',  '1',  '2',   int_least16_tcmp)  typenum++;
     I(int_fast16_t,        '0',  '1',  '2',   int_fast16_tcmp)   typenum++;
 #endif /* C99 */
     I(unsigned short,       0U,   1U,   2U,   nocmp)             typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(uint_least16_t,      '0',  '1',  '2',   uint_least16_tcmp) typenum++;
     I(uint_fast16_t,       '0',  '1',  '2',   uint_fast16_tcmp)  typenum++;
 #endif /* C99 */
     I(int,                  0,    1,    2,    intcmp)            typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(int_least32_t,       '0',  '1',  '2',   int_least32_tcmp)  typenum++;
     I(int_fast32_t,        '0',  '1',  '2',   int_fast32_tcmp)   typenum++;
 #endif /* C99 */
     I(unsigned int,         0U,   1U,   2U,   nocmp)             typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(uint_least32_t,      '0',  '1',  '2',   uint_least32_tcmp) typenum++;
     I(uint_fast32_t,       '0',  '1',  '2',   uint_fast32_tcmp)  typenum++;
 #endif /* C99 */
     I(long,                 0L,   1L,   2L,   longcmp)           typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(long long,            0LL,  1LL,  2LL,  nocmp)             typenum++;
     I(int_least64_t,       '0',  '1',  '2',   int_least64_tcmp)  typenum++;
     I(int_fast64_t,        '0',  '1',  '2',   int_fast64_tcmp)   typenum++;
 #endif /* C99 */
     I(unsigned long,        0UL,  1UL,  2UL,  ulcmp)             typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     I(unsigned long long,   0ULL, 1ULL, 2ULL, nocmp)             typenum++;
     I(uint_least64_t,      '0',  '1',  '2',   uint_least64_tcmp) typenum++;
     I(uint_fast64_t,       '0',  '1',  '2',   uint_fast64_tcmp)  typenum++;
@@ -378,11 +378,11 @@ void op_tests(const char *prefix, const char *prog,
     /* Floating-point types: */
     F(float,                0.0, 1.0, 2.0, floatcmp)  typenum++;
     F(double,               0.0, 1.0, 2.0, doublecmp) typenum++;
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
     F(long double,          0.0, 1.0, 2.0, nocmp)     typenum++;
 #endif /* C99 */
 
-#if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 /* macro to run tests applicable to complex types */
 #define C(type,v1,v2,v3) { register type a; VOL type x=v1;            \
         VOL type y=v2; VOL type z=v3;                                 \
