@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.14 dated 2018-04-18T01:13:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.15 dated 2018-04-18T18:13:01Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -133,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.14"
-#define MODULE_DATE "2018-04-18T01:13:16Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2018-04-18T18:13:01Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -1223,7 +1223,7 @@ static QUICKSELECT_INLINE
 #else /* experimental partitioning method as an alternative to Kiwiel Alg. L */
             /* Divide-and-conquer partition w/ blockmoves for partition merge */
             divide_and_conquer_partition(base,first,beyond,pc,pd,pivot,pe,pf,
-                size,COMPAR_ARGS,swapf,alignsize,size_ratio,cache_sz,options,peq,pgt);
+                size,COMPAR_ARGS,swapf,alignsize,size_ratio,cachesz,options,peq,pgt);
             A(*peq<=*pgt);A(first<=*peq);A(*pgt<=beyond);
 #endif
         break;
@@ -1232,7 +1232,7 @@ static QUICKSELECT_INLINE
             /* divide-and-conquer partition */
             A(first<beyond);A(pc<=pd);A(pd<=pivot);A(pivot<=pe);A(pe<=pf);
             divide_and_conquer_partition(base,first,beyond,pc,pd,pivot,pe,pf,
-                size,COMPAR_ARGS,swapf,alignsize,size_ratio,cache_sz,options,peq,pgt);
+                size,COMPAR_ARGS,swapf,alignsize,size_ratio,cachesz,options,peq,pgt);
             A(*peq<=*pgt);A(first<=*peq);A(*pgt<=beyond);
         break;
 #endif /* QUICKSELECT_STABLE */

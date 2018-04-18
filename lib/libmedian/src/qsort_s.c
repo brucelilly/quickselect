@@ -54,5 +54,14 @@
 #define __STDC_WANT_LIB_EXT1__ 1
 
 #include "quickselect_config.h"
+/* declarations */
+#if ! QUICKSELECT_BUILD_FOR_SPEED
+QUICKSELECT_EXTERN
+# include "dedicated_sort_decl.h"
+;
+#endif
+QUICKSELECT_EXTERN
+#include "quickselect_loop_decl.h"
+;
 
 #include "qsort_src.h"          /* contains the actual source code */

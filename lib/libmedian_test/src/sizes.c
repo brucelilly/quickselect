@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sizes.c version 1.6 dated 2018-03-06T20:50:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is sizes.c version 1.7 dated 2018-04-18T18:14:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sizes.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sizes.c ~|^` @(#)"
 #define SOURCE_MODULE "sizes.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-03-06T20:50:44Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-04-18T18:14:41Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -55,6 +55,8 @@
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+extern size_t quickselect_cache_size;
 
 /* print some size statistics to stdout */
 void print_sizes(const char *prefix, const char *prog)
@@ -179,4 +181,10 @@ void print_sizes(const char *prefix, const char *prog)
     (V)fprintf(stdout,
         "latest date-time string for %ld is %s\n",
         xl, xstruct.string);
+    sz=quickselect_cache_size; /* save */
+    r=cache_size();
+    (V)fprintf(stdout,
+        "machine data cache size may be %lu bytes\n",
+        (unsigned long)r);
+    quickselect_cache_size=sz; /* restore (maybe unnecessary, but can't hurt) */
 }
