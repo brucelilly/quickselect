@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.17 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.18 dated 2018-04-20T11:58:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-04-20T11:58:17Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -494,6 +494,7 @@ void dpqsort(void *base, size_t nmemb, size_t size,
 
     if (4UL>dp_cutoff) dp_cutoff=4UL; /* need at least 5 elements for samples */
     nfrozen=0UL, pivot_minrank=nmemb;
+    options |= QUICKSELECT_NO_REPIVOT;
     dpqsort_internal(base,nmemb,size,compar,swapf,alignsize,size_ratio,
         options);
 }

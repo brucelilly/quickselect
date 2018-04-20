@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.26 dated 2018-04-19T20:38:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.27 dated 2018-04-20T04:02:20Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -670,10 +670,6 @@ extern int data_struct_strcmp(const void *p1, const void *p2);
 extern int idata_struct_strcmp(const void *p1, const void *p2);
 extern int data_struct_strcmp_s(const void *p1, const void *p2, void *unused);
 extern int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused);
-extern int date18dcmp(const void *p1, const void *p2);
-extern int idate18dcmp(const void *p1, const void *p2);
-extern int date18dcmp_s(const void *p1, const void *p2,void *unused);
-extern int idate18dcmp_s(const void *p1, const void *p2,void *unused);
 extern int timecmp(const void *p1, const void *p2);
 extern int itimecmp(const void *p1, const void *p2);
 extern int timecmp_s(const void *p1, const void *p2, void *unused);

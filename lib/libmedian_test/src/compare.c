@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.7 dated 2018-04-19T20:38:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.8 dated 2018-04-20T04:02:20Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2018-04-19T20:38:04Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-04-20T04:02:20Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -229,69 +229,6 @@ int data_struct_strcmp_s(const void *p1, const void *p2, void *unused)
 int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused)
 {
     return idata_struct_strcmp(p1,p2);
-}
-
-/* compare year,month,day,hour,minute,second,fraction as 18-D Euclidean distance from 1970-01-01T00:00:00.0 */
-/* Because sqrt is monotonic, the actual comparison is between squares of distance. */
-/* This is a moderately expensive computation (6 subtractions, 36 multiplications, 24 bitwise ANDs, 36 additions, 12 bit shifts). */
-/* There is no physical significance of the distance; the sole purpose is to have a moderately expensive computation. */
-int date18dcmp(const void *p1, const void *p2)
-{
-    if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
-        const struct data_struct *pa = (const struct data_struct *)p1,
-            *pb = (const struct data_struct *)p2;
-        register int i, j, k;
-        auto int i1=0, i2=0;
-
-        i=pa->year-1970, i1+=i*i;
-        i=pa->u_var.s_md.month-1,   i1+=i*i;
-        i=pa->u_var.s_md.mday-1,    i1+=i*i;
-        i=pa->hour,      i1+=i*i;
-        i=pa->minute,    i1+=i*i;
-        i=pa->second,    i1+=i*i;
-        for (j=0; j<6; j++) {
-            k=pa->fractional[j]; /* 2 BCD digits in k */
-            i=(pa->fractional[j])&0x0f, i1+=i*i;
-            i=((pa->fractional[j])>>4)&0x0f, i1+=i*i;
-        }
-        i=pb->year-1970, i2+=i*i;
-        i=pb->u_var.s_md.month-1,   i2+=i*i;
-        i=pb->u_var.s_md.mday-1,    i2+=i*i;
-        i=pb->hour,      i2+=i*i;
-        i=pb->minute,    i2+=i*i;
-        i=pb->second,    i2+=i*i;
-        for (j=0; j<6; j++) {
-            k=pb->fractional[j]; /* 2 BCD digits in k */
-            i=(pa->fractional[j])&0x0f, i2+=i*i;
-            i=(10*(((pa->fractional[j])>>4)&0x0f)), i2+=i*i;
-        }
-        return intcmp(&i1,&i2);
-    }
-    return 0;
-}
-
-int idate18dcmp(const void *p1, const void *p2)
-{
-    int c = date18dcmp(p1, p2);
-    switch (c) {
-        case -1 : nlt++;
-        break;
-        case 0 : neq++;
-        break;
-        case 1 : ngt++;
-        break;
-    }
-    return c;
-}
-
-int date18dcmp_s(const void *p1, const void *p2, void *unused)
-{
-    return date18dcmp(p1,p2);
-}
-
-int idate18dcmp_s(const void *p1, const void *p2, void *unused)
-{
-    return idate18dcmp(p1,p2);
 }
 
 int timecmp(const void *p1, const void *p2)
