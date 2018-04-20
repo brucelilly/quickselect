@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.14 dated 2018-04-15T02:34:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.15 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.14"
-#define MODULE_DATE "2018-04-15T02:34:28Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2018-04-19T20:38:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -219,7 +219,7 @@ int (*type_context_comparator(unsigned int type, unsigned char *flags))(const vo
         break;
         case DATA_TYPE_STRUCT :
             if (0U!=flags['<']) {
-                if (0U!=flags['i']) return idate12dcmp_s; else return date12dcmp_s;
+                if (0U!=flags['i']) return idate18dcmp_s; else return date18dcmp_s;
             } else {
                 if (0U!=flags['i']) return itimecmp_s; else return timecmp_s;
             }
@@ -252,7 +252,7 @@ int (*uninstrumented_comparator(int (*compar)(const void *,const void *,...)))(c
     if (compar==(int (*)(const void *,const void *,...))iintcmp) return intcmp;
     if (compar==(int (*)(const void *,const void *,...))ilongcmp) return longcmp;
     if (compar==(int (*)(const void *,const void *,...))idoublecmp) return doublecmp;
-    if (compar==(int (*)(const void *,const void *,...))idate12dcmp) return date12dcmp;
+    if (compar==(int (*)(const void *,const void *,...))idate18dcmp) return date18dcmp;
     if (compar==(int (*)(const void *,const void *,...))itimecmp) return timecmp;
     if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp) return data_struct_strcmp;
     if (compar==(int (*)(const void *,const void *,...))iindcmp) return indcmp;
@@ -260,7 +260,7 @@ int (*uninstrumented_comparator(int (*compar)(const void *,const void *,...)))(c
     if (compar==(int (*)(const void *,const void *,...))iintcmp_s) return intcmp_s;
     if (compar==(int (*)(const void *,const void *,...))ilongcmp_s) return longcmp_s;
     if (compar==(int (*)(const void *,const void *,...))idoublecmp_s) return doublecmp_s;
-    if (compar==(int (*)(const void *,const void *,...))idate12dcmp_s) return date12dcmp_s;
+    if (compar==(int (*)(const void *,const void *,...))idate18dcmp_s) return date18dcmp_s;
     if (compar==(int (*)(const void *,const void *,...))itimecmp_s) return timecmp_s;
     if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp_s) return data_struct_strcmp_s;
     if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return indcmp_s;
@@ -277,8 +277,8 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))ilongcmp) return "ilongcmp";
     if (compar==(int (*)(const void *,const void *,...))doublecmp) return "doublecmp";
     if (compar==(int (*)(const void *,const void *,...))idoublecmp) return "idoublecmp";
-    if (compar==(int (*)(const void *,const void *,...))date12dcmp) return "date12dcmp";
-    if (compar==(int (*)(const void *,const void *,...))idate12dcmp) return "idate12dcmp";
+    if (compar==(int (*)(const void *,const void *,...))date18dcmp) return "date18dcmp";
+    if (compar==(int (*)(const void *,const void *,...))idate18dcmp) return "idate18dcmp";
     if (compar==(int (*)(const void *,const void *,...))timecmp) return "timecmp";
     if (compar==(int (*)(const void *,const void *,...))itimecmp) return "itimecmp";
     if (compar==(int (*)(const void *,const void *,...))data_struct_strcmp) return "data_struct_strcmp";
@@ -293,8 +293,8 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))ilongcmp_s) return "ilongcmp_s";
     if (compar==(int (*)(const void *,const void *,...))doublecmp_s) return "doublecmp_s";
     if (compar==(int (*)(const void *,const void *,...))idoublecmp_s) return "idoublecmp_s";
-    if (compar==(int (*)(const void *,const void *,...))date12dcmp_s) return "date12dcmp_s";
-    if (compar==(int (*)(const void *,const void *,...))idate12dcmp_s) return "idate12dcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))date18dcmp_s) return "date18dcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))idate18dcmp_s) return "idate18dcmp_s";
     if (compar==(int (*)(const void *,const void *,...))timecmp_s) return "timecmp_s";
     if (compar==(int (*)(const void *,const void *,...))itimecmp_s) return "itimecmp_s";
     if (compar==(int (*)(const void *,const void *,...))data_struct_strcmp_s) return "data_struct_strcmp_s";
@@ -332,7 +332,7 @@ int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, co
         break;
         case DATA_TYPE_STRUCT :
             if (0U!=flags['<']) {
-                if (0U!=flags['i']) return idate12dcmp; else return date12dcmp;
+                if (0U!=flags['i']) return idate18dcmp; else return date18dcmp;
             } else {
                 if (0U!=flags['i']) return itimecmp; else return timecmp;
             }

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is make_grap.c version 1.10 dated 2018-04-18T02:10:09Z. \ $ */
+/* $Id: ~|^` @(#)   This is make_grap.c version 1.11 dated 2018-04-19T03:50:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "make_grap" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.make_grap.c */
@@ -95,8 +95,8 @@ void     arc4random_addrandom(u_char *, int);
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: make_grap.c ~|^` @(#)"
 #define SOURCE_MODULE "make_grap.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-04-18T02:10:09Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-04-19T03:50:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -218,10 +218,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
         { "delta",  "\\(*D",                NULL, NULL, NULL } ,
         { "square", "\\(sq",                NULL, NULL, NULL } ,
         { "grad",   "\\(gr",                NULL, NULL, NULL } ,
+        { "ring",   "\\(ci",                NULL, NULL, NULL } ,
+        { "star",   "\\(**",                NULL, NULL, NULL } , /* can be confused for overlayed x and + */
         { "dot",    "\\v~-0.2m~.\\v~0.2m~", NULL, NULL, NULL } , /* almost invisible */
         { "box",    "\\f(ZD\\N~110~\\fP",   NULL, NULL, NULL } , /* can obscure others */
-        { "star",   "\\(**",                NULL, NULL, NULL } , /* can be confused for overlayed x and + */
-        { "ring",   "\\(ci",                NULL, NULL, NULL } ,
         { "htick",  "\\(em",                NULL, NULL, NULL } , /* poor for nearly horizontal plots */
         { "vtick",  "|",                    NULL, NULL, NULL } , /* poor for nearly vertical plots */
     };
@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = prog;
-    ls.swVersion = "1.10";       /* maintained by version control system */
+    ls.swVersion = "1.11";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;

@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.10 dated 2018-03-13T02:42:09Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.11 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,8 +15,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-03-13T02:42:09Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-04-19T20:38:04Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
 
@@ -184,7 +184,7 @@ long freeze(long z)
 QUICKSELECT_INLINE
 long aqindex(const void *pv, void *base, size_t size)
 {
-    int i;
+    int i, j, k;
     long f=FRACTION_COUNT, v
 #if SILENCE_WHINEY_COMPILERS
         =0L
@@ -223,11 +223,15 @@ long aqindex(const void *pv, void *base, size_t size)
             (V)parse_civil_time_text(pds->string,&cts,NULL,-1,NULL,NULL,NULL);
             v = f * (long)utc_mktime(&(cts.tm), NULL, NULL);
             for (i=0; (6>i)&&(0UL<f); i++,f/=100L) {
-                v+=pds->fractional[i]*f/100L;
+                j=pds->fractional[i];
+                /* 2 BCD digits in j */
+                k=j&0x0f; /* 0-9 */
+                k+=10*((j>>4)&0x0f); /* 00-90 */
+                v+=f*k;
                 if (DEBUGGING(AQCMP_DEBUG))
                     (V)fprintf(stderr,
-                       "%s: %s line %d: i=%d, fractional=%u, f=%ld, v=%ld\n",
-                       __func__,source_file,__LINE__,i,pds->fractional[i],f,v);
+                       "%s: %s line %d: i=%d, fractional=%02d, f=%ld, v=%ld\n",
+                       __func__,source_file,__LINE__,i,k,f,v);
             }
             if (DEBUGGING(AQCMP_DEBUG)) {
                 (V)fprintf(stderr,

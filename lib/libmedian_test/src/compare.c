@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.6 dated 2018-04-15T02:39:42Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.7 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-04-15T02:39:42Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-04-19T20:38:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -231,39 +231,48 @@ int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused)
     return idata_struct_strcmp(p1,p2);
 }
 
-/* compare year,month,day,hour,minute,second,fraction as 12-D Euclidean distance from 1970-01-01T00:00:00.0 */
+/* compare year,month,day,hour,minute,second,fraction as 18-D Euclidean distance from 1970-01-01T00:00:00.0 */
 /* Because sqrt is monotonic, the actual comparison is between squares of distance. */
-/* This is a moderately expensive computation (12 subtractions, 24 muliplications, 24 additions). */
-int date12dcmp(const void *p1, const void *p2)
+/* This is a moderately expensive computation (6 subtractions, 36 multiplications, 24 bitwise ANDs, 36 additions, 12 bit shifts). */
+/* There is no physical significance of the distance; the sole purpose is to have a moderately expensive computation. */
+int date18dcmp(const void *p1, const void *p2)
 {
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct data_struct *pa = (const struct data_struct *)p1,
             *pb = (const struct data_struct *)p2;
-        register int i, j;
+        register int i, j, k;
         auto int i1=0, i2=0;
 
         i=pa->year-1970, i1+=i*i;
-        i=pa->month-1,   i1+=i*i;
-        i=pa->mday-1,    i1+=i*i;
+        i=pa->u_var.s_md.month-1,   i1+=i*i;
+        i=pa->u_var.s_md.mday-1,    i1+=i*i;
         i=pa->hour,      i1+=i*i;
         i=pa->minute,    i1+=i*i;
         i=pa->second,    i1+=i*i;
-        for (j=0; j<6; j++) i=pa->fractional[j], i1+=i*i;
+        for (j=0; j<6; j++) {
+            k=pa->fractional[j]; /* 2 BCD digits in k */
+            i=(pa->fractional[j])&0x0f, i1+=i*i;
+            i=((pa->fractional[j])>>4)&0x0f, i1+=i*i;
+        }
         i=pb->year-1970, i2+=i*i;
-        i=pb->month-1,   i2+=i*i;
-        i=pb->mday-1,    i2+=i*i;
+        i=pb->u_var.s_md.month-1,   i2+=i*i;
+        i=pb->u_var.s_md.mday-1,    i2+=i*i;
         i=pb->hour,      i2+=i*i;
         i=pb->minute,    i2+=i*i;
         i=pb->second,    i2+=i*i;
-        for (j=0; j<6; j++) i=pb->fractional[j], i2+=i*i;
+        for (j=0; j<6; j++) {
+            k=pb->fractional[j]; /* 2 BCD digits in k */
+            i=(pa->fractional[j])&0x0f, i2+=i*i;
+            i=(10*(((pa->fractional[j])>>4)&0x0f)), i2+=i*i;
+        }
         return intcmp(&i1,&i2);
     }
     return 0;
 }
 
-int idate12dcmp(const void *p1, const void *p2)
+int idate18dcmp(const void *p1, const void *p2)
 {
-    int c = date12dcmp(p1, p2);
+    int c = date18dcmp(p1, p2);
     switch (c) {
         case -1 : nlt++;
         break;
@@ -275,14 +284,14 @@ int idate12dcmp(const void *p1, const void *p2)
     return c;
 }
 
-int date12dcmp_s(const void *p1, const void *p2, void *unused)
+int date18dcmp_s(const void *p1, const void *p2, void *unused)
 {
-    return date12dcmp(p1,p2);
+    return date18dcmp(p1,p2);
 }
 
-int idate12dcmp_s(const void *p1, const void *p2, void *unused)
+int idate18dcmp_s(const void *p1, const void *p2, void *unused)
 {
-    return idate12dcmp(p1,p2);
+    return idate18dcmp(p1,p2);
 }
 
 int timecmp(const void *p1, const void *p2)
@@ -290,34 +299,57 @@ int timecmp(const void *p1, const void *p2)
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct data_struct *pa = (const struct data_struct *)p1,
             *pb = (const struct data_struct *)p2;
-        int i;
+        int i, j, k;
 
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(COMPARE_DEBUG)) {
             (V)fprintf(stderr,"/* %s: comparing "
-                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d vs. "
-                "%s %04d-%02d-%02dT%02d:%02d:%02d.%02d%02d%02d%02d%02d%02d */\n"
+                "%s %04d-%02d-%02dT%02d:%02d:%02d.%d%d%d%d%d%d%d%d%d%d%d%d vs. "
+                "%s %04d-%02d-%02dT%02d:%02d:%02d.%d%d%d%d%d%d%d%d%d%d%d%d */\n"
                 ,__func__,
-                pa->string,pa->year,pa->month,pa->mday,pa->hour,pa->minute,
-                pa->second,pa->fractional[0],pa->fractional[1],
-                pa->fractional[2],pa->fractional[3],pa->fractional[4],
-                pa->fractional[5],
-                pb->string,pb->year,pb->month,pb->mday,pb->hour,pb->minute,
-                pb->second,pb->fractional[0],pb->fractional[1],
-                pb->fractional[2],pb->fractional[3],pb->fractional[4],
-                pb->fractional[5]);
+                pa->string,pa->year,pa->u_var.s_md.month,pa->u_var.s_md.mday,pa->hour,pa->minute,
+                pa->second,
+                ((pa->fractional[0])>>4)&0x0f,
+                (pa->fractional[0])&0x0f,
+                ((pa->fractional[1])>>4)&0x0f,
+                (pa->fractional[1])&0x0f,
+                ((pa->fractional[2])>>4)&0x0f,
+                (pa->fractional[2])&0x0f,
+                ((pa->fractional[3])>>4)&0x0f,
+                (pa->fractional[3])&0x0f,
+                ((pa->fractional[4])>>4)&0x0f,
+                (pa->fractional[4])&0x0f,
+                ((pa->fractional[5])>>4)&0x0f,
+                (pa->fractional[5])&0x0f,
+                pb->string,pb->year,pb->u_var.s_md.month,pb->u_var.s_md.mday,pb->hour,pb->minute,
+                pb->second,
+                ((pb->fractional[0])>>4)&0x0f,
+                (pb->fractional[0])&0x0f,
+                ((pb->fractional[1])>>4)&0x0f,
+                (pb->fractional[1])&0x0f,
+                ((pb->fractional[2])>>4)&0x0f,
+                (pb->fractional[2])&0x0f,
+                ((pb->fractional[3])>>4)&0x0f,
+                (pb->fractional[3])&0x0f,
+                ((pb->fractional[4])>>4)&0x0f,
+                (pb->fractional[4])&0x0f,
+                ((pb->fractional[5])>>4)&0x0f,
+                (pb->fractional[5])&0x0f
+            );
         }
 #endif
         if (pa->year>pb->year) return 1; else if (pa->year<pb->year) return -1;
-        if (pa->month>pb->month) return 1;
-        else if (pa->month<pb->month) return -1;
-        if (pa->mday>pb->mday) return 1; else if (pa->mday<pb->mday) return -1;
+        if (pa->u_var.s_md.month>pb->u_var.s_md.month) return 1;
+        else if (pa->u_var.s_md.month<pb->u_var.s_md.month) return -1;
+        if (pa->u_var.s_md.mday>pb->u_var.s_md.mday) return 1;
+        else if (pa->u_var.s_md.mday<pb->u_var.s_md.mday) return -1;
         if (pa->hour>pb->hour) return 1; else if (pa->hour<pb->hour) return -1;
         if (pa->minute>pb->minute) return 1;
         else if (pa->minute<pb->minute) return -1;
         if (pa->second>pb->second) return 1;
         else if (pa->second<pb->second) return -1;
         for (i=0; i<6; i++) {
+            /* comparing packed pairs of BCD digits as unsigned integers is OK */
             if (pa->fractional[i]>pb->fractional[i]) return 1;
             else if (pa->fractional[i]<pb->fractional[i]) return -1;
         }

@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.25 dated 2018-04-18T04:08:31Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.26 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -47,28 +47,8 @@
 #define GENERATOR_TEST           1 /* validate generated test sequences */
 #define SILENCE_WHINEY_COMPILERS 1
 
-/* 64-bit machine: struct size is 40 bytes for string size 13-20
-                                  48 for string size 21-28
-                                  56 for string size 29-36
-*/
-/* 32-bit machine: struct size is 28 bytes for string size 5-8
-                                  28 for string size 9-12
-                                  32 for string size 13-16
-                                  36 for string size 17-20
-                                  40 for string size 21-24
-                                  44 for string size 25-28
-                                  48 for string size 29-32
-                                  52 for string size 33-36
-*/
-/* string size should be at least 8 to hold base-36 32-bit integers */
-/* string size should be at least 15 to hold base-36 64-bit integers */
-/* string size should be at least 20 to hold CCSDS 301.4 date-time string (w/o fraction) */
-/* string size should be at least 34 to hold CCSDS 301.4 date-time string w/ ps fraction */
+/* string size should be at least 34 to hold CCSDS 301.4 date-time string w/ picosecond resolution fraction */
 #define STRING_SIZE              34
-/* base 36 feasible for string size >= 15 */
-/* base 16 feasible for string size >= 17 */
-/* base 10 feasible for string size >= 21 */
-#define STRING_BASE              36
 
 #define TEST_TIMEOUT             600.0  /* seconds (default value) */
 
@@ -291,6 +271,7 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #include <unistd.h>             /* getpid */
 
 /* allocation of time bits between fractional seconds and date-time */
+/* for 32-bit compatibility, smallest fraction should be no smaller than a nanosecond */
 #if LONG_MAX > 0x7fffffffL
 # define FRACTION_COUNT 50000000L
 #else
@@ -349,7 +330,7 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define DATA_TYPE_POINTER                      2U /* 0x0000004 */
 #define DATA_TYPE_DOUBLE                       3U /* 0x0000008 */
 #define DATA_TYPE_UINT_LEAST64_T               4U /* 0x0000010 */
-#define DATA_TYPE_FLOAT                        5U /* 0x0000020 */ /* not used */
+#define DATA_TYPE_FLOAT                        5U /* 0x0000020 */ /* not directly used */
 #define DATA_TYPE_LONG                         6U /* 0x0000040 */
 #define DATA_TYPE_INT                          7U /* 0x0000080 */
 #define DATA_TYPE_UINT_LEAST32_T               8U /* 0x0000100 */
@@ -364,34 +345,34 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #endif
 
 /* test sequence macros (could be an enum) */
-#define TEST_SEQUENCE_STDIN                    0U  /* 0x0000001 */ /* must be first (some loops start at 1 to avoid STDIN) */
-#define TEST_SEQUENCE_SORTED                   1U  /* 0x0000002 */
-#define TEST_SEQUENCE_REVERSE                  2U  /* 0x0000004 */
-#define TEST_SEQUENCE_ORGAN_PIPE               3U  /* 0x0000008 */
-#define TEST_SEQUENCE_INVERTED_ORGAN_PIPE      4U  /* 0x0000010 */
-#define TEST_SEQUENCE_ROTATED                  5U  /* 0x0000020 */ /* after organ-pipe for graphing */
-#define TEST_SEQUENCE_SHIFTED                  6U  /* 0x0000040 */ /* rotated opposite direction */
-#define TEST_SEQUENCE_SAWTOOTH                 7U  /* 0x0000080 */ /* 3 distinct values, repeated sequence */
-#define TEST_SEQUENCE_TERNARY                  8U  /* 0x0000100 */ /* 3 distinct values, random */
-#define TEST_SEQUENCE_BINARY                   9U  /* 0x0000200 */ /* 2 distinct values */
-#define TEST_SEQUENCE_CONSTANT                 10U /* 0x0000400 */ /* only 1 value */
-#define TEST_SEQUENCE_MANY_EQUAL_LEFT          11U /* 0x0000800 */
-#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE        12U /* 0x0001000 */
-#define TEST_SEQUENCE_MANY_EQUAL_RIGHT         13U /* 0x0002000 */
-#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED      14U /* 0x0004000 */
-#define TEST_SEQUENCE_RANDOM_DISTINCT          15U /* 0x0008000 */
-#define TEST_SEQUENCE_RANDOM_VALUES            16U /* 0x0010000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED    17U /* 0x0020000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED 18U /* 0x0040000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_NORMAL     19U /* 0x0080000 */
-#define TEST_SEQUENCE_RANDOM_VALUES_RECIPROCAL 20U /* 0x0100000 */
-#define TEST_SEQUENCE_HISTOGRAM                21U /* 0x0200000 */
-#define TEST_SEQUENCE_MEDIAN3KILLER            22U /* 0x0400000 */
-#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        23U /* 0x0800000 */
-#define TEST_SEQUENCE_JUMBLE                   24U /* 0x1000000 */ /* worst-case swaps for sorting networks */
-#define TEST_SEQUENCE_PERMUTATIONS             25U
-#define TEST_SEQUENCE_COMBINATIONS             26U
-#define TEST_SEQUENCE_ADVERSARY                27U
+#define TEST_SEQUENCE_STDIN                    0U  /* 0x00000001 */ /* must be first (some loops start at 1 to avoid STDIN) */
+#define TEST_SEQUENCE_SORTED                   1U  /* 0x00000002 */
+#define TEST_SEQUENCE_REVERSE                  2U  /* 0x00000004 */
+#define TEST_SEQUENCE_ORGAN_PIPE               3U  /* 0x00000008 */
+#define TEST_SEQUENCE_INVERTED_ORGAN_PIPE      4U  /* 0x00000010 */
+#define TEST_SEQUENCE_ROTATED                  5U  /* 0x00000020 */ /* after organ-pipe for graphing */
+#define TEST_SEQUENCE_SHIFTED                  6U  /* 0x00000040 */ /* rotated opposite direction */
+#define TEST_SEQUENCE_SAWTOOTH                 7U  /* 0x00000080 */ /* 3 distinct values, repeated sequence */
+#define TEST_SEQUENCE_TERNARY                  8U  /* 0x00000100 */ /* 3 distinct values, random */
+#define TEST_SEQUENCE_BINARY                   9U  /* 0x00000200 */ /* 2 distinct values */
+#define TEST_SEQUENCE_CONSTANT                 10U /* 0x00000400 */ /* only 1 value */
+#define TEST_SEQUENCE_MANY_EQUAL_LEFT          11U /* 0x00000800 */
+#define TEST_SEQUENCE_MANY_EQUAL_MIDDLE        12U /* 0x00001000 */
+#define TEST_SEQUENCE_MANY_EQUAL_RIGHT         13U /* 0x00002000 */
+#define TEST_SEQUENCE_MANY_EQUAL_SHUFFLED      14U /* 0x00004000 */
+#define TEST_SEQUENCE_RANDOM_DISTINCT          15U /* 0x00008000 */
+#define TEST_SEQUENCE_RANDOM_VALUES            16U /* 0x00010000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_LIMITED    17U /* 0x00020000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED 18U /* 0x00040000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_NORMAL     19U /* 0x00080000 */
+#define TEST_SEQUENCE_RANDOM_VALUES_RECIPROCAL 20U /* 0x00100000 */
+#define TEST_SEQUENCE_HISTOGRAM                21U /* 0x00200000 */
+#define TEST_SEQUENCE_MEDIAN3KILLER            22U /* 0x00400000 */
+#define TEST_SEQUENCE_DUAL_PIVOT_KILLER        23U /* 0x00800000 */
+#define TEST_SEQUENCE_JUMBLE                   24U /* 0x01000000 */ /* worst-case swaps for sorting networks */
+#define TEST_SEQUENCE_PERMUTATIONS             25U /* 0x02000000 */
+#define TEST_SEQUENCE_COMBINATIONS             26U /* 0x04000000 */
+#define TEST_SEQUENCE_ADVERSARY                27U /* 0x08000000 */
 
 #define TEST_SEQUENCE_COUNT                    28U
 #if TEST_SEQUENCE_COUNT > 32
@@ -403,57 +384,6 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 
 #define MAXIMUM_SAWTOOTH_MODULUS               3  /* ensures maximum 3 distinct values */
 #define CONSTANT_VALUE                         3  /* a more-or-less random value */
-
-/* 32-bit signed integers in base-36 uses at least 8 chars (incl. '\0') */
-/* 64-bit signed integers in base-36 uses at least 15 chars (incl. '\0') */
-/* CCSDS 301.4 date-time w/o fraction uses at least 20 chars (incl. '\0') */
-/* for 64-bit integers: */
-/* base 36 feasible for string size >= 15 */
-/* base 16 feasible for string size >= 17 */
-/* base 10 feasible for string size >= 21 */
-#if ULONG_MAX > 0xffffffffUL
-# if STRING_SIZE < 20
-#  undef STRING_SIZE
-#  define STRING_SIZE                          20
-# endif
-# if STRING_SIZE >= 21
-#  if STRING_BASE < 10
-#   undef STRING_BASE
-#   define STRING_BASE                         10
-#  endif
-# elif STRING_SIZE >= 17
-#  if STRING_BASE < 16
-#   undef STRING_BASE
-#   define STRING_BASE                         16
-#  endif
-# elif STRING_SIZE >= 15
-#  if STRING_BASE < 36
-#   undef STRING_BASE
-#   define STRING_BASE                         36
-#  endif
-# endif
-#else
-# if STRING_SIZE < 20
-#  undef STRING_SIZE
-#  define STRING_SIZE                          20
-# endif
-# if STRING_SIZE >= 11
-#  if STRING_BASE < 10
-#   undef STRING_BASE
-#   define STRING_BASE                         10
-#  endif
-# elif STRING_SIZE >= 9
-#  if STRING_BASE < 16
-#   undef STRING_BASE
-#   define STRING_BASE                         16
-#  endif
-# elif STRING_SIZE >= 8
-#  if STRING_BASE < 36
-#   undef STRING_BASE
-#   define STRING_BASE                         36
-#  endif
-# endif
-#endif
 
 /* macros to unify function calls */
 #undef ISORT
@@ -534,8 +464,6 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 
 #define HISTOGRAM_INDEX1_OFFSET 3
 
-#define ADD_PADDING 0
-
 /* options for modified Bentley&McIlroy qsort */
 /* Improved sampling quality, Kiwiel Algorithm L, and recursion on the smaller
    partitioned region are always incorporated.
@@ -566,41 +494,53 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 
 /* structure definitions */
 struct data_struct {
-#if ADD_PADDING
-    double pad[14];
-    int_least64_t pad2[1];
-#endif
     /* fields similar to struct tm, but different sizes and offsets */
     /* field sizes compatible with CCSDS 301.0-B-4 sect. 3.4.1.1, 3.4.1.2 CCS */
     /* signed values allow for arithmetic and normalization */
+    /* yday and month+mday packed into a union; conversion between
+       variations is required.
+    */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
     int_least16_t year;  /* no (1900) offset */
-    int_least16_t yday;  /* no (1) offset */
-    int_least8_t  month; /* no (1) offset */
-    int_least8_t  mday;
+    union {
+        int_least16_t yday;  /* no (1) offset */
+        /* xxx.u_var.yday */
+        struct {
+            int_least8_t  month; /* no (1) offset */
+            /* xxx.u_var.s_md.month */
+            int_least8_t  mday;
+            /* xxx.u_var.s_md.mday */
+        } s_md;
+    } u_var;
     int_least8_t  hour;
     int_least8_t  minute;
     int_least8_t  second;
-    int_least8_t  fractional[6];
-    /* field similar to struct tm */
-//    int_least8_t  wday; /* unused */
+    uint_least8_t  fractional[6]; /* actually 12 BCD digits */
+    uint_least8_t  preamble[1];
+    /* preserve alignment by padding to a multiple of 2 bytes */
+    uint_least8_t  pad; /* could be used for wday */
 #else
     signed short year; /* no (1900) offset */
-    signed short yday; /* no (1) offset */
-    signed char  month /* no (1) offset */
-    signed char  mday;
+    union {
+        signed short yday; /* no (1) offset */
+        /* xxx.u_var.yday */
+        struct {
+            signed char  month /* no (1) offset */
+            /* xxx.u_var.s_md.month */
+            signed char  mday;
+            /* xxx.u_var.s_md.mday */
+        } s_md;
+    } u_var;
     signed char  hour;
     signed char  minute;
     signed char  second;
-    signed char  fractional[6];
-    /* field similar to struct tm */
-    /* signed char  wday; */ /* unused */
+    unsigned char  fractional[6]; /* actually 12 BCD digits */
+    unsigned char  preamble[1];
+    /* preserve alignment by padding to a multiple of 2 bytes */
+    unsigned char  pad; /* could be used for wday */
 #endif /* C99 */
     /* CCSDS 301.0-B-4 sect. 3.5.1.1 ASCII TIME CODE A subset (no fractional seconds) */
     char string[STRING_SIZE]; /* for string comparison */
-#if ADD_PADDING
-    char pad3[4];
-#endif
 };
 
 /* To avoid repeatedly calculating the number of samples required for pivot
@@ -730,10 +670,10 @@ extern int data_struct_strcmp(const void *p1, const void *p2);
 extern int idata_struct_strcmp(const void *p1, const void *p2);
 extern int data_struct_strcmp_s(const void *p1, const void *p2, void *unused);
 extern int idata_struct_strcmp_s(const void *p1, const void *p2, void *unused);
-extern int date12dcmp(const void *p1, const void *p2);
-extern int idate12dcmp(const void *p1, const void *p2);
-extern int date12dcmp_s(const void *p1, const void *p2,void *unused);
-extern int idate12dcmp_s(const void *p1, const void *p2,void *unused);
+extern int date18dcmp(const void *p1, const void *p2);
+extern int idate18dcmp(const void *p1, const void *p2);
+extern int date18dcmp_s(const void *p1, const void *p2,void *unused);
+extern int idate18dcmp_s(const void *p1, const void *p2,void *unused);
 extern int timecmp(const void *p1, const void *p2);
 extern int itimecmp(const void *p1, const void *p2);
 extern int timecmp_s(const void *p1, const void *p2, void *unused);

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.17 dated 2018-04-17T18:45:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.18 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-04-17T18:45:13Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-04-19T20:38:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -316,6 +316,7 @@ static int fractioncmp(const struct data_struct *p1, const struct data_struct *p
     int n;
 
     for (n=0; n<6; n++) {
+        /* comparing packed pairs of BCD digits as unsigned integers is OK */
         if (p1->fractional[n]>p2->fractional[n]) return 1;
         if (p1->fractional[n]<p2->fractional[n]) return -1;
     }
@@ -345,15 +346,15 @@ static int hourscmp(const struct data_struct *p1, const struct data_struct *p2)
 
 static int daycmp(const struct data_struct *p1, const struct data_struct *p2)
 {
-    if (p1->mday>p2->mday) return 1;
-    if (p1->mday<p2->mday) return -1;
+    if (p1->u_var.s_md.mday>p2->u_var.s_md.mday) return 1;
+    if (p1->u_var.s_md.mday<p2->u_var.s_md.mday) return -1;
     return 0;
 }
 
 static int monthcmp(const struct data_struct *p1, const struct data_struct *p2)
 {
-    if (p1->month>p2->month) return 1;
-    if (p1->month<p2->month) return -1;
+    if (p1->u_var.s_md.month>p2->u_var.s_md.month) return 1;
+    if (p1->u_var.s_md.month<p2->u_var.s_md.month) return -1;
     return 0;
 }
 

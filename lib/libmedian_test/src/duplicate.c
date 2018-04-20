@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is duplicate.c version 1.8 dated 2018-02-06T19:58:29Z. \ $ */
+/* $Id: ~|^` @(#)   This is duplicate.c version 1.9 dated 2018-04-19T20:38:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.duplicate.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: duplicate.c ~|^` @(#)"
 #define SOURCE_MODULE "duplicate.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-02-06T19:58:29Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-04-19T20:38:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -112,7 +112,7 @@ void duplicate_test_data(long *refarray, char *pv, int type, size_t r, size_t o,
                         pds=&(((struct data_struct *)pv)[o+r*j]);
                     break;
                 }
-                t = (time_t)l/(time_t)f;
+                t = (time_t)l/(time_t)f; /* l = seconds */
                 gmtime_r(&t, &(cts.tm));
                 d=(double)(l%f)/(double)f; /* fraction of a second */
                 cts.fraction=d;
@@ -131,49 +131,56 @@ void duplicate_test_data(long *refarray, char *pv, int type, size_t r, size_t o,
                         cts.tm.tm_hour,cts.tm.tm_min,cts.tm.tm_sec,(long)t);
                 A(t==(time_t)l/(time_t)f);
 #endif /* ASSERT_CODE */
+                pds->preamble[0]=0U;
+                /* bit 0=0; no extension */
+                pds->preamble[0]|=0x50U; /* bits 1-3=101; CCS time code */
+                /* bit 4=0; month/day variation */
+                pds->preamble[0]|=0x06U; /* bits 5-7=110; 1e-12 resolution */
+                l-=(long)t*f; /* fraction increments */
+                /* resolution limited to no finer than nanoseconds
+                   (see median_test_config.h) due to 32-bit LONG_MAX
+                */
                 pds->year=cts.tm.tm_year+1900;
-                pds->month=cts.tm.tm_mon+1;
-                pds->yday=cts.tm.tm_yday+1;
-                pds->mday=cts.tm.tm_mday;
+                if (0U==(pds->preamble[0]&0x080U)) { /* bit 4: variation */
+                    pds->u_var.s_md.month=cts.tm.tm_mon+1;
+                    pds->u_var.s_md.mday=cts.tm.tm_mday;
+                } else {
+                    pds->u_var.yday=cts.tm.tm_yday+1;
+                }
                 pds->hour=cts.tm.tm_hour;
                 pds->minute=cts.tm.tm_min;
                 pds->second=cts.tm.tm_sec;
-                for (i=0; i<6; i++) {
-                    d *= 100.0;
-                    u = (unsigned int)d;
-                    pds->fractional[i]=(char)u;
-                    d -= (double)u;
-                }
-                /* The split of available bits between date-time with integral
-                   seconds and fractional seconds (determined by the value of
-                   variable f for 32- and 64-bit platforms) is such that
-                   theoretically the 10^-12 component (fractional[5]) should
-                   always be zero.  In practice, even using double-precision
-                   floating-point arithmetic, there is a rounding error that
-                   results in a value of 99 picoseconds for that component (on
-                   64-bit platforms).  The following code block corrects that
-                   situation.
+                /* pack fractional seconds as pairs of BCD digits
+                   CCSDS 301.0-B-4 section 3.4.1
                 */
-                if (99U==pds->fractional[5]) {
-                    pds->fractional[5]++; /* round up */
-                    for (i=5; i>0; i--) {
-                        if (100U==pds->fractional[i]) {
-                            pds->fractional[i-1]++;
-                            pds->fractional[i]=0U;
-                        }
-                    }
-                    /* The following should never happen... */
-                    if (100U==pds->fractional[0]) {
-                        pds->fractional[0]=0U;
-                        pds->second++;
-                        /* Because this is not expected to happen, normalization
-                           of the remaining fields (in case second overflows to
-                           60) is unimplemented... [handling overflow at the end
-                           of a month, and dealing with leap years are somewhat
-                           cumbersome]
-                        */
-                    }
-                }
+                l*=1000000000L/FRACTION_COUNT; /* nanoseconds */ 
+                u=(unsigned int)(l/100000000L); /* tenths */
+                pds->fractional[0]=((((unsigned char)u)&0x0f)<<4);
+                l-=(long)u*100000000L;
+                u=(unsigned int)(l/10000000L); /* hundredths */
+                pds->fractional[0]|=(((unsigned char)u)&0x0f);
+                l-=(long)u*10000000L;
+                u=(unsigned int)(l/1000000L); /* thousandths */
+                pds->fractional[1]=((((unsigned char)u)&0x0f)<<4);
+                l-=(long)u*1000000L;
+                u=(unsigned int)(l/100000L); /* ten-thousandths */
+                pds->fractional[1]|=(((unsigned char)u)&0x0f);
+                l-=(long)u*100000L;
+                u=(unsigned int)(l/10000L); /* hundred-thousandths */
+                pds->fractional[2]=((((unsigned char)u)&0x0f)<<4);
+                l-=(long)u*10000L;
+                u=(unsigned int)(l/1000L); /* millionths */
+                pds->fractional[2]|=(((unsigned char)u)&0x0f);
+                l-=(long)u*1000L;
+                u=(unsigned int)(l/100L); /* ten-millionths */
+                pds->fractional[3]=((((unsigned char)u)&0x0f)<<4);
+                l-=(long)u*100L;
+                u=(unsigned int)(l/10L); /* hundred-millionths */
+                pds->fractional[3]|=(((unsigned char)u)&0x0f);
+                l-=(long)u*10L;
+                u=(unsigned int)l; /* nanoseconds */
+                pds->fractional[4]=((((unsigned char)u)&0x0f)<<4);
+                pds->fractional[5]=0U;
             break;
             default :
                 (V)fprintf(stderr,
