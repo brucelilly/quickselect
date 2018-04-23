@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is minmax.c version 1.8 dated 2018-03-20T19:29:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is minmax.c version 1.9 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.minmax.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: minmax.c ~|^` @(#)"
 #define SOURCE_MODULE "minmax.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-03-20T19:29:03Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -56,7 +56,6 @@
 
 #include "initialize_src.h"
 
-QUICKSELECT_INLINE
 void find_minmax(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *,const void *), unsigned int options,
     char **pmn, char **pmx)
@@ -104,7 +103,6 @@ __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,
     }
 }
 
-QUICKSELECT_INLINE
 void select_minmax(char *base,size_t first,size_t beyond,size_t size,
     int(*compar)(const void *,const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,

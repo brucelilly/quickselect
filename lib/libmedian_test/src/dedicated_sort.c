@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.15 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.16 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dedicated_sort.c */
@@ -48,8 +48,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort.c ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort.c"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -92,7 +92,6 @@ extern size_t quickselect_cache_size;
    calls quickselect_loop) is essentially equivalent to qsort.
 */
 /* wrapper */
-QUICKSELECT_INLINE
 void dedsort(char *base, size_t nmemb, size_t size, COMPAR_DECL,
     unsigned int options)
 {

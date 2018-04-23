@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is heap.c version 1.5 dated 2018-04-16T17:21:18Z. \ $ */
+/* $Id: ~|^` @(#)   This is heap.c version 1.6 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.heap.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: heap.c ~|^` @(#)"
 #define SOURCE_MODULE "heap.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-04-16T17:21:18Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -142,7 +142,6 @@ size_t heap_siftdown(char *base, size_t l, size_t p, size_t u, size_t size,
 }
 
 /* generalized to take root and upper indices of heap array */
-QUICKSELECT_INLINE
 void heapify_array(char *base, size_t r, size_t u, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)
@@ -162,7 +161,6 @@ void heapify_array(char *base, size_t r, size_t u, size_t size,
       to the lowest index in the array beyond the end of the reduced heap.
    Return the (new) largest index in the heap.
 */
-QUICKSELECT_INLINE
 size_t heap_delete_root(char *base, size_t r, size_t n, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio)

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.20 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.21 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -75,7 +75,6 @@ extern size_t quickselect_cache_size;
 
 /* repivot_factors is used by median_test main */
 extern
-QUICKSELECT_INLINE
 void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
     unsigned char *pf1, unsigned char *pf2)
 {
@@ -128,7 +127,6 @@ extern /* make it visible */
 # include "sampling_table_src.h"
 
 /* quickselect definition (internal interface) */
-QUICKSELECT_INLINE
 int quickselect_internal(char *base, size_t nmemb,
     /*const*/ size_t size, int (*compar)(const void *,const void *),
     size_t *pk, size_t nk, unsigned int options, char **ppeq, char **ppgt)

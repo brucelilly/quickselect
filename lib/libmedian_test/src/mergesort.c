@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mergesort.c version 1.19 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is mergesort.c version 1.20 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mergesort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "mergesort.c"
-#define MODULE_VERSION "1.19"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.20"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -354,7 +354,6 @@ void mergesort_internal(char *base, size_t first, size_t beyond,
 
 extern size_t quickselect_cache_size;
 
-QUICKSELECT_INLINE
 /* avoid namespace clash... */
 void xmergesort(char *base, size_t nmemb,
     const size_t size, int (*compar)(const void *,const void *), unsigned int options)

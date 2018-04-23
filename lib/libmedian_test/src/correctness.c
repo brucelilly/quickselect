@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.27 dated 2018-04-18T04:08:56Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.28 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.27"
-#define MODULE_DATE "2018-04-18T04:08:56Z"
+#define MODULE_VERSION "1.28"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -59,7 +59,6 @@
 #if DEBUG_CODE + ASSERT_CODE
 #if GENERATOR_TEST
 static
-QUICKSELECT_INLINE
 size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size,
     int(*icompar)(const void *, const void *), unsigned int options,
     void (*f)(int, void *, const char *, ...), void *log_arg)
@@ -101,7 +100,6 @@ size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size,
    On the first failed test, return the index of the item failing the test.
 */
 
-QUICKSELECT_INLINE
 size_t test_array_partition(const char *pv, size_t l, size_t pl,
     size_t pu, size_t u, size_t size,
     int(*icompar)(const void *, const void *), unsigned int options,

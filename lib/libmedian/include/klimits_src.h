@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is klimits_src.h version 1.5 dated 2018-03-07T04:24:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is klimits_src.h version 1.6 dated 2018-04-23T05:16:05Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.klimits_src.h */
@@ -101,8 +101,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: klimits_src.h ~|^` @(#)"
 #define SOURCE_MODULE "klimits_src.h"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-03-07T04:24:58Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-04-23T05:16:05Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -160,9 +160,6 @@ void initialize_klimits(void)
 /* klimits: find range of order statistic ranks corresponding to sub-array
             limits.
 */
-#if QUICKSELECT_BUILD_FOR_SPEED
-QUICKSELECT_INLINE
-#endif
 #include "klimits_decl.h"
 {
     size_t h, l, lk, rk;

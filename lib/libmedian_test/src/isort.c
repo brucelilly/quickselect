@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is isort.c version 1.11 dated 2018-03-20T19:30:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is isort.c version 1.12 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.isort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: isort.c ~|^` @(#)"
 #define SOURCE_MODULE "isort.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-03-20T19:30:13Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -60,7 +60,6 @@
 
 #include "insertion_sort_src.h" /* isort_bs */
 
-QUICKSELECT_INLINE
 void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     int (*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
@@ -137,7 +136,6 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
 #endif
 }
 
-QUICKSELECT_INLINE
 void isort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *),
     unsigned int options)
 {

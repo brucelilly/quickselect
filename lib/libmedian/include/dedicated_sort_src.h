@@ -125,6 +125,8 @@
                                    (maybe RSIZE_MAX (C11))
                                 */
 #endif /* C99 or later */
+#include <stdlib.h>             /* abort (maybe errno_t rsize_t constraint_handler_t
+                                   [N1570 K3.6]) */
 #ifndef SIZE_MAX /* not standardized pre-C99 */
 # include <limits.h>            /* ULONG_MAX */
 # define SIZE_MAX ULONG_MAX
@@ -134,8 +136,6 @@
 # if __STDC_VERSION__ >= 201001L
     /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
 #  include <stdio.h>            /* (maybe errno_t rsize_t [N1570 K3.5]) */
-#  include <stdlib.h>           /* (maybe errno_t rsize_t constraint_handler_t
-                                   [N1570 K3.6]) */
 # endif /* N1570 */
 #else /* pre-C99 */
 # include <float.h>             /* DBL_MAX_10_EXP */

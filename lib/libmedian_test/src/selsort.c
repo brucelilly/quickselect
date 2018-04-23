@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is selsort.c version 1.5 dated 2018-03-06T22:06:54Z. \ $ */
+/* $Id: ~|^` @(#)   This is selsort.c version 1.6 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.selsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: selsort.c ~|^` @(#)"
 #define SOURCE_MODULE "selsort.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-03-06T22:06:54Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -79,7 +79,6 @@ void selsort_internal(char *base, size_t first, size_t beyond, size_t size,
     }
 }
 
-QUICKSELECT_INLINE
 void selsort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
     size_t alignsize=alignment_size(base,size);

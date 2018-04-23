@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sort5.c version 1.5 dated 2018-03-06T20:38:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is sort5.c version 1.6 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sort5.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sort5.c ~|^` @(#)"
 #define SOURCE_MODULE "sort5.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-03-06T20:38:52Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -56,9 +56,6 @@
 
 #include "initialize_src.h"
 
-#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
 void sort5(char *pa, char *pb, char *pc, char *pd, char *pe, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,

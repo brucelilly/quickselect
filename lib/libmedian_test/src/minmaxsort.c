@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is minmaxsort.c version 1.4 dated 2018-03-20T19:51:07Z. \ $ */
+/* $Id: ~|^` @(#)   This is minmaxsort.c version 1.5 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.minmaxsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: minmaxsort.c ~|^` @(#)"
 #define SOURCE_MODULE "minmaxsort.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2018-03-20T19:51:07Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -75,7 +75,6 @@ void minmaxsort_internal(char *base, size_t first, size_t beyond, size_t size,
     }
 }
 
-QUICKSELECT_INLINE
 void minmaxsort(char *base, size_t nmemb, size_t size,
     int (*compar)(const void *, const void *), unsigned int options)
 {

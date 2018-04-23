@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is network.c version 1.11 dated 2018-03-20T19:28:27Z. \ $ */
+/* $Id: ~|^` @(#)   This is network.c version 1.12 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.network.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: network.c ~|^` @(#)"
 #define SOURCE_MODULE "network.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-03-20T19:28:27Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -738,9 +738,6 @@ void networksort_internal(char *base, size_t first, size_t beyond, size_t size,
                 CX(pp,pq); /* 14,15 */
 #endif
 
-#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
 void networksort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *),
     unsigned int options)
 {

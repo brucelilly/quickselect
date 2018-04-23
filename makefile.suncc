@@ -42,11 +42,12 @@ MAKEFILES_READ += makefile.$(CCBASE)
 C = 
 
 # C99 flags
-C99 = -xc99
+C99 = -xc99 -Xc
 
 # Some people never learn... 2-digit year numbers are going to be a problem...
 # C11 flags (C11 > C99...)
-C11 = -xc11
+# Suncc 12 doesn't do c11
+C11 = $(C99)
 
 # flags for making dependency files
 MAKE_DEPEND_ARG = -xM1

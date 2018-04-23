@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.11 dated 2018-04-19T20:38:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.12 dated 2018-04-23T05:16:05Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,8 +15,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-04-19T20:38:04Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-04-23T05:16:05Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
 
@@ -98,7 +98,6 @@ static FILE *fp = NULL;
 
 /* freeze implemented as a function */
 static
-QUICKSELECT_INLINE
 void set_freeze_direction(void) /* BL */
 {
 #if CHANGE_DIR_ON_INIT_ONLY
@@ -125,7 +124,6 @@ void set_freeze_direction(void) /* BL */
 #endif
 }
 
-QUICKSELECT_INLINE
 long freeze(long z)
 {
     char buf[64], buf2[64]; /* BL */
@@ -181,7 +179,6 @@ long freeze(long z)
     return l;
 }
 
-QUICKSELECT_INLINE
 long aqindex(const void *pv, void *base, size_t size)
 {
     int i, j, k;
@@ -269,7 +266,6 @@ long aqindex(const void *pv, void *base, size_t size)
     return v;
 }
 
-QUICKSELECT_INLINE
 size_t count_frozen(char *base, size_t first, size_t beyond, size_t size)
 {
     long v;
@@ -283,7 +279,6 @@ size_t count_frozen(char *base, size_t first, size_t beyond, size_t size)
     return n;
 }
 
-QUICKSELECT_INLINE
 size_t pivot_rank(char *base,size_t first,size_t beyond,size_t size,char *pivot)
 {
     long l, v;
@@ -310,7 +305,6 @@ size_t pivot_rank(char *base,size_t first,size_t beyond,size_t size,char *pivot)
     return n;
 }
 
-QUICKSELECT_INLINE
 /* spacings are in elements */
 /* remedian does not modify the value pointed to by middle, but it is not
    declared as const to avoid spurious compiler warnings about discarding the

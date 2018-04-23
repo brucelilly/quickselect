@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.7 dated 2018-03-06T20:03:33Z. \ $ */
+/* $Id: ~|^` @(#)   This is yaroslavskiy.c version 1.8 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.yaroslavskiy.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: yaroslavskiy.c ~|^` @(#)"
 #define SOURCE_MODULE "yaroslavskiy.c"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2018-03-06T20:03:33Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "V. Yaroslavskiy"
 #define COPYRIGHT_DATE "2009"
 
@@ -217,9 +217,6 @@ fprintf(stderr,"%s(%p,%lu,%lu,%p,%lu)\n",__func__,(void *)base,nmemb,size,compar
     }
 }
 
-#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-inline
-#endif /* C99 */
 void yqsort(void *base, size_t nmemb, size_t size,
     int(*compar)(const void *, const void *), unsigned int options)
 {

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.11 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.12 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqrtsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sqrtsort.c ~|^` @(#)"
 #define SOURCE_MODULE "sqrtsort.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -150,7 +150,6 @@ __func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
     }
 }
 
-QUICKSELECT_INLINE
 void sqrtsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options)
 {
     size_t alignsize=alignment_size((char *)base,size);

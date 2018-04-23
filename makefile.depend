@@ -659,7 +659,7 @@ $(PRE_DEPEND) :
 	@echo 'cxref : $(ANALYSISDIR)/cxref' >> $@.$${PPID}.temp
 	@echo '$(ANALYSISDIR)/cxref :' >> $@.$${PPID}.temp
 	@echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp
-	@echo '	if test -n "$$(CXREF)" ; then \' >> $@.$${PPID}.temp
+	@echo '	-if test -n "$$(CXREF)" ; then \' >> $@.$${PPID}.temp
 	@echo '		$$(CXREF) $$(ALL_SOURCES) -delete -O"$(ANALYSISDIR)" -N$$(PROJECT) ;\' >> $@.$${PPID}.temp
 	@echo '		$$(CXREF) $$(ALL_SOURCES) -N$$(PROJECT) -O"$(ANALYSISDIR)" -xref-all -index-all -html -CPP "$$(CC) -E" -- -DCXREF $$(DEFS) $$(INCLUDE) $$(SYS_INCLUDE) $$(OS_INCLUDE) ;\' >> $@.$${PPID}.temp
 	@echo '	fi' >> $@.$${PPID}.temp

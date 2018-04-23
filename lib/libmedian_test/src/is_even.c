@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is is_even.c version 1.2 dated 2018-03-06T23:17:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is is_even.c version 1.3 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.is_even.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: is_even.c ~|^` @(#)"
 #define SOURCE_MODULE "is_even.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2018-03-06T23:17:21Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -57,7 +57,6 @@
 #include "initialize_src.h"
 
 /* optimized for & less expensive than % (esp. for unsigned long) */
-QUICKSELECT_INLINE
 int is_even(size_t n)
 {
     if (0UL == (n & 1UL)) return 1;

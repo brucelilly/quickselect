@@ -92,7 +92,6 @@
 #include "tables.h"
 
 /* source to be compiled into the library object file */
-#include "klimits_src.h"
 #include "sampling_table_src.h"
 #include "repivot_src.h"
 #include "partition_src.h"

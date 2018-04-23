@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is parse.c version 1.2 dated 2018-03-06T22:09:00Z. \ $ */
+/* $Id: ~|^` @(#)   This is parse.c version 1.3 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.parse.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: parse.c ~|^` @(#)"
 #define SOURCE_MODULE "parse.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2018-03-06T22:09:00Z"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -71,7 +71,6 @@ double mult_k_ki(int p)
     return n;
 }
 
-QUICKSELECT_INLINE
 double parse_num(const char *p, char **pendptr, int base)
 {
     double n;

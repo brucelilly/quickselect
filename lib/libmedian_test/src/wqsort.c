@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.17 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.18 dated 2018-04-23T05:16:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-04-23T05:16:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -124,7 +124,6 @@ char *low_remedian(register char *middle, register size_t row_spacing,
 }
 
 /* pivot selection using remedian or median-of-medians */
-QUICKSELECT_INLINE
 char *freeze_some_samples(register char *base, register size_t first,
     size_t beyond, register size_t size,
     int (*compar)(const void *, const void*),
