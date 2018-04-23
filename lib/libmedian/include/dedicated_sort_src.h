@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.12 dated 2018-04-18T01:15:25Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.13 dated 2018-04-21T20:13:31Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-04-18T01:15:25Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-04-21T20:13:31Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -369,6 +369,9 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
            for those inputs of uniform sampling, which favors
            reversed inputs.
         */
+        /* Decision tree is always better than divide-and-conquer:
+           lower overhead, same average comparisons, same average data movement.
+        */
         register int c, d;
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
@@ -442,41 +445,21 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
             (unsigned long)beyond,(unsigned long)size_ratio);
     }
 #endif
-#if QUICKSELECT_MAX_NETWORK > 3
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE)))
-#endif
-    {
-        /* unrolled in-place merge sort */
-        /* simplified in-place merge sort for 4 elements */
-        /* split */
-        register char *pa, *pb, *pc, *pd;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,4UL);
-        }
-# endif
-        pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
-        /* These compare-exchanges can be performed in parallel. */
-        CX(pa,pb); CX(pc,pd);
-        /* merge pieces */
-        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-#if QUICKSELECT_MAX_NETWORK > 3
-    } else {
+    if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
         /* sorting network */
         /* sorting network: 5 comparisons in 3 parallel groups */
+        /* Optimal sorting network is always better than divide-and-conquer:
+           lower overhead, same average comparisons, same average data movement.
+        */
         register char *pa, *pb, *pc, *pd;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "first=%lu, beyond=%lu, options=0x%x */\n",__func__,
                 dedicated_sort_src_file,__LINE__,4UL,first,beyond,options);
         }
-# endif
+#endif
         pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
         /* parallel group 1 */
         CX(pa,pc); CX(pb,pd);
@@ -484,12 +467,30 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
         CX(pa,pb); CX(pc,pd);
         /* parallel group 3 */
         CX(pb,pc);
-# if ASSERT_CODE > 1
+#if ASSERT_CODE > 1
         A(0>=OPT_COMPAR(pa,pb,options));
         A(0>=OPT_COMPAR(pb,pc,options));
         A(0>=OPT_COMPAR(pc,pd,options));
-# endif
 #endif
+    } else {
+        /* unrolled in-place merge sort */
+        /* simplified in-place merge sort for 4 elements */
+        /* split */
+        register char *pa, *pb, *pc, *pd;
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,4UL);
+        }
+#endif
+        pa=base+first*size, pb=pa+size, pc=pb+size, pd=pc+size;
+        /* These compare-exchanges can be performed in parallel. */
+        CX(pa,pb); CX(pc,pd);
+        /* merge pieces */
+        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
     }
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
@@ -513,6 +514,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     size_t pbeyond, unsigned int options)
 {
     register int ret=0;
+    register char *pa, *pb;
     A(first+5UL==beyond);
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
@@ -522,51 +524,15 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
             (unsigned long)beyond,(unsigned long)size_ratio);
     }
 #endif
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
-        /* Simplified merge for 5 elements; average 7.5 comparisons. */
-        char *pa, *pb;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,5UL);
-        }
-#endif
-        pa=base+first*size, pb=pa+size;
-        /* split 2-3 elements */
-        CX(pa,pb);
-        ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-    } else {
-#if QUICKSELECT_MAX_NETWORK < 5
-        /* Simplified merge for 5 elements; average 7.5 comparisons (but more data movement than d&c or network). */
-        char *pa, *pb;
-#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,5UL);
-        }
-#  endif
-        pa=base+first*size, pb=pa+size;
-        /* split 2-3 elements */
-        CX(pa,pb);
-        ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-#else
+    if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
         /* network sort for small subarrays */
         /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
         /* non-stable, not optimized for expensive comparisons */
         /* 9 comparisons with 4 parallelizable groups */
-        register char *pa, *pb, *pc, *pd, *pe;
+        /* Optimal sorting network is always better than divide-and-conquer:
+           lower overhead, same average comparisons, less average data movement.
+        */
+        register char *pc, *pd, *pe;
 # if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
@@ -588,7 +554,24 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         CX(pc,pd); CX(pb,pe);
         /* parallel group 5 */
         CX(pb,pc); CX(pd,pe);
+    } else {
+        /* Simplified merge for 5 elements; average 7.5 comparisons. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: unrolled in-place mergesort "
+                "nmemb=%lu */\n",
+                __func__,dedicated_sort_src_file,__LINE__,5UL);
+        }
 #endif
+        pa=base+first*size, pb=pa+size;
+        /* split 2-3 elements */
+        CX(pa,pb);
+        ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
+            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        /* merge pieces */
+        inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
+            swapf,alignsize,size_ratio,options);
     }
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
@@ -622,43 +605,9 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
             (unsigned long)beyond,(unsigned long)size_ratio);
     }
 #endif
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
-        /* Simplified merge for 6 elements; average 10.576 comparisons. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,6UL);
-        }
-#endif
-        /* split 3-3 elements */
-        ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-    } else {
+    if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
 #if QUICKSELECT_MAX_NETWORK < 6
-        /* Simplified merge for 6 elements; average 10.576 comparisons (but more data movement than d&c or network). */
-#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,6UL);
-        }
-#  endif
-        /* split 3-3 elements */
-        ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
+        if (2UL<size_ratio) return EAGAIN;
 #else
         /* network sort for small subarrays */
         /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
@@ -687,8 +636,27 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
         CX(pb,pe);
         /* parallel group 6 */
         CX(pb,pc); CX(pd,pe);
+        goto check6;
 #endif
     }
+    /* Simplified merge for 6 elements; average 10.576 comparisons. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: unrolled in-place mergesort "
+            "nmemb=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,6UL);
+    }
+#endif
+    /* split 3-3 elements */
+    ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    /* merge pieces */
+    inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
+        swapf,alignsize,size_ratio,options);
+check6:
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
@@ -724,27 +692,9 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
        is required; otherwise sorting network is faster. Divide-and-conquer by
        partitioning is slower; it is not used.
     */
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
-            /* Simplified merge for 7 elements; average 14.034 comparisons and 9.077 swap equivalents. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-            if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-                (V)fprintf(stderr,
-                    "/* %s: %s line %d: unrolled in-place mergesort "
-                    "nmemb=%lu */\n",
-                    __func__,dedicated_sort_src_file,__LINE__,7UL);
-            }
-#endif
-            /* split 3-4 elements */
-            ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
-                alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-            ret= ded_sort4(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
-                alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-            /* merge pieces */
-            inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
-                swapf,alignsize,size_ratio,options);
-    } else {
+    if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
 #if QUICKSELECT_MAX_NETWORK < 7
-        return EAGAIN;
+        if (1UL<size_ratio) return EAGAIN;
 #else
         /* network sort for small subarrays */
         /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
@@ -780,8 +730,27 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
         CX(pb,pe); CX(pd,pg);
         /* parallel group 6 */
         CX(pb,pc); CX(pd,pe); CX(pf,pg);
+        goto check7;
 #endif
     }
+    /* Simplified merge for 7 elements; average 14.034 comparisons and 9.077 swap equivalents. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: unrolled in-place mergesort "
+            "nmemb=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,7UL);
+    }
+#endif
+    /* split 3-4 elements */
+    ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    ret= ded_sort4(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    /* merge pieces */
+    inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
+        swapf,alignsize,size_ratio,options);
+check7:
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
@@ -813,47 +782,9 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
             (unsigned long)beyond,(unsigned long)size_ratio);
     }
 #endif
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
-        /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,8UL);
-        }
-#endif
-        /* split 4-4 elements */
-        ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-    } else {
+    if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
 #if QUICKSELECT_MAX_NETWORK < 8
-# if 1
-        return EAGAIN;
-# else
-        /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
-#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: unrolled in-place mergesort "
-                "nmemb=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,8UL);
-        }
-#  endif
-        /* split 4-4 elements */
-        ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
-            alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
-        /* merge pieces */
-        inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,options);
-# endif
+        if (1UL<size_ratio) return EAGAIN;
 #else
         /* network sort for small subarrays */
         /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
@@ -888,8 +819,27 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
         CX(pb,pe); CX(pd,pg);
         /* parallel group 6 */
         CX(pb,pc); CX(pd,pe); CX(pf,pg);
+        goto check8;
 #endif
     }
+    /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: unrolled in-place mergesort "
+            "nmemb=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,8UL);
+    }
+#endif
+    /* split 4-4 elements */
+    ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
+        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+    /* merge pieces */
+    inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
+        swapf,alignsize,size_ratio,options);
+check8:
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,

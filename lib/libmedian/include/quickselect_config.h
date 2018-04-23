@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.14 dated 2018-04-18T01:22:45Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.15 dated 2018-04-21T20:12:27Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.14 2018-04-18T01:22:45Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.15 2018-04-21T20:12:27Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -206,7 +206,9 @@
    obsessing over for general-purpose use, but might be useful in embedded
    systems.  The default default (16kiB) presumes a conservative value
    appropriate for systems with a 16kiB L1 data cache, such as e.g. on some
-   Intel(R) Celeron(R) processors.
+   Intel(R) Celeron(R) processors.  The default can be changed, e.g. if building
+   for an embedded system which lacks OS support for determining the cache size
+   at run time.
 */
 # define QUICKSELECT_DEFAULT_CACHE_SIZE 16384UL
 
@@ -236,7 +238,8 @@
 #define REALLOC_DOES_NOT_DECREASE_ALIGNMENT 1
 
 /* Avoid sorting networks for nmemb>QUICKSELECT_MAX_NETWORK (saves code space,
-   faster for inputs with duplicate values).
+   faster for inputs with duplicate values). Range 5-16 (sizes 2-5 are always
+   used; there are none available > 16). Recommended value 8.
 */
 #define QUICKSELECT_MAX_NETWORK 8
 
