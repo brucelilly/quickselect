@@ -1,0 +1,82 @@
+quickselect sorting / selection roadmap
+
+The primary quickselect files are found under lib/libmedian.
+Subdirectories under lib/libmedian are:
+    src      containing some source files:
+		indirect.c
+		indirect_mergesort.c
+		options.c
+		qsort.c
+		qsort_s.c
+		quickselect.c
+		quickselect_lib.c
+		quickselect_lib_s.c
+		quickselect_s.c
+		repeated_median.c
+		repivot_tables.c
+		sampling_tables.c
+		selection_table.c
+	indirect_mergesort.c and repeated_median.c are not part of quickselect
+	   per se
+    include  containing the header files, some of which hold source code:
+		dedicated_sort_decl.h
+		dedicated_sort_src.h
+		indirect.h
+		initialize_src.h
+		insertion.h
+		insertion_sort_src.h
+		klimits_decl.h
+		klimits_src.h
+		partition_decl.h
+		partition_src.h
+		pivot_src.h
+		qsort_src.h
+		quickselect.h
+		quickselect_config.h
+		quickselect_loop_decl.h
+		quickselect_loop_src.h
+		quickselect_src.h
+		repeated_median.h
+		repivot_src.h
+		sample_index_decl.h
+		sampling_table.h
+		sampling_table_decl.h
+		sampling_table_src.h
+		should_repivot_decl.h
+		tables.h
+	repeated_median.h corresponds to repeated_median.c
+	files with "_src" contain source code
+	files with "_decl" contain only function declarations
+    man      containing the man page for quickselect
+    doc      containing documentation
+
+Top-level (this directory) files and subdirectories are used when building
+quickselect, its documentation, and a testing framework. Important files
+include:
+    ROADMAP.quickselect   this file
+    README.quickselect    a brief description of quickselect
+    README.makefiles      information about makefiles used
+    README.ident          information about shell scripts used in building
+
+Top-level subdirectories contain relevant files:
+    licenses      contains subdirectories for the relevant license file(s)
+    scripts/shell contains shell scripts
+    scripts/awk   contains awk scripts
+
+Several top-level subdirectories contain files used to build a testing
+framework; some header files are also used for quickselect.
+    src/median_test.c         source for median_test, the primary testing
+                              framework program
+    include/exchange.h        inline swap2 function is defined here
+    include/compare.h         inline comparison functions used for testing
+                              defined here
+    include/zz_build_str.h    incorporates strings used for identification of
+                              build information (compiler used, options, source
+                              file versions) to aid error/bug reporting
+    src/make_grap.c           source for the make_grap program which formats
+                              raw data for presentation in a graph
+    lib                       many subdirectories under lib contain other
+                              library source code used by the testing framework
+    src/simple_config.h       source for a program which reads a configuration
+                              file and prints the value associated with a
+                              specified key
