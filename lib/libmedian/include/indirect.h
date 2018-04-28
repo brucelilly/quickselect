@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect.h version 1.12 dated 2018-04-15T03:26:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect.h version 1.13 dated 2018-04-27T18:34:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.indirect.h */
@@ -53,7 +53,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INDIRECT_H_VERSION "indirect.h 1.12 2018-04-15T03:26:40Z"
+#define INDIRECT_H_VERSION "indirect.h 1.13 2018-04-27T18:34:19Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -128,8 +128,8 @@ extern void (*pointerswap)(char *,char *,size_t);
    sub-array to elements in another sorted sub-array.  For random inputs, it is
    quite likely that one of the first few elements in the first sub-array will
    be displaced (50% probability for the first element, 75% for one of the first
-   two, 87.5% for on of the first three, etc.).  A linear search therefore works
-   well when comparing elements from random input.  But for already-sorted
+   two, 87.5% for one of the first three, etc.).  A linear search therefore
+   works well when comparing elements from random input.  But for already-sorted
    input, that will sequentially examine every element in the first sub-array,
    only to determine that merging requires no data moves.  Sometimes, merge sort
    implementations compare the last element of the first sub-array to the first

@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.13 dated 2018-04-21T20:13:31Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.14 dated 2018-04-27T23:33:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-04-21T20:13:31Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-04-27T23:33:39Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -125,8 +125,6 @@
                                    (maybe RSIZE_MAX (C11))
                                 */
 #endif /* C99 or later */
-#include <stdlib.h>             /* abort (maybe errno_t rsize_t constraint_handler_t
-                                   [N1570 K3.6]) */
 #ifndef SIZE_MAX /* not standardized pre-C99 */
 # include <limits.h>            /* ULONG_MAX */
 # define SIZE_MAX ULONG_MAX
@@ -136,6 +134,8 @@
 # if __STDC_VERSION__ >= 201001L
     /* [N1570 6.10.8.1] (minimum value: y=0,mm=01) */
 #  include <stdio.h>            /* (maybe errno_t rsize_t [N1570 K3.5]) */
+#  include <stdlib.h>           /* (maybe errno_t rsize_t constraint_handler_t
+                                   [N1570 K3.6]) */
 # endif /* N1570 */
 #else /* pre-C99 */
 # include <float.h>             /* DBL_MAX_10_EXP */
@@ -199,7 +199,6 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
     ) {
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)) {
-            /* F'ing whiney compilers bitch about printing compar pointer */
             (V)fprintf(stderr,
                 "/* %s: %s line %d: ERROR: size=%lu, base=%p, compar=%s */\n",
                 __func__,dedicated_sort_src_file,__LINE__,(unsigned long)size,
@@ -221,7 +220,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
 #endif
         if (1UL<nmemb) {
             if (NULL==pointerswap) pointerswap=swapn(sizeof(char *));
-            if (NULL==pointerswap) abort();
+            A(NULL!=pointerswap);
             options&=~(QUICKSELECT_RESTRICT_RANK);
             if ((0UL!=pbeyond) /* initally zero, non-zero in callees */
 #if 0 /* pbeyond != 0UL may be sufficient */
@@ -251,7 +250,8 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                         __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
                         (unsigned long)beyond,(unsigned long)nmemb,
                         (unsigned long)npointers,(void *)pointers);
-print_some_array(base,first,beyond-1UL,"/* base array: "," */",options);
+                    print_some_array(base,first,beyond-1UL,"/* base array: ",
+                        " */",options);
                 }
 #endif
                 /* initialize pointers */
@@ -260,8 +260,9 @@ print_some_array(base,first,beyond-1UL,"/* base array: "," */",options);
                 pointer_mergesort(pointers,0UL,base,nmemb,nmemb,COMPAR_ARGS,
                     table_index,cache_sz,options|(QUICKSELECT_INDIRECT));
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
-print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: "," */",options|(QUICKSELECT_INDIRECT));
+                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
+                    print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: ",
+                        " */",options|(QUICKSELECT_INDIRECT));
 #endif
                 /* rearrangement of data elements is more efficiently performed
                    using indices to the data elements, rather than pointers
@@ -282,8 +283,9 @@ print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: "," */",options|(QUICKSELE
                 if (n>npointers) r=errno;
 #if defined(DEBUGGING)
                 nmoves+=n;
-if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
-print_some_array(base,first,beyond-1UL,"/* rearranged base array: "," */",options);
+                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
+                    print_some_array(base,first,beyond-1UL,
+                        "/* rearranged base array: "," */",options);
 #endif
             }
         }
@@ -959,9 +961,9 @@ static
 #endif
         A(beyond>first+1UL);
         return EINVAL; /* shouldn't happen */
-    } else if (((nmemb=beyond-first)>7UL)&&(nmemb>(cache_sz>>2))/*no overflow*/
+    } else if (((nmemb=beyond-first)>5UL)
     && (((nmemb*pointer_and_a_half>cache_sz)) /* indirect mergesort */
-    || (nmemb*size>cache_sz)) /* others */
+    || (3UL*size>(cache_sz>>1))) /* others */
     ) {
     /* N.B. Never return EAGAIN for nmemb<8 (network sort 2-7 is faster than
        divide-and-conquer, even for huge element sizes, and in-place merge sort
@@ -1659,6 +1661,28 @@ static
                         if (0U!=(options&(
                         (QUICKSELECT_OPTIMIZE_COMPARISONS)|(QUICKSELECT_STABLE))
                         )) {
+                            /* For random input, ideally use one of the merge
+                               sorts for any nmemb where pointers or data fit in
+                               cache.  But that results in increased comparisons
+                               for data with many repeated values, e.g. binary
+                               values.  For binary or constant values, returning
+                               EAGAIN on the first pass allows partitioning to
+                               result in completion of the sort.  For ternary
+                               values, a second pass might be required 2/3 of
+                               the time.  Definitive detection of the first pass
+                               can use npartitions only for the median_test
+                               version of code.  Adding a constant size_t
+                               variable nel initially equal to nmemb could be
+                               used to detect the first pass (nmemb==nel). A
+                               simpler but not definitive approach is to compare
+                               nmemb vs. beyond; they are equal on the first
+                               pass, but also on some subsequent passes.  For
+                               random input, returning EAGAIN on the first (and
+                               a few others) pass has only a small effect on
+                               comparisons and run time.
+                            */
+                            if (beyond==nmemb) return EAGAIN;
+                            else 
                             if (23UL<nmemb)
                                 ret=limited_indirect_mergesort(base,first,
                                     beyond,nmemb,size,COMPAR_ARGS,alignsize,
