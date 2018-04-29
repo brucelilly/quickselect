@@ -201,7 +201,7 @@ case ${os} in
 			. /etc/os-release
 			export DISTRIBUTION=`echo ${ID} | tr -d " "`
 			case ${DISTRIBUTION} in
-				*suse)
+				*suse*)
 					processor=`uname -p | tr "[A-Z]" "[a-z]"`
 					export ARCHITECTURE=${processor}
 					export OSVERSION=`echo ${VERSION_ID} | tr -d " "`
