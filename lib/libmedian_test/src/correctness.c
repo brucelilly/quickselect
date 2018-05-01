@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.28 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.29 dated 2018-04-30T14:43:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.28"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.29"
+#define MODULE_DATE "2018-04-30T14:43:39Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -218,9 +218,9 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
     void (*f)(int, void *, const char *, ...), void *log_arg,
     unsigned char *flags)
 {
-    char buf[256], buf2[256];
+    char buf[256], buf1[256], buf2[256];
     const char *comment="", *pcc, *pfunc, *typename, *psize, *ptest;
-    int c, odebug;
+    int c, i, odebug;
     unsigned int distinct=0U, errs=0U, ff, function, rpt=flags['d'], ss,
         sequence, t, tests, tt, type;
     long l;
@@ -277,7 +277,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     cycle = factorial(nc);
                     count *= cycle;
                     /* Progress indication to /dev/tty */
-                    fp = fopen("/dev/tty", "w");
+                    if (NULL==fp) fp = fopen("/dev/tty", "w");
                     if (NULL!=fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
                 break;
                 case TEST_SEQUENCE_COMBINATIONS :
@@ -287,12 +287,16 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     cycle = 0x01UL << nc;
                     count *= cycle;
                     /* Progress indication to /dev/tty */
-                    fp = fopen("/dev/tty", "w");
+                    if (NULL==fp) fp = fopen("/dev/tty", "w");
                     if (NULL!=fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
                 break;
                 default :
                     cycle = count;
                 break;
+            }
+            if ((1UL<count)&&(NULL==fp)) {
+                fp = fopen("/dev/tty", "w");
+                if (NULL!=fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
             }
             /* preparation */
 #if defined(_SC_PHYS_PAGES) && defined(_SC_PAGESIZE)
@@ -375,14 +379,17 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                 default :
                     switch (sequence_is_randomized(sequence)) {
                         case 0U : /* not randomized; initialize */
-                            c=generate_long_test_array(global_refarray,
+                            i=generate_long_test_array(global_refarray,
                                 n, sequence, 1L, LONG_MAX, f, log_arg);
-                            if (0 > c) {
+                            if (0 > i) {
                                 (V)fprintf(stderr,
                                     "%s: %s line %d: generate_long_test_array returned %d\n",
-                                    __func__, source_file, __LINE__, c);
+                                    __func__, source_file, __LINE__, i);
                                 return ++errs;
-                            } else if (0 < c) {
+                            } else if (0 < i) {
+                                (V)fprintf(stderr,
+                                    "%s: %s line %d: generate_long_test_array returned %d\n",
+                                    __func__, source_file, __LINE__, i);
                                 return errs;
                             }
                         break;
@@ -776,6 +783,8 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                         }
                         fflush(stderr);
                     }
+                    c = snul(buf1,sizeof(buf1),NULL,NULL,count,10,'0',1,f,
+                        log_arg);
                     if (0U != flags['i']) reset_counters(1U);
                     for (m=0UL; m<count; m++) {
                         /* Generate randomized, type-independent, count-dependent,
@@ -790,7 +799,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                             case TEST_SEQUENCE_COMBINATIONS :
                                 /* test number */
                                 if (NULL!=fp) {
-                                    c = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
+                                    i = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
                                         (int)n, f, log_arg);
                                     (V)fprintf(fp,"%s %2lu%% %3lu%%",buf,
                                         ((m+1UL)%cycle)*100UL/cycle,(m+1UL)*100UL/count);
@@ -804,23 +813,26 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                             case TEST_SEQUENCE_PERMUTATIONS :
                                 /* test number */
                                 if (NULL!=fp) {
-                                    c=snprintf(buf2,sizeof(buf2),"%lu",cycle);
+                                    i=snprintf(buf2,sizeof(buf2),"%lu",cycle);
                                     (V)snul(buf,sizeof(buf),NULL,NULL,m%cycle,10,' ',
-                                        c+1,f,log_arg);
+                                        i+1,f,log_arg);
                                     (V)fprintf(fp,"%s/%s %2lu%% %2lu%%",buf,buf2,
                                         (m%cycle)*100UL/cycle,m*100UL/count);
                                     fflush(fp);
                                 }
                                 if (0UL==m%cycle) {
                                     /* initial array is sorted sequence */
-                                    c = generate_long_test_array(global_refarray, n,
+                                    i = generate_long_test_array(global_refarray, n,
                                         TEST_SEQUENCE_SORTED, 1L, max_val, f, log_arg);
-                                    if (0 > c) {
+                                    if (0 > i) {
                                         (V)fprintf(stderr,
                                             "%s: %s line %d: generate_long_test_array returned %d\n",
-                                            __func__, source_file, __LINE__, c);
+                                            __func__, source_file, __LINE__, i);
                                         return ++errs;
-                                    } else if (0 < c) {
+                                    } else if (0 < i) {
+                                        (V)fprintf(stderr,
+                                            "%s: %s line %d: generate_long_test_array returned %d\n",
+                                            __func__, source_file, __LINE__, i);
                                         return ++errs;
                                     }
                                     /* initialize for permutations */
@@ -830,7 +842,12 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                 }
                             break;
                             case TEST_SEQUENCE_ADVERSARY :
-                                /* nothing to do here; sequence is prepared and will be duplicated */
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
+                                        ' ',c,f,log_arg);
+                                    (V)fprintf(fp," %s/%s",buf,buf1);
+                                    fflush(fp);
+                                }
                             break;
                             default :
                                 switch (sequence_is_randomized(sequence)) {
@@ -840,19 +857,28 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                     break;
                                     case 1U : /* randomized; generate new sequence */
                                         /* generate new test sequence */
-                                        c=generate_long_test_array(global_refarray,
+                                        i=generate_long_test_array(global_refarray,
                                             n, sequence, 1L, max_val, f, log_arg);
-                                        if (0 > c) {
+                                        if (0 > i) {
                                             (V)fprintf(stderr,
                                                 "%s: %s line %d: generate_long_test_array returned %d\n",
-                                                __func__, source_file, __LINE__, c);
+                                                __func__, source_file, __LINE__, i);
                                             return ++errs;
-                                        } else if (0 < c) {
+                                        } else if (0 < i) {
+                                            (V)fprintf(stderr,
+                                                "%s: %s line %d: generate_long_test_array returned %d\n",
+                                                __func__, source_file, __LINE__, i);
                                             return errs;
                                         }
                                     break;
                                     default : /* error */
                                     return ++errs;
+                                }
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
+                                        ' ',c,f,log_arg);
+                                    (V)fprintf(fp," %s/%s",buf,buf1);
+                                    fflush(fp);
                                 }
                             break;
                         } /* sequence switch */
@@ -1035,6 +1061,13 @@ do_test:
                             case TEST_SEQUENCE_PERMUTATIONS :
                                 if (NULL!=fp) { fputc('\r', fp); fflush(fp); }
                             break;
+                            default:
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)fprintf(fp," %3lu%%\r",
+                                        (m+1UL)*100UL/count);
+                                    fflush(fp);
+                                }
+                            break;
                         }
                         update_counters(size_ratio);
                         if (0U < errs) break;
@@ -1107,9 +1140,9 @@ do_test:
                     switch (sequence) {
                         case TEST_SEQUENCE_PERMUTATIONS :
                             if (NULL!=fp) {
-                                c=snprintf(buf2,sizeof(buf2),"%lu",cycle);
+                                i=snprintf(buf2,sizeof(buf2),"%lu",cycle);
                                 (V)snul(buf,sizeof(buf),NULL,NULL,m%cycle,10,' ',
-                                    c+1,f,log_arg);
+                                    i+1,f,log_arg);
                                 (V)fprintf(fp,"%s/%s %2lu%% %2lu%%",buf,buf2,
                                     (m%cycle)*100UL/cycle,m*100UL/count);
                                 fflush(fp);
@@ -1118,7 +1151,7 @@ do_test:
                         break;
                         case TEST_SEQUENCE_COMBINATIONS :
                             if (NULL!=fp) {
-                                c = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
+                                i = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
                                     (int)n, f, log_arg);
                                 (V)fprintf(fp, "%s", buf);
                                 fflush(fp);

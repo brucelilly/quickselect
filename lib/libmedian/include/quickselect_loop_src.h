@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.20 dated 2018-04-18T04:09:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.21 dated 2018-04-30T14:42:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-04-18T04:09:58Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2018-04-30T14:42:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -945,7 +945,7 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         if (DEBUGGING(CORRECTNESS_DEBUG)) {
             size_t x;
             x=test_array_partition(base,first,lt_region.beyond,
-                gt_region.first-1UL,beyond,size,compar,options,NULL,NULL);
+                gt_region.first-1UL,beyond-1UL,size,compar,options,NULL,NULL);
             if (x!=lt_region.beyond) {
                 (void)fprintf(stderr,"/* %s: line %d: bad partition at %lu, "
                     "pivot at %lu */\n",__func__,__LINE__,

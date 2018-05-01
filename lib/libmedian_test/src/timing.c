@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timing.c version 1.33 dated 2018-03-14T11:40:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is timing.c version 1.34 dated 2018-04-30T14:43:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.timing.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: timing.c ~|^` @(#)"
 #define SOURCE_MODULE "timing.c"
-#define MODULE_VERSION "1.33"
-#define MODULE_DATE "2018-03-14T11:40:05Z"
+#define MODULE_VERSION "1.34"
+#define MODULE_DATE "2018-04-30T14:43:39Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -177,11 +177,11 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
     size_t size_ratio, void (*f)(int, void *, const char *, ...), void *log_arg)
 {
     char buf[256], bufz[256];
-    int c, i;
+    int i;
     double d;
     size_t x;
 
-    c = 1 + snprintf(buf, sizeof(buf), "%lu", n);
+    i = 1 + snprintf(buf, sizeof(buf), "%lu", n);
     d = total_eq+total_gt+total_lt;
     if (0U!=flags['R']) { /* Terse output. */
         char bufb[256], bufw[256], buf0[256];
@@ -189,7 +189,7 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
         (V)snf(bufw,sizeof(bufw),NULL,NULL,worst_cmp,'0',1,-15,f,log_arg);
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d/(double)count,'0',1,-12,f,log_arg);
         (V)printf("%s%s%*.*s%.6G %s mean comparisons [%s-%s] (%s)\n",comment,
-            buf,col-c,col-c," ",d/(double)count/factor,psize,bufb,bufw,buf0);
+            buf,col-i,col-i," ",d/(double)count/factor,psize,bufb,bufw,buf0);
     } else { /* Verbose output w/ comparison type breakdown. */
         i=1+snprintf(bufz,sizeof(bufz),"%s %s vs. %lu %s %s total comparisons:",
             pcc,pfunc,n,typename,ptest);
@@ -207,8 +207,8 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
         (V)snf(bufw,sizeof(bufw),NULL,NULL,(double)worst_sw,'0',1,-15,f,
             log_arg);
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
-        (V)printf("%s%s%*.*s%.6G %s swaps [%s-%s] (%s)\n",comment,buf,col-c,
-            col-c," ",d/factor,psize,bufb,bufw,buf0);
+        (V)printf("%s%s%*.*s%.6G %s swaps [%s-%s] (%s)\n",comment,buf,col-i,
+            col-i," ",d/factor,psize,bufb,bufw,buf0);
     }
     if (0.0<total_moves) { /* Data moves to report? */
         char bufb[256], bufw[256], buf0[256];
@@ -219,7 +219,7 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
             log_arg);
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G N = %.6G %s moves [%s-%s] (%s)\n", comment,
-            buf,col-c,col-c," ",d/(double)n,d/factor,psize,bufb,bufw,buf0);
+            buf,col-i,col-i," ",d/(double)n,d/factor,psize,bufb,bufw,buf0);
     }
     for (x=1UL; x<MAXROTATION; x++) {
         if (0UL!=total_rotations[x]) {
@@ -227,7 +227,7 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
             d = (double)(total_rotations[x])/(double)count;
             (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
             (V)printf("%s%s%*.*s%.6G %s rotations of %lu elements (%s)\n",
-                comment,buf,col-c,col-c," ",d/factor,psize,x,buf0);
+                comment,buf,col-i,col-i," ",d/factor,psize,x,buf0);
         }
     }
     if (0UL!=total_rotations[0]) {
@@ -235,28 +235,28 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
         d = (double)(total_rotations[0])/(double)count;
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G %s rotations of >= %d elements (%s)\n",
-            comment,buf,col-c,col-c," ",d/factor,psize,MAXROTATION,buf0);
+            comment,buf,col-i,col-i," ",d/factor,psize,MAXROTATION,buf0);
     }
     if (0.0<total_pcopies) { /* Pointer copies to report? */
         char buf0[256];
         d = total_pcopies / (double)count;
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G N = %.6G %s pointer copies (%s)\n",
-            comment,buf,col-c,col-c," ",d/(double)n,d/factor,psize,buf0);
+            comment,buf,col-i,col-i," ",d/(double)n,d/factor,psize,buf0);
     }
     if (0.0<total_pderefs) { /* Dereferences to report? */
         char buf0[256];
         d = total_pderefs / (double)count;
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G N = %.6G %s pointer dereferences (%s)\n",
-            comment,buf,col-c,col-c," ",d/(double)n,d/factor,psize,buf0);
+            comment,buf,col-i,col-i," ",d/(double)n,d/factor,psize,buf0);
     }
     if (0.0<total_piconversions) { /* Conversions to report? */
         char buf0[256];
         d = total_piconversions / (double)count;
         (V)snf(buf0, sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G N = %.6G %s pointer to index conversions (%s)"
-            "\n",comment,buf,col-c,col-c," ",d/(double)n,d/factor,psize,buf0);
+            "\n",comment,buf,col-i,col-i," ",d/(double)n,d/factor,psize,buf0);
     }
     /* Swaps, moves, and rotations are scaled by
        size_ratio and an appropriate multiplier for the
@@ -291,38 +291,38 @@ void print_counters(const char *comment, int col, size_t n, size_t count,
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G %s roughly swap-equivalent non-comparison data"
             " R/W operations [%s-%s] (%s)\n",
-            comment,buf,col-c,col-c," ",d/factor,psize,bufb,bufw,buf0);
+            comment,buf,col-i,col-i," ",d/factor,psize,bufb,bufw,buf0);
         /* add comparisons */
         d += (total_eq+total_gt+total_lt) / (double)count;
         (V)snf(bufb,sizeof(bufb),NULL,NULL,best_op,'0',1,-15,f,log_arg);
         (V)snf(bufw,sizeof(bufw),NULL,NULL,worst_op,'0',1,-15,f,log_arg);
         (V)snf(buf0,sizeof(buf0),NULL,NULL,d,'0',1,-15,f,log_arg);
         (V)printf("%s%s%*.*s%.6G %s operations [%s-%s] (%s)\n",
-            comment,buf,col-c,col-c," ",d/factor,psize,bufb,bufw,buf0);
+            comment,buf,col-i,col-i," ",d/factor,psize,bufb,bufw,buf0);
     }
     if (total_partitions>0.0) {
         (V)sng(bufz,sizeof(bufz),NULL,
             total_partitions==1.0?" partition":" partitions",
             total_partitions,-6,3,f,log_arg);
-        (V)printf("%s%s%*.*s%s\n",comment,buf,col-c,col-c," ",bufz);
+        (V)printf("%s%s%*.*s%s\n",comment,buf,col-i,col-i," ",bufz);
     }
     if (total_repivots>0.0) {
         (V)sng(bufz,sizeof(bufz),NULL,
             total_repivots==1.0?" repivot":" repivots",
             total_repivots,-6,3,f,log_arg);
-        (V)printf("%s%s%*.*s%s (%.3f%%)\n",comment,buf,col-c,col-c," ",bufz,
+        (V)printf("%s%s%*.*s%s (%.3f%%)\n",comment,buf,col-i,col-i," ",bufz,
             100.0*(double)nrepivot/(double)npartitions);
     }
     if (total_recursions>0.0) {
         (V)sng(bufz,sizeof(bufz),NULL,
             total_recursions==1.0?" recursion":" recursions",
             total_recursions,-6,3,f,log_arg);
-        (V)printf("%s%s%*.*s%s\n",comment,buf,col-c,col-c," ",bufz);
+        (V)printf("%s%s%*.*s%s\n",comment,buf,col-i,col-i," ",bufz);
     }
     if (total_merges>0.0) {
         (V)sng(bufz,sizeof(bufz),NULL,total_merges==1.0?" merge":" merges",
             total_merges,-6,3,f,log_arg);
-        (V)printf("%s%s%*.*s%s\n",comment,buf,col-c,col-c," ",bufz);
+        (V)printf("%s%s%*.*s%s\n",comment,buf,col-i,col-i," ",bufz);
     }
 }
 
@@ -334,12 +334,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
     unsigned char *flags, float **pwarray, float **puarray, float **psarray,
     size_t *marray, size_t *pdn)
 {
-    char buf[256], buf2[256], buf3[256], buf4[256], buf5[256], buf6[256],
-        buf7[256], buf8[256], buf9[256], buf10[256], buf11[256], buf12[256],
-        buf13[256], buf14[256], buf15[256], buf16[256], buf17[256], buf18[256],
-        buf19[256], buf20[256], buf21[256], buf22[256], buf23[256], buf24[256];
+    char buf[256], buf1[256], buf2[256], buf3[256], buf4[256], buf5[256],
+        buf6[256], buf7[256], buf8[256], buf9[256], buf10[256], buf11[256],
+        buf12[256], buf13[256], buf14[256], buf15[256], buf16[256], buf17[256],
+        buf18[256], buf19[256], buf20[256], buf21[256], buf22[256], buf23[256],
+        buf24[256];
     const char *comment="", *pcc, *pfunc, *typename, *psize, *ptest;
-    int c, odebug;
+    int i, c, odebug;
     unsigned int errs=0U, ff, function, inst, ss, sequence, t, tests, type;
     long l;
     float best_s=9.9e9, best_u=9.9e9, best_w=9.9e9, 
@@ -410,6 +411,10 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                 default :
                     cycle = count;
                 break;
+            }
+            if ((1UL<count)&&(NULL==fp)) {
+                fp = fopen("/dev/tty", "w");
+                if (NULL!=fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
             }
             /* preparation */
 #if DEBUG_CODE
@@ -577,14 +582,14 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                 default :
                     switch (sequence_is_randomized(sequence)) {
                         case 0U : /* not randomized; initialize */
-                            c=generate_long_test_array(global_refarray,
+                            i=generate_long_test_array(global_refarray,
                                 n, sequence, 1L, LONG_MAX, f, log_arg);
-                            if (0 > c) {
+                            if (0 > i) {
                                 (V)fprintf(stderr,
                                     "%s: %s line %d: generate_long_test_array returned %d\n",
-                                    __func__, source_file, __LINE__, c);
+                                    __func__, source_file, __LINE__, i);
                                 return ++errs;
-                            } else if (0 < c) {
+                            } else if (0 < i) {
                                 return errs;
                             }
                         break;
@@ -963,6 +968,8 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         }
                         fflush(stderr);
                     }
+                    c = snul(buf1,sizeof(buf1),NULL,NULL,count,10,'0',1,f,
+                        log_arg);
                     if (0U != flags['i']) reset_counters(1U);
                     for (m=*pdn=0UL; m<count; m++) {
                         /* Generate randomized, type-independent, count-dependent,
@@ -977,7 +984,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             case TEST_SEQUENCE_COMBINATIONS :
                                 /* test number */
                                 if (NULL!=fp) {
-                                    c = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
+                                    i = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
                                         (int)n, f, log_arg);
                                     (V)fprintf(fp,"%s %2lu%% %3lu%%",buf,
                                         ((m+1UL)%cycle)*100UL/cycle,(m+1UL)*100UL/count);
@@ -991,23 +998,23 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             case TEST_SEQUENCE_PERMUTATIONS :
                                 /* test number */
                                 if (NULL!=fp) {
-                                    c=snprintf(buf2,sizeof(buf2),"%lu",cycle);
+                                    i=snprintf(buf2,sizeof(buf2),"%lu",cycle);
                                     (V)snul(buf,sizeof(buf),NULL,NULL,m%cycle,10,' ',
-                                        c+1,f,log_arg);
+                                        i+1,f,log_arg);
                                     (V)fprintf(fp,"%s/%s %2lu%% %2lu%%",buf,buf2,
                                         (m%cycle)*100UL/cycle,m*100UL/count);
                                     fflush(fp);
                                 }
                                 if (0UL==m%cycle) {
                                     /* initial array is sorted sequence */
-                                    c = generate_long_test_array(global_refarray, n,
+                                    i = generate_long_test_array(global_refarray, n,
                                         TEST_SEQUENCE_SORTED, 1L, max_val, f, log_arg);
-                                    if (0 > c) {
+                                    if (0 > i) {
                                         (V)fprintf(stderr,
                                             "%s: %s line %d: generate_long_test_array returned %d\n",
-                                            __func__, source_file, __LINE__, c);
+                                            __func__, source_file, __LINE__, i);
                                         return ++errs;
-                                    } else if (0 < c) {
+                                    } else if (0 < i) {
                                         return ++errs;
                                     }
                                     /* initialize for permutations */
@@ -1017,7 +1024,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 }
                             break;
                             case TEST_SEQUENCE_ADVERSARY :
-                                /* nothing to do here; sequence is prepared and will be duplicated */
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
+                                       ' ',
+                                        c,f,log_arg);
+                                    (V)fprintf(fp," %s/%s",buf,buf1);
+                                    fflush(fp);
+                                }
                             break;
                             default :
                                 switch (sequence_is_randomized(sequence)) {
@@ -1027,19 +1040,25 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                     break;
                                     case 1U : /* randomized; generate new sequence */
                                         /* generate new test sequence */
-                                        c=generate_long_test_array(global_refarray,
+                                        i=generate_long_test_array(global_refarray,
                                             n, sequence, 1L, max_val, f, log_arg);
-                                        if (0 > c) {
+                                        if (0 > i) {
                                             (V)fprintf(stderr,
                                                 "%s: %s line %d: generate_long_test_array returned %d\n",
-                                                __func__, source_file, __LINE__, c);
+                                                __func__, source_file, __LINE__, i);
                                             return ++errs;
-                                        } else if (0 < c) {
+                                        } else if (0 < i) {
                                             return errs;
                                         }
                                     break;
                                     default : /* error */
                                     return ++errs;
+                                }
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
+                                        ' ',c,f,log_arg);
+                                    (V)fprintf(fp," %s/%s",buf,buf1);
+                                    fflush(fp);
                                 }
                             break;
                         } /* sequence switch */
@@ -1150,6 +1169,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             case TEST_SEQUENCE_PERMUTATIONS :
                                 if (NULL!=fp) { fputc('\r', fp); fflush(fp); }
                             break;
+                            default:
+                                if ((1UL<count)&&(NULL!=fp)) {
+                                    (V)fprintf(fp," %3lu%%\r",
+                                        (m+1UL)*100UL/count);
+                                    fflush(fp);
+                                }
+                            break;
                         }
                         /* Update test data best/worst values and running totals. */
                         test_u += (float)(rusage_end.ru_utime.tv_sec - rusage_start.ru_utime.tv_sec) + 1.0e-6 * (float)(rusage_end.ru_utime.tv_usec - rusage_start.ru_utime.tv_usec);
@@ -1201,9 +1227,9 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                     switch (sequence) {
                         case TEST_SEQUENCE_PERMUTATIONS :
                             if (NULL!=fp) {
-                                c=snprintf(buf2,sizeof(buf2),"%lu",cycle);
+                                i=snprintf(buf2,sizeof(buf2),"%lu",cycle);
                                 (V)snul(buf,sizeof(buf),NULL,NULL,m%cycle,10,' ',
-                                    c+1,f,log_arg);
+                                    i+1,f,log_arg);
                                 (V)fprintf(fp,"%s/%s %2lu%% %2lu%%",buf,buf2,
                                     (m%cycle)*100UL/cycle,m*100UL/count);
                                 fflush(fp);
@@ -1213,7 +1239,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         break;
                         case TEST_SEQUENCE_COMBINATIONS :
                             if (NULL!=fp) {
-                                c = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
+                                i = snul(buf, sizeof(buf), NULL, NULL, m%cycle, 2, '0',
                                     (int)n, f, log_arg);
                                 (V)fprintf(fp, "%s", buf);
                                 fflush(fp);
@@ -1259,16 +1285,16 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         /* Comparison count from antiqsort, if used. */
                         switch (sequence) {
                             case TEST_SEQUENCE_ADVERSARY :
-                                c = snul(buf24, sizeof(buf24), NULL,
+                                i = snul(buf24, sizeof(buf24), NULL,
                                     " total comparisons", antiqsort_ncmp, 10, '0',
                                     1, f, log_arg);
-                                c = snul(buf2, sizeof(buf2), NULL, " solid",
+                                i = snul(buf2, sizeof(buf2), NULL, " solid",
                                     (unsigned long)antiqsort_nsolid, 10,
                                     '0', 1, f, log_arg);
-                                c = 1 + snprintf(buf3, sizeof(buf3),
+                                i = 1 + snprintf(buf3, sizeof(buf3),
                                     "%s %s vs. %s:", pcc, pfunc, ptest);
                                 (V)printf("%s%s%*.*s%s, %s: %.6G %s\n",
-                                    comment, buf3, col-c, col-c, " ", buf24,
+                                    comment, buf3, col-i, col-i, " ", buf24,
                                     buf2, (double)antiqsort_ncmp / factor,
                                     psize);
                             break;
@@ -1356,7 +1382,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 test_w / factor, -4, 3, f, log_arg); /* scaled mean wall-clock */
                             (V)sng(buf10, sizeof(buf10), NULL, NULL,
                                 test_w, -4, 3, f, log_arg); /* mean wall-clock */
-                            c = 1 + snprintf(buf3, sizeof(buf3),
+                            i = 1 + snprintf(buf3, sizeof(buf3),
                                 "%s %s of %lu %s%s: %s: (%lu * %lu)",
                                 pcc, pfunc, n, typename, (n==1)?"":"s", ptest, n,
                                 count);
@@ -1420,23 +1446,23 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 (V)printf(" %s\n",buf22); /* max */
                             }
                             if (0U!=flags['R']) { /* Terse timing output. */
-                                c = 1 + snprintf(buf3, sizeof(buf3), "%lu", n);
+                                i = 1 + snprintf(buf3, sizeof(buf3), "%lu", n);
                                 (V)printf("%s%s%*.*s%s %s user seconds per %s, %s total %s\n",
-                                    comment, buf3, col-c, col-c, " ",
+                                    comment, buf3, col-i, col-i, " ",
                                     0.0!=test_u?buf2:buf,
                                     0.0!=test_u?"median":"mean",
                                     psize,
                                     0.0!=test_u?"median":"mean",
                                     0.0!=test_u?buf5:buf6);
                                 (V)printf("%s%s%*.*s%s %s system seconds per %s, %s total %s\n",
-                                    comment, buf3, col-c, col-c, " ",
+                                    comment, buf3, col-i, col-i, " ",
                                     0.0!=test_s?buf12:buf7,
                                     0.0!=test_u?"median":"mean",
                                     psize,
                                     0.0!=test_u?"median":"mean",
                                     0.0!=test_s?buf11:buf8);
                                 (V)printf("%s%s%*.*s%s %s wall-clock seconds per %s, %s total %s\n",
-                                    comment, buf3, col-c, col-c, " ",
+                                    comment, buf3, col-i, col-i, " ",
                                     0.0!=test_w?buf14:buf9,
                                     0.0!=test_u?"median":"mean",
                                     psize,
@@ -1445,7 +1471,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             } else { /* Verbose with multiple statistics. */
                                 (V)printf(
                                     "%s%s%*.*snormalized unit user times: %s (mean), %s (median), per %s, total user time %s%s, mean %s, median %s\n",
-                                    comment, buf3, col-c, col-c, " ", buf, buf2,
+                                    comment, buf3, col-i, col-i, " ", buf, buf2,
                                     psize, buf4,
                                     (count!=ocount)?" (terminated early)":"",
                                     buf6, buf5);
@@ -1461,13 +1487,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 }
                                 (V)printf(
                                     "%s%s%*.*snormalized unit system times: %s (mean), %s (median), per %s, total system time %s%s, mean %s, median %s\n",
-                                    comment, buf3, col-c, col-c, " ", buf7, buf12,
+                                    comment, buf3, col-i, col-i, " ", buf7, buf12,
                                     psize, buf15,
                                     (count!=ocount)?" (terminated early)":"",
                                     buf8, buf11);
                                 (V)printf(
                                     "%s%s%*.*snormalized unit wall clock times: %s (mean), %s (median), per %s, total wall clock time %s%s, mean %s, median %s\n",
-                                    comment, buf3, col-c, col-c, " ", buf9, buf14,
+                                    comment, buf3, col-i, col-i, " ", buf9, buf14,
                                     psize, buf16,
                                     (count!=ocount)?" (terminated early)":"",
                                     buf10, buf13);
@@ -1495,20 +1521,20 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                             " s/ %s %s\n", psize, typename);
                                         (V)sng(buf, sizeof(buf), NULL, buf5,
                                             best_u / factor, -4, 3, f, log_arg);
-                                        c = 1 + snprintf(buf2, sizeof(buf2),
+                                        i = 1 + snprintf(buf2, sizeof(buf2),
                                             "%s %s of %lu %s%s: %s: %s(%lu)",
                                             pcc, pfunc, n, typename, (n==1)?"":"s",
                                             ptest, "best", best_m);
                                         (V)printf("%s%s%*.*s%s", comment, buf2,
-                                            col-c, col-c, " ", buf);
+                                            col-i, col-i, " ", buf);
                                         (V)sng(buf, sizeof(buf), NULL, buf5,
                                             worst_u / factor, -4, 3, f, log_arg);
-                                        c = 1 + snprintf(buf2, sizeof(buf2),
+                                        i = 1 + snprintf(buf2, sizeof(buf2),
                                             "%s %s of %lu %s%s: %s: %s(%lu)", pcc,
                                             pfunc, n, typename, (n==1)?"":"s",
                                             ptest, "worst", worst_m);
                                         (V)printf("%s%s%*.*s%s", comment, buf2,
-                                            col-c, col-c, " ", buf);
+                                            col-i, col-i, " ", buf);
                                     break;
                                 }
                             } /* Terse or verbose timing output. */

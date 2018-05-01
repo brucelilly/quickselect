@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sequences.c version 1.10 dated 2018-04-16T17:21:18Z. \ $ */
+/* $Id: ~|^` @(#)   This is sequences.c version 1.11 dated 2018-04-30T14:43:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sequences.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sequences.c ~|^` @(#)"
 #define SOURCE_MODULE "sequences.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-04-16T17:21:18Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-04-30T14:43:39Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -516,9 +516,12 @@ int generate_long_test_array(long *p, size_t n, unsigned int testnum, long incr,
     uint64_t max_val, void(*f)(int, void *, const char *, ...), void *log_arg)
 {
     int ret = -1;
+    FILE *fp=NULL;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     if (NULL != p) {
+        char buf[32], buf2[32];
+        int c;
         size_t h, j, k, u, x, y, z;
         long i;
         double d;
@@ -681,6 +684,12 @@ int generate_long_test_array(long *p, size_t n, unsigned int testnum, long incr,
                 if (max_val / n < n) x=n*n; else x=max_val/n;
                 if (10000000UL<x) x=10000000UL; /* time limit */
                 z=12UL*u+1UL; /* > max. sum of 12 random numbers in [0,u] */
+                if (NULL==fp) { /* for progress indication */
+                    fp = fopen("/dev/tty", "w");
+                    if (NULL!=fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
+                    else fp=stderr;
+                }
+                c = snul(buf,sizeof(buf),NULL,NULL,x,10,'0',1,f,log_arg);
                 for (j=0UL; j<x; j++) {
                     /* Generate normally-distributed random values (see
                        TEST_SEQUENCE_RANDOM_VALUES_NORMAL for description).
@@ -697,7 +706,14 @@ int generate_long_test_array(long *p, size_t n, unsigned int testnum, long incr,
                     */
                     d=(double)n*(double)i/(double)z; /* up to 12*n*n/(12*n)=n */
                     p[snlround(d,f,log_arg)]++;
+                    if (NULL!=fp) {
+                        (void)snul(buf2,sizeof(buf2),NULL,NULL,j,10,' ',c,f,log_arg);
+                        (V)fprintf(fp,"\r%s/%s %3lu%%",buf2,buf,(j+1UL)*100UL/x);
+                        fflush(fp);
+                    }
                 }
+                if (fp==stderr) fp=NULL;
+                if (NULL!=fp) { fflush(fp); fclose(fp); fp=NULL; }
             break;
             case TEST_SEQUENCE_MANY_EQUAL_LEFT :
                 random_fill(p,0UL,u,n);
