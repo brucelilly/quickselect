@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.7 dated 2018-04-18T00:42:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.8 dated 2018-05-02T17:12:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2018-04-18T00:42:19Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-05-02T17:12:36Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -163,6 +163,22 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
+/* kgroups returns the number of groups of contiguous order statistic ranks in
+   [pk[firstk],pk[beyondk]).
+*/
+static QUICKSELECT_INLINE
+size_t kgroups(size_t *pk, size_t firstk, size_t beyondk)
+{
+    register size_t n, p, q;
+
+    if (firstk<beyondk) n=1UL; else n=0UL;
+    for (p=pk[firstk++]; firstk<beyondk; p=q,firstk++) {
+        q=pk[firstk];
+        if (1UL<q-p) n++; /* gap delimits groups */
+    }
+    return n;
+}
+
 /* sampling_table: select a suitable sampling table */
 /* called from select_pivot, quickselect_loop and quickselect public wrapper
    function
@@ -184,6 +200,43 @@ static QUICKSELECT_INLINE
         sampling_table_src_file_initialized++;
     }
 #endif
+    /* Median-of-medians uses extents to avoid redundant comparisons (by
+       rearranging partitioned medians).  Sorting partitions the set of medians
+       around a pivot which is not necessarily the median of the medians.  But
+       any element in a sorted array partitions that array.  Specifically for
+       selection of the median of medians, pk!=NULL (selecting) and ppeq!=NULL
+       (extents are desired for the purpose of rearranging the partitioned
+       medians to avoid recomparisons).  If the medians are sorted, 1) the pivot
+       is not necessarily the median of the medians, 2) the median of medians is
+       found via the index corresponding to the middle rank, and 3) the extent
+       of ranks of medians (elements) comparing equal to the median-of-medians
+       is unknown.  However, a simple linear scan (or binary search) of each
+       half of the sub-array of medians can determine the extents.  A pair of
+       linear scans is expected to use M/2 comparisons (where M is the number of
+       medians), and a pair of binary searches is expected to use 2log(M/2) =
+       2logM-2 = 2(logM-1) comparisons.  For P groups of order statistic ranks,
+       selection is expected to take (2+logP)M comparisons and sorting is
+       expected to take MlogM comparisons.  For median-of-medians, P=1,
+       therefore selection is expected to take 2M comparisons for M medians vs.
+       sorting which requires MlogM comparisons plus min(M/2,2(logM-1))
+       comparisons to find the extents.  Finding the extents at cost
+       min(M/2,2(logM-1)) comparisons saves repeating M-1 comparisons of the
+       medians vs. the median of medians.  For median-of-medians, the choice is
+       between 2M comparisons for selection vs. MlogM+min(M/2,2(logM-1)) for
+       sorting plus finding extents.  M is a power of 3.  Sorting plus finding
+       extents is more costly because MlogM grows much faster than 2M.
+    */
+    if ((NULL!=pk)&&(NULL==ppeq)) { /* selection, no extents required */
+        /* Sort if expected cost 2+logP=log(4P) of selection of P groups of
+           order statistic ranks is not lower than the expected cost log(nmemb)
+           for sorting.  Because log is a monotonic function, it suffices to
+           compare 4P vs. nmemb, or equivalently, P vs. nmemb/4.  If this
+           simple comparison results in sorting, it is not necessary to
+           characterize to distribution of desired order statistics in bands.
+        */
+        size_t kg=kgroups(pk,firstk,beyondk);
+        if (kg>=(nmemb>>2)) pk=NULL; /* sort */
+    }
     if (NULL!=pk) { /* selection, not sorting */
         size_t bk, fk, m1, m2, nk, nr, qk, x;
         A(beyondk>firstk);
@@ -261,6 +314,8 @@ static QUICKSELECT_INLINE
                Therefore, sorting is only advantageous over selection for at
                least 4 elements (depending on the distribution of the
                desired ranks).
+               Moreover, simple selection cases exist for selection of order
+               statistic ranks in arrays of 3 or fewer elements.
             */
             if (SELECTION_BREAKPOINT_OFFSET<=nmemb) { /* possibly select */
                 if ((SELECTION_BREAKPOINT_TABLE_MAX_NMEMB)>=nmemb) {

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is make_grap.c version 1.11 dated 2018-04-19T03:50:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is make_grap.c version 1.12 dated 2018-05-03T16:26:02Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "make_grap" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.make_grap.c */
@@ -95,8 +95,8 @@ void     arc4random_addrandom(u_char *, int);
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: make_grap.c ~|^` @(#)"
 #define SOURCE_MODULE "make_grap.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-04-19T03:50:57Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-05-03T16:26:02Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = prog;
-    ls.swVersion = "1.11";       /* maintained by version control system */
+    ls.swVersion = "1.12";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;
@@ -891,7 +891,7 @@ if (debug) fprintf(stderr,"# line %d: dim=%lu, odim=%lu, maxcount=%lu, count=%lu
                     (void)printf("tick left out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
             } else {
-                for (tick=minytick; tick<maxytick+ytickintvl; tick+=ytickintvl) {
+                for (tick=minytick; tick<maxytick+ytickintvl/2.0; tick+=ytickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-yp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(yp+ym),3,logger,log_arg);
 #if DEBUG_CODE
@@ -914,7 +914,7 @@ if (debug) fprintf(stderr,"# line %d: dim=%lu, odim=%lu, maxcount=%lu, count=%lu
                     (void)printf("tick bot out at %.9G \"%s\"\n",tick,c<=i?buf:buf2);
                 }
             } else {
-                for (tick=minxtick; tick<maxxtick+xtickintvl; tick+=xtickintvl) {
+                for (tick=minxtick; tick<maxxtick+xtickintvl/2.0; tick+=xtickintvl) {
                     c=snf(buf,sizeof(buf),NULL,NULL,tick,'0',1,0-xp,logger,log_arg);
                     i=sng(buf2,sizeof(buf2),NULL,NULL,tick,(xp+xm),3,logger,log_arg);
 #if DEBUG_CODE
