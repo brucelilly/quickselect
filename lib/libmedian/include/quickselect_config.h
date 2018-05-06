@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.15 dated 2018-04-21T20:12:27Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.16 dated 2018-05-06T03:48:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.15 2018-04-21T20:12:27Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.16 2018-05-06T03:48:59Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -196,6 +196,11 @@
    functions which call quickselect_loop.
 */
 #define QUICKSELECT_NO_REPIVOT        0x04000U
+
+/* For testing and median_test code, always select if selection is specified
+   (do not sort, even for large numbers of order statistics).
+*/
+#define QUICKSELECT_STRICT_SELECTION  0x08000U
 
 /* Small-array sorting and stable partitioning work well when the data (and
    ancillary data, when applicable) fit in processor cache memory.  Cache size

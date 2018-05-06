@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.27 dated 2018-04-20T04:02:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.28 dated 2018-05-06T03:50:37Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -585,7 +585,6 @@ extern int method_partition;
 extern int method_pivot;
 extern int no_aux_repivot;
 extern int reset_selection_factor2_count;
-extern int strict_selection;
 extern int use_networks;
 extern int use_shell;
 extern unsigned int do_histogram;

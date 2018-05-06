@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.21 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.22 dated 2018-05-06T03:47:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.22"
+#define MODULE_DATE "2018-05-06T03:47:19Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -170,8 +170,14 @@ int quickselect_internal(char *base, size_t nmemb,
     */
     if (((0UL!=nmemb) && ((NULL==base) || (0UL==size) || (NULL==compar)))
     || ((0UL!=nk) && (NULL==pk))
-    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK)))
+    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION)))
     ) {
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: nmemb=%lu, base=%p, size=%lu, compar=%s, pk=%p,"
+            " nk=%lu, pk[%lu]=%lu, pk[%lu]=%lu, options=0x%x */\n",__func__,
+            source_file,__LINE__,nmemb,base,(unsigned long)size,
+            comparator_name(compar),(const void *)pk,nk,0UL,pk[0],nk-1UL,
+            pk[nk-1UL],options);
         return errno=EINVAL;
     }
 
@@ -183,12 +189,12 @@ int quickselect_internal(char *base, size_t nmemb,
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         if (NULL!=pk)
-            (V) fprintf(stderr,
+            (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu, pk[%lu]=%lu */\n",
                 __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,
                 0UL,pk[0],nk-1UL,pk[nk-1UL]);
         else
-            (V) fprintf(stderr,
+            (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, pk=NULL */\n",
                 __func__,source_file,__LINE__,nmemb);
     }
@@ -342,12 +348,12 @@ int quickselect_internal(char *base, size_t nmemb,
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         if (NULL!=pk)
-            (V) fprintf(stderr,
+            (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu, pk[%lu]=%lu */\n",
                 __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,
                 0UL,pk[0],nk-1UL,pk[nk-1UL]);
         else
-            (V) fprintf(stderr,
+            (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, pk=NULL */\n",
                 __func__,source_file,__LINE__,nmemb);
     }
@@ -357,7 +363,7 @@ int quickselect_internal(char *base, size_t nmemb,
         A(nk>0UL);
         A(0UL<=pk[0]);
 #if DEBUG_CODE
-        if (pk[nk-1]>=nmemb) (V) fprintf(stderr,
+        if (pk[nk-1]>=nmemb) (V)fprintf(stderr,
             "/* %s: %s line %d: nmemb=%lu, pk=%p, nk=%lu, pk[%lu]=%lu */\n",
             __func__,source_file,__LINE__,nmemb,(const void *)pk,nk,nk-1UL,pk[nk-1]);
 #endif

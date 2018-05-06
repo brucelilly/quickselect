@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.16 dated 2018-04-20T04:02:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.17 dated 2018-05-06T03:46:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2018-04-20T04:02:20Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-05-06T03:46:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -291,6 +291,7 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp_s) return "idata_struct_strcmp_s";
     if (compar==(int (*)(const void *,const void *,...))indcmp_s) return "indcmp_s";
     if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return "iindcmp_s";
+    if (NULL==compar) return "NULL";
     return "unknown";
 }
 

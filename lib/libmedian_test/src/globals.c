@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is globals.c version 1.10 dated 2018-03-20T19:35:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is globals.c version 1.11 dated 2018-05-06T03:48:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.globals.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: globals.c ~|^` @(#)"
 #define SOURCE_MODULE "globals.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-03-20T19:35:26Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-05-06T03:48:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -82,7 +82,6 @@ int instrumented_bmqsort = 1;
 
 /* for selection */
 size_t selection_nk = 1UL;
-int strict_selection=0;
 /* for repivoting */
 size_t repivot_factor = 999UL;
 int reset_selection_factor2_count=1;

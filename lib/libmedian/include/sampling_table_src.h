@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.8 dated 2018-05-02T17:12:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.9 dated 2018-05-06T04:38:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-05-02T17:12:36Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-05-06T04:38:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -226,7 +226,9 @@ static QUICKSELECT_INLINE
        sorting plus finding extents.  M is a power of 3.  Sorting plus finding
        extents is more costly because MlogM grows much faster than 2M.
     */
-    if ((NULL!=pk)&&(NULL==ppeq)) { /* selection, no extents required */
+    if ((NULL!=pk)&&(NULL==ppeq) /* selection, no extents required */
+    &&(0U==(options&(QUICKSELECT_STRICT_SELECTION))) /* not strict selection */
+    ) {
         /* Sort if expected cost 2+logP=log(4P) of selection of P groups of
            order statistic ranks is not lower than the expected cost log(nmemb)
            for sorting.  Because log is a monotonic function, it suffices to
@@ -338,6 +340,8 @@ static QUICKSELECT_INLINE
                         if (nk<=nmemb-(nmemb>>4)) sort=0U; /* <=15/16 nmemb */
                     }
                 }
+                if ((0U!=sort)&&(0U!=(options&(QUICKSELECT_STRICT_SELECTION))))
+                    sort=0U; /* strict selection */
             } /* sort/select equivalent @2-3 elements (extents irrelevant) */
         } else {
             /* no sort if == region extents are required */

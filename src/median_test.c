@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.18 dated 2018-04-19T20:38:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.19 dated 2018-05-06T03:48:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2018-04-19T20:38:04Z"
+#define MODULE_VERSION "1.19"
+#define MODULE_DATE "2018-05-06T03:48:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -289,6 +289,16 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
                 case QUICKSELECT_INDIRECT :
                     (V)fprintf(stdout,
                         "%sinternal indirection%s\n",
+                        prefix,suffix);
+                break;
+                case QUICKSELECT_NO_REPIVOT :
+                    (V)fprintf(stdout,
+                        "%sno repivot%s\n",
+                        prefix,suffix);
+                break;
+                case QUICKSELECT_STRICT_SELECTION :
+                    (V)fprintf(stdout,
+                        "%sstrict selection%s\n",
                         prefix,suffix);
                 break;
                 default :
@@ -1681,12 +1691,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 break;
                 case '@' :
                     flags[c] = 1U;
-                    strict_selection=1;
-                    for (x=0UL; x<(SELECTION_BREAKPOINTS); x++) {
-                        for (y=0UL; y<(SELECTION_TYPES); y++) {
-                            selection_breakpoint[x][y]=255U;
-                        }
-                    }
+                    options|=QUICKSELECT_STRICT_SELECTION;
                 break;
                 case '#' :
                     flags[c] = 1U;
@@ -2265,6 +2270,7 @@ usage:
                     case '/' : /*FALLTHROUGH*/
                     case '&' :
                     case '<' :
+                    case '@' :
                         if (0U==q) {
                             decode_options(stderr,options,comment,"");
                             q++;
@@ -2300,10 +2306,6 @@ usage:
                         do_histogram=1U;
                         (V)fprintf(stdout, "%sdo_histogram = %u\n", comment,
                             do_histogram);
-                    break;
-                    case '@' :
-                        (V)fprintf(stdout, "%sstrict_selection = %d\n", comment,
-                            strict_selection);
                     break;
                     case '#' :
                         (V)fprintf(stdout, "%ssort_threshold = %lu\n", comment,
