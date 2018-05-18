@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_src.h version 1.10 dated 2018-04-15T03:18:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_src.h version 1.14 dated 2018-05-16T14:41:05Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.repivot_src.h */
@@ -95,8 +95,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "repivot_src.h"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-04-15T03:18:38Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-05-16T14:41:05Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -191,7 +191,7 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
         if (ratio>stats_table[table_index].max_ratio)
             stats_table[table_index].max_ratio = ratio;
 #endif
-    if (table_index>repivot_table_size) {
+    if (table_index>=repivot_table_size) {
         /* ratio from median-of-medians < 3 */
         if (3UL<=ratio) {
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
@@ -206,8 +206,6 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
             return QUICKSELECT_RESTRICT_RANK;
         }
     } else {
-        A(0U<table_index);
-        table_index--; /* repivot table has no entry for single sample */
         if ((ratio>=prt[table_index].factor1)
         || ((ratio>=prt[table_index].factor2)&&(++*pn2>=2))) {
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
@@ -217,7 +215,7 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
                     "samples=%lu, table_index=%u, pk=%p, ppeq=%p, ratio=%lu"
                     ", factor1=%d, factor2=%d, count=%d, repivot */\n",
                     __func__,repivot_src_file,__LINE__,nmemb,n,
-                    pst[table_index+1UL].samples,table_index+1UL,
+                    pst[table_index].samples,table_index,
                     (const void *)pk,(void *)ppeq,ratio,
                     prt[table_index].factor1,
                     prt[table_index].factor2,*pn2);
@@ -233,7 +231,7 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
                 "=%lu, table_index=%u, pk=%p, ppeq=%p, ratio=%lu, "
                 "factor1=%d, factor2=%d, count=%d, no repivot */\n",
                 __func__,repivot_src_file,__LINE__,nmemb,n,
-                pst[table_index+1UL].samples,table_index+1UL,(const void *)pk,
+                pst[table_index].samples,table_index,(const void *)pk,
                 (void *)ppeq,ratio,prt[table_index].factor1,
                 prt[table_index].factor2,*pn2);
 #endif

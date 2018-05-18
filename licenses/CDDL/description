@@ -1,0 +1,8 @@
+The Common Development and Distribution License (CDDL-1.0) license is a
+recognized open source license by the Open Source Initiative:
+http://opensource.org/licenses/CDDL-1.0
+
+The zlib/libpng license is a recognized "\"free\"" software license by the
+Free Software Foundation: https://www.gnu.org/licenses/license-list.html#CDDL
+However, the FSF doesn't like it and won't allow a CDDL-licensed "module" to
+be linked with a GNU GPL "module".

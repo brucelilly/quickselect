@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.22 dated 2018-05-06T03:47:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.23 dated 2018-05-14T06:50:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2018-05-06T03:47:19Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2018-05-14T06:50:17Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -84,11 +84,9 @@ if (DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
 "/* %s: %s line %d: repivot_table_index=%u */\n",
 __func__,source_file,__LINE__,repivot_table_index);
 #endif /* DEBUG_CODE */
-    if ((repivot_table_index>repivot_table_size)||(0U==repivot_table_index)) {
+    if (repivot_table_index>repivot_table_size) {
         *pf1 = 3U, *pf2 = 3U;
     } else {
-	A(0U<repivot_table_index);
-        repivot_table_index--; /* repivot table has no entry for single sample */
         if (NULL!=pk) { /* selection */
             *pf1 = selection_repivot_table[repivot_table_index].factor1;
             *pf2 = selection_repivot_table[repivot_table_index].factor2;

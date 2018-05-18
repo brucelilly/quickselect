@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is insertion.h version 1.4 dated 2018-03-20T19:32:33Z. \ $ */
+/* $Id: ~|^` @(#)   This is insertion.h version 1.5 dated 2018-05-15T02:07:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "insertion" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.insertion.h */
@@ -42,7 +42,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INSERTION_H_VERSION "insertion.h 1.4 2018-03-20T19:32:33Z"
+#define INSERTION_H_VERSION "insertion.h 1.5 2018-05-15T02:07:15Z"
 
 #ifndef ASSERT_CODE
 # define ASSERT_CODE        0  /* for validity testing; 0 for production code */
@@ -138,6 +138,81 @@ size_t binary_search(char *base, register size_t k, register size_t l,
     return l;
 }
 
+/* Linear search for sorted rank of key k in range [l,h] of array at base.
+   Inputs k, l, h are indices of base array elements (element size size).
+   Return value is the index that key k should have if the elements in the
+   search range plus the key (which is adjacent to one end of the search
+   range) are placed in sorted order, i.e. the position at which the key
+   should be inserted to achieve sorted order. The return value is in the
+   range [l,h]. It is assumed that the key has already been compared with
+   the nearest element of [l,h] and has been found to be out-of-order with
+   that nearest element; the key is not recompared with that element.
+*/
+static INSERTION_INLINE
+size_t linear_search(char *base, register size_t k, register size_t l,
+    register size_t h, size_t size, COMPAR_DECL, size_t size_ratio,
+    unsigned int options)
+{
+    register char *pk;
+    register size_t m;
+
+    A(l<=h);A((k==l-1UL)||(k==h+1UL));
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: base=%p, search for insertion "
+            "position for k=%lu in [%lu,%lu] */\n"
+            ,__func__,source_file,__LINE__,(void *)base,k,l,h);
+        print_some_array(base,k<l?k:l,k<h?h:k, "/* "," */",options);
+    }
+#endif
+    if (h>l) { /* else simply swap k,l (l==h) */
+        /* linear search for insertion position */
+        /* no options tests in loops! */
+        if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+            pk=base+k*size;
+            if (k<l) {
+                /* at termination, l=index of the rightmost element less than
+                   the element pointed to by pk (index k)
+                */
+                for (; l<h; l=m) {
+                    m=l+1UL;
+                    if (0>=COMPAR(pk,base+m*size)) break;
+                }
+            } else { /* k>h */
+                /* at termination, l=h=index of leftmost element greater than or
+                   equal to the element pointed to by pk (index k)
+                */
+                for (; l<h; h=m) {
+                    m=h-1UL;
+                    if (0<COMPAR(pk,base+m*size)) { l=h; break; }
+                }
+            }
+        } else { /* indirect */
+            register char **ptrs=(char **)base, *pm;
+            pk=ptrs[k];
+            if (k<l) {
+                for (; l<h; l=m) {
+                    m=l+1UL, pm=ptrs[m];
+                    if (0>=COMPAR(pk,pm)) break;
+                }
+            } else { /* k>h */
+                for (; l<h; h=m) {
+                    m=h-1UL, pm=ptrs[m];
+                    if (0<COMPAR(pk,pm)) { l=h; break; }
+                }
+            }
+        }
+    }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: base=%p, insertion position for "
+            "k=%lu is l=%lu */\n",__func__,source_file,__LINE__,(void *)base,k,
+            l);
+    }
+#endif
+    return l;
+}
+
 /* Insert element of base array with index i at index j by rotating elements
    [i,j] or [j,i] (depending on whether i<j or i>j) by one position.
 */
@@ -169,12 +244,21 @@ void insert(char *base, size_t i, size_t j, size_t size,
 
 /* Combined binary search and insertion by rotation */
 static INSERTION_INLINE
-void search_and_insert(char *base, size_t k, size_t l, size_t h, size_t size,
-    COMPAR_DECL,
-    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options)
+void binary_search_and_insert(char *base, size_t k, size_t l, size_t h,
+    size_t size, COMPAR_DECL, void (*swapf)(char *,char *,size_t),
+    size_t alignsize, size_t size_ratio, unsigned int options)
 {
     insert(base,k,binary_search(base,k,l,h,size,COMPAR_ARGS,size_ratio,options),
+        size,swapf,alignsize,size_ratio,options);
+}
+
+/* Combined linear search and insertion by rotation */
+static INSERTION_INLINE
+void linear_search_and_insert(char *base, size_t k, size_t l, size_t h,
+    size_t size, COMPAR_DECL, void (*swapf)(char *,char *,size_t),
+    size_t alignsize, size_t size_ratio, unsigned int options)
+{
+    insert(base,k,linear_search(base,k,l,h,size,COMPAR_ARGS,size_ratio,options),
         size,swapf,alignsize,size_ratio,options);
 }
 

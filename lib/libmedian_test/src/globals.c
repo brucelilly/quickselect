@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is globals.c version 1.11 dated 2018-05-06T03:48:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is globals.c version 1.12 dated 2018-05-07T05:24:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.globals.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: globals.c ~|^` @(#)"
 #define SOURCE_MODULE "globals.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-05-06T03:48:59Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-05-07T05:24:39Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -97,9 +97,6 @@ size_t dp_cutoff = 36UL; /* 36 seems to be optimal */
 size_t histogram[8][37];
 size_t histoswap[8];
 unsigned int do_histogram=0U;
-
-/* for modified Bentley&McIlroy qsort */
-unsigned int mbm_options=0U;
 
 /* for Yaroslavskiy qsort */
 size_t y_cutoff = 27UL; /* 11 seems to be optimal */

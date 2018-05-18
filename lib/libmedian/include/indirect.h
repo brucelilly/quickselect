@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect.h version 1.13 dated 2018-04-27T18:34:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect.h version 1.14 dated 2018-05-10T02:58:39Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.indirect.h */
@@ -53,7 +53,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INDIRECT_H_VERSION "indirect.h 1.13 2018-04-27T18:34:19Z"
+#define INDIRECT_H_VERSION "indirect.h 1.14 2018-05-10T02:58:39Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -124,33 +124,6 @@ QUICKSELECT_EXTERN
 /* swap function for pointers */
 extern void (*pointerswap)(char *,char *,size_t);
 
-/* Merging (as used in merge sort variants) compares elements in one sorted
-   sub-array to elements in another sorted sub-array.  For random inputs, it is
-   quite likely that one of the first few elements in the first sub-array will
-   be displaced (50% probability for the first element, 75% for one of the first
-   two, 87.5% for one of the first three, etc.).  A linear search therefore
-   works well when comparing elements from random input.  But for already-sorted
-   input, that will sequentially examine every element in the first sub-array,
-   only to determine that merging requires no data moves.  Sometimes, merge sort
-   implementations compare the last element of the first sub-array to the first
-   element of the second sub-array initially to detect that condition.  But
-   that costs an additional comparison for all input sequences and only saves
-   comparisons in unusual cases, such as already-sorted input or constant-value
-   input.  For binary-valued input (e.g. random zeros and ones), the expectation
-   is that about half of the first sub-array (i.e. about 1/4 of the total
-   elements) will have to be examined to find the first element which needs to
-   be displaced.  For that specific case, a binary search would be best, but
-   that is also an unusual situation.  In order to accomodate unusual inputs
-   such as already-sorted, constant-value, and M-ary values as well as random
-   input sequences, the following strategy is used: first compare some small
-   number of initial elements linearly (this should find an element to displace
-   when input is random), then check the last element (to catch already-sorted
-   and constant-value inputs quickly), finally using binary search over the
-   remaining unexamined elements (to efficiently handle M-ary input).  The
-   number of elements scanned linearly in the initial part is the floor of the
-   base 2 logarithm of the left part size (# elements); that makes the scan
-   at worst O(log(N)) in any case (linear scan or binary search).
-*/
 /* floor of base 2 logarithm of the argument */
 static INDIRECT_INLINE
 size_t floor_lg(size_t n)
@@ -201,8 +174,8 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
     A(l<=m);A(m<u);
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
-        (V)fprintf(stderr,"/* %s: l=%lu, m=%lu, u=%lu, n1=%lu, n2=%lu, options"
-            "=0x%x */\n",__func__,l,m,u,m-l,u-m,options);
+        (V)fprintf(stderr,"/* %s %d: l=%lu, m=%lu, u=%lu, n1=%lu, n2=%lu, options"
+            "=0x%x */\n",__func__,__LINE__,l,m,u,m-l,u-m,options);
 #endif
 #if defined(DEBUGGING)
     nmerges++;
@@ -211,8 +184,8 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
        first element of the right side.  For random input, that element is
        almost always within the first few elements (50% probability that it is
        the first element, 75% that it is one of the first two, 87.5% that is is
-       one of the first three, etc.), so use a linear scan for a few elements
-       (floor(log2(left part size))).  Constant-value input would entail
+       one of the first three, etc.), so use a linear scan for a few elements.
+       Constant-value input would entail
        testing every element in the first piece; testing the last element of
        the first part vs. the first element of the second part would terminate
        the search.  But binary-valued input (random zeros and ones) has an
@@ -247,12 +220,19 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
         while ((s<t)&&(t<u)) { /* still some parts to merge */
             A(p==base+s*size);
             /* limited-range linear search */
-            if ((r=s+floor_lg(t-s))>t) r=t; /* test limit */
+            if ((r=s+3UL)>t) r=t; /* test limit */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(COMPARE_DEBUG)) {
+        (V)fprintf(stderr, "/* %s %d: r=%lu, s=%lu, t=%lu "
+            "*/\n",__func__,__LINE__,r,s,t);
+    }
+#endif
             for (o=s; s<r; p+=size,++s) {
                 A(p==base+s*size);
                 if (0<COMPAR(p,q)) { /* *pc>*pm: displace it */
                     if ((s==o) /* first element of left part */
-                      /* test 1st 1st part element vs. last 2nd part element */
+                    &&(8UL<u-t) /* only for sufficiently large arrays... */
+                      /* ...test 1st 1st part element vs. last 2nd part element */
                     && (0<COMPAR(p,base+(u-1UL)*size))
                     ) {
                         irotate(base,s,t,u,size,swapf,alignsize,size_ratio);
@@ -288,6 +268,12 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
                 if (t>1UL)
                     for (z=t-2UL; r<=z;) {
                         p=base+(o=BS_MID_L(r,z))*size;
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(COMPARE_DEBUG)) {
+        (V)fprintf(stderr, "/* %s: o=%lu, r=%lu, z=%lu "
+            "*/\n",__func__,o,r,z);
+    }
+#endif
                         if (0<COMPAR(p,q)) z=o-1UL;
                         else r=o+1UL;
                     }
@@ -344,7 +330,7 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
             */
             A(p==pointers[s]);
             /* limited-range linear search */
-            if ((r=s+floor_lg(t-s))>t) r=t; /* test limit */
+            if ((r=s+3UL)>t) r=t; /* test limit */
             for (o=s; s<r; p=pointers[++s]) {
                 /* Partial order stability is maintained by only displacing
                    left side elements with strictly smaller right side elements.
@@ -352,6 +338,7 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
                 A(p==pointers[s]);
                 if (0<COMPAR(p,q)) { /* q displaces p */
                     if ((s==o) /* first element of left part */
+                    &&(8UL<u-t) /* only for sufficiently large arrays... */
                       /* test 1st 1st part element vs. last 2nd part element */
                     && (0<COMPAR(p,pointers[u-1UL]))
                     ) {
@@ -468,7 +455,7 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
     char **displaced, COMPAR_DECL)
 {
     register char **dhead, **dtail, *e1, *e2, **s1=sorted1, **s2=sorted2,
-        **lim=sorted1+floor_lg(sorted2-sorted1);
+        **lim=sorted1+3UL;
     register size_t a, b, z; /* binary search indices */
     /* Compare first elements of each sorted region until an element from the
        first region is displaced.  Variables e1 and e1 point to the elements in
@@ -525,7 +512,9 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
                     s1-sorted1,e2,s2-sorted1,lim-sorted1,
                     (sorted2-sorted1)-1UL);
 #endif
-            if (s1==sorted1) { /* 1st part 1st element */
+            if ((s1==sorted1) /* 1st part 1st element */
+            &&(8UL<end2-sorted2) /* only for sufficiently large arrays... */
+            ) {
                 /* 2nd part last element vs. 1st part 1st element */
                 char **l2=end2-1, *e3=*l2;
                 if (0<OPT_COMPAR((const  void *)e1,(const void *)e3,C_OPT)) {

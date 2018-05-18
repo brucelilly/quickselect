@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.9 dated 2018-05-06T04:38:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.10 dated 2018-05-10T02:21:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-05-06T04:38:58Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-05-10T02:21:19Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -151,7 +151,7 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
         if (idx>=(SAMPLING_TABLE_SIZE)-1U) idx=(SAMPLING_TABLE_SIZE)-2U;
         while (nmemb>psts[idx].max_nmemb) idx++;
         A((SAMPLING_TABLE_SIZE)>idx);
-        while (nmemb<=psts[idx-1U].max_nmemb) idx--;
+        while ((0U<idx)&&(nmemb<=psts[idx-1U].max_nmemb)) idx--;
     }
     A((SAMPLING_TABLE_SIZE)>idx);
     return idx;

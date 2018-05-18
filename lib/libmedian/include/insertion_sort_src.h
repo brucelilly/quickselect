@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.6 dated 2018-04-16T05:52:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.7 dated 2018-05-15T02:08:19Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.insertion_sort_src.h */
@@ -90,8 +90,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: insertion_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "insertion_sort_src.h"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-04-16T05:52:06Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2018-05-15T02:08:19Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -141,12 +141,15 @@ char insertion_sort_src_file_initialized=0;
    overall insertion sort with optimizations
 */
 
-#include "insertion.h" /* inline code: binary_search insert search_and_insert */
+#include "insertion.h" /* inline code: binary_search insert 
+                          binary_search_and_insert linear_search
+                          linear_search_and_insert
+                       */
 
 /* Find a maximum-length in-order run of elements in [first,beyond) in
    base array.  Place the index of the start of the run in *s.  Return the
    length of the run (in elements).  For equal-length runs, prefer a run
-   mearest the middle of the sub-array.
+   nearest the middle of the sub-array.
 */
 static QUICKSELECT_INLINE
 size_t in_order_run(char *base, size_t first, size_t beyond, size_t size,
@@ -216,15 +219,83 @@ size_t in_order_run(char *base, size_t first, size_t beyond, size_t size,
     return len;
 }
 
-/* Insertion sort using binary search to locate insertion position for
+/* Insertion sort using linear search to locate insertion position for
    out-of-order element, followed by rotation to insert the element in position.
-   Insertion begins with the largest in-order run in the input, to avoid
-   pathological performance e.g. with rotated (either direction!) input.
+*/
+/* Included here as it is used in introsort (overall insertion sort) and in
+   mbmqsort (Bentley&McIlroy-like insertion sort when isort_bs and
+   dedicated_sort are not used).
+*/
+static
+QUICKSELECT_INLINE
+void isort_ls(char *base, size_t first, size_t beyond, size_t size,
+    COMPAR_DECL,
+    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
+    unsigned int options)
+{
+    register size_t l, n, u=beyond-1UL;
+    char *pa, *pu=base+u*size;
+
+/* separate direct, indirect versions to avoid options checks in loops,
+   also cache dereferenced pa in inner loop
+*/
+    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            if (0<COMPAR(pa,pa+size)) { /* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(pa,pd)) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+#ifdef QUICKSELECT_COUNT_ROTATIONS
+                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
+#endif
+            }
+        }
+    } else { /* indirect */
+        register char *p;
+        for (n=u,pa=pu-size; n>first; pa-=size) {
+            --n;
+            p=*((char **)pa);
+            if (0<COMPAR(p,*((char**)(pa+size)))) {/* skip over in-order */
+                l=n+2UL;
+                if (l>u) l=beyond; /* simple swap */
+                else { /* linear search for insertion position */
+                    register char *pd;
+                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
+                        if (0>=COMPAR(p,*((char**)pd))) break;
+                    } A(n!=l);
+                }
+                /* Insert element now at n at position before l by rotating elements
+                   [n,l) left by 1.
+                */
+                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
+#ifdef QUICKSELECT_COUNT_ROTATIONS
+                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
+#endif
+            }
+        }
+    }
+}
+
+/* Insertion sort using binary search or linear search to locate insertion
+   position for out-of-order element, followed by rotation to insert the element
+   in position.  Insertion begins with the largest in-order run in the input, to
+   avoid pathological performance e.g. with rotated (either direction!) input.
    Finding the longest in-order run has the side-effect of finding reversed
    input (the longest in-order run length is 1 element), and that fact is
    exploited by reversing reversed input w/o further comparisons. Obviously, if
    the in-order run includes all elements, the input is already sorted and no
-   data need be moved.
+   data need be moved.  Linear search is used when the in-order run has a length
+   of 4 or fewer elements; binary search is used if the in-order run is longer.
 */
 /* Included here for inline use in dedicated_sort, introsort (when not using
    overall linear insertion sort), mbmqsort (optional alternative to
@@ -275,13 +346,22 @@ void isort_bs(char *base, size_t first, size_t beyond, size_t size,
             */
             h=l+m-1UL;
             if (l>first) {
-                search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,options);
+                if (4UL<h-l)
+                    binary_search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
+                else
+                    linear_search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 for (l=n,pa=base+l*size; first<l; l--,pa-=size) {
                     n--;
-                    if (0<COMPAR(pa-size,pa))
-                        search_and_insert(base,n,l,h,size,COMPAR_ARGS,swapf,
-                            alignsize,size_ratio,options);
+                    if (0<COMPAR(pa-size,pa)) {
+                        if (4UL<h-l)
+                            binary_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                        else
+                            linear_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                    }
                 }
             } A(l==first);
             /* It is known (from the scan for maximum-length in-order runs)
@@ -290,34 +370,61 @@ void isort_bs(char *base, size_t first, size_t beyond, size_t size,
                required).
             */
             if (h+1UL<beyond) {
-                search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,options);
+                if (4UL<h-l)
+                    binary_search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
+                else
+                    linear_search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 for (h=n++,pa=base+h*size; n<beyond; n++,pa+=size,h++) {
-                    if (0<COMPAR(pa,pa+size))
-                        search_and_insert(base,n,l,h,size,COMPAR_ARGS,swapf,
-                            alignsize,size_ratio,options);
+                    if (0<COMPAR(pa,pa+size)) {
+                        if (4UL<h-l)
+                            binary_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                        else
+                            linear_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                    }
                 }
             } A(n==beyond);
         } else { /* indirect */
             register char **ptrs=(char **)base, *pa;
             h=l+m-1UL;
             if (l>first) {
-                search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,
-                    swapf,alignsize,size_ratio,options);
+                if (4UL<h-l)
+                    binary_search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
+                else
+                    linear_search_and_insert(base,n=l-1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 for (l=n,pa=ptrs[n]; first<l; pa=ptrs[n],l--) {
                     n--; /* beware side-effects of macros... */
-                    if (0<COMPAR(ptrs[n],pa))
-                        search_and_insert(base,n,l,h,size,COMPAR_ARGS,swapf,
-                            alignsize,size_ratio,options);
+                    if (0<COMPAR(ptrs[n],pa)) {
+                        if (4UL<h-l)
+                            binary_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                        else
+                            linear_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                    }
                 }
             }
             if (h+1UL<beyond) {
-                search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,options);
+                if (4UL<h-l)
+                    binary_search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
+                else
+                    linear_search_and_insert(base,n=h+1UL,l,h,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,options);
                 for (h=n++,pa=ptrs[h]; n<beyond; pa=ptrs[n++],h++) {
-                    if (0<COMPAR(pa,ptrs[n]))
-                        search_and_insert(base,n,l,h,size,COMPAR_ARGS,swapf,
-                            alignsize,size_ratio,options);
+                    if (0<COMPAR(pa,ptrs[n])) {
+                        if (4UL<h-l)
+                            binary_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                        else
+                            linear_search_and_insert(base,n,l,h,size,
+                                COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+                    }
                 }
             }
         }

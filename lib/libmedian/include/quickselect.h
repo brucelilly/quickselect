@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.23 dated 2018-03-06T23:31:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.24 dated 2018-05-07T05:27:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.23 2018-03-06T23:31:04Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.24 2018-05-07T05:27:30Z"
 
 #include <stddef.h>             /* size_t (maybe rsize_t [N1570 K3.3]) */
 /* preliminary support for 9899:201x draft N1570 */
@@ -128,12 +128,12 @@
        preventing poor performance; therefore it is not subject to being
        disabled at compile-time.
     */
-#define QUICKSELECT_RESTRICT_RANK        0x02000U
+#define QUICKSELECT_RESTRICT_RANK        0x08U /* internal */
 
 /* mask for user-accessible option bits (don't allow caller-supplied options
    to interfere with internal flags); internal flags are high order bits
 */
-#define QUICKSELECT_INTERNAL_FLAGS 0x0000E000U
+#define QUICKSELECT_INTERNAL_FLAGS 0xFFFFFFF8U
 #define QUICKSELECT_USER_OPTIONS_MASK (( QUICKSELECT_STABLE \
         | QUICKSELECT_OPTIMIZE_COMPARISONS | QUICKSELECT_INDIRECT ) \
         & ~( QUICKSELECT_INTERNAL_FLAGS ))

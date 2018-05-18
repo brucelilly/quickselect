@@ -865,6 +865,7 @@ C99LIB39OBJS =\
  glibc.o\
  ibmqsort.o\
  mbmqsort.o\
+ illumos.o\
  introsort.o\
  heapsort.o\
  heap.o\

@@ -53,3 +53,31 @@ $(MAKEFILES_DIR)/licenses/zlib/emitted : \
  $(ALL_SOURCES) $(ALL_HEADERS) \
 #
 
+$(MAKEFILES_DIR)/licenses/CDDL/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/illumos.c \
+#
+
+$(MAKEFILES_DIR)/licenses/Lucent/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/plan9.c \
+#
+
+$(MAKEFILES_DIR)/licenses/GNU_LGPL/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/glibc.c \
+#
+
+$(MAKEFILES_DIR)/licenses/BSD3/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/netbsd.c \
+#
+
+$(MAKEFILES_DIR)/licenses/McIlroy/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/aqsort.c \
+#
+
+$(MAKEFILES_DIR)/licenses/Wiley/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/bmqsort.c \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/mbmqsort.c \
+#
+
+$(MAKEFILES_DIR)/licenses/MIT/emitted : \
+ $(MAKEFILES_DIR)/$(LIBDIR)/$(LIB39DIR)/$(LIB39SRCDIR)/smoothsort.c \
+#

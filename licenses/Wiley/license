@@ -1,0 +1,4 @@
+/* qsort -- qsort interface implemented by faster quicksort.
+   J. L. Bentley and M. D. McIlroy, SPE 23 (1993) 1249-1265.
+   Copyright 1993, John Wiley.
+*/

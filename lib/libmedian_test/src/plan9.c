@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    plan9.c copyright 2016-2017 Bruce Lilly.   \ plan9.c $
+* $Id: ~|^` @(#)    plan9.c modifications copyright 2016-2017 Bruce Lilly.   \ plan9.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is plan9.c version 1.4 dated 2018-01-17T14:17:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is plan9.c version 1.5 dated 2018-05-06T21:07:51Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.plan9.c */
@@ -46,9 +46,9 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: plan9.c ~|^` @(#)"
 #define SOURCE_MODULE "plan9.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2018-01-17T14:17:37Z"
-#define COPYRIGHT_HOLDER "Lucent Technologies Inc."
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2018-05-06T21:07:51Z"
+#define COPYRIGHT_HOLDER "Lucent Technologies Inc"
 #define COPYRIGHT_DATE "2002"
 
 /* local header files needed */

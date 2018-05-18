@@ -1,0 +1,47 @@
+/* Copyright 1998, M. Douglas McIlroy
+   Permission is granted to use or copy with this notice attached.
+
+   Aqsort is an antiquicksort.  It will drive any qsort implementation
+   based on quicksort into quadratic behavior, provided the imlementation
+   has these properties:
+
+   1.  The implementation is single-threaded.
+
+   2.  The pivot-choosing phase uses O(1) comparisons.
+
+   3.  Partitioning is a contiguous phase of n-O(1) comparisons, all
+   against the same pivot value.
+
+   4.  No comparisons are made between items not found in the array.
+   Comparisons may, however, involve copies of those items.
+
+   Method
+
+   Values being sorted are dichotomized into "solid" values that are
+   known and fixed, and "gas" values that are unknown but distinct and
+   larger than solid values.  Initially all values are gas.  Comparisons
+   work as follows:
+
+   Solid-solid.  Compare by value.  Solid-gas.  Solid compares low.
+   Gas-gas.  Solidify one of the operands, with a value greater
+      than any previously solidified value.  Compare afresh.
+
+   During partitioning, the gas values that remain after pivot-choosing
+   will compare high, provided the pivot is solid.  Then qsort will go
+   quadratic.  To force the pivot to be solid, a heuristic test
+   identifies pivot candidates to be solidified in gas-gas comparisons.
+   A pivot candidate is the gas item that most recently survived
+   a comparison.  This heuristic assures that the pivot gets
+   solidified at or before the second gas-gas comparison during the
+   partitioning phase, so that n-O(1) gas values remain.
+
+   To allow for copying, we must be able to identify an operand even if
+   it was copied from an item that has since been solidified.  Hence we
+   keep the data in fixed locations and sort pointers to them.  Then
+   qsort can move or copy the pointers at will without disturbing the
+   underlying data.
+
+   int aqsort(int n, int *a); returns the count of comparisons qsort used
+   in sorting an array of n items and fills in array a with the
+   permutation of 0..n-1 that achieved the count.
+*/

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    netbsd.c copyright 2016-2017 Bruce Lilly.   \ netbsd.c $
+* $Id: ~|^` @(#)    netbsd.c modifications copyright 2016-2018 Bruce Lilly.   \ netbsd.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is netbsd.c version 1.2 dated 2017-11-03T19:35:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is netbsd.c version 1.3 dated 2018-05-06T21:07:51Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.netbsd.c */
@@ -46,15 +46,76 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: netbsd.c ~|^` @(#)"
 #define SOURCE_MODULE "netbsd.c"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2017-11-03T19:35:12Z"
-#define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define MODULE_VERSION "1.3"
+#define MODULE_DATE "2018-05-06T21:07:51Z"
+#define COPYRIGHT_HOLDER "The Regents of the University of California.  All rights reserved."
+#define COPYRIGHT_DATE "1992, 1993"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
+#include "initialize_src.h"
+
 /* ************************************************************************** */
+/*	$NetBSD: qsort.c,v 1.22 2012/05/26 21:47:05 christos Exp $	*/
+
+/*-
+ * Copyright (c) 1992, 1993
+ *	The Regents of the University of California.  All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the University nor the names of its contributors
+ *    may be used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE REGENTS AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+
+#if 0 /* BL non-standard header excluded */
+#include <sys/cdefs.h>
+#endif
+#if defined(LIBC_SCCS) && !defined(lint)
+#if 0
+static char sccsid[] = "@(#)qsort.c	8.1 (Berkeley) 6/4/93";
+#else
+__RCSID("$NetBSD: qsort.c,v 1.22 2012/05/26 21:47:05 christos Exp $");
+#endif
+#endif /* LIBC_SCCS and not lint */
+
+#include <sys/types.h>
+
+#include <assert.h>
+#include <errno.h>
+#include <stdlib.h>
+
+static inline char	*med3(char *, char *, char *,
+    int (*)(const void *, const void *));
+/* BL name change for instrumented code */
+static inline void	 iswapfunc(char *, char *, size_t, int);
+
+#define min(a, b)	(a) < (b) ? a : b
+
+/*
+ * Qsort routine from Bentley & McIlroy's "Engineering a Sort Function".
+ */
+
     /*assume sizeof(long) is a power of 2 */
     /* BL: added parentheses to make gcc STFU */
 #define SWAPINIT(a, es) swaptype =         \
@@ -70,7 +131,7 @@
     } while ((n -= sizeof(TYPE)) > 0);     \
 }
 
-static void iswapfunc(char *a, char *b, size_t n, int swaptype)
+static inline void iswapfunc(char *a, char *b, size_t n, int swaptype)
 {   if (swaptype <= 1) iswapcode(long, a, b, n)
     else iswapcode(char, a, b, n)
 }
@@ -87,7 +148,7 @@ static void iswapfunc(char *a, char *b, size_t n, int swaptype)
 
 #define bmmin(x, y) ((x)<=(y) ? (x) : (y))
 
-static char *med3(char *a, char *b, char *c, int (*compar)(const void *, const void *))
+static inline char *med3(char *a, char *b, char *c, int (*compar)(const void *, const void *))
 {
         return compar(a, b) < 0 ?
                   (compar(b, c) < 0 ? b : compar(a, c) < 0 ? c : a)
@@ -95,7 +156,7 @@ static char *med3(char *a, char *b, char *c, int (*compar)(const void *, const v
 }
 
 /* NetBSD qsort code (derived from Bentley&McIlroy code) */
-/* BL: _DIAGASSERT -> assert */
+/* BL: _DIAGASSERT -> assert, name change */
 void nbqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const void *))
 {
         char *pa, *pb, *pc, *pd, *pl, *pm, *pn;
@@ -105,6 +166,7 @@ void nbqsort(void *a, size_t n, size_t es, int (*compar)(const void *, const voi
         assert(a != NULL || n == 0 || es == 0);
         assert(compar != NULL);
 
+/* BL name change */
 nbloop:        SWAPINIT((char *)a, es);
         if (n < 7) {
                 for (pm = (char *) a + es; pm < (char *) a + n * es; pm += es)
@@ -173,5 +235,7 @@ nbloop:        SWAPINIT((char *)a, es);
                 goto nbloop;
         }
 /*                nbqsort(pn - r, r / es, es, compar);*/
+        /* BL: added initialization for ID strings */
+        if ((char)0==file_initialized) initialize_file(__FILE__);
 }
 /* ************************************************************************** */

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is pivot_src.h version 1.13 dated 2018-03-20T19:31:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is pivot_src.h version 1.14 dated 2018-05-15T02:11:53Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.pivot_src.h */
@@ -108,8 +108,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: pivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "pivot_src.h"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-03-20T19:31:20Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-05-15T02:11:53Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -363,24 +363,27 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                 A(base+first*size<=pivot);A(pivot<base+beyond*size);
                 pivot=REMEDIAN_FUNCTION_NAME(pivot,r,r,size,table_index,
                     COMPAR_ARGS,options);
+            } else { /* offset single sample (middle bad for bitonic input) */
+                switch (nmemb) {
+                    case 0UL :
+                    case 1UL :
+                    case 2UL :
+                    case 3UL :
+                    case 4UL :
+                    case 6UL :
+                    case 8UL :
+                        /* leave pivot at [upper-]middle element */
+                    break;
+                    case 5UL :
+                    case 7UL :
+                    case 9UL :
+                        pivot+=size; /* away from middle for bitonic */
+                    break;
+                    default :
+                        pivot+=size*((nmemb-1UL)/8); /* 1/2+1/8=5/8 */
+                    break;
+                }
             }
-#if DEBUG_CODE + ASSERT_CODE
-            else { /* should never use a single sample! */
-                (V)fprintf(stderr,
-                    "/* %s: %lu sample%s: nmemb=%lu, pivot=%p[%lu], pl=%p"
-                    ", pu=%p, table_index=%u, pk=%p, options=0x%x */\n",
-                    __func__,sorting_sampling_table[table_index].samples,
-                    sorting_sampling_table[table_index].samples==1UL?"":"s",
-                    nmemb,(void *)pivot,(pivot-base)/size,
-                    (void *)(base+first*size),(void *)(base+beyond*size),
-                    table_index,(const void *)pk,options);
-# if defined(DEBUGGING)
-                    print_some_array(base,first,beyond-1UL, "/* "," */",
-                        options);
-# endif
-                A(0U<table_index);
-            }
-#endif
             *ppc=*ppd=pivot, *ppe=*ppf=pivot+size;
         break;
         case (QUICKSELECT_RESTRICT_RANK) :
@@ -418,32 +421,30 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                     pb=pa+n; /* middle element */
                     A(pb+n<base+beyond*size);
                     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                        pm=FMED3_FUNCTION_NAME(*((char **)pb),*((char **)pa),
+                        pm=FMED3_FUNCTION_NAME(*((char **)pa),*((char **)pb),
                             *((char **)(pb+n)),COMPAR_ARGS);
-                        /*medians at start of sub-array*/
+                        /* medians start at 1/3 of sub-array */
                         /*compare returned data pointer,swap indirect pointers*/
-                        if (pm!=*((char **)pa)) {
-                            if (pm==*((char **)pb))
+                        if (pm!=*((char **)pb)) {
+                            if (pm==*((char **)pa))
                                 EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,
                                     size_ratio,SWAP_COUNT_STATEMENT);
                             else
-                                EXCHANGE_SWAP(swapf,pa,pb+n,size,alignsize,
+                                EXCHANGE_SWAP(swapf,pb,pb+n,size,alignsize,
                                     size_ratio,SWAP_COUNT_STATEMENT);
                         }
                     } else
-                    if ((pa!=(pm=(char *)FMED3_FUNCTION_NAME(pb,pa,pb+n,
-                                           COMPAR_ARGS))) /*bias to pa*/
-                    ) { /* place medians at start of sub-array */
-                        EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,
+                    if ((pb!=(pm=(char *)FMED3_FUNCTION_NAME(pa,pb,pb+n,
+                                           COMPAR_ARGS))) /*bias to pb*/
+                    ) { /* place medians in middle of sub-array */
+                        EXCHANGE_SWAP(swapf,pm,pb,size,alignsize,size_ratio,
                             SWAP_COUNT_STATEMENT);
                     }
                 }
-                *ppc=pc; /* first median */
+                *ppc=pc+n; /* first median */
                 /* median of medians */
-                karray[0]=first+(r>>1); /* upper-median for even size arrays */
-                beyond=first+r; /* past last median */
-                A(first<=karray[0]);A(karray[0]<beyond);
-                *ppf=base+beyond*size; /* past last median */
+                karray[0]=first+r+(r>>1); /* upper-median for even size arrays */
+                *ppf=*ppc+n; /* past last median */
 # if ASSERT_CODE
                 A((NULL!=ppd)&&(NULL!=ppe));
                 *ppd=*ppe=NULL; /* clear to avoid random values */
@@ -457,14 +458,15 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                    sampling table will be used for the median of medians; the
                    current table_index is probably a good starting point
                 */
-                QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,
+                QUICKSELECT_LOOP(base,first+r,first+(r<<1),size,COMPAR_ARGS,
                     karray,0UL,1UL,swapf,alignsize,size_ratio,table_index,
-                    cachesz,pbeyond,options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,ppe);
+                    cachesz,pbeyond,options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,
+                    ppe);
 #if __STDC_WANT_LIB_EXT1__
                 A(0==ret);if(0!=ret) return NULL;
 #endif
                 pivot=base+karray[0]*size; /* pointer to median of medians */
-                /* First third of array (medians) is partitioned. */
+                /* Middle third of array (medians) is partitioned. */
 #if ASSERT_CODE + DEBUG_CODE
                 if ((*ppe<=pivot||(*ppd>pivot)))  {
                     size_t d, e, l;

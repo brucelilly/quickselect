@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.15 dated 2018-04-18T18:13:01Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.17 dated 2018-05-15T02:15:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -133,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-04-18T18:13:01Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-05-15T02:15:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -155,7 +155,7 @@
 
 /* local header files needed */
 #include "quickselect_config.h"
-#include "exchange.h"           /* blockmove irotate EXCHANGE_SWAP */
+#include "exchange.h"           /* blockmove irotate protate EXCHANGE_SWAP */
 #include "indirect.h"           /* rearrange_array */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
@@ -187,6 +187,16 @@
    sub-partitions via linear rearrangement of elements.
 */
 #define USE_KIWIEL_L 1
+
+/* Configuration: deferred pivot movement as an alternative to Kiwiel's
+   Algorithm L.  The Algorithm uses a pair of pointers and split-end
+   equals regions like Bentley & McIlroy's partitioning method.  It is
+   similar to the partitioning method used in illumos qsort.  It avoids
+   swapping elements for already-sorted inputs and generally uses more
+   comparisons and fewer swaps, is slightly slower than Kiwiel Algorithm L.
+   If non-zero, DEFERRED_PIVOT_PARTITION overrides USE_KIWIEL_L.
+*/
+#define DEFERRED_PIVOT_PARTITION 1
 
 #if (QUICKSELECT_STABLE != 0) || (USE_KIWIEL_L == 0)
 /* static data */
@@ -539,8 +549,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
             source_file,__LINE__,first,(pc-base)/size,(pd-base)/size,
             (pivot-base)/size,(pe-base)/size,(pf-base)/size,beyond,options);
-        if (1UL==size_ratio)
-            print_some_array(base,first,beyond-1UL, "/* "," */",options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
 # endif
     A(first<beyond);A(pc<=pd);A(pd<=pivot);A(pivot<=pe);A(pe<=pf);
@@ -833,8 +842,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
             "options 0x%x*/\n",
             __func__,source_file,__LINE__,first,(pc-base)/size,(pd-base)/size,
             (pivot-base)/size,(pe-base)/size,(pf-base)/size,beyond,options);
-        if (1UL==size_ratio)
-            print_some_array(base,first,beyond-1UL, "/* "," */",options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
 # endif
 }
@@ -859,8 +867,7 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
             source_file,__LINE__,first,(pc-base)/size,(pd-base)/size,
             (pivot-base)/size,(pe-base)/size,(pf-base)/size,beyond,options);
-        if (1UL==size_ratio)
-            print_some_array(base,first,beyond-1UL, "/* "," */",options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
 # endif
     A(first<beyond);A(pc<=pd);A(pd<=pivot);A(pivot<=pe);A(pe<=pf);
@@ -970,7 +977,6 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
 }
 #endif /* (QUICKSELECT_STABLE != 0) || (USE_KIWIEL_L == 0) */
 
-/* array partitioning */
 #if QUICKSELECT_BUILD_FOR_SPEED
 static QUICKSELECT_INLINE
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
@@ -989,8 +995,7 @@ static QUICKSELECT_INLINE
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
             source_file,__LINE__,first,(pc-base)/size,(pd-base)/size,
             (pivot-base)/size,(pe-base)/size,(pf-base)/size,beyond,options);
-        if (1UL==size_ratio)
-            print_some_array(base,first,beyond-1UL, "/* "," */",options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
 #endif
 #if defined(DEBUGGING)
@@ -1007,7 +1012,298 @@ static QUICKSELECT_INLINE
     */
     switch (options&(QUICKSELECT_STABLE)) {
         default:
-#if USE_KIWIEL_L /* 0 to test divide-and-conquer partition by merging mini-partitions */
+#if DEFERRED_PIVOT_PARTITION
+            /* Initial partition c/d/e/f around pivot (at d).
+               Less-than [c,d) and greater-than [e,f) regions and pivot are
+               skipped over during partitioning.  At the end of partitioning,
+               the initially-partitioned elements are moved to canonical
+               position, as are split-end equals regions.  For pivot-only
+               (normal pivot selection), expect N-1 comparisons and N/4 swaps.
+               For already-partitioned middle resulting from median-of-medians,
+               expect 2N/3 comparisons and N/6 swaps in addition to the 2N/3
+               comparisons and N/3 swaps for median-of-medians (total 4N/3
+               comparisons and N/2 swaps for pivot selection plus partitioning).
+               Already-sorted input uses N-1 comparisons and no swaps.
+            */
+            /* +-----------------------------------------------------+ */
+            /* |   =   |   <   |  ?  : < :=: > :  ?  |   >   |   =   | */
+            /* +-----------------------------------------------------+ */
+            /*  l       a       b     c   d e   f   G g       h       u*/
+            pa=pb=pl=base+size*first, pg=(ph=pu=base+size*beyond)-size;
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pb@%lu, pd@%lu, pg@%lu, nsw=%lu */\n",__func__,__LINE__,(pb-base)/size,(pd-base)/size,(pg-base)/size,nsw);
+    }
+#endif
+            if (0U==(options&(QUICKSELECT_INDIRECT))) {
+/* Kiwiel-like scan over =, scan over < prior to first > to avoid pa!=pb tests in main loop */
+/* would only affect equal elements; would complicate maintenance due to code complexity */
+                for (;;pb+=size,pg-=size) { /* move pointers inward */
+                    for (; pb<=pg; pb+=size) { /* scan up */
+                        if (pb==pc) {
+                            pb=pf; /* skip over already-partitioned region */
+                            if (pb>pg) break;
+                        }
+                        if (0>(c=COMPAR(pivot,pb))) break;
+                        if (0==c) {
+                            if (pa==pc) pa=pf; /* skip already-partitioned region */
+                            if (pa!=pb) {
+                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                    SWAP_COUNT_STATEMENT);
+                            }
+                            pa+=size;
+                        }
+                    }
+                    for (; pb<pg; pg-=size) { /* scan down */
+                        if (pg==pf-size) {
+                            pg=pc-size;
+                            if (pg<pb) break;
+                        }
+                        if (0<(d=COMPAR(pivot,pg))) break;
+                        if (0==d) {
+                            if (ph==pf) ph=pc; /* skip already-partitioned region */
+                            ph-=size;
+                            if (ph!=pg) {
+                                EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                    SWAP_COUNT_STATEMENT);
+                            }
+                        }
+                    }
+                    if (pb>=pg) break; /* partitioned */
+                    /* put two elements in correct regions with one swap */
+                    EXCHANGE_SWAP(swapf,pb,pg,size,alignsize,size_ratio,
+                        SWAP_COUNT_STATEMENT);
+                }
+            } else {
+                pivot=*((char **)pivot);
+                for (;;pb+=size,pg-=size) { /* move pointers inward */
+                    for (; pb<=pg; pb+=size) { /* scan up */
+                        if (pb==pc) {
+                            pb=pf; /* skip over already-partitioned region */
+                            if (pb>pg) break;
+                        }
+                        if (0>(c=COMPAR(pivot,*((char **)pb)))) break;
+                        if (0==c) {
+                            if (pa==pc) pa=pf; /* skip already-partitioned region */
+                            if (pa!=pb) {
+                                EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,
+                                    SWAP_COUNT_STATEMENT);
+                            }
+                            pa+=size;
+                        }
+                    }
+                    for (; pb<pg; pg-=size) { /* scan down */
+                        if (pg==pf-size) {
+                            pg=pc-size;
+                            if (pg<pb) break;
+                        }
+                        if (0<(d=COMPAR(pivot,*((char **)pg)))) break;
+                        if (0==d) {
+                            if (ph==pf) ph=pc; /* skip already-partitioned region */
+                            ph-=size;
+                            if (ph!=pg) {
+                                EXCHANGE_SWAP(swapf,pg,ph,size,alignsize,size_ratio,
+                                SWAP_COUNT_STATEMENT);
+                            }
+                        }
+                    }
+                    if (pb>=pg) break; /* partitioned */
+                    /* put two elements in correct regions with one swap */
+                    EXCHANGE_SWAP(swapf,pb,pg,size,alignsize,size_ratio,
+                        SWAP_COUNT_STATEMENT);
+                }
+            }
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pa@%lu, pb@%lu, pd@%lu, pg@%lu, ph@%lu, nsw=%lu */\n",__func__,__LINE__,(pa-base)/size,(pb-base)/size,(pd-base)/size,(pg-base)/size,(ph-base)/size,nsw);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+            /* Possible array status after partitioning:
+               1. Left = region has overrun initially-partitioned region
+                  pa>=pf
+                  < and > regions (if any) are to the right of pd
+                  initial < and > regions are embedded in = region
+               2. Right = region has overrun initially-partitioned region
+                  ph<pc
+                  < and > regions (if any) are to the left of pd
+                  initial < and > regions are embedded in = region
+               3. < region has overrun initially-partitioned region
+                  pa<pc, pb>=pf, pg>=pf
+                  initial = and > regions are embedded in < region
+               4. > region has overrun initially-partitioned region
+                  ph>pd, pg<pc, pb<pc
+                  intial < and = regions are embedded in > region
+               5. perfect partition
+                  pa<pc pc<=pb<=pf pc<=pg<pf pf<ph
+                  only need to move split ends
+               Remaining steps:
+                  move initially-partitioned elements to the correct place
+                  move split-end equals elements next to pivot
+                  set *peq and *pgt
+            */
+
+            if (pa>=pf) {
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pa@%lu, pb@%lu, pd@%lu, pe@%lu, pg@%lu, ph@%lu, nsw=%lu */\n",__func__,__LINE__,(pa-base)/size,(pb-base)/size,(pd-base)/size,(pe-base)/size,(pg-base)/size,(ph-base)/size,nsw);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+                if ((pc+size==pf)) { /* pivot only */
+                    /* |   =                    :=:    =| < |   >   |   =   | */
+                    /*  l                        d f     a g b       h       u*/
+                    pe=pd=pb;
+                } else {
+                    /* |   =                : < :=: > :=| < |   >   |   =   | */
+                    /*  l                    c   d e   f a g b       h       u*/
+                    pd=blockmove(pl,pc,pd,swapf);
+                    /* | < |       =            :=: > :=| < |   >   |   =   | */
+                    /*  l   d                      e   f a g b       h       u*/
+                    pe=blockmove(pe,pf,pa,swapf);
+                    /* | < |       =            :=:=| > | < |   >   |   =   | */
+                    /*  l   d                        e f a g b       h       u*/
+                    pf=blockmove(pe,pa,pb,swapf);
+                    /* | < |       =            :=:=| < | >     >   |   =   | */
+                    /*  l   d                        e   f g b       h       u*/
+                    pd=blockmove(pd,pe,pf,swapf);
+                    /* | <     |   =            :=:=    | >     >   |   =   | */
+                    /*  l       d                    e   f g b       h       u*/
+                    pa=pl, pe=pf; /*                     e */
+                }
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pa@%lu, pd@%lu, pe@%lu, ph@%lu, nsw=%lu */\n",__func__,__LINE__,(pa-base)/size,(pd-base)/size,(pe-base)/size,(ph-base)/size,nsw);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+            } else if (ph<pc) {
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pa@%lu, pb@%lu, pd@%lu, pe@%lu, pg@%lu, ph@%lu, nsw=%lu */\n",__func__,__LINE__,(pa-base)/size,(pb-base)/size,(pd-base)/size,(pe-base)/size,(pg-base)/size,(ph-base)/size,nsw);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+                if ((pc+size==pf)) { /* pivot only */
+                    /* |   =   | <  | > | =     :=    :         =           | */
+                    /*  l       a  g b   h     c=d f                         u*/
+                    pe=pd=pb;
+                } else {
+                    /* |   =   | <  | > | = : < :=: > :         =           | */
+                    /*  l       a  g b   h   c   d e   f                     u*/
+                    pf=blockmove(pe,pf,pu,swapf);
+                    /* |   =   | <  | > | = : < :=              =       | > | */
+                    /*  l       a  g b   h   c   d e                     f   u*/
+                    pd=blockmove(ph,pc,pd,swapf);
+                    /* |   =   | <  | > | < : =                 =       | > | */
+                    /*  l       a  g b   h   d                           f   u*/
+                    ph=blockmove(pb,ph,pd,swapf);
+                    /* |   =   | <    < | > : =                 =       | > | */
+                    /*  l       a  g b   h   d                           f   u*/
+                    pe=blockmove(ph,pd,pf,swapf);
+                    /* |   =   | <    < |     =                 =    |  >   | */
+                    /*  l       a  g b   h   d                        e  f   u*/
+                    pd=ph, ph=pu; /*     d                                   h*/
+                }
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+fprintf(stderr,"/* %s line %d: pa@%lu, pd@%lu, pe@%lu, ph@%lu, nsw=%lu */\n",__func__,__LINE__,(pa-base)/size,(pd-base)/size,(pe-base)/size,(ph-base)/size,nsw);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+            } else if ((pb>=pf)&&(pg>=pf)) {
+                if ((pc+size==pf)) { /* pivot only */
+                    if (pd!=pb-size) {
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pa@%lu, pb@%lu, pd@%lu"
+            ", pivot@%lu, pg@%lu, ph@%lu, beyond=%lu, options=0x%x */\n",
+            __func__,source_file,__LINE__,first,(pa-base)/size,(pb-base)/size,
+            (pd-base)/size,(pivot-base)/size,(pg-base)/size,(ph-base)/size,
+            beyond,options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+    }
+#endif
+                        EXCHANGE_SWAP(swapf,pd,pb-size,size,alignsize,
+                            size_ratio,SWAP_COUNT_STATEMENT);
+                    }
+                    pd=(pe=pb)-size;
+                } else {
+                    /* |   =   |   <        : < :=: > :  <  |   >   |   =   | */
+                    /*  l       a            c   d e   f   g b       h       u*/
+                    /* pg might be equal to pb */
+                    pb=blockmove(pe,pf,pb,swapf);
+                    /* |   =   |   <        : < :=:  <  |       >   |   =   | */
+                    /*  l       a            c   d e     b           h       u*/
+                    pd=blockmove(pd,pe,pb,swapf);
+                    /* |   =   |   <        : < :<: < |=|       >   |   =   | */
+                    /*  l       a            c         d b           h       u*/
+                    pe=pb;
+                }
+            } else if ((pb<pc)&&(pg<pc)) {
+                if ((pc+size==pf)) { /* pivot only */
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pa@%lu, pb@%lu, pd@%lu"
+            ", pivot@%lu, pg@%lu, ph@%lu, beyond=%lu, options=0x%x */\n",
+            __func__,source_file,__LINE__,first,(pa-base)/size,(pb-base)/size,
+            (pd-base)/size,(pivot-base)/size,(pg-base)/size,(ph-base)/size,
+            beyond,options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+    }
+#endif
+                    EXCHANGE_SWAP(swapf,pb,pd,size,alignsize,size_ratio,
+                        SWAP_COUNT_STATEMENT);
+                    pe=(pd=pb)+size;
+                } else {
+                    /* +----------------------------------------------------+ */
+                    /* |   =   |   <  |  >   : < :=: > :        >   |   =   | */
+                    /* +----------------------------------------------------+ */
+                    /*  l       a    g b      c   d e   f            h       u*/
+                    /* pg might be equal to pb */
+                    pc=blockmove(pb,pc,pd,swapf);
+                    /* +----------------------------------------------------+ */
+                    /* |   =   |   <  |  <  |  > :=: > :        >   |   =   | */
+                    /* +----------------------------------------------------+ */
+                    /*  l       a      b     c    d e   f            h       u*/
+                    pe=blockmove(pc,pd,pe,swapf);
+                    /* +----------------------------------------------------+ */
+                    /* |   =   |   <         :=:  >  <          >   |   =   | */
+                    /* +----------------------------------------------------+ */
+                    /*  l       a             d e                    h       u*/
+                    pd=pc;
+                }
+            }
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pa@%lu, pd@%lu"
+            ", pe@%lu, ph@%lu, beyond=%lu, options=0x%x */\n",
+            __func__,source_file,__LINE__,first,(pa-base)/size,
+            (pd-base)/size,(pe-base)/size,(ph-base)/size,
+            beyond,options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+            /* +-----------------------------------------------------+ */
+            /* |   =   |   <         : < :=: > :         >   |   =   | */
+            /* +-----------------------------------------------------+ */
+            /*  l       a             c   d e   f             h       u*/
+            pd=blockmove(pl,pa,pd,swapf);
+            pe=blockmove(pe,ph,pu,swapf);
+            A(pl<=pd); A(pd<pe); A(pe<=pu);
+            *peq=(pd-base)/size;
+            *pgt=(pe-base)/size;
+#if (DEBUG_CODE>0) && defined(DEBUGGING)
+    if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
+        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pd@%lu, pe@%lu"
+            ", beyond=%lu, options=0x%x */\n",
+            __func__,source_file,__LINE__,first,(pd-base)/size,(pe-base)/size,
+            beyond,options);
+        print_some_array(base,first,beyond-1UL, "/* "," */",options);
+}
+#endif
+#else
+# if USE_KIWIEL_L /* 0 to test divide-and-conquer partition by merging mini-partitions */
             /* Kiwiel Algorithm L, based on Bentley & McIlroy's split-end
                partition.
             */
@@ -1035,35 +1331,35 @@ static QUICKSELECT_INLINE
                 /* Rearrange blocks for split-end partition */
                 A(pc<=pd);A(pd<pe);
                 pd=blockmove(pc,pd,pe,swapf); pivot=pc;
-# if defined(DEBUGGING)
+#  if defined(DEBUGGING)
                 if (0U!=save_partial) {
-# endif
+#  endif
                     A(pe<=pf);A(pf<=ph);
                     pg=blockmove(pe,pf,ph,swapf)-size; /* N.B. -size */
                     A(pl<=pc);A(pc<=pd);
-# if 1 /* general case: already-partitioned region somewhere */
+#  if 1 /* general case: already-partitioned region somewhere */
                     /* swap = block to far left; N.B. for pl==pc, this sets pa=pd */
                     pa=blockmove(pl,pc,pd,swapf);
                     pivot=pl;
-# else /* specific to already-partitioned region at far left */
+#  else /* specific to already-partitioned region at far left */
                     A(pl==pc);
                     pa=pd;
-# endif
+#  endif
                     A(pa<=pd);A(pd<=pe);
-# if 1 /* general case: already-partitioned region somewhere */
+#  if 1 /* general case: already-partitioned region somewhere */
                     /* swap already-partitioned < leftward; N.B. for pa==pd, pb=pe */
                     pb=blockmove(pa,pd,pe,swapf);
-# else /* specific to already-partitioned region at far left */
+#  else /* specific to already-partitioned region at far left */
                     A(pa==pd);
                     pb=pe;
-# endif
+#  endif
                     if (pa>pl) pivot=pa-size; else pivot=pl;
-# if defined(DEBUGGING)
+#  if defined(DEBUGGING)
                 } else {
                     pa=pb=pd; /* already-partitioned < */
                     pivot=pa-size;
                 }
-# endif
+#  endif
             }
             if (0U==(options&(QUICKSELECT_INDIRECT))) {
                 if (pa==pb) {
@@ -1202,30 +1498,31 @@ static QUICKSELECT_INLINE
             A(pl<=pd); A(pd<pe); A(pe<=pu);
             *peq=(pd-base)/size;
             *pgt=(pe-base)/size;
-# if ASSERT_CODE + DEBUG_CODE
+#  if ASSERT_CODE + DEBUG_CODE
             if (*pgt<=*peq)  {
                 size_t e, g;
-#  if defined(DEBUGGING)
+#   if defined(DEBUGGING)
                 size_t l, u;
-#  endif
+#   endif
                 if (NULL!=peq) e=*peq; else e=first;
                 if (NULL!=pgt) g=*pgt; else g=beyond;
                 (V)fprintf(stderr,
                     "/* %s: Kiwiel L: peq=%p, *peq=%lu, pgt=%p, *pgt=%lu */\n",
                     __func__,(void *)peq,e,(void *)pgt,g);
-#  if defined(DEBUGGING)
+#   if defined(DEBUGGING)
                 if (e<g) l=e,u=g; else l=g,u=e;
                 print_some_array(base,l,u-1UL,"/* "," */",options);
-#  endif
+#   endif
             }
-# endif
+#  endif
             A(pe>pd);
-#else /* experimental partitioning method as an alternative to Kiwiel Alg. L */
+# else /* experimental partitioning method as an alternative to Kiwiel Alg. L */
             /* Divide-and-conquer partition w/ blockmoves for partition merge */
             divide_and_conquer_partition(base,first,beyond,pc,pd,pivot,pe,pf,
                 size,COMPAR_ARGS,swapf,alignsize,size_ratio,cachesz,options,peq,pgt);
             A(*peq<=*pgt);A(first<=*peq);A(*pgt<=beyond);
-#endif
+# endif /* USE_KIWIEL_L */
+#endif /* DEFERRED_PIVOT_PARTITION */
         break;
 #if QUICKSELECT_STABLE /* not used if QUICKSELECT_STABLE is defined as zero */
         case QUICKSELECT_STABLE :

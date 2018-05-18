@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.21 dated 2018-04-30T14:42:47Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.23 dated 2018-05-17T21:26:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-04-30T14:42:47Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2018-05-17T21:26:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -927,6 +927,13 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         }
 #endif
 
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (aqcmp==compar) {
+            /* antiqsort handshake */
+            pivot_minrank=nmemb;
+        }
+#endif
+
         /* Partition the array around the pivot element into less-than,
            equal-to, and greater-than (w.r.t. the pivot) regions.  The
            equal-to region requires no further processing.
@@ -1002,17 +1009,22 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         if (((NULL==ppeq)||(DEBUGGING(PARTITION_DEBUG)))
            &&(DEBUGGING(PARTITION_ANALYSIS_DEBUG))
         ) { /* for graphing ratios during sorting */
-            size_t r=pl_region->beyond-pl_region->first;
+            size_t n=pl_region->beyond-pl_region->first, r;
+            r = n/(nmemb-n);
             (V)fprintf(stderr,"/* %s: %s line %d: regions from partition of nme"
                 "mb=%lu, s=%lu, e=%lu, t=%lu, table_index=%u, samples=%lu, "
                 "pk=%p, ppeq=%p, firstk=%lu, beyondk=%lu, count=%d, ratio=%lu%s"
                 " */\n",__func__,quickselect_loop_src_file,__LINE__,nmemb,
                 ps_region->beyond-ps_region->first,
-                gt_region.first-lt_region.beyond, r,
+                gt_region.first-lt_region.beyond, n,
                 table_index, pst[table_index].samples,
                 (const void *)pk, (void *)ppeq,
                 pl_region->firstk, pl_region->beyondk,
-                c, r/(nmemb-r),(0U==pl_region->process)?" (ignored)":"");
+                c, r,(0U==pl_region->process)?" (ignored)":"");
+            if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+                if (r>stats_table[table_index].max_ratio)
+                    stats_table[table_index].max_ratio=r;
+            }
         }
 #endif
         if (0U!=pl_region->process) { /* Process large region. */
@@ -1123,6 +1135,18 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
             if (0U==(options&(QUICKSELECT_NO_REPIVOT)))
                 options|=SHOULD_REPIVOT_FUNCTION_NAME(nmemb,beyond-first,pst,
                     table_index,pk,&c,ppeq);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
+                    if (0U!=(options&QUICKSELECT_RESTRICT_RANK)) {
+                        size_t r=(beyond-first)/(nmemb+first-beyond);
+                        stats_table[table_index].repivots++;
+                        if ((0UL==stats_table[table_index].repivot_ratio)
+                        || (r<stats_table[table_index].repivot_ratio)
+                        )
+                            stats_table[table_index].repivot_ratio=r;
+                    }
+                }
+#endif
         }
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(REPARTITION_DEBUG))

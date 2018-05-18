@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqsort.c version 1.14 dated 2018-04-16T15:04:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqsort.c version 1.15 dated 2018-05-10T02:22:27Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "sqsort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "sqsort.c"
-#define MODULE_VERSION "1.14"
-#define MODULE_DATE "2018-04-16T15:04:48Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2018-05-10T02:22:27Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -134,6 +134,7 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
                 }
             }
         } else return; /* Done because a single element is a sorted array. */
+        table_index=d_sample_index(sorting_sampling_table,table_index,nmemb);
 #if ASSERT_CODE
         if (nmemb>sorting_sampling_table[table_index].max_nmemb)
             (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, table_index=%u, "

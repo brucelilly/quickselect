@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.16 dated 2018-05-06T03:48:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.18 dated 2018-05-15T03:18:09Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.16 2018-05-06T03:48:59Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.18 2018-05-15T03:18:09Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -195,12 +195,12 @@
    This bit can be set (once) in the initial call; it persists through
    functions which call quickselect_loop.
 */
-#define QUICKSELECT_NO_REPIVOT        0x04000U
+#define QUICKSELECT_NO_REPIVOT        0x010U
 
 /* For testing and median_test code, always select if selection is specified
    (do not sort, even for large numbers of order statistics).
 */
-#define QUICKSELECT_STRICT_SELECTION  0x08000U
+#define QUICKSELECT_STRICT_SELECTION  0x020U
 
 /* Small-array sorting and stable partitioning work well when the data (and
    ancillary data, when applicable) fit in processor cache memory.  Cache size
@@ -243,10 +243,10 @@
 #define REALLOC_DOES_NOT_DECREASE_ALIGNMENT 1
 
 /* Avoid sorting networks for nmemb>QUICKSELECT_MAX_NETWORK (saves code space,
-   faster for inputs with duplicate values). Range 5-16 (sizes 2-5 are always
-   used; there are none available > 16). Recommended value 8.
+   faster for inputs with duplicate values). Range 3-16 (sizes 2-3 are always
+   used; there are none available > 16). Recommended value 4.
 */
-#define QUICKSELECT_MAX_NETWORK 8
+#define QUICKSELECT_MAX_NETWORK 4
 
 /*******************************************************************************
    Nothing to configure below this line. The remainder of this file contains

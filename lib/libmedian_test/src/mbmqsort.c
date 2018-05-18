@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.15 dated 2018-04-16T15:04:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.16 dated 2018-05-07T06:46:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mbmqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mbmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "mbmqsort.c"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-04-16T15:04:48Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2018-05-07T06:46:12Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -124,7 +124,7 @@ extern size_t quickselect_cache_size;
       binary-search insertion sort (with same or increased cutoff) or by
       dedicated_sort using optimal sorting networks, binary-search insertion
       sort, in-place mergesort, and indirect mergesort can be enabled by setting
-      appropriate bits in the moptions argument.
+      appropriate bits in the options argument.
 */
 
 /* base array doesn't change (unlike Bentley&McIlroy's qsort); first and beyond
@@ -134,7 +134,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
     size_t size, int (*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, unsigned int table_index, size_t pbeyond,
-    unsigned int options, unsigned int moptions)
+    unsigned int options)
 {
     size_t nmemb=beyond-first;
     for (;;) {
@@ -145,8 +145,8 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,
                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, size=%lu, "
-               "options=0x%x, mbm_options=0x%x */\n",__func__,source_file,
-               __LINE__,first,beyond,nmemb,size,options,moptions);
+               "options=0x%x */\n",__func__,source_file,
+               __LINE__,first,beyond,nmemb,size,options);
 #endif
         /* Multiple tests take some time, but only the comparison count is of
            interest here, not run-time.  Run-time can be (and is) optimized in
@@ -154,17 +154,15 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
         */
         if (((quickselect_cache_size>>1)>=nmemb)
         &&(quickselect_cache_size>=nmemb*size)
-        && ((0U!=(moptions&(MBM_DEDICATED_SORT))) 
-        || ((3UL==nmemb)&&(MBM_TREE3==(moptions&(MBM_TREE3))))
-        || ((2UL==nmemb)&&(MBM_NETWORK2==(moptions&(MBM_NETWORK2))))
+        && ((0U!=(options&(MOD_DEDICATED_SORT))) 
         )) {
             int ret;
 #if DEBUG_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG))
                 (V)fprintf(stderr,
                    "/* %s: %s line %d: dedicated_sort: first=%lu, beyond=%lu, "
-                   "size=%lu, options=0x%x, mbm_options=0x%x */\n",__func__,
-                   source_file,__LINE__,first,beyond,size,options,moptions);
+                   "size=%lu, options=0x%x */\n",__func__,
+                   source_file,__LINE__,first,beyond,size,options);
 #endif
             ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
                 swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
@@ -195,7 +193,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
 #endif
                 return ;
             }
-        } else if (0U!=(moptions&(MBM_ISORT_BS))) {
+        } else if (0U!=(options&(MOD_ISORT_BS))) {
 #if 0
             if (8UL>nmemb) /* cutoff > Bentley&McIlroy; isort_bs @ size 7 */
                        /* reversed, rotated, shifted inputs get better,
@@ -210,22 +208,22 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,
                        "/* %s: %s line %d: isort_bs: first=%lu, beyond=%lu, "
-                       "size=%lu, options=0x%x, mbm_options=0x%x */\n",__func__,
-                       source_file,__LINE__,first,beyond,size,options,moptions);
+                       "size=%lu, options=0x%x */\n",__func__,
+                       source_file,__LINE__,first,beyond,size,options);
 #endif
                 isort_bs(base,first,beyond,size,compar,swapf,alignsize,size_ratio,
                     options);
                 return; /* done; else continue divide-and-conquer */
             }
-        } else if (0U!=(moptions&(MBM_ISORT_LS))) {
+        } else if (0U!=(options&(MOD_ISORT_LS))) {
             if (BM_INSERTION_CUTOFF>nmemb) {
                 /* use median-of-3 pivot selection @ size 7 */
 #if DEBUG_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,
                        "/* %s: %s line %d: isort_ls: first=%lu, beyond=%lu, "
-                       "size=%lu, options=0x%x, mbm_options=0x%x */\n",__func__,
-                       source_file,__LINE__,first,beyond,size,options,moptions);
+                       "size=%lu, options=0x%x */\n",__func__,
+                       source_file,__LINE__,first,beyond,size,options);
 #endif
                 isort_ls(base,first,beyond,size,compar,swapf,alignsize,size_ratio,
                     options);
@@ -237,8 +235,8 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
             if (DEBUGGING(SORT_SELECT_DEBUG))
                 (V)fprintf(stderr,
                    "/* %s: %s line %d: inline waltzing insertion sort: nmemb="
-                   "%lu, size=%lu, options=0x%x, mbm_options=0x%x */\n",
-                   __func__,source_file,__LINE__,nmemb,size,options,moptions);
+                   "%lu, size=%lu, options=0x%x */\n",
+                   __func__,source_file,__LINE__,nmemb,size,options);
 #endif
             /* This snippet mostly copied from Bentley&McIlroy's code, with
                necessary variable name changes and swap function replacement.
@@ -257,9 +255,8 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,
                "/* %s: %s line %d: divide-and-conquer: first=%lu, beyond=%lu, "
-               "nmemb=%lu, size=%lu, options=0x%x, mbm_options=0x%x */\n",
-               __func__,source_file,__LINE__,first,beyond,nmemb,size,options,
-               moptions);
+               "nmemb=%lu, size=%lu, options=0x%x */\n",
+               __func__,source_file,__LINE__,first,beyond,nmemb,size,options);
 #endif
         /* freeze low-address samples which will be used for pivot selection */
         if (aqcmp==compar) {
@@ -281,7 +278,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                     idx--;
                 nrecursions++;
                 mbmqsort_internal(base,first,q,size,compar,swapf,alignsize,
-                    size_ratio,idx,pbeyond,options,moptions);
+                    size_ratio,idx,pbeyond,options);
             }
             if (2UL>beyond-p) return;
             first=p;
@@ -293,7 +290,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                     idx--;
                 nrecursions++;
                 mbmqsort_internal(base,p,beyond,size,compar,swapf,alignsize,size_ratio,
-                    idx,pbeyond,options,moptions);
+                    idx,pbeyond,options);
             }
             if (2UL>q-first) return;
             beyond=q;
@@ -325,9 +322,9 @@ void mbmqsort(void *a, size_t n, size_t es,
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stderr,
-           "/* %s: %s line %d: n=%lu, es=%lu, options=0x%x, "
-           "mbm_options=0x%x */\n",__func__,source_file,__LINE__,
-           n,es,options,mbm_options);
+           "/* %s: %s line %d: n=%lu, es=%lu, options=0x%x "
+           "*/\n",__func__,source_file,__LINE__,
+           n,es,options);
 #endif
 
     table_index=n<=
@@ -348,5 +345,5 @@ void mbmqsort(void *a, size_t n, size_t es,
     nfrozen=0UL, pivot_minrank=n;
     options |= QUICKSELECT_NO_REPIVOT;
     mbmqsort_internal(a,0UL,n,es,compar,swapf,alignsize,size_ratio,
-        table_index,0UL,options,mbm_options);
+        table_index,0UL,options);
 }

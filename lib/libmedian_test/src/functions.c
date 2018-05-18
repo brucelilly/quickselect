@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.17 dated 2018-05-06T03:46:22Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.20 dated 2018-05-16T21:44:03Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-05-06T03:46:22Z"
+#define MODULE_VERSION "1.20"
+#define MODULE_DATE "2018-05-16T21:44:03Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -100,6 +100,7 @@ const char *function_type(unsigned int func, unsigned int *ptests)
         case FUNCTION_NBQSORT :            /*FALLTHROUGH*/
         case FUNCTION_NETWORKSORT :        /*FALLTHROUGH*/
         case FUNCTION_P9QSORT :            /*FALLTHROUGH*/
+        case FUNCTION_ILLUMOSQSORT :       /*FALLTHROUGH*/
         case FUNCTION_QSORT :              /*FALLTHROUGH*/
         case FUNCTION_RUNSORT :            /*FALLTHROUGH*/
         case FUNCTION_SELSORT :            /*FALLTHROUGH*/
@@ -131,6 +132,8 @@ const char *function_name(unsigned int func)
         break;
         case FUNCTION_BMQSORT :            ret = "uninstrumented Bentley&McIlroy qsort";
         break;
+        case FUNCTION_WBMQSORT :           ret = "worst-case Bentley&McIlroy qsort";
+        break;
         case FUNCTION_DEDSORT :            ret = "dedicated sort";
         break;
         case FUNCTION_DPQSORT :            ret = "dual-pivot qsort";
@@ -158,6 +161,8 @@ const char *function_name(unsigned int func)
         case FUNCTION_NETWORKSORT :        ret = "network sort";
         break;
         case FUNCTION_P9QSORT :            ret = "plan9 qsort";
+        break;
+        case FUNCTION_ILLUMOSQSORT :       ret = "illumos qsort";
         break;
         case FUNCTION_QSELECT_SORT :       ret = "quickselect-sort";
         break;
@@ -291,6 +296,7 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))idata_struct_strcmp_s) return "idata_struct_strcmp_s";
     if (compar==(int (*)(const void *,const void *,...))indcmp_s) return "indcmp_s";
     if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return "iindcmp_s";
+    if (compar==(int (*)(const void *,const void *,...))aqcmp) return "aqcmp";
     if (NULL==compar) return "NULL";
     return "unknown";
 }

@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.12 dated 2018-04-23T05:16:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.13 dated 2018-05-10T02:34:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,8 +15,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-04-23T05:16:05Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-05-10T02:34:57Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
 
@@ -224,7 +224,7 @@ long aqindex(const void *pv, void *base, size_t size)
                 /* 2 BCD digits in j */
                 k=j&0x0f; /* 0-9 */
                 k+=10*((j>>4)&0x0f); /* 00-90 */
-                v+=f*k;
+                v+=f*k/100;
                 if (DEBUGGING(AQCMP_DEBUG))
                     (V)fprintf(stderr,
                        "%s: %s line %d: i=%d, fractional=%02d, f=%ld, v=%ld\n",

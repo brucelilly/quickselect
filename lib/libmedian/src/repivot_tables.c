@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.3 dated 2018-04-18T01:11:42Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.4 dated 2018-05-18T01:35:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repivot_tables.c */
@@ -58,8 +58,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "repivot_tables.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2018-04-18T01:11:42Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2018-05-18T01:35:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017"
 
@@ -115,38 +115,62 @@
 
 /* sorting repivot tables */
 struct repivot_table_struct sorting_repivot_table_transparent[] = {
-  /* 3 */ {  40U,  39U }, /* sorting transparent */ /* median-of-3 */
-  /* 9 */ {  57U,  56U }, /* sorting transparent */ /* remedian of samples */
- /* 27 */ {  57U,  56U }, /* sorting transparent */
- /* 81 */ {  16U,  15U }, /* sorting transparent */
-/* 243 */ {   7U,   6U }, /* sorting transparent */
+/*
+transparent factors=-1 13,41,79,79,13,6,4 -2 12,40,78,78,12,5,3 -7 13,41,79,79,13,6,4 -8 12,40,78,78,12,5,3
+sorting average 0.995298 factors=-1 13,41,79,79,13,6,4 -2 12,40,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+sorting 3.35538@80 factors=-1 13,41,79,79,13,6,4 -2 12,40,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+*/
+  /* 1 */ {  13U,  12U }, /* sorting transparent */ /* single sample */
+  /* 3 */ {  41U,  40U }, /* sorting transparent */ /* median-of-3 */
+  /* 9 */ {  79U,  13U }, /* sorting transparent */ /* remedian of samples */
+ /* 27 */ {  79U,   6U }, /* sorting transparent */
+ /* 81 */ {  13U,  12U }, /* sorting transparent */
+/* 243 */ {   6U,   5U }, /* sorting transparent */
 /* 729 */ {   4U,   3U }, /* sorting transparent */
 };
 struct repivot_table_struct sorting_repivot_table_loose[] = {
-  /* 3 */ {  40U,  39U }, /* sorting loose */ /* median-of-3 */
-  /* 9 */ {  57U,  10U }, /* sorting loose */ /* remedian of samples */
- /* 27 */ {  57U,   6U }, /* sorting loose */
- /* 81 */ {  16U,  15U }, /* sorting loose */
-/* 243 */ {   7U,   6U }, /* sorting loose */
+/*
+sorting 1.97187@35 factors=-1 13,41,79,79,13,6,4 -2 12,16,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+*/
+  /* 1 */ {  13U,  12U }, /* sorting loose */ /* single sample */
+  /* 3 */ {  41U,  16U }, /* sorting loose */ /* median-of-3 */
+  /* 9 */ {  79U,  13U }, /* sorting loose */ /* remedian of samples */
+ /* 27 */ {  79U,   6U }, /* sorting loose */
+ /* 81 */ {  13U,  12U }, /* sorting loose */
+/* 243 */ {   6U,   5U }, /* sorting loose */
 /* 729 */ {   4U,   3U }, /* sorting loose */
 };
 struct repivot_table_struct sorting_repivot_table_relaxed[] = {
-  /* 3 */ {  40U,  39U }, /* sorting relaxed */ /* median-of-3 */
-  /* 9 */ {  57U,  10U }, /* sorting relaxed */ /* remedian of samples */
- /* 27 */ {  57U,   6U }, /* sorting relaxed */
- /* 81 */ {  16U,  15U }, /* sorting relaxed */
-/* 243 */ {   7U,   6U }, /* sorting relaxed */
+/*
+sorting 1.59639@79 factors=-1 13,41,79,79,13,6,4 -2 10,10,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+export factors="-1 9,10,23,79,13,6,4 -2 8,10,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3"
+90  1.46508 N log(N) mean comparisons [856-856] (856)
+sorting 1.48464@48 factors=-1 13,24,79,79,13,6,4 -2 9,8,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+*/
+  /* 1 */ {  13U,   9U }, /* sorting relaxed */ /* single sample */
+  /* 3 */ {  24U,   8U }, /* sorting relaxed */ /* median-of-3 */
+  /* 9 */ {  79U,  13U }, /* sorting relaxed */ /* remedian of samples */
+ /* 27 */ {  79U,   6U }, /* sorting relaxed */
+ /* 81 */ {  13U,  12U }, /* sorting relaxed */
+/* 243 */ {   6U,   5U }, /* sorting relaxed */
 /* 729 */ {   4U,   3U }, /* sorting relaxed */
 };
 struct repivot_table_struct sorting_repivot_table_aggressive[] = {
-  /* 3 */ {  40U,   9U }, /* sorting aggressive */ /* median-of-3 */
-  /* 9 */ {  11U,  10U }, /* sorting aggressive */ /* remedian of samples */
- /* 27 */ {  57U,   6U }, /* sorting aggressive */
- /* 81 */ {  16U,  15U }, /* sorting aggressive */
-/* 243 */ {   7U,   6U }, /* sorting aggressive */
+/*
+export factors="-1 9,10,21,79,13,6,4 -2 8,10,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3"
+20  1.43454 N log(N) mean comparisons [124-124] (124)
+sorting 1.39428@27 factors=-1 13,14,20,64,13,6,4 -2 9,6,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+*/
+  /* 1 */ {  13U,   9U }, /* sorting aggressive */ /* single sample */
+  /* 3 */ {  14U,   6U }, /* sorting aggressive */ /* median-of-3 */
+  /* 9 */ {  20U,  13U }, /* sorting aggressive */ /* remedian of samples */
+ /* 27 */ {  64U,   6U }, /* sorting aggressive */
+ /* 81 */ {  13U,  12U }, /* sorting aggressive */
+/* 243 */ {   6U,   5U }, /* sorting aggressive */
 /* 729 */ {   4U,   3U }, /* sorting aggressive */
 };
 struct repivot_table_struct sorting_repivot_table_disabled[] = {
+  /* 1 */ { 255U, 255U }, /* disabled */
   /* 3 */ { 255U, 255U }, /* disabled */
   /* 9 */ { 255U, 255U }, /* disabled */
  /* 27 */ { 255U, 255U }, /* disabled */
@@ -173,12 +197,16 @@ struct repivot_table_struct *sorting_repivot_table =
    sensitivity of selection performance to lopsided partitions.
 */
 struct repivot_table_struct selection_repivot_table[] = {
-  /* 3 */ {  30U,   3U }, /* selection aggressive */ /* median-of-3 */
-/* XXX 9 samples factor1=4 (@3, median cost at 1172 adverse sequence elements increases) */
-  /* 9 */ {   4U,   3U }, /* selection aggressive */ /* remedian of samples */
- /* 27 */ {   6U,   6U }, /* selection aggressive */
- /* 81 */ {  16U,  15U }, /* selection aggressive */
-/* 243 */ {   7U,   6U }, /* selection aggressive */
+/*
+r3 selection 3.52239@1340 factors=-1 13,41,79,79,13,6,4 -2 12,40,53,78,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+d5 selection 8.56064@503 factors=-1 13,41,79,79,13,6,4 -2 12,40,13,6,12,5,3 -7 11,6,13,18,13,6,4 -8 9,3,5,12,12,5,3
+*/
+  /* 1 */ {  11U,   9U }, /* selection aggressive */ /* single sample */
+  /* 3 */ {   6U,   3U }, /* selection aggressive */ /* median-of-3 */
+  /* 9 */ {  13U,   5U }, /* selection aggressive */ /* remedian of samples */
+ /* 27 */ {  18U,  12U }, /* selection aggressive */
+ /* 81 */ {  13U,  12U }, /* selection aggressive */
+/* 243 */ {   6U,   5U }, /* selection aggressive */
 /* 729 */ {   4U,   3U }, /* selection aggressive */
 };
 

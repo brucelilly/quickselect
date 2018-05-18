@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mergesort.c version 1.20 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is mergesort.c version 1.21 dated 2018-05-15T02:03:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mergesort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "mergesort.c"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2018-05-15T02:03:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -761,7 +761,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
         */
         if (1UL==len1) {
             A(f1==first);
-            search_and_insert(base,f1,f2,b2-1UL,size,COMPAR_ARGS,swapf,
+            binary_search_and_insert(base,f1,f2,b2-1UL,size,COMPAR_ARGS,swapf,
                 alignsize,size_ratio,options);
             break; /* must have been the first element */
         }

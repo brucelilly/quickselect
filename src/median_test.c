@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.19 dated 2018-05-06T03:48:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.26 dated 2018-05-16T02:41:55Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.19"
-#define MODULE_DATE "2018-05-06T03:48:59Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2018-05-16T02:41:55Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -66,9 +66,10 @@ extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
 
 /* shell specials: ;&()|<> \"'#$`~{}*?[ */
 /* getopt treats ? and : specially (: may be used as a magic silence flag) */
-/* available characters: atYZ(){}]\;'"`  plus control characters and whitespace */
-#define OPTSTRING "Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsST:uU:vVwW:xXy:z0:1:2:3:4:56:7:8:9!@#:%+,.|:/:~_<*&$[=>]"
-#define USAGE_STRING     "[-a] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-y [n]] [-z] [-0 name] [-1 f,f,f...] -2 [f,f,f...] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-6 name] [-7 [f,f,f...]] [-8 [f,f,f...]] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
+/* available characters: tYZ(){}]\;'"`  plus control characters and whitespace */
+#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsST:uU:vVwW:xXy:z0:1:2:3:4:56:7:8:9!@#:%+,.|:/:~_<*&$[=>]"
+#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-y [n]] [-z] [-0 name] [-1 f,f,f...] -2 [f,f,f...] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-6 name] [-7 [f,f,f...]] [-8 [f,f,f...]] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
+-a [opts]\ttest illumos qsort, possibly with modifications\n\
 -A\talphabetic (string) data type tests\n\
 -b [0]\ttest Bentley&McIlroy qsort optionally w/o instrumentation\n\
 -B\toutput data for drawing box plots\n\
@@ -167,8 +168,6 @@ static
 QUICKSELECT_INLINE
 void set_factor1(unsigned int repivot_table_index, size_t *pk, unsigned int factor1)
 {
-    if (0UL==repivot_table_index) return;
-    repivot_table_index--; /* repivot table has no entry for single sample */
     if (repivot_table_index>=repivot_table_size)
         repivot_table_index = repivot_table_size - 1UL;
     if (NULL!=pk) { /* selection */
@@ -182,8 +181,6 @@ static
 QUICKSELECT_INLINE
 void set_factor2(unsigned int repivot_table_index, size_t *pk, unsigned int factor2)
 {
-    if (0UL==repivot_table_index) return;
-    repivot_table_index--; /* repivot table has no entry for single sample */
     if (repivot_table_index>=repivot_table_size)
         repivot_table_index = repivot_table_size - 1UL;
     if (NULL!=pk) { /* selection */
@@ -229,23 +226,23 @@ static const char *partition_name(int method)
     return (const char *)buf;
 }
 
-static const char *bm_modification_name(unsigned int code)
+static const char *modification_name(unsigned int code)
 {
     static char buf[256];
 
     switch (code) {
-        case MBM_SAMPLE_QUANTITY :
-        return "MBM_SAMPLE_QUANTITY";
-        case MBM_ISORT_LS :
-        return "MBM_ISORT_LS";
-        case MBM_ISORT_BS :
-        return "MBM_ISORT_BS";
-        case MBM_DEDICATED_SORT :
-        return "MBM_DEDICATED_SORT";
-        case  MBM_NETWORK2 :
-        return "MBM_NETWORK2";
-        case  MBM_TREE3 :
-        return "MBM_TREE3";
+        case MOD_SAMPLE_QUALITY :
+        return "MOD_SAMPLE_QUALITY";
+        case MOD_SAMPLE_QUANTITY :
+        return "MOD_SAMPLE_QUANTITY";
+        case MOD_ISORT_LS :
+        return "MOD_ISORT_LS";
+        case MOD_ISORT_BS :
+        return "MOD_ISORT_BS";
+        case MOD_DEDICATED_SORT :
+        return "MOD_DEDICATED_SORT";
+        case MOD_TERNARY :
+        return "MOD_TERNARY";
         default:
             (V)snul(buf,sizeof(buf),"unknown code ",NULL,(unsigned long)code,
                 10,' ',1,NULL,NULL);
@@ -268,6 +265,7 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
     partition_method = QUICKSELECT_PARTITION_FAST;
     pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
     for (u=0x01U; 0U!=options; options&=~u,u<<=1) {
+        if (0U!=(u&(MOD_OPTIONS))) continue;
         if (0U!=(options&u)) {
             switch (u) {
 #if QUICKSELECT_STABLE
@@ -375,8 +373,8 @@ static int yearcmp(const struct data_struct *p1, const struct data_struct *p2)
     return 0;
 }
 
-static const char *repivot_comment[6] = {
-    " /* median-of-3 */", " /* remedian of samples */", "", "", "", ""
+static const char *repivot_comment[7] = {
+    " /* single sample */", " /* median-of-3 */", " /* remedian of samples */", "", "", "", ""
 };
 
 /* count the number of occurrences of character c in string s */
@@ -489,86 +487,89 @@ static int stability_test(long *refarray, struct data_struct *data_array,
                         switch (v) {
                             case FUNCTION_QSELECT_SORT :  /*FALLTHROUGH*/
                                 /* quickselect_internal */
-                                QSEL(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                QSEL(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_BMQSORT :
-                                BMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                BMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_DEDSORT :
-                                DEDSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                DEDSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_DPQSORT :
-                                DPQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                DPQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_GLQSORT :
-                                GLQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                GLQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_HEAPSORT :
-                                HEAPSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                HEAPSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_IBMQSORT :
-                                IBMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                IBMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_INDIRECT_MERGESORT :
-                                IMERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                IMERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_INTROSORT :
-                                INTROSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                INTROSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_ISORT :
-                                ISORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                ISORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_LOGSORT :
-                                LOGSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                LOGSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_MBMQSORT :
-                                MBMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                MBMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,options,0);
                             break;
                             case FUNCTION_MERGESORT :
-                                MERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                MERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_MINMAXSORT :
-                                MMSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                MMSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_NBQSORT :
-                                NBQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                NBQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_NETWORKSORT :
-                                NETWORKSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                NETWORKSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_P9QSORT :
-                                P9QSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                P9QSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
+                            break;
+                            case FUNCTION_ILLUMOSQSORT :
+                                ILLUMOSQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,options,0);
                             break;
                             case FUNCTION_QSORT :
-                                QSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                QSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_QSORT_WRAPPER :
                                 /* use quickselect to support options */
-                                quickselect(data_array,n,sz,compar[w],NULL,0UL,options);
+                                quickselect(data_array,n,sz,compar[w],NULL,0UL,options&(QUICKSELECT_USER_OPTIONS_MASK));
                             break;
                             case FUNCTION_SELSORT :
-                                SELSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SELSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_SHELLSORT :
-                                SHELLSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SHELLSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_SMOOTHSORT :
-                                SMOOTHSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SMOOTHSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_SQRTSORT :
-                                SQRTSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SQRTSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_SQSORT :
-                                SQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_SYSMERGESORT :
-                                SYSMERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                SYSMERGESORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_WQSORT :
-                                WQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                WQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_YQSORT :
-                                YQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0UL,0);
+                                YQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                         }
 #if 0
@@ -713,6 +714,97 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     */
                 break;
 #endif
+                case 'a' :
+                    flags[c] = 1U;
+                    functions |= (0x01U<<FUNCTION_ILLUMOSQSORT);
+                    if ('\0' == *(++pcc)) {
+                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
+                            /* next arg (no cutoffs) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* option(s) */
+                    }
+                    if ((isalpha(*pcc))||(ispunct(*pcc))||(isspace(*pcc))) {
+                        c = regcomp(&re, pcc, cflags);
+                        if (0 != c) {
+                            (V)regerror(c, &re, buf, sizeof(buf));
+                            f(LOG_ERR, log_arg,
+                                "%s: %s line %d: regcomp: %s",
+                                __func__, source_file, __LINE__,
+                                buf);
+                        } else {
+                            p=1U+strccount(pcc,'|'); /* # alternatives in arg */
+                            for (v=0U; v<32UL; v++) {
+                                tests=0x01U<<v;
+                                if (0U==(tests&(MOD_OPTIONS))) continue;
+                                pcc2 = modification_name(tests);
+                                if (0!=strncmp(pcc2,"MOD_",4)) break;
+                                c = regexec(&re, pcc2, 1UL, match, eflags);
+                                if (REG_NOMATCH == c) {
+                                    f(LOG_DEBUG, log_arg,
+                                        "%s: %s line %d: no match %s in %s",
+                                        __func__,source_file,__LINE__,pcc,pcc2);
+                                } else if (0 == c) {
+                                    if (match[0].rm_so != -1) {
+                                        n = (match[0].rm_eo - match[0].rm_so);
+                                        if (0UL < n) {
+                                            f(LOG_DEBUG, log_arg,
+                                                "%s: %s line %d: match: offset %d through %d: \"%*.*s\"",
+                                                __func__, source_file, __LINE__,
+                                                match[0].rm_so,match[0].rm_eo-1,
+                                                n,n,pcc2+match[0].rm_so);
+                                            options |= tests;
+                                        }
+                                    }
+                                }
+                            }
+                            if (0x0U==(options&(MOD_OPTIONS))) {
+                                f(LOG_ERR, log_arg,
+                                    "%s: %s line %d: no modified qsort option matches for \"%s\"",
+                                    __func__, source_file, __LINE__, pcc);
+                                fprintf(stderr, "modifcation options:\n");
+                                for (v=0U; v<32U; v++) {
+                                    tests=0x01U<<v;
+                                    if (0U==(tests&(MOD_OPTIONS))) continue;
+                                    pcc2 = modification_name(tests);
+                                    if (0==strncmp(pcc2,"unknown ",8)) break;
+                                    (V)snul(buf, sizeof(buf), "0x", NULL, tests, 16,
+                                        '0', 3, logger, log_arg);
+                                    (V)fprintf(stderr,"%s %s\n",buf,pcc2);
+                                }
+                                errs++;
+                            } else {
+                                q=bitcount(options);
+                                if (q<p) {
+                                    f(LOG_ERR, log_arg,
+                                        "%s: %s line %d: %u alternatives in "
+                                        "\"%s\", %u modified qsort option%s matched: 0x%x",
+                                        __func__,source_file,__LINE__,p,pcc,q,
+                                        q==1U?"":"s",options);
+                                    fprintf(stderr, "modifcation options:\n");
+                                    for (v=0U; v<32U; v++) {
+                                        tests=0x01U<<v;
+                                        if (0U==(tests&(MOD_OPTIONS))) continue;
+                                        pcc2 = modification_name(tests);
+                                        if (0==strncmp(pcc2,"unknown ",8)) break;
+                                        (V)snul(buf, sizeof(buf), "0x", NULL, tests, 16,
+                                            '0', 3, logger, log_arg);
+                                        (V)fprintf(stderr,"%s %s\n",buf,pcc2);
+                                    }
+                                    errs++;
+                                }
+                            }
+                        }
+                        regfree(&re);
+                    } else {
+                        options |= strtoul(pcc, &endptr, 0);
+                        pcc=endptr;
+                    }
+                    /* pass over arg to satisfy loop conditions */
+                    for (; '\0' != *pcc; pcc++) ;
+                    pcc--;
+                break;
                 case 'b' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc)) {
@@ -1048,10 +1140,11 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                                 buf);
                         } else {
                             p=1U+strccount(pcc,'|'); /* # alternatives in arg */
-                            for (v=0U; v<31UL; v++) {
+                            for (v=0U; v<32UL; v++) {
                                 tests=0x01U<<v;
-                                pcc2 = bm_modification_name(tests);
-                                if (0!=strncmp(pcc2,"MBM_",4)) break;
+                                if (0U==(tests&(MOD_OPTIONS))) continue;
+                                pcc2 = modification_name(tests);
+                                if (0!=strncmp(pcc2,"MOD_",4)) break;
                                 c = regexec(&re, pcc2, 1UL, match, eflags);
                                 if (REG_NOMATCH == c) {
                                     f(LOG_DEBUG, log_arg,
@@ -1066,19 +1159,20 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                                                 __func__, source_file, __LINE__,
                                                 match[0].rm_so,match[0].rm_eo-1,
                                                 n,n,pcc2+match[0].rm_so);
-                                            mbm_options |= tests;
+                                            options |= tests;
                                         }
                                     }
                                 }
                             }
-                            if (0x0U==mbm_options) {
+                            if (0x0U==(options&(MOD_OPTIONS))) {
                                 f(LOG_ERR, log_arg,
                                     "%s: %s line %d: no modified qsort option matches for \"%s\"",
                                     __func__, source_file, __LINE__, pcc);
                                 fprintf(stderr, "modifcation options:\n");
                                 for (v=0U; v<32U; v++) {
                                     tests=0x01U<<v;
-                                    pcc2 = bm_modification_name(tests);
+                                    if (0U==(tests&(MOD_OPTIONS))) continue;
+                                    pcc2 = modification_name(tests);
                                     if (0==strncmp(pcc2,"unknown ",8)) break;
                                     (V)snul(buf, sizeof(buf), "0x", NULL, tests, 16,
                                         '0', 3, logger, log_arg);
@@ -1086,17 +1180,17 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                                 }
                                 errs++;
                             } else {
-                                q=bitcount(mbm_options);
+                                q=bitcount(options);
                                 if (q<p) {
                                     f(LOG_ERR, log_arg,
                                         "%s: %s line %d: %u alternatives in "
                                         "\"%s\", %u modified qsort option%s matched: 0x%x",
                                         __func__,source_file,__LINE__,p,pcc,q,
-                                        q==1U?"":"s",mbm_options);
+                                        q==1U?"":"s",options);
                                     fprintf(stderr, "modifcation options:\n");
                                     for (v=0U; v<32U; v++) {
                                         tests=0x01U<<v;
-                                        pcc2 = bm_modification_name(tests);
+                                        pcc2 = modification_name(tests);
                                         if (0==strncmp(pcc2,"unknown ",8)) break;
                                         (V)snul(buf, sizeof(buf), "0x", NULL, tests, 16,
                                             '0', 3, logger, log_arg);
@@ -1108,7 +1202,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         regfree(&re);
                     } else {
-                        mbm_options |= strtoul(pcc, &endptr, 0);
+                        options |= strtoul(pcc, &endptr, 0);
                         pcc=endptr;
                     }
                     /* pass over arg to satisfy loop conditions */
@@ -1499,7 +1593,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* factors value(s) */
                     }
-                    for (x=1UL; x<=repivot_table_size; x++) {
+                    for (x=0UL; x<repivot_table_size; x++) {
                         y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
                             f,log_arg);
                         set_factor1(x,NULL,y);
@@ -1520,7 +1614,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* factors value(s) */
                     }
-                    for (x=1UL; x<=repivot_table_size; x++) {
+                    for (x=0UL; x<repivot_table_size; x++) {
                         y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
                             f,log_arg);
                         set_factor2(x,NULL,y);
@@ -1569,11 +1663,9 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     } else {
                         pst=sampling_tables[0];
                     }
-                    for (x=1UL; x<(SAMPLING_TABLE_SIZE); x++) {
+                    for (x=0UL; x<(SAMPLING_TABLE_SIZE); x++) {
                         y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
                             f,log_arg);
-                        /* in case user gives cutoff for 1 sample */
-                        if ((1UL==x)&&(3UL>y)) x=0UL;
                         if (NULL!=pst) pst[x].max_nmemb=y;
                         if ('\0' != *endptr) pcc=endptr+1;
                         else break;
@@ -1653,7 +1745,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* factors value(s) */
                     }
-                    for (x=1UL; x<=repivot_table_size; x++) {
+                    for (x=0UL; x<repivot_table_size; x++) {
                         y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
                             f,log_arg);
                         set_factor1(x,&y,y);
@@ -1674,7 +1766,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* factors value(s) */
                     }
-                    for (x=1UL; x<=repivot_table_size; x++) {
+                    for (x=0UL; x<repivot_table_size; x++) {
                         y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
                             f,log_arg);
                         set_factor2(x,&y,y);
@@ -2083,19 +2175,6 @@ usage:
                         (V)fprintf(stdout,
                             "%stiming column = %d\n", comment, col);
                     break;
-                    case 'M' :
-                        if (0U!=mbm_options) {
-                            (V)fprintf(stdout, "%smbm_options =", comment);
-                            for (x=0UL; x<31; x++) {
-                                w=(0x01<<x);
-                                if (0U!=(mbm_options&w)) {
-                                    (V)fprintf(stdout, " %s",
-                                        bm_modification_name(w));
-                                }
-                            }
-                            (V)fprintf(stdout, "\n");
-                        }
-                    break;
                     case '0' : /*FALLTHROUGH*/
                     case '1' : /*FALLTHROUGH*/
                     case '2' : /*FALLTHROUGH*/
@@ -2137,6 +2216,9 @@ usage:
                                 w++,x*=3UL)
                                 {
                                     y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
                                     if ((4294967295UL<y)&&(0UL<w)
                                     &&(4294967295UL>=pst[w-1UL].max_nmemb))
                                         (V)fprintf(stdout,"/* 4294967295 */\n");
@@ -2179,6 +2261,9 @@ usage:
                                     w++,x*=3UL)
                                     {
                                         y = pst[w].max_nmemb;
+                                        if ((65535UL<y)&&(0UL<w)
+                                        &&(65535UL>=pst[w-1UL].max_nmemb))
+                                            (V)fprintf(stdout,"/* 65535 */\n");
                                         if ((4294967295UL<y)&&(0UL<w)
                                         &&(4294967295UL>=pst[w-1UL].max_nmemb))
                                             (V)fprintf(stdout,
@@ -2215,7 +2300,7 @@ usage:
                                 (V)fprintf(stdout,"sorting repivot table (%s):\n%s\n",
                                     pcc, " samples, factor1, factor2"
                                     );
-                                for (x=1UL; x<=repivot_table_size; x++) {
+                                for (x=0UL; x<repivot_table_size; x++) {
                                     unsigned char factor1, factor2;
                                     i = snul(buf,sizeof(buf),"/* "," */ {",
                                         sorting_sampling_table[x].samples, 10,
@@ -2231,13 +2316,13 @@ usage:
                                         "%s %s %s }, /* sorting %s */%s\n",
                                         buf,buf2,buf3,
                                         sorting_repivot_table_name,
-                                        repivot_comment[x-1UL]);
+                                        repivot_comment[x]);
                                 }
                                 (V)fprintf(stdout,
                                     "selection repivot table (%s):\n%s\n",
                                     pcc2, " samples, factor1, factor2"
                                     );
-                                for (x=1UL; x<=repivot_table_size; x++) {
+                                for (x=0UL; x<repivot_table_size; x++) {
                                     unsigned char factor1, factor2;
                                     /* #samples is uniform for all sampling tables */
                                     i = snul(buf,sizeof(buf),"/* "," */ { ",
@@ -2254,7 +2339,7 @@ usage:
                                         "%s %s %s }, /* selection %s */%s\n",
                                         buf,buf2,buf3,
                                         selection_repivot_table_name,
-                                        repivot_comment[x-1UL]);
+                                        repivot_comment[x]);
                                 }
                                 if (0U!=flags['m']) {
                                     (V)fprintf(stdout, "%lu order statistic%s, %c\n",
@@ -2265,6 +2350,8 @@ usage:
                             if (0UL==z) z++;
                         }
                     break;
+                    case 'a' :
+                    case 'M' :
                     case 'p' : /*FALLTHROUGH*/
                     case '|' : /*FALLTHROUGH*/
                     case '/' : /*FALLTHROUGH*/
@@ -2272,7 +2359,19 @@ usage:
                     case '<' :
                     case '@' :
                         if (0U==q) {
-                            decode_options(stderr,options,comment,"");
+                            decode_options(stdout,options,comment,"");
+                            if (0U!=(options&(MOD_OPTIONS))) {
+                                (V)fprintf(stdout, "%soptions =", comment);
+                                for (x=0UL; x<32; x++) {
+                                    w=(0x01<<x);
+                                    if (0U==(w&(MOD_OPTIONS))) continue;
+                                    if (0U!=(options&w)) {
+                                        (V)fprintf(stdout, " %s",
+                                            modification_name(w));
+                                    }
+                                }
+                                (V)fprintf(stdout, "\n");
+                            }
                             q++;
                         }
                     break;

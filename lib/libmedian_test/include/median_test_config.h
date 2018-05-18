@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.28 dated 2018-05-06T03:50:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.31 dated 2018-05-15T02:09:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -403,8 +403,9 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define NBQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) nbqsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define NETWORKSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) networksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define P9QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) p9qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
-#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options,NULL,NULL)
-#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options)
+#define ILLUMOSQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) illumos_qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
+#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION),NULL,NULL)
+#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION))
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define RUNSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) runsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define SELSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) selsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
@@ -445,13 +446,14 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define FUNCTION_LOGSORT             23U
 #define FUNCTION_SMOOTHSORT          24U
 #define FUNCTION_P9QSORT             25U
-#define FUNCTION_MERGESORT           26U
-#define FUNCTION_DEDSORT             27U
-#define FUNCTION_SYSMERGESORT        28U
-#define FUNCTION_INDIRECT_MERGESORT  29U
-#define FUNCTION_RUNSORT             30U
+#define FUNCTION_ILLUMOSQSORT        26U
+#define FUNCTION_MERGESORT           27U
+#define FUNCTION_DEDSORT             28U
+#define FUNCTION_SYSMERGESORT        29U
+#define FUNCTION_INDIRECT_MERGESORT  30U
+#define FUNCTION_RUNSORT             31U
 
-#define FUNCTION_COUNT               31U
+#define FUNCTION_COUNT               32U
 #if FUNCTION_COUNT > 32
 # error "FUNCTION_COUNT " xbuildstr(FUNCTION_COUNT) " is incompatible with 32-bit unsigned integers"
 #endif
@@ -468,12 +470,14 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 /* Improved sampling quality, Kiwiel Algorithm L, and recursion on the smaller
    partitioned region are always incorporated.
 */
-#define MBM_SAMPLE_QUANTITY    0x001U
-#define MBM_ISORT_LS           0x002U
-#define MBM_ISORT_BS           0x004U /* overrides MBM_ISORT_LS */
-#define MBM_DEDICATED_SORT     0x008U /* overrides MBM_ISORT_BS, MBM_ISORT_LS */
-#define MBM_NETWORK2           0x010U
-#define MBM_TREE3              0x020U
+#define MOD_SAMPLE_QUALITY     0x0040U
+#define MOD_SAMPLE_QUANTITY    0x0080U
+#define MOD_ISORT_LS           0x0100U
+#define MOD_ISORT_BS           0x0200U /* overrides MBM_ISORT_LS */
+#define MOD_DEDICATED_SORT     0x0400U /* overrides MBM_ISORT_BS, MBM_ISORT_LS */
+#define MOD_TERNARY            0x0800U
+
+#define MOD_OPTIONS ((MOD_SAMPLE_QUALITY)|(MOD_SAMPLE_QUANTITY)|(MOD_ISORT_LS)|(MOD_ISORT_BS)|(MOD_DEDICATED_SORT)|(MOD_TERNARY))
 
 /* worst-case for sorting network; force swaps for network sort */
 #if SILENCE_WHINEY_COMPILERS /* no ambiguity here... */
@@ -748,6 +752,9 @@ extern void heap_sort(char *base, size_t nmemb, size_t size,
 extern void ibmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void *));
 extern void wbmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void *));
 
+/* illumos.c */
+extern void illumos_qsort(void *, size_t, size_t, int (*)(const void *, const void *),unsigned int options);
+
 /* introsort.c */
 extern void introsort(char *base, size_t nmemb, size_t size, int(*compar)(const void *,const void *),unsigned int options);
 extern void wintrosort(char *base, size_t nmemb, size_t size, int(*compar)(const void *,const void *),unsigned int options);
@@ -914,73 +921,5 @@ extern void wqsort(void *base, size_t nmemb, size_t size, int (*compar)(const vo
 
 /* yaroslavskiy.c */
 extern void yqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options);
-
-/* inline code */
-/* Insertion sort using linear search to locate insertion position for
-   out-of-order element, followed by rotation to insert the element in position.
-*/
-/* Included here as it is used in introsort (overall insertion sort) and in
-   mbmqsort (Bentley&McIlroy-like insertion sort when isort_bs and
-   dedicated_sort are not used).
-*/
-static
-QUICKSELECT_INLINE
-void isort_ls(char *base, size_t first, size_t beyond, size_t size,
-    COMPAR_DECL,
-    void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options)
-{
-    register size_t l, n, u=beyond-1UL;
-    char *pa, *pu=base+u*size;
-
-/* separate direct, indirect versions to avoid options checks in loops,
-   also cache dereferenced pa in inner loop
-*/
-    if (0U==(options&(QUICKSELECT_INDIRECT))) { /* direct */
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            if (0<COMPAR(pa,pa+size)) { /* skip over in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* linear search for insertion position */
-                    register char *pd;
-                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
-                        if (0>=COMPAR(pa,pd)) break;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating elements
-                   [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-#ifdef QUICKSELECT_COUNT_ROTATIONS
-                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
-#endif
-            }
-        }
-    } else { /* indirect */
-        register char *p;
-        for (n=u,pa=pu-size; n>first; pa-=size) {
-            --n;
-            p=*((char **)pa);
-            if (0<COMPAR(p,*((char**)(pa+size)))) {/* skip over in-order */
-                l=n+2UL;
-                if (l>u) l=beyond; /* simple swap */
-                else { /* linear search for insertion position */
-                    register char *pd;
-                    for (pd=base+l*size; pd<=pu; pd+=size,l++) {
-                        if (0>=COMPAR(p,*((char**)pd))) break;
-                    } A(n!=l);
-                }
-                /* Insert element now at n at position before l by rotating elements
-                   [n,l) left by 1.
-                */
-                irotate(base,n,n+1UL,l,size,swapf,alignsize,size_ratio);
-#ifdef QUICKSELECT_COUNT_ROTATIONS
-                QUICKSELECT_COUNT_ROTATIONS(l-n,size_ratio);
-#endif
-            }
-        }
-    }
-}
 
 #endif /* MEDIAN_TEST_CONFIG_H_INCLUDED */

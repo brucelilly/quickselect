@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.18 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.19 dated 2018-05-14T06:00:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.19"
+#define MODULE_DATE "2018-05-14T06:00:10Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -174,13 +174,34 @@ char *freeze_some_samples(register char *base, register size_t first,
 #endif
             /* pre-freeze before pivot selection */
             p=count_frozen(base,first,beyond,size);
-            q=pivot_rank(base,first,beyond,size,pivot);
             if (0U<table_index) s=sorting_sampling_table[table_index-1U].samples;
-            else s=1UL;
+            else {
+                s=1UL;
+                switch (nmemb) {
+                    case 0UL :
+                    case 1UL :
+                    case 2UL :
+                    case 3UL :
+                    case 4UL :
+                    case 6UL :
+                    case 8UL :
+                        /* leave pivot at [upper-]middle element */
+                    break;
+                    case 5UL :
+                    case 7UL :
+                    case 9UL :
+                        pivot+=size; /* away from middle for bitonic */
+                    break;
+                    default :
+                        pivot+=size*((nmemb-1UL)/8); /* 1/2+1/8=5/8 */
+                    break;
+                }
+            }
             w=r/s;
             o=(s>>1)*w,x=m-r-o,u=m+r+o+1UL;
             t=0UL;
             pivot_sample_rank(pivot,r,r,size,table_index,pivot,&t,base);
+            q=pivot_rank(base,first,beyond,size,pivot);
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
@@ -423,6 +444,7 @@ void wqsort(void *base, size_t nmemb, size_t size,
 # error "strange SIZE_MAX " SIZE_MAX
 #endif /* word size */
     ; /* starting point; refined by sample_index() */
+    table_index=d_sample_index(sorting_sampling_table,table_index,nmemb);
 
     nfrozen=0UL, pivot_minrank=nmemb;
     wqsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,

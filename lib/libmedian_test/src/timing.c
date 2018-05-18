@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timing.c version 1.34 dated 2018-04-30T14:43:39Z. \ $ */
+/* $Id: ~|^` @(#)   This is timing.c version 1.37 dated 2018-05-16T02:56:44Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.timing.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: timing.c ~|^` @(#)"
 #define SOURCE_MODULE "timing.c"
-#define MODULE_VERSION "1.34"
-#define MODULE_DATE "2018-04-30T14:43:39Z"
+#define MODULE_VERSION "1.37"
+#define MODULE_DATE "2018-05-16T02:56:44Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -742,10 +742,30 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                            authors realize it...
                         */
                         switch (function) {
+                            /* sampling breakpoints differ between sorting and selection */
                             case FUNCTION_QSELECT :      /*FALLTHROUGH*/
                             case FUNCTION_QSELECT_S :    /*FALLTHROUGH*/
                             case FUNCTION_QSELECT_SORT : /*FALLTHROUGH*/
+                                if (FUNCTION_QSELECT!=*plast_adv) {
+                                    *plast_adv=FUNCTION_QSELECT;
+                                    initialize_antiqsort(n,pv,type,ratio,size,
+                                        global_refarray);
+                                    QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
+                                }
+                            break;
+#if 1
+                            case FUNCTION_QSORT_WRAPPER :
+                                if (FUNCTION_QSORT_WRAPPER!=*plast_adv) {
+                                    *plast_adv=FUNCTION_QSORT_WRAPPER;
+                                    initialize_antiqsort(n,pv,type,ratio,size,
+                                        global_refarray);
+                                    quickselect((char *)pv,n,size,aqcmp,karray,
+                                        nk,options&(QUICKSELECT_USER_OPTIONS_MASK));
+                                }
+                            break;
+#else
                             case FUNCTION_QSORT_WRAPPER :/*FALLTHROUGH*/
+#endif
                             case FUNCTION_SQSORT :       /*FALLTHROUGH*/
                             case FUNCTION_WQSORT :
                                 if (FUNCTION_WQSORT!=*plast_adv) {
@@ -847,6 +867,12 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 initialize_antiqsort(n,pv,type,ratio,size,
                                     global_refarray);
                                 P9QSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
+                            break;
+                            case FUNCTION_ILLUMOSQSORT :
+                                *plast_adv=function;
+                                initialize_antiqsort(n,pv,type,ratio,size,
+                                    global_refarray);
+                                ILLUMOSQSORT(pv,0UL,u,size,aqcmp,NULL,0UL,0UL,0U);
                             break;
                             case FUNCTION_QSORT :
                                 *plast_adv=function;
@@ -1071,7 +1097,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         (V)clock_gettime(CLOCK_REALTIME,&timespec_start);
                         switch (function) {
                             case FUNCTION_QSELECT_S :
-                                QSEL_S(pv,0UL,u,size,compar_s,NULL,0UL,0UL,0U);
+                                QSEL_S(pv,0UL,u,size,compar_s,karray,0UL,nk,0U);
                             break;
                             case FUNCTION_QSELECT_SORT :
                                 QSEL(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
@@ -1127,12 +1153,15 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             case FUNCTION_P9QSORT :
                                 P9QSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
                             break;
+                            case FUNCTION_ILLUMOSQSORT :
+                                ILLUMOSQSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
+                            break;
                             case FUNCTION_QSORT :
                                 QSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
                             break;
                             case FUNCTION_QSORT_WRAPPER :
                                 A(1UL<n); A(u+1UL==n);
-                                quickselect((char *)pv,n,size,compar,NULL,0UL,options);
+                                quickselect((char *)pv,n,size,compar,NULL,0UL,options&(QUICKSELECT_USER_OPTIONS_MASK));
                             break;
                             case FUNCTION_RUNSORT :
                                 RUNSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
