@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    tables.h 1.5 copyright 2017-2018 Bruce Lilly.   \ tables.h $
+* $Id: ~|^` @(#)    tables.h 1.8 copyright 2017-2018 Bruce Lilly.   \ tables.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is tables.h version 1.5 dated 2018-04-18T00:42:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is tables.h version 1.8 dated 2018-06-12T18:36:53Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.tables.h */
@@ -84,7 +84,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define TABLES_H_VERSION "tables.h 1.5 2018-04-18T00:42:19Z"
+#define TABLES_H_VERSION "tables.h 1.8 2018-06-12T18:36:53Z"
 
 /* system header files */
 #include <stddef.h>             /* size_t */
@@ -106,13 +106,18 @@ struct sampling_table_struct {
     size_t max_nmemb;    /* smallest sub-array for this number of samples */
     size_t samples;      /* the number of samples used for pivot selection */
 };
-/* N.B.: The sampling table's samples member for sampling_table[x] is the x'th
-          power of 3. Several parts of the code depend on this. Don't add
-          entries for sample sizes which are not powers of 3!
+/* N.B.: The remedian-based sampling tables' samples member for
+          sampling_table[x] is the x'th power of 3. Several parts of the code
+          depend on this. Don't add entries for sample sizes which are not
+          powers of 3!
 */
 extern struct sampling_table_struct sorting_sampling_table[];
 extern struct sampling_table_struct ends_sampling_table[];
 extern struct sampling_table_struct middle_sampling_table[];
+
+extern struct sampling_table_struct mos_sorting_sampling_table[];
+extern struct sampling_table_struct mos_middle_sampling_table[];
+extern struct sampling_table_struct mos_ends_sampling_table[];
 
 /* For simplicity, all sampling tables are the same size */
 #define SAMPLING_TABLE_SIZE  21 /* 3^0 - 3^20 */
@@ -129,72 +134,15 @@ extern struct sampling_table_struct middle_sampling_table[];
    statistic ranks starts with a determination of a "raw" distribution, based on
    the presence or absence of desired ranks in three bands of the sub-array,
    leading to 8 possible values: 000, 001, 010, 011, 100, 101, 110, and 111,
-   where a 1 indicates presence of desired order statistic ranks in a band.  The
-   8 raw distribution values are then translated to one of 2 values for sampling
-   for selection, based on whether or not there are desired ranks near the
-   middle of the sub-array, as noted above (the middle band is tested first, and
-   one other band is checked if necessary to discriminate between distributions
-   which have ranks in 2 or 3 bands).  Sorting (as distinct from order statistic
+   where a 1 indicates presence of desired order statistic ranks in a band.
+   Sorting (as distinct from order statistic
    selection) uses a separate sampling table.  When selecting a large number of
    order statistics, it may be more efficient to simply sort the sub-array,
    where "large" depends on the distribution of order statistics as well as
    their number and the size of the sub-array.  Order statistics ranks which are
    widely distributed result in an advantage to sorting at a lower proportion of
-   desired ranks to the sub-array size than for other distributions.  A table
-   with two columns, for widely-distributed and for others, is used to indicate
-   when sorting is preferred to continued selection; rows of the table
-   correspond to sub-array size and the table entry values represent the largest
-   number of desired order statistic ranks for which continued selection is
-   appropriate.  The raw order statistic distribution is translated into a
-   suitable column index value for that table.
+   desired ranks to the sub-array size than for other distributions.
 */
-#define SAMPLING_TABLES        3
-enum sampling_distribution_enum {
-    SORTING=0U,
-    ENDS=1U,
-    MIDDLE=2U,
-};
-extern struct sampling_table_struct *sampling_tables[SAMPLING_TABLES];
-extern unsigned char sampling_distribution_remap[8];
-
-/* If many order statistics are desired, sorting may be more efficient than
-   explicit selection.  The breakpoint where that tradeoff occurs depends on the
-   size of the sub-array, the number of desired order statistics, and the
-   distribution of the desired order statistic ranks.  For large sub-arrays,
-   sorting is more efficient for widely distributed order statistics if their
-   quantity is greater than about 10% of the number of sub-array elements.  If
-   the order statistics are grouped together or split between the ends of the
-   sub-array, selection is more efficient for large sub-arrays with as many as
-   90% of the possible ranks as desired order statistics.  Small sub-arrays
-   deviate from these rules of thumb, so a small table is used for breakpoints.
-   A table of sets of entries with unsigned values less than 256 is used in
-   order to keep the table size small.
-*/
-#define SELECTION_TYPES        2
-enum selection_distribution_enum {
-    DISTRIBUTED=0U,
-    OTHERS=1U,
-};
-extern unsigned char selection_distribution_remap[8];
-
-
-/* SELECTION_BREAKPOINT_OFFSET is based on avoidance of recomparisons while
-       partitioning.
-       Selection for median-of-medians is for a single order statistic (the
-       median of the medians) and MINMAX is only usable if that desired rank is
-       one of the first two or last two elements.  If the first or last, N-1
-       comparisons are required (2 at size 3), and if the second or second-last,
-       2N-2 comparisons are required (4 at size 3).  At size 3, sorting is
-       always at least as efficient as selection.  At size 4, selection is only
-       efficient for the first or last element.
-*/
-#define SELECTION_BREAKPOINT_OFFSET          4
-#define SELECTION_BREAKPOINT_TABLE_MAX_NMEMB 301
-#define SELECTION_BREAKPOINTS     ((SELECTION_BREAKPOINT_TABLE_MAX_NMEMB)\
-                                   +1-(SELECTION_BREAKPOINT_OFFSET))
-
-extern unsigned char selection_breakpoint[SELECTION_BREAKPOINTS][SELECTION_TYPES];
-extern unsigned char stable_selection_breakpoint[SELECTION_BREAKPOINTS][SELECTION_TYPES];
 
 /*
    Repivoting with median-of medians always results in a ratio of the large
@@ -222,30 +170,18 @@ extern unsigned char stable_selection_breakpoint[SELECTION_BREAKPOINTS][SELECTIO
       further improvement can be obtained using factor2 and factor1, or the
       elimination of a worst-case performance point entails too large of a
       performance penalty for random input sequences.
-   The "disabled" and "transparent" repivot table factor1 and factor2 entries
-      for 243 and fewer samples are set such that repivoting 'never' occurs for
-      random input sequences for different variations of 'never', where 'never'
-      represents some very low probability.
-   The "loose" table entries are set to achieve a worst-case sorting comparison
-      complexity of <= 2.0 N log(N) comparisons without further affecting random
-      input sequences.
-   The "relaxed" table entries are set to achieve the minimum comparison
-      complexities possible for sorting using primarily factor2, and only
-      decreasing factor1 when absolutely necessary.
-   The "aggressive" table entries use both factors as far as possible (i.e.
-      until some worst-case performance point cannot be eliminated or the
-      performance penalty becomes too great).
 */
 /* repivot factors are relatively small unsigned integers */
 struct repivot_table_struct {
+    size_t min_samples;
     unsigned char factor1; /* lopsided ratio for immediate repivoting */
     unsigned char factor2; /* lopsided ratio for repivoting on 2nd occurrence */
 };
 
-extern struct repivot_table_struct *sorting_repivot_table;
-extern struct repivot_table_struct selection_repivot_table[];
-
-extern const size_t repivot_table_size;
+extern struct repivot_table_struct ros_sorting_repivot_table[];
+extern struct repivot_table_struct ros_selection_repivot_table[];
+extern struct repivot_table_struct mos_sorting_repivot_table[];
+extern struct repivot_table_struct mos_selection_repivot_table[];
 
 #define	TABLES_H_INCLUDED
 #endif /* TABLES_H_INCLUDED */

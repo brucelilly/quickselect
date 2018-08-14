@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is print.c version 1.10 dated 2018-04-15T02:42:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is print.c version 1.12 dated 2018-06-05T23:43:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.print.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: print.c ~|^` @(#)"
 #define SOURCE_MODULE "print.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-04-15T02:42:03Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2018-06-05T23:43:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -58,7 +58,7 @@
 
 static size_t element_size(char *pointer)
 {
-    if (pointer==(char*)global_refarray) return sizeof(long)*global_ratio; /* XXX could be changed to uint_least64_t */
+    if (pointer==(char*)global_refarray) return sizeof(long); /* XXX could be changed to uint_least64_t */
     if (pointer==(char*)global_sharray) return sizeof(short)*global_ratio;
     if (pointer==(char*)global_iarray) return sizeof(int)*global_ratio;
     if (pointer==(char*)global_larray) return sizeof(long)*global_ratio;
@@ -68,7 +68,7 @@ static size_t element_size(char *pointer)
     if (pointer==(char*)global_uarray) return sizeof(float);
     if (pointer==(char*)global_sarray) return sizeof(float);
     if (pointer==(char*)global_warray) return sizeof(float);
-    return sizeof(char *);
+    return sizeof(size_t); /* for sorting pk */
 }
 
 /* print a pointer (address) offset by its index in array at base, return pointer value */
@@ -85,9 +85,15 @@ static void fprint_datum(FILE *f, char *base, size_t i, const char *prefix)
     size_t size=element_size(base);
 
     if (NULL!=prefix) (V)fprintf(f,"%s",prefix);
-    if (base!=global_parray)
-        (V)fprintf(f,"%p[%lu]",base+global_ratio*size*i,i);
-    if (base==(char*)global_refarray) (V)fprintf(f,":%ld",global_refarray[global_ratio*i]); /* XXX could be changed to format for uint_least64_t */
+    if (base!=global_parray) {
+        if ((base==global_sharray)||(base==global_iarray)||(base==global_larray)
+        || (base==global_darray)||(base==global_data_array)
+        )
+            (V)fprintf(f,"%p[%lu]",base+global_ratio*size*i,i);
+        else
+            (V)fprintf(f,"%p[%lu]",base+size*i,i);
+    }
+    if (base==(char*)global_refarray) (V)fprintf(f,":%ld",global_refarray[i]); /* XXX could be changed to format for uint_least64_t */
     else if (base==(char*)global_sharray) (V)fprintf(f,":%hd",global_sharray[global_ratio*i]);
     else if (base==(char*)global_iarray) (V)fprintf(f,":%d",global_iarray[global_ratio*i]);
     else if (base==(char*)global_larray) (V)fprintf(f,":%ld",global_larray[global_ratio*i]);
@@ -102,6 +108,7 @@ static void fprint_datum(FILE *f, char *base, size_t i, const char *prefix)
     else if (base==(char*)global_uarray) (V)fprintf(f,":%.9G",global_uarray[i]);
     else if (base==(char*)global_sarray) (V)fprintf(f,":%.9G",global_sarray[i]);
     else if (base==(char*)global_warray) (V)fprintf(f,":%.9G",global_warray[i]);
+    else (V)fprintf(f,":%lu",((size_t *)base)[i]);
 }
 
 static char *base_array(char *pointer)
@@ -146,7 +153,7 @@ static char *base_array(char *pointer)
     && (pointer<((char*)global_warray)
        +element_size((char*)global_warray)*global_count)
     ) return (char *)global_warray;
-    return NULL; /* unknown */
+    return pointer; /* for sorting pk */
 }
 
 void fprint_some_array(FILE *f, char *target, size_t l, size_t u, const char *prefix, const char *suffix, unsigned int options)

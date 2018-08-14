@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is parse.c version 1.3 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is parse.c version 1.8 dated 2018-08-13T07:24:45Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.parse.c */
@@ -46,13 +46,15 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: parse.c ~|^` @(#)"
 #define SOURCE_MODULE "parse.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-08-13T07:24:45Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
+
+#include "pi.h"                 /* pi */
 
 #include "initialize_src.h"
 
@@ -71,8 +73,24 @@ double mult_k_ki(int p)
     return n;
 }
 
+static char *match(char *p)
+{
+    size_t n;
+    for (p++,n=1UL; n>0UL; p++) {
+        switch(*p) {
+            case '(' : n++;
+            break;
+            case ')' : n--;
+            break;
+        }
+    }
+    return --p;
+}
+
 double parse_num(const char *p, char **pendptr, int base)
 {
+    char buf[4096], *q;
+    int i;
     double n;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
@@ -82,7 +100,71 @@ double parse_num(const char *p, char **pendptr, int base)
             "%s line %d: %s(\"%s\", %p, %d)\n",
             __func__,__LINE__,__func__,p,(void *)pendptr,base);
 #endif
-    n = strtod(p, pendptr);
+    if (isdigit(*p)) n=strtod(p,pendptr);
+    else if (0==strncasecmp(p,"sqrt(",i=5)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=sqrt(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"ln(",i=3)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=log(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"log(",i=4)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=log(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"log2(",i=5)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=log2(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"log10(",i=6)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=log10(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"exp(",i=4)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=exp(n);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"int(",i=4)) {
+        strncpy(buf,p+i-1,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        n=(double)snlround(n,NULL,NULL);
+        *pendptr=p+i+(q-buf);
+    } else if (0==strncasecmp(p,"e",i=1)) {
+        n=exp(1.0);
+        p+=1;
+        *pendptr=p;
+    } else if (0==strncasecmp(p,"pi",i=2)) {
+        n=pi;
+        p+=2;
+        *pendptr=p;
+    } else if ('('==*p) {
+        strncpy(buf,p,sizeof(buf)-1);
+        q=match(buf);
+        *q='\0';
+        n=parse_expr(n,buf+1,pendptr,10);
+        *pendptr=p+1+(q-buf);
+    }
 #if DEBUG_CODE
     if (DEBUGGING(SUPPORT_DEBUG))
         (V)fprintf(stderr,
@@ -126,17 +208,20 @@ double parse_num(const char *p, char **pendptr, int base)
 }
 
 QUICKSELECT_INLINE
-double parse_expr(const char *p, char **pendptr, int base)
+double parse_expr(double n, const char *p, char **pendptr, int base)
 {
-    double n, n2;
+    double n2;
 
 #if DEBUG_CODE
     if (DEBUGGING(SUPPORT_DEBUG))
         (V)fprintf(stderr,
-            "%s line %d: %s(\"%s\", %p, %d)\n",
-            __func__,__LINE__,__func__,p,(void *)pendptr,base);
+            "%s line %d: %s(%G, \"%s\", %p, %d)\n",
+            __func__,__LINE__,__func__,n,p,(void *)pendptr,base);
 #endif
-    n = parse_num(p, pendptr, base);
+    if ((NULL!=p)&&((0!=isalnum(*p))||('('==*p))) {
+        n = parse_num(p, pendptr, base);
+    } else
+        *pendptr=p;
 #if DEBUG_CODE
     if (DEBUGGING(SUPPORT_DEBUG))
         (V)fprintf(stderr,
@@ -162,8 +247,7 @@ double parse_expr(const char *p, char **pendptr, int base)
                     (V)fprintf(stderr,
                         "%s line %d: n2=%G\n", __func__,__LINE__,n2);
 #endif
-                if (n2<n) n -= n2;
-                if (1UL > n) n = 1UL;
+                n -= n2;
             break;
             case '*' :
                 p = *pendptr;
@@ -173,7 +257,7 @@ double parse_expr(const char *p, char **pendptr, int base)
                     (V)fprintf(stderr,
                         "%s line %d: n2=%G\n", __func__,__LINE__,n2);
 #endif
-                if (0<n2) n *= n2;
+                n *= n2;
             break;
             case '/' :
                 p = *pendptr;
@@ -183,10 +267,8 @@ double parse_expr(const char *p, char **pendptr, int base)
                     (V)fprintf(stderr,
                         "%s line %d: n2=%G\n", __func__,__LINE__,n2);
 #endif
-                if (0<n2) n /= n2;
-                if (1UL > n) n = 1UL;
+                if (0.0!=n2) n /= n2;
             break;
-#if 0 /* not applicable to double */
             case '%' :
                 p = *pendptr;
                 n2 = parse_num(++p, pendptr, 10);
@@ -195,10 +277,29 @@ double parse_expr(const char *p, char **pendptr, int base)
                     (V)fprintf(stderr,
                         "%s line %d: n2=%G\n", __func__,__LINE__,n2);
 #endif
-                if (0<n2) n %= n2;
-                if (1UL > n) n = 1UL;
+                if (0.0!=n2) n=fmod(n,n2);
             break;
+            case '@' :
+                p = *pendptr;
+                n2 = (double)snlround(n,NULL,NULL);
+#if DEBUG_CODE
+                if (DEBUGGING(SUPPORT_DEBUG))
+                    (V)fprintf(stderr,
+                        "%s line %d: n2=%G\n", __func__,__LINE__,n2);
 #endif
+                n=n2;
+                *pendptr=++p;
+            break;
+            case '^' :
+                p = *pendptr;
+                n2 = parse_num(++p, pendptr, 10);
+#if DEBUG_CODE
+                if (DEBUGGING(SUPPORT_DEBUG))
+                    (V)fprintf(stderr,
+                        "%s line %d: n2=%G\n", __func__,__LINE__,n2);
+#endif
+                if (0.0<=n) n=pow(n,n2);
+            break;
             default :
 #if DEBUG_CODE
                 if (DEBUGGING(SUPPORT_DEBUG))
@@ -208,6 +309,11 @@ double parse_expr(const char *p, char **pendptr, int base)
 #endif
             return n;
         }
+#if DEBUG_CODE
+        if (DEBUGGING(SUPPORT_DEBUG))
+            (V)fprintf(stderr,
+                "%s line %d: n=%G, *pendptr=\"%s\"\n",__func__,__LINE__,n,*pendptr);
+#endif
     }
 #if DEBUG_CODE
     if (DEBUGGING(SUPPORT_DEBUG))

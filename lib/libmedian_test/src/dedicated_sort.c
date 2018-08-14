@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.16 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.17 dated 2018-06-10T01:09:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dedicated_sort.c */
@@ -48,8 +48,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort.c ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort.c"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-06-10T01:09:10Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -105,19 +105,6 @@ void dedsort(char *base, size_t nmemb, size_t size, COMPAR_DECL,
         size_t *indices = NULL;
         char **pointers = NULL;
         void (*pswapf)(char *, char *, size_t);
-        unsigned int table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-        ; /* starting point; refined by sample_index() */
 
         if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
         if (0U!=(options&(QUICKSELECT_INDIRECT))) {
@@ -138,7 +125,7 @@ void dedsort(char *base, size_t nmemb, size_t size, COMPAR_DECL,
                 A(pointers[0]==base);
                 (V)QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
                     COMPAR_ARGS,NULL,0UL,0UL,pswapf,sizeof(char *),1UL,
-                    table_index,quickselect_cache_size,0UL,options,NULL,NULL);
+                    quickselect_cache_size,0UL,options,NULL,NULL);
                 if (NULL==indices) indices=(size_t *)pointers;
                 indices=convert_pointers_to_indices(base,nmemb,size,pointers,
                     nmemb,indices,0UL,nmemb);
@@ -166,14 +153,14 @@ void dedsort(char *base, size_t nmemb, size_t size, COMPAR_DECL,
                         __LINE__,size_ratio,nmemb);
 no_ind:             options&=~(QUICKSELECT_INDIRECT);
                     (V)QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,
-                        0UL,0UL,swapf,alignsize,size_ratio,table_index,
+                        0UL,0UL,swapf,alignsize,size_ratio,
                         quickselect_cache_size,0UL,options,NULL,NULL);
                 } else if (0UL!=n)
                     nmoves+=n*size_ratio;
             }
         } else
             (V)QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
-                swapf,alignsize,size_ratio,table_index,quickselect_cache_size,
+                swapf,alignsize,size_ratio,quickselect_cache_size,
                 0UL,options,NULL,NULL);
     }
 }

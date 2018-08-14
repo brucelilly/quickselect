@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is logsort.c version 1.10 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is logsort.c version 1.11 dated 2018-06-09T23:06:17Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.logsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: logsort.c ~|^` @(#)"
 #define SOURCE_MODULE "logsort.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2018-06-09T23:06:17Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -77,14 +77,13 @@ QUICKSELECT_INLINE
 void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int options, unsigned int table_index)
+    unsigned int options)
 {
     size_t nmemb=beyond-first;
     A(first<beyond);
     if (8UL<nmemb) {
         size_t k, o, p, s, xnk=floor_lg(nmemb-5UL)-1UL;
         size_t xpk[xnk];
-        unsigned int idx;
 
         s=nmemb/xnk;
         o=first+(s>>1);
@@ -107,21 +106,13 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
 
         /* efficient stable partition is not supported */
         (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,xpk,0UL,xnk,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
 /* XXX for selection (future), check for desired order statistic ranks for each region */
-        for (idx=table_index;
-        (0U<idx)&&(o>=sorting_sampling_table[idx-1U].max_nmemb);
-        idx--)
-            ;
         nrecursions++;
         logsort_internal(base,first,xpk[0UL],size,compar,swapf,alignsize,
-            size_ratio,options,idx);
-        for (idx++,s--;
-        (0U<idx)&&(s>=sorting_sampling_table[idx-1U].max_nmemb);
-        idx--)
-            ;
+            size_ratio,options);
         for (k=0UL,--xnk; k<xnk; k++) {
             A(xpk[k]+1UL<xpk[k+1UL]);
 #if DEBUG_CODE
@@ -131,23 +122,15 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
 #endif
             nrecursions++;
             logsort_internal(base,xpk[k]+1UL,xpk[k+1UL],size,compar,swapf,
-                alignsize,size_ratio,options,idx);
+                alignsize,size_ratio,options);
         }
-        for (p=beyond-xpk[k]-1UL;
-        (0U<idx)&&(p>=sorting_sampling_table[idx-1U].max_nmemb);
-        idx--)
-            ;
         nrecursions++;
         logsort_internal(base,xpk[k]+1UL,beyond,size,compar,swapf,alignsize,
-            size_ratio,options,idx);
+            size_ratio,options);
     } else {
         /* Handle divide-and-conquer for <= 8 elements */
-        /* table index very small (probably zero) for <= 8 elements;
-           dedicated sort may be used, so don't waste time caculating
-           table_index
-        */
         (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
     }
 }
@@ -155,7 +138,6 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
 void logsort(void *base, size_t nmemb, size_t size,
     int(*compar)(const void *, const void *), unsigned int options)
 {
-    unsigned int table_index;
     size_t alignsize=alignment_size((char *)base,size);
     size_t size_ratio=size/alignsize;
     void (*swapf)(char *, char *, size_t);
@@ -165,20 +147,6 @@ void logsort(void *base, size_t nmemb, size_t size,
     if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
-    table_index=(nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-    ); /* to be refined... */
-
     logsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
-        options,table_index);
+        options);
 }

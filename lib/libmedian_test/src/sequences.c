@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sequences.c version 1.11 dated 2018-04-30T14:43:39Z. \ $ */
+/* $Id: ~|^` @(#)   This is sequences.c version 1.13 dated 2018-07-18T16:25:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sequences.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sequences.c ~|^` @(#)"
 #define SOURCE_MODULE "sequences.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-04-30T14:43:39Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-07-18T16:25:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -135,7 +135,8 @@ void jumble(char *base, size_t first, size_t last, size_t size,
     unsigned int options)
 {
     size_t nmemb=last+1UL-first, oldneq, oldnlt, oldngt, oldnsw;
-    char *p0, *p1, *p2, *p3, *p4, *p5, *p6, *p7, *p8, *p9, *p10, *p11;
+    char *p0, *p1, *p2, *p3, *p4, *p5, *p6, *p7, *p8, *p9, *p10, *p11, *p12,
+        *p13, *p14, *p15;
 
     oldnlt=nlt, oldneq=neq, oldngt=ngt, oldnsw=nsw;
 
@@ -148,44 +149,45 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
         case 1UL :
         break;
         case 2UL : /* 1 comparison */
-            REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
+#define RCX(ma,mb) REVERSE_COMPARE_EXCHANGE((ma),(mb),options,size,swapf,alignsize,size_ratio)
+            RCX(p0,p1);
         break;
         case 3UL : /* 3 comparisons */
             p2=p1+size;
-            REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio); /* 3 */
-            REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio); /* 2 */
-            REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio); /* 1 */
+            RCX(p1,p2); /* 3 */
+            RCX(p0,p1); /* 2 */
+            RCX(p0,p2); /* 1 */
         break;
         case 4UL : /* 5 comparisons */
             p2=p1+size;
             p3=p2+size;
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p3);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p1,p3);
         break;
         case 5UL : /* 9 comparisons */
             p2=p1+size;
             p3=p2+size;
             p4=p3+size;
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p3,p4);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
+                RCX(p1,p4);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p4);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p1,p3);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p4);
         break;
         case 6UL : /* 12 comparisons */
             p2=p1+size;
@@ -193,23 +195,23 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
             p4=p3+size;
             p5=p4+size;
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p3,p4);
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p4);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
+                RCX(p4,p5);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p4);
+                RCX(p3,p5);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p1,p3);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p4);
+                RCX(p1,p5);
         break;
         case 7UL : /* 16 comparisons */
             p2=p1+size;
@@ -218,27 +220,27 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
             p5=p4+size;
             p6=p5+size;
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p3,p4);
+                RCX(p5,p6);
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p4);
+                RCX(p3,p6);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
+                RCX(p4,p5);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p4);
+                RCX(p3,p5);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p1,p3);
+                RCX(p4,p6);
         /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p4);
+                RCX(p1,p5);
+                RCX(p2,p6);
         break;
         case 8UL : /* 19 comparisons */
             p2=p1+size;
@@ -248,30 +250,30 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
             p6=p5+size;
             p7=p6+size;
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p3,p4);
+                RCX(p5,p6);
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p4);
+                RCX(p3,p6);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
+                RCX(p4,p5);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p4);
+                RCX(p3,p5);
+                RCX(p6,p7);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p7,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p1,p3);
+                RCX(p4,p6);
+                RCX(p5,p7);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p7,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p4);
+                RCX(p1,p5);
+                RCX(p2,p6);
+                RCX(p3,p7);
         break;
         case 9UL : /* 25 comparisons */
             p2=p1+size;
@@ -282,39 +284,39 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
             p7=p6+size;
             p8=p7+size;
             /* parallel group 9 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
             /* parallel group 8 */
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p4);
+                RCX(p5,p6);
             /* parallel group 7 */
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p3);
+                RCX(p4,p6);
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p0,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p3);
+                RCX(p1,p4);
+                RCX(p5,p7);
+                RCX(p2,p6);
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p3,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p3,p6);
+                RCX(p4,p7);
+                RCX(p2,p5);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p0,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p8,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p3);
+                RCX(p1,p4);
+                RCX(p5,p8);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p3,p4);
+                RCX(p6,p7);
+                RCX(p2,p5);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p7,p8,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p4,p5);
+                RCX(p7,p8);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p3,p4);
+                RCX(p6,p7);
         break;
         case 10UL : /* 29 comparisons */
             p2=p1+size;
@@ -326,143 +328,263 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr, "// %s line %d: first=%lu, 
             p8=p7+size;
             p9=p8+size;
             /* parallel group 9 */
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio);
+                RCX(p4,p5);
             /* parallel group 8 */
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio);
+                RCX(p3,p4);
+                RCX(p5,p6);
             /* parallel group 7 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio);
+                RCX(p2,p3);
+                RCX(p6,p7);
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p8,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p3);
+                RCX(p2,p5);
+                RCX(p4,p7);
+                RCX(p6,p8);
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p7,p8,options,size,swapf,alignsize,size_ratio);
+                RCX(p1,p2);
+                RCX(p3,p5);
+                RCX(p4,p6);
+                RCX(p7,p8);
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p8,p9,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p1);
+                RCX(p2,p4);
+                RCX(p5,p7);
+                RCX(p8,p9);
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p7,p9,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p2);
+                RCX(p3,p6);
+                RCX(p7,p9);
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p3,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p5,p8,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p6,p9,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p3);
+                RCX(p1,p4);
+                RCX(p5,p8);
+                RCX(p6,p9);
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p5,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p1,p6,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p2,p7,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p3,p8,options,size,swapf,alignsize,size_ratio);
-                REVERSE_COMPARE_EXCHANGE(p4,p9,options,size,swapf,alignsize,size_ratio);
+                RCX(p0,p5);
+                RCX(p1,p6);
+                RCX(p2,p7);
+                RCX(p3,p8);
+                RCX(p4,p9);
         break;
         case 11UL :
             p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
             p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size;
             /* parallel group 9 */
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio); /* 3,4 */
-                REVERSE_COMPARE_EXCHANGE(p7,p8,options,size,swapf,alignsize,size_ratio); /* 7,8 */
+                RCX(p3,p4); /* 3,4 */
+                RCX(p7,p8); /* 7,8 */
             /* parallel group 8 */
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio); /* 2,4 */
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio); /* 5,6 */
-                REVERSE_COMPARE_EXCHANGE(p7,p9,options,size,swapf,alignsize,size_ratio); /* 7,9 */
+                RCX(p2,p4); /* 2,4 */
+                RCX(p5,p6); /* 5,6 */
+                RCX(p7,p9); /* 7,9 */
             /* parallel group 7 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio); /* 1,4 */
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio); /* 3,5 */
-                REVERSE_COMPARE_EXCHANGE(p6,p8,options,size,swapf,alignsize,size_ratio); /* 6,8 */
-                REVERSE_COMPARE_EXCHANGE(p7,p10,options,size,swapf,alignsize,size_ratio); /* 7,10 */
+                RCX(p1,p4); /* 1,4 */
+                RCX(p3,p5); /* 3,5 */
+                RCX(p6,p8); /* 6,8 */
+                RCX(p7,p10); /* 7,10 */
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio); /* 1,5 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio); /* 2,3 */
-                REVERSE_COMPARE_EXCHANGE(p6,p10,options,size,swapf,alignsize,size_ratio); /* 6,10 */
-                REVERSE_COMPARE_EXCHANGE(p8,p9,options,size,swapf,alignsize,size_ratio); /* 8,9 */
+                RCX(p1,p5); /* 1,5 */
+                RCX(p2,p3); /* 2,3 */
+                RCX(p6,p10); /* 6,10 */
+                RCX(p8,p9); /* 8,9 */
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio); /* 0,4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p6,options,size,swapf,alignsize,size_ratio); /* 2,6 */
-                REVERSE_COMPARE_EXCHANGE(p3,p8,options,size,swapf,alignsize,size_ratio); /* 3,8 */
-                REVERSE_COMPARE_EXCHANGE(p5,p9,options,size,swapf,alignsize,size_ratio); /* 5,9 */
+                RCX(p0,p4); /* 0,4 */
+                RCX(p2,p6); /* 2,6 */
+                RCX(p3,p8); /* 3,8 */
+                RCX(p5,p9); /* 5,9 */
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio); /* 1,4 */
-                REVERSE_COMPARE_EXCHANGE(p3,p8,options,size,swapf,alignsize,size_ratio); /* 3,8 */
-                REVERSE_COMPARE_EXCHANGE(p6,p10,options,size,swapf,alignsize,size_ratio); /* 6,10 */
+                RCX(p1,p4); /* 1,4 */
+                RCX(p3,p8); /* 3,8 */
+                RCX(p6,p10); /* 6,10 */
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio); /* 0,4 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio); /* 1,2 */
-                REVERSE_COMPARE_EXCHANGE(p3,p7,options,size,swapf,alignsize,size_ratio); /* 3,7 */
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio); /* 5,6 */
-                REVERSE_COMPARE_EXCHANGE(p9,p10,options,size,swapf,alignsize,size_ratio); /* 9,10 */
+                RCX(p0,p4); /* 0,4 */
+                RCX(p1,p2); /* 1,2 */
+                RCX(p3,p7); /* 3,7 */
+                RCX(p5,p6); /* 5,6 */
+                RCX(p9,p10); /* 9,10 */
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio); /* 0,2 */
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio); /* 1,3 */
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio); /* 4,6 */
-                REVERSE_COMPARE_EXCHANGE(p5,p7,options,size,swapf,alignsize,size_ratio); /* 5,7 */
-                REVERSE_COMPARE_EXCHANGE(p8,p10,options,size,swapf,alignsize,size_ratio); /* 8,10 */
+                RCX(p0,p2); /* 0,2 */
+                RCX(p1,p3); /* 1,3 */
+                RCX(p4,p6); /* 4,6 */
+                RCX(p5,p7); /* 5,7 */
+                RCX(p8,p10); /* 8,10 */
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio); /* 0,1 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio); /* 2,3 */
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio); /* 4,5 */
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio); /* 6,7 */
-                REVERSE_COMPARE_EXCHANGE(p8,p9,options,size,swapf,alignsize,size_ratio); /* 8,9 */
+                RCX(p0,p1); /* 0,1 */
+                RCX(p2,p3); /* 2,3 */
+                RCX(p4,p5); /* 4,5 */
+                RCX(p6,p7); /* 6,7 */
+                RCX(p8,p9); /* 8,9 */
         break;
         case 12UL :
             p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
             p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size; p11=p10+size;
             /* parallel group 9 */
-                REVERSE_COMPARE_EXCHANGE(p3,p4,options,size,swapf,alignsize,size_ratio); /* 3,4 */
-                REVERSE_COMPARE_EXCHANGE(p7,p8,options,size,swapf,alignsize,size_ratio); /* 7,8 */
+                RCX(p3,p4); /* 3,4 */
+                RCX(p7,p8); /* 7,8 */
             /* parallel group 8 */
-                REVERSE_COMPARE_EXCHANGE(p2,p4,options,size,swapf,alignsize,size_ratio); /* 2,4 */
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio); /* 5,6 */
-                REVERSE_COMPARE_EXCHANGE(p7,p9,options,size,swapf,alignsize,size_ratio); /* 7,9 */
+                RCX(p2,p4); /* 2,4 */
+                RCX(p5,p6); /* 5,6 */
+                RCX(p7,p9); /* 7,9 */
             /* parallel group 7 */
-                REVERSE_COMPARE_EXCHANGE(p1,p4,options,size,swapf,alignsize,size_ratio); /* 1,4 */
-                REVERSE_COMPARE_EXCHANGE(p3,p5,options,size,swapf,alignsize,size_ratio); /* 3,5 */
-                REVERSE_COMPARE_EXCHANGE(p6,p8,options,size,swapf,alignsize,size_ratio); /* 6,8 */
-                REVERSE_COMPARE_EXCHANGE(p7,p10,options,size,swapf,alignsize,size_ratio); /* 7,10 */
+                RCX(p1,p4); /* 1,4 */
+                RCX(p3,p5); /* 3,5 */
+                RCX(p6,p8); /* 6,8 */
+                RCX(p7,p10); /* 7,10 */
             /* parallel group 6 */
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio); /* 1,5 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio); /* 2,3 */
-                REVERSE_COMPARE_EXCHANGE(p6,p10,options,size,swapf,alignsize,size_ratio); /* 6,10 */
-                REVERSE_COMPARE_EXCHANGE(p8,p9,options,size,swapf,alignsize,size_ratio); /* 8,9 */
+                RCX(p1,p5); /* 1,5 */
+                RCX(p2,p3); /* 2,3 */
+                RCX(p6,p10); /* 6,10 */
+                RCX(p8,p9); /* 8,9 */
             /* parallel group 5 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio); /* 0,4 */
-                REVERSE_COMPARE_EXCHANGE(p2,p6,options,size,swapf,alignsize,size_ratio); /* 2,6 */
-                REVERSE_COMPARE_EXCHANGE(p3,p8,options,size,swapf,alignsize,size_ratio); /* 3,8 */
-                REVERSE_COMPARE_EXCHANGE(p5,p9,options,size,swapf,alignsize,size_ratio); /* 5,9 */
-                REVERSE_COMPARE_EXCHANGE(p7,p11,options,size,swapf,alignsize,size_ratio); /* 7,11 */
+                RCX(p0,p4); /* 0,4 */
+                RCX(p2,p6); /* 2,6 */
+                RCX(p3,p8); /* 3,8 */
+                RCX(p5,p9); /* 5,9 */
+                RCX(p7,p11); /* 7,11 */
             /* parallel group 4 */
-                REVERSE_COMPARE_EXCHANGE(p1,p5,options,size,swapf,alignsize,size_ratio); /* 1,5 */
-                REVERSE_COMPARE_EXCHANGE(p3,p7,options,size,swapf,alignsize,size_ratio); /* 3,7 */
-                REVERSE_COMPARE_EXCHANGE(p4,p8,options,size,swapf,alignsize,size_ratio); /* 4,8 */
-                REVERSE_COMPARE_EXCHANGE(p6,p10,options,size,swapf,alignsize,size_ratio); /* 6,10 */
+                RCX(p1,p5); /* 1,5 */
+                RCX(p3,p7); /* 3,7 */
+                RCX(p4,p8); /* 4,8 */
+                RCX(p6,p10); /* 6,10 */
             /* parallel group 3 */
-                REVERSE_COMPARE_EXCHANGE(p0,p4,options,size,swapf,alignsize,size_ratio); /* 0,4 */
-                REVERSE_COMPARE_EXCHANGE(p1,p2,options,size,swapf,alignsize,size_ratio); /* 1,2 */
-                REVERSE_COMPARE_EXCHANGE(p5,p6,options,size,swapf,alignsize,size_ratio); /* 5,6 */
-                REVERSE_COMPARE_EXCHANGE(p7,p11,options,size,swapf,alignsize,size_ratio); /* 7,11 */
-                REVERSE_COMPARE_EXCHANGE(p9,p10,options,size,swapf,alignsize,size_ratio); /* 9,10 */
+                RCX(p0,p4); /* 0,4 */
+                RCX(p1,p2); /* 1,2 */
+                RCX(p5,p6); /* 5,6 */
+                RCX(p7,p11); /* 7,11 */
+                RCX(p9,p10); /* 9,10 */
             /* parallel group 2 */
-                REVERSE_COMPARE_EXCHANGE(p0,p2,options,size,swapf,alignsize,size_ratio); /* 0,2 */
-                REVERSE_COMPARE_EXCHANGE(p1,p3,options,size,swapf,alignsize,size_ratio); /* 1,3 */
-                REVERSE_COMPARE_EXCHANGE(p4,p6,options,size,swapf,alignsize,size_ratio); /* 4,6 */
-                REVERSE_COMPARE_EXCHANGE(p5,p7,options,size,swapf,alignsize,size_ratio); /* 5,7 */
-                REVERSE_COMPARE_EXCHANGE(p8,p10,options,size,swapf,alignsize,size_ratio); /* 8,10 */
-                REVERSE_COMPARE_EXCHANGE(p9,p11,options,size,swapf,alignsize,size_ratio); /* 9,11 */
+                RCX(p0,p2); /* 0,2 */
+                RCX(p1,p3); /* 1,3 */
+                RCX(p4,p6); /* 4,6 */
+                RCX(p5,p7); /* 5,7 */
+                RCX(p8,p10); /* 8,10 */
+                RCX(p9,p11); /* 9,11 */
             /* parallel group 1 */
-                REVERSE_COMPARE_EXCHANGE(p0,p1,options,size,swapf,alignsize,size_ratio); /* 0,1 */
-                REVERSE_COMPARE_EXCHANGE(p2,p3,options,size,swapf,alignsize,size_ratio); /* 2,3 */
-                REVERSE_COMPARE_EXCHANGE(p4,p5,options,size,swapf,alignsize,size_ratio); /* 4,5 */
-                REVERSE_COMPARE_EXCHANGE(p6,p7,options,size,swapf,alignsize,size_ratio); /* 6,7 */
-                REVERSE_COMPARE_EXCHANGE(p8,p9,options,size,swapf,alignsize,size_ratio); /* 8,9 */
-                REVERSE_COMPARE_EXCHANGE(p10,p11,options,size,swapf,alignsize,size_ratio); /* 10,11 */
+                RCX(p0,p1); /* 0,1 */
+                RCX(p2,p3); /* 2,3 */
+                RCX(p4,p5); /* 4,5 */
+                RCX(p6,p7); /* 6,7 */
+                RCX(p8,p9); /* 8,9 */
+                RCX(p10,p11); /* 10,11 */
+        break;
+        case 13UL :
+            p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
+            p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size; p11=p10+size;
+            p12=p11+size;
+            /* parallel group 10 */
+                RCX(p3,p4); RCX(p5,p6);
+            /* parallel group 9 */
+                RCX(p2,p3); RCX(p4,p5); RCX(p6,p7); RCX(p8,p9);
+            /* parallel group 8 */
+                RCX(p2,p4); RCX(p5,p6); RCX(p7,p8); RCX(p1,p3);
+            /* parallel group 7 */
+                RCX(p5,p8); RCX(p1,p2); RCX(p3,p4); RCX(p6,p7); RCX(p9,p10);
+            /* parallel group 6 */
+                RCX(p0,p1); RCX(p3,p7); RCX(p8,p9); RCX(p10,p11);
+            /* parallel group 5 */
+                RCX(p1,p3); RCX(p4,p6); RCX(p9,p11); RCX(p2,p5); RCX(p8,p10);
+            /* parallel group 4 */
+                RCX(p3,p10); RCX(p11,p12); RCX(p6,p8); RCX(p2,p9);
+            /* parallel group 3 */
+                RCX(p5,p8); RCX(p10,p12); RCX(p0,p7); RCX(p3,p11); RCX(p4,p9);
+            /* parallel group 2 */
+                RCX(p1,p2); RCX(p7,p8); RCX(p9,p12); RCX(p0,p4); RCX(p6,p11);
+                RCX(p5,p10);
+            /* parallel group 1 */
+                RCX(p1,p6); RCX(p8,p9); RCX(p2,p11); RCX(p0,p5); RCX(p7,p12);
+                RCX(p4,p10);
+        break;
+        case 14UL :
+            p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
+            p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size; p11=p10+size;
+            p12=p11+size; p13=p12+size;
+            /* parallel group 10 */
+                RCX(p6,p7); RCX(p8,p9);
+            /* parallel group 9 */
+                RCX(p3,p4); RCX(p5,p6); RCX(p7,p8); RCX(p9,p10); RCX(p11,p12);
+            /* parallel group 8 */
+                RCX(p3,p5); RCX(p6,p8); RCX(p7,p9); RCX(p10,p12);
+            /* parallel group 7 */
+                RCX(p2,p4); RCX(p5,p6); RCX(p9,p10); RCX(p11,p13); RCX(p3,p8);
+                RCX(p7,p12);
+            /* parallel group 6 */
+                RCX(p1,p4); RCX(p7,p13); RCX(p2,p8);
+            /* parallel group 5 */
+                RCX(p5,p10); RCX(p6,p9); RCX(p3,p12); RCX(p7,p11); RCX(p1,p2);
+                RCX(p4,p8);
+            /* parallel group 4 */
+                RCX(p0,p8); RCX(p1,p9); RCX(p2,p10); RCX(p3,p11); RCX(p4,p12);
+                RCX(p5,p13);
+            /* parallel group 3 */
+                RCX(p0,p4); RCX(p8,p12); RCX(p1,p5); RCX(p9,p13); RCX(p2,p6);
+                RCX(p3,p7);
+            /* parallel group 2 */
+                RCX(p0,p2); RCX(p4,p6); RCX(p8,p10); RCX(p1,p3); RCX(p5,p7);
+                RCX(p9,p11);
+            /* parallel group 1 */
+                RCX(p0,p1); RCX(p2,p3); RCX(p4,p5); RCX(p6,p7); RCX(p8,p9);
+                RCX(p10,p11); RCX(p12,p13);
+        break;
+        case 15UL :
+            p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
+            p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size; p11=p10+size;
+            p12=p11+size; p13=p12+size; p14=p13+size;
+            /* parallel group 10 */
+                RCX(p6,p7); RCX(p8,p9);
+            /* parallel group 9 */
+                RCX(p3,p4); RCX(p5,p6); RCX(p7,p8); RCX(p9,p10); RCX(p11,p12);
+            /* parallel group 8 */
+                RCX(p3,p5); RCX(p6,p8); RCX(p7,p9); RCX(p10,p12);
+            /* parallel group 7 */
+                RCX(p2,p4); RCX(p5,p6); RCX(p9,p10); RCX(p11,p13); RCX(p3,p8);
+                RCX(p7,p12);
+            /* parallel group 6 */
+                RCX(p1,p4); RCX(p7,p13); RCX(p2,p8); RCX(p11,p14);
+            /* parallel group 5 */
+                RCX(p5,p10); RCX(p6,p9); RCX(p3,p12); RCX(p13,p14); RCX(p7,p11);
+                RCX(p1,p2); RCX(p4,p8);
+            /* parallel group 4 */
+                RCX(p0,p8); RCX(p1,p9); RCX(p2,p10); RCX(p3,p11); RCX(p4,p12);
+                RCX(p5,p13); RCX(p6,p14);
+            /* parallel group 3 */
+                RCX(p0,p4); RCX(p8,p12); RCX(p1,p5); RCX(p9,p13); RCX(p2,p6);
+                RCX(p10,p14); RCX(p3,p7);
+            /* parallel group 2 */
+                RCX(p0,p2); RCX(p4,p6); RCX(p8,p10); RCX(p12,p14); RCX(p1,p3);
+                RCX(p5,p7); RCX(p9,p11);
+            /* parallel group 1 */
+                RCX(p0,p1); RCX(p2,p3); RCX(p4,p5); RCX(p6,p7); RCX(p8,p9);
+                RCX(p10,p11); RCX(p12,p13);
+        break;
+        case 16UL :
+            p2=p1+size; p3=p2+size; p4=p3+size; p5=p4+size; p6=p5+size;
+            p7=p6+size; p8=p7+size; p9=p8+size; p10=p9+size; p11=p10+size;
+            p12=p11+size; p13=p12+size; p14=p13+size; p15=p14+size;
+            /* parallel group 10 */
+                RCX(p6,p7); RCX(p8,p9);
+            /* parallel group 9 */
+                RCX(p3,p4); RCX(p5,p6); RCX(p7,p8); RCX(p9,p10); RCX(p11,p12);
+            /* parallel group 8 */
+                RCX(p3,p5); RCX(p6,p8); RCX(p7,p9); RCX(p10,p12);
+            /* parallel group 7 */
+                RCX(p2,p4); RCX(p5,p6); RCX(p9,p10); RCX(p11,p13); RCX(p3,p8);
+                RCX(p7,p12);
+            /* parallel group 6 */
+                RCX(p1,p4); RCX(p7,p13); RCX(p2,p8); RCX(p11,p14);
+            /* parallel group 5 */
+                RCX(p5,p10); RCX(p6,p9); RCX(p3,p12); RCX(p13,p14); RCX(p7,p11);
+                RCX(p1,p2); RCX(p4,p8);
+            /* parallel group 4 */
+                RCX(p0,p8); RCX(p1,p9); RCX(p2,p10); RCX(p3,p11); RCX(p4,p12);
+                RCX(p5,p13); RCX(p6,p14); RCX(p7,p15);
+            /* parallel group 3 */
+                RCX(p0,p4); RCX(p8,p12); RCX(p1,p5); RCX(p9,p13); RCX(p2,p6);
+                RCX(p10,p14); RCX(p3,p7); RCX(p11,p15);
+            /* parallel group 2 */
+                RCX(p0,p2); RCX(p4,p6); RCX(p8,p10); RCX(p12,p14); RCX(p1,p3);
+                RCX(p5,p7); RCX(p9,p11); RCX(p13,p15);
+            /* parallel group 1 */
+                RCX(p0,p1); RCX(p2,p3); RCX(p4,p5); RCX(p6,p7); RCX(p8,p9);
+                RCX(p10,p11); RCX(p12,p13); RCX(p14,p15);
         break;
         default :
             /* Fallback in case size is out-of-bounds. */
@@ -811,6 +933,8 @@ const char *sequence_name(unsigned int sequence)
         return "0/1 combinations";
         case TEST_SEQUENCE_ADVERSARY :
         return "McIlroy adversary";
+        case TEST_SEQUENCE_WORST :
+        return "quickselect adversary";
         default:
             (V)fprintf(stderr,"/* %s: %s line %d: unrecognized sequence %u */\n",
                 __func__, source_file, __LINE__, sequence);
@@ -878,6 +1002,8 @@ unsigned int sequence_is_randomized(unsigned int sequence)
         case TEST_SEQUENCE_COMBINATIONS :
         return 0U;
         case TEST_SEQUENCE_ADVERSARY :
+        return 0U;
+        case TEST_SEQUENCE_WORST :
         return 0U;
         default:
             (V)fprintf(stderr, "// %s: %s line %d: unrecognized sequence %u\n", __func__, source_file, __LINE__, sequence);

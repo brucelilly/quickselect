@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.20 dated 2018-05-16T21:44:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.22 dated 2018-07-27T18:18:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-05-16T21:44:03Z"
+#define MODULE_VERSION "1.22"
+#define MODULE_DATE "2018-07-27T18:18:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -297,6 +297,8 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))indcmp_s) return "indcmp_s";
     if (compar==(int (*)(const void *,const void *,...))iindcmp_s) return "iindcmp_s";
     if (compar==(int (*)(const void *,const void *,...))aqcmp) return "aqcmp";
+    if (compar==(int (*)(const void *,const void *,...))floatcmp) return "floatcmp";
+    if (compar==(int (*)(const void *,const void *,...))size_tcmp) return "size_tcmp";
     if (NULL==compar) return "NULL";
     return "unknown";
 }
@@ -322,7 +324,7 @@ int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, co
         case DATA_TYPE_LONG :
             if (0U!=flags['i']) return ilongcmp; else return longcmp;
         break;
-        case DATA_TYPE_FLOAT :          return NULL;
+        case DATA_TYPE_FLOAT :          return floatcmp;
         break;
         case DATA_TYPE_DOUBLE :
             if (0U!=flags['i']) return idoublecmp; else return doublecmp;
@@ -352,6 +354,7 @@ int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, co
     return ret;
 }
 
+/* size of the data type to be tested */
 size_t type_size(unsigned int type)
 {
     size_t ret=0UL;
@@ -442,7 +445,7 @@ size_t type_alignment(unsigned int type)
     return alignment_size(array,size);
 }
 
-/* name of the data type to be tested */
+/* maximum value of the data type to be tested */
 uint_least64_t type_max(unsigned int type)
 {
     uint_least64_t ret=0;
@@ -483,6 +486,7 @@ uint_least64_t type_max(unsigned int type)
     return ret;
 }
 
+/* name of the data type to be tested */
 const char *type_name(unsigned int type)
 {
     const char *ret="unknown";

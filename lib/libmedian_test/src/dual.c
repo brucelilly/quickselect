@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.19 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.21 dated 2018-06-26T00:36:28Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.19"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2018-06-26T00:36:28Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -328,7 +328,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         */
         if (nmemb<=dp_cutoff) {
             (V)QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
-                swapf,alignsize,size_ratio,0U,quickselect_cache_size,0UL,
+                swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                 options,NULL,NULL);
     /* <- */    return; /* Done; else continue divide-and-conquer */
         }
@@ -337,7 +337,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         /* Variable r represents the number of samples in each of the 3
            partitioned regions (if all goes perfectly) and affects the total
            number of samples s=3r+2. 0-based pivot ranks within the s samples
-           are at k and 2k+1.
+           are at r and 2r+1.
         */
         /* Variable u is a multiplier for some power of the number of
            samples and affects the array size q where the number of samples
@@ -359,13 +359,13 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         */
 # define SAMPLE_ROOT 2
 # if SAMPLE_ROOT == 4
-        for (r=1UL,s=5UL,q=u*625UL; q<nmemb; r++,s+=3UL,q=u*s*s*s*s) ;
+        for (r=1UL,s=5UL,q=u*s*s*s*s; q<nmemb; r++,s+=3UL,q=u*s*s*s*s) ;
 # elif SAMPLE_ROOT == 3
-        for (r=1UL,s=5UL,q=u*125UL; q<nmemb; r++,s+=3UL,q=u*s*s*s) ;
+        for (r=1UL,s=5UL,q=u*s*s*s; q<nmemb; r++,s+=3UL,q=u*s*s*s) ;
 # else
-        for (r=1UL,s=5UL,q=u*25UL; q<nmemb; r++,s+=3UL,q=u*s*s) ;
+        for (r=1UL,s=5UL,q=u*s*s; q<nmemb; r++,s+=3UL,q=u*s*s) ;
 # endif
-        if (q>nmemb) r--,s--;
+        if (q>nmemb) r--,s-=3UL;
         if (s<5UL) r=1UL,s=5UL;
 # if DPDEBUG
         if (DEBUGGING(DPQSORT_DEBUG)) {
@@ -394,6 +394,10 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
            first sample, and will then be used to count samples.
            (nmemb-s)/s/2 = (nmemb/s-1)/2 = (r-1)/2
         */
+        /* XXX maybe swap samples to the middle instead of start */
+#if 0 /* XXX */
+|     ?   s p1 s p2 s    ?     |
+#endif
         r=nmemb/s, q=(r-1UL)>>1, ps=base+q*size;
         for (pa=base,q=0UL; q<s; pa+=size,ps+=r*size,q++) {
             if (pa!=ps) {
@@ -420,9 +424,8 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
            produce ~ sqrt(nmemb) smaller partitions which would have to be
            processed.
         */ /* bootstrap with quickselect; select pivots from samples */
-        /* table_index will be small (s samples, 2 ranks) */
         d_quickselect_loop(base,0UL,s,size,compar,karray,0UL,2UL,swapf,
-            alignsize,size_ratio,2U,quickselect_cache_size,0UL,0U,NULL,NULL);
+            alignsize,size_ratio,quickselect_cache_size,0UL,0U,NULL,NULL);
         /* Samples are partitioned, and one might think that they could be moved
            to the appropriate regions w/o recomparisons (except for the fact
            that some sample elements might compare equal to one (or both) of the
@@ -460,7 +463,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         /* sort regions by size (3 regions; use quickselect_loop) */
         /* size 3 dedicated sort always completes sorting (ignore return) */
         (V)QUICKSELECT_LOOP((char *)regions,0UL,3UL,regionsize,regioncmp,NULL,
-            0UL,0UL,regionswap,regionsize,1UL,0U,quickselect_cache_size,0UL,
+            0UL,0UL,regionswap,regionsize,1UL,quickselect_cache_size,0UL,
             options,NULL,NULL);
         A(regions[0].nmemb<=regions[1].nmemb);
         A(regions[1].nmemb<=regions[2].nmemb);

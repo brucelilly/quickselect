@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.12 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.13 dated 2018-06-09T23:06:46Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqrtsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sqrtsort.c ~|^` @(#)"
 #define SOURCE_MODULE "sqrtsort.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-06-09T23:06:46Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -75,7 +75,7 @@ QUICKSELECT_INLINE
 void sqrtsort_internal(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *, const void *),
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
-    unsigned int table_index, unsigned int options)
+    unsigned int options)
 {
     size_t nmemb=beyond-first;
 #if DEBUG_CODE
@@ -110,23 +110,13 @@ __func__,source_file,__LINE__,first,beyond,xnk,o,xpk[0],xnk-1UL,xpk[xnk-1UL]);
         A(xpk[0]>first);A(xpk[xnk-1UL]<beyond-1UL);
 
         /* no support for efficient stable sorting */
-        /* table_index is likely to be smaller; middle sampling table may be used */
         (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,xpk,0UL,xnk,swapf,
-            alignsize,size_ratio,table_index,quickselect_cache_size,0UL,options,
-            NULL,NULL);
+            alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
-
-        while ((0U<table_index)
-        &&(nmemb<=sorting_sampling_table[table_index-1U].max_nmemb)
-        )
-            table_index--;
-        while (nmemb>sorting_sampling_table[table_index].max_nmemb)
-            table_index++;
-        A(table_index<SAMPLING_TABLE_SIZE);
 
 /* XXX for selection (future), check for desired order statistic ranks for each region */
         sqrtsort_internal(base,first,xpk[0UL],size,compar,swapf,alignsize,
-            size_ratio,table_index,options);
+            size_ratio,options);
         for (k=0UL,--xnk; k<xnk; k++) {
             A(xpk[k]+1UL<xpk[k+1UL]);
 #if DEBUG_CODE
@@ -135,18 +125,15 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 __func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
 #endif
             sqrtsort_internal(base,xpk[k]+1UL,xpk[k+1UL],size,compar,swapf,
-                alignsize,size_ratio,table_index,options);
+                alignsize,size_ratio,options);
         }
         sqrtsort_internal(base,xpk[k]+1UL,beyond,size,compar,swapf,alignsize,
-            size_ratio,table_index,options);
+            size_ratio,options);
     } else {
         /* Handle divide-and-conquer for <= 8 elements */
-        /* table_index probably zero for nmemb<=8; don't waste time computing;
-           dedicated_sort may be used
-        */
         (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
-            options,NULL,NULL);
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,
+            NULL);
     }
 }
 
@@ -155,27 +142,12 @@ void sqrtsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, 
     size_t alignsize=alignment_size((char *)base,size);
     size_t size_ratio=size/alignsize;
     void (*swapf)(char *, char *, size_t);
-    unsigned int table_index;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     /* Determine cache size once on first call. */
     if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
-    table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-        sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-        sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615 ) /* 64 bits */
-        sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-    ; /* starting point; refined by sample_index() */
-
     sqrtsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
-        table_index,options);
+        options);
 }

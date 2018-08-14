@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.26 dated 2018-05-16T02:41:55Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.38 dated 2018-08-05T00:26:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.26"
-#define MODULE_DATE "2018-05-16T02:41:55Z"
+#define MODULE_VERSION "1.38"
+#define MODULE_DATE "2018-08-05T00:26:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -61,14 +61,14 @@
 #include "initialize_src.h"
 
 extern size_t quickselect_cache_size;
-extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
-    unsigned char *pf1, unsigned char *pf2);
+extern double mos_middle_power;
+extern double mos_ends_power;
 
 /* shell specials: ;&()|<> \"'#$`~{}*?[ */
 /* getopt treats ? and : specially (: may be used as a magic silence flag) */
-/* available characters: tYZ(){}]\;'"`  plus control characters and whitespace */
-#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsST:uU:vVwW:xXy:z0:1:2:3:4:56:7:8:9!@#:%+,.|:/:~_<*&$[=>]"
-#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-y [n]] [-z] [-0 name] [-1 f,f,f...] -2 [f,f,f...] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-6 name] [-7 [f,f,f...]] [-8 [f,f,f...]] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
+/* available characters: 012678Y(){}\;'"`  plus control characters and whitespace */
+#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>]"
+#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
 -a [opts]\ttest illumos qsort, possibly with modifications\n\
 -A\talphabetic (string) data type tests\n\
 -b [0]\ttest Bentley&McIlroy qsort optionally w/o instrumentation\n\
@@ -107,6 +107,7 @@ extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
 -R\traw timing output (median time (and comparison counts if requested) only)\n\
 -s\tprint sizes of basic types\n\
 -S\tstructured data type tests\n\
+-t[c c1[,c2[,c3[...]]]]\tset breakpoints c1, etc. in median of samples sampling table c\n\
 -T sequences\tinclude timing tests for specified sequences\n\
 -u\ttest preliminary 9899:201x draft N1570 qsort_s implementation based on quickselect\n\
 -U n\tset sampling nmemb breakpoints according to factor n\n\
@@ -116,17 +117,13 @@ extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
 -W [f,c]\ttest lopsided partitions in quickselect with optional repivot_factor and repivot_cutoff and lopsided_partition_limit\n\
 -x\ttest log sort\n\
 -X\ttest smoothsort\n\
+-Y nm,ne\tset power function exponent for median of samples middle and ends sampling tables\n\
 -y [n]\tYaroslavskiy's dual-pivot sort with optional insertion sort cutoff\n\
--z\tset repeatable random number generator state\n\
--0 name\tselect sorting repivot table by name (disabled, aggressive, loose, relaxed, transparent, experimental)\n\
--1 f,f,f...\tset sorting repivot factor1 values\n\
--2 f,f,f...\tset sorting repivot factor2 values\n\
--3 c1[,c2[,...]]\tset sampling table breakpoint sizes\n\
+-z\tset repeatable random nZumber generator state\n\
+-Z\tdisable repivoting\n\
+-3 c1[,c2[,...]]\tset remedian sampling table breakpoint sizes\n\
 -4 c\tset small-array sort cutoff to c (disable use of small-array dedicated sort above size c)\n\
 -5\tsave partial partitioning comparisons\n\
--6 name\tselect selection repivot table by name (disabled, aggressive, loose, relaxed, transparent, experimental)\n\
--7 f,f,f...\tset selection repivot factor1 values\n\
--8 f,f,f...\tset selection repivot factor2 values\n\
 -9\ttest plan9 qsort\n\
 -!\tcollect and report statistics for small array insertion sort\n\
 -@\tignore sampling breakpoint table\n\
@@ -148,46 +145,20 @@ extern void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
 ->\ttest sorting small arrays by merging runs\n\
 -] n\tset cache size to n, overriding determination by system\n\
 start\tbegin testing with array size\n\
-incr\tincrement array size (prefix with * for geometric sequence)\n\
+incr\tincrement array size (expression)\n\
 size\tnumber of items in each test (maximum size if start is given) (default 10000)\n\
 count\tnumber of times to run each test (default 10)"
-
-static const char *sorting_repivot_table_name = "relaxed"; /* default */
-static const char *selection_repivot_table_name = "aggressive"; /* default */
 
 /* static functions */
 static const char *sampling_table_name(struct sampling_table_struct *psts)
 {
-    if (psts==sorting_sampling_table) return "sorting";
-    if (psts==ends_sampling_table) return "ends";
-    if (psts==middle_sampling_table) return "middle";
+    if (psts==sorting_sampling_table) return "ros_sorting";
+    if (psts==middle_sampling_table) return "ros_middle";
+    if (psts==ends_sampling_table) return "ros_ends";
+    if (psts==mos_sorting_sampling_table) return "mos_sorting";
+    if (psts==mos_middle_sampling_table) return "mos_middle";
+    if (psts==mos_ends_sampling_table) return "mos_ends";
     return "unknown";
-}
-
-static
-QUICKSELECT_INLINE
-void set_factor1(unsigned int repivot_table_index, size_t *pk, unsigned int factor1)
-{
-    if (repivot_table_index>=repivot_table_size)
-        repivot_table_index = repivot_table_size - 1UL;
-    if (NULL!=pk) { /* selection */
-        selection_repivot_table[repivot_table_index].factor1 = factor1;
-    } else { /* sorting */
-        sorting_repivot_table[repivot_table_index].factor1 = factor1;
-    }
-}
-
-static
-QUICKSELECT_INLINE
-void set_factor2(unsigned int repivot_table_index, size_t *pk, unsigned int factor2)
-{
-    if (repivot_table_index>=repivot_table_size)
-        repivot_table_index = repivot_table_size - 1UL;
-    if (NULL!=pk) { /* selection */
-        selection_repivot_table[repivot_table_index].factor2 = factor2;
-    } else { /* sorting */
-        sorting_repivot_table[repivot_table_index].factor2 = factor2;
-    }
 }
 
 static const char *pivot_name(int method)
@@ -201,6 +172,8 @@ static const char *pivot_name(int method)
         return "QUICKSELECT_PIVOT_REMEDIAN_FULL" ;
         case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
         return "QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS" ;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+        return "QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES" ;
         default:
             (V)snl(buf,sizeof(buf),"unknown method ",NULL,(long)method,10,' ',1,NULL,NULL);
         break;
@@ -277,6 +250,8 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
                     (V)fprintf(stdout,
                         "%soptimized for complex comparisons%s\n",
                         prefix,suffix);
+                    if (QUICKSELECT_PARTITION_FAST==partition_method)
+                        pivot_method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES;
                 break;
                 case QUICKSELECT_RESTRICT_RANK :
                     if (QUICKSELECT_PARTITION_FAST==partition_method)
@@ -288,6 +263,9 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
                     (V)fprintf(stdout,
                         "%sinternal indirection%s\n",
                         prefix,suffix);
+                    /* indirect means size_ratio==1 */
+                    if (QUICKSELECT_PARTITION_FAST==partition_method)
+                        pivot_method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES;
                 break;
                 case QUICKSELECT_NO_REPIVOT :
                     (V)fprintf(stdout,
@@ -605,7 +583,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     char loghost[MAXHOSTNAMELEN] = "localhost";  /* RATS: ignore (big enough) */
     char procid[32];            /* RATS: ignore (used with sizeof()) */
     char *endptr=NULL;
-    const char *comment="", *pcc, *pcc2;
+    const char *comment="", *incr="+1", *pcc, *pcc2;
     unsigned char flags[256], var_count='n';
     short int *sharray=NULL;
     int bufsz, c, col=2, i, optind;
@@ -619,8 +597,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     unsigned int csequences=0U, errs=0U, func, functions=0U, last_adv,
         options=0U, p, tsequences=0U, sequence, tests, types=0U, u, v;
     long *larray=NULL, *refarray=NULL;
-    VOL unsigned long count, count_limit=ULONG_MAX , incr=1UL, n, div=1UL,
-        mult=1UL, startn=0UL, ul, z;
+    VOL unsigned long count, count_limit=ULONG_MAX , n, startn=0UL, ul, z;
     size_t ratio=1UL, sz, q, w, x, y;
     size_t marray[12], dn;
     double d, timeout = TEST_TIMEOUT;
@@ -630,6 +607,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     struct data_struct *data_array=NULL, **parray=NULL;
     struct logger_struct ls;
     struct sampling_table_struct *pst;
+    struct repivot_table_struct *prt;
     void (*f)(int, void *, const char *, ...) = logger;
     void *log_arg;
     pid_t pid;
@@ -1094,7 +1072,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         flags[c] = tolower((unsigned char)(*pcc));
                     }
                     while (('\0'!=*pcc)&&(!(isdigit(*pcc)))) ++pcc;
-                    selection_nk = (size_t)snlround(parse_expr(pcc,&endptr,10),
+                    selection_nk = (size_t)snlround(parse_expr(1.0,pcc,&endptr,10),
                         f,log_arg); /* number of order statistics */
                     if (1UL>selection_nk) selection_nk = 1UL;
                     pcc=endptr;
@@ -1322,7 +1300,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
                         pcc = argv[++optind];
-                    timeout = parse_expr(pcc, &endptr, 10);
+                    timeout = parse_expr(1.0,pcc, &endptr, 10);
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
@@ -1348,6 +1326,46 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     if ('\0' != *pcc) {
                         introsort_recursion_factor=strtoul(++pcc,&endptr,10);
                         pcc=endptr;
+                    }
+                    /* pass over arg to satisfy loop conditions */
+                    for (; '\0' != *pcc; pcc++) ;
+                    pcc--;
+                break;
+                case 't' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc)) {
+                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
+                            /* next arg (no cutoffs) */
+                            pcc--;
+                            continue;
+                        }
+                        pcc = argv[++optind]; /* cutoff value(s) */
+                    }
+                    if (isalpha(*pcc)) { /* sampling table specifier */
+                        switch (tolower((unsigned char)(*pcc))) {
+                            default : /*FALLTHROUGH*/
+                            case 'q' : /* sorting 000 */
+                                pst=mos_sorting_sampling_table;
+                            break;
+                            case 'm' : /* middle 010 */
+                                pst=mos_middle_sampling_table;
+                            break;
+                            case 'e' : /* ends 100 001 */
+                                pst=mos_ends_sampling_table;
+                            break;
+                        }
+                        while (('\0' != *pcc)&&(!isdigit(*pcc))) pcc++;
+                    } else {
+                        pst=mos_sorting_sampling_table;
+                    }
+                    if ('\0' != *pcc) {
+                        for (x=0UL; x<(SAMPLING_TABLE_SIZE); x++) {
+                            y = (size_t)snlround(parse_expr(1.0,pcc, &endptr, 10),
+                                f,log_arg);
+                            if (NULL!=pst) pst[x].max_nmemb=y;
+                            if ('\0' != *endptr) pcc=endptr+1;
+                            else break;
+                        }
                     }
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
@@ -1487,21 +1505,21 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
                     no_aux_repivot=1;
-                    repivot_factor = (size_t)snlround(parse_expr(pcc, &endptr,
+                    repivot_factor = (size_t)snlround(parse_expr(1.0,pcc, &endptr,
                         10),f,log_arg);
                     pcc=endptr;
                     if ('\0' != *pcc) {
-                        repivot_cutoff = (size_t)snlround(parse_expr(++pcc,
+                        repivot_cutoff = (size_t)snlround(parse_expr(1.0,++pcc,
                             &endptr, 10),f,log_arg);
                         pcc=endptr;
                     }
                     if ('\0' != *pcc) {
-                        lopsided_partition_limit=(int)snlround(parse_expr(++pcc,
+                        lopsided_partition_limit=(int)snlround(parse_expr(1.0,++pcc,
                             &endptr, 10),f,log_arg);
                         pcc=endptr;
                     }
                     if ('\0' != *pcc) {
-                        no_aux_repivot = (int)snlround(parse_expr(++pcc,&endptr,
+                        no_aux_repivot = (int)snlround(parse_expr(1.0,++pcc,&endptr,
                             10),f,log_arg);
                         pcc=endptr;
                     }
@@ -1517,6 +1535,24 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_SMOOTHSORT);
                 break;
+                case 'Y' :
+                    if ('\0' == *(++pcc))
+                        pcc = argv[++optind];
+                    d = parse_expr(1.0,pcc, &endptr, 10);
+                    if (0.0<d) {
+                        mos_middle_power=d;
+                    }
+                    pcc=endptr;
+                    if (('\0'!=*pcc)&&('\0'!=*(++pcc))) {
+                        d = parse_expr(1.0,pcc, &endptr, 10);
+                        if (0.0<d) {
+                            mos_ends_power=d;
+                        }
+                    }
+                    /* pass over arg to satisfy loop conditions */
+                    for (pcc=endptr; '\0' != *pcc; pcc++) ;
+                    pcc--;
+                break;
                 case 'y' :
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_YQSORT);
@@ -1528,102 +1564,16 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* cutoff value */
                     }
-                    y_cutoff = (size_t)snlround(parse_expr(pcc, &endptr, 10),
+                    y_cutoff = (size_t)snlround(parse_expr(1.0,pcc, &endptr, 10),
                         f,log_arg);
                     pcc=endptr;
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
                 break;
-                case '0' :
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no table name) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* table name */
-                    }
-                    flags[c]=*pcc; /* first character of table name */
-                    /* pass over arg to satisfy loop conditions */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
-                    /* set up requested (or default) sorting repivot table */
-                    switch (flags[c]) {
-                        case 'a' : /* aggressive */
-                            sorting_repivot_table_name = "aggressive";
-                            sorting_repivot_table
-                                = sorting_repivot_table_aggressive;
-                        break;
-                        case 'd' : /* disabled */
-                            sorting_repivot_table_name = "disabled";
-                            sorting_repivot_table
-                                = sorting_repivot_table_disabled;
-                        break;
-                        case 'l' : /* loose */
-                            sorting_repivot_table_name = "loose";
-                            sorting_repivot_table
-                                = sorting_repivot_table_loose;
-                        break;
-                        case 'r' : /* relaxed */
-                            sorting_repivot_table_name = "relaxed";
-                            sorting_repivot_table
-                                = sorting_repivot_table_relaxed;
-                        break;
-                        case 't' : /* transparent */
-                            sorting_repivot_table_name = "transparent";
-                            sorting_repivot_table
-                                = sorting_repivot_table_transparent;
-                        break;
-                        default : /* no match */
-                            sorting_repivot_table_name = "experimental";
-                        break;
-                    }
-                    if ((0U!=flags['1'])||(0U!=flags['2'])||(0U!=flags['3']))
-                        (V)fprintf(stderr,
-                            "You had better set -0 BEFORE -1 or -2 or -3...\n");
-                break;
-                case '1' :
+                case 'Z' :
                     flags[c] = 1U;
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no factors) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* factors value(s) */
-                    }
-                    for (x=0UL; x<repivot_table_size; x++) {
-                        y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
-                            f,log_arg);
-                        set_factor1(x,NULL,y);
-                        if ('\0' != *endptr) pcc=endptr+1;
-                        else break;
-                    }
-                    /* pass over arg to satisfy loop conditions */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
-                break;
-                case '2' :
-                    flags[c] = 1U;
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no factors) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* factors value(s) */
-                    }
-                    for (x=0UL; x<repivot_table_size; x++) {
-                        y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
-                            f,log_arg);
-                        set_factor2(x,NULL,y);
-                        if ('\0' != *endptr) pcc=endptr+1;
-                        else break;
-                    }
-                    /* pass over arg to satisfy loop conditions */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
+                    options|=QUICKSELECT_NO_REPIVOT;
                 break;
                 case '3' :
                     flags[c] = 1U;
@@ -1636,39 +1586,36 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
                     if (isalpha(*pcc)) { /* sampling table specifier */
-                        pst=NULL;
                         switch (tolower((unsigned char)(*pcc))) {
                             case 'e' : /* end=right 001 */
-                                pst=sampling_tables[ENDS];
+                                pst=ends_sampling_table;
                             break;
+                            case 'r' : /* extended 011 *//*FALLTHROUGH*/
+                            case 'd' : /* distributed 111 *//*FALLTHROUGH*/
+                            case 'l' : /* midleft 110 *//*FALLTHROUGH*/
                             case 'm' : /* middle 010 */
-                                pst=sampling_tables[MIDDLE];
+                                pst=middle_sampling_table;
                             break;
+                            case 's' : /* separated 101 *//*FALLTHROUGH*/
                             case 'b' : /* beginning=left 100 */
-                                pst=sampling_tables[ENDS];
-                            break;
-                            case 'r' : /* extended 011 */
-                            break;
-                            case 's' : /* separated 101 */
-                            break;
-                            case 'l' : /* midleft 110 */
-                            break;
-                            case 'd' : /* distributed 111 */
+                                pst=ends_sampling_table;
                             break;
                             default : /* sorting 000 */
-                                pst=sampling_tables[SORTING];
+                                pst=sorting_sampling_table;
                             break;
                         }
-                        while (!isdigit(*pcc)) pcc++;
+                        while (('\0' != *pcc)&&(!isdigit(*pcc))) pcc++;
                     } else {
-                        pst=sampling_tables[0];
+                        pst=sorting_sampling_table;
                     }
-                    for (x=0UL; x<(SAMPLING_TABLE_SIZE); x++) {
-                        y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
-                            f,log_arg);
-                        if (NULL!=pst) pst[x].max_nmemb=y;
-                        if ('\0' != *endptr) pcc=endptr+1;
-                        else break;
+                    if ('\0' != *pcc) {
+                        for (x=0UL; x<(SAMPLING_TABLE_SIZE); x++) {
+                            y = (size_t)snlround(parse_expr(1.0,pcc, &endptr, 10),
+                                f,log_arg);
+                            if (NULL!=pst) pst[x].max_nmemb=y;
+                            if ('\0' != *endptr) pcc=endptr+1;
+                            else break;
+                        }
                     }
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
@@ -1685,7 +1632,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind]; /* cutoff value(s) */
                     }
                     quickselect_small_array_cutoff
-                        = (size_t)snlround(parse_expr(pcc, &endptr, 10),
+                        = (size_t)snlround(parse_expr(1.0,pcc, &endptr, 10),
                         f,log_arg);
                     if (0UL==quickselect_small_array_cutoff)
                         (V)fprintf(stderr,"%s: %lu for quickselect_small_array_cutoff is ignored!\n",
@@ -1697,85 +1644,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 break;
                 case '5' :
                     flags[c] = save_partial = 1U;
-                break;
-                case '6' :
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no table name) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* table name */
-                    }
-                    flags[c]=*pcc; /* first character of repivot table name */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
-                    /* set up requested (or default) sampling table */
-                    switch (flags[c]) {
-                        case 'a' : /* aggressive */
-                            selection_repivot_table_name = "aggressive";
-                        break;
-                        case 'd' : /* disabled */
-                            selection_repivot_table_name = "disabled";
-                        break;
-                        case 'l' : /* loose */
-                            selection_repivot_table_name = "loose";
-                        break;
-                        case 'r' : /* relaxed */
-                            selection_repivot_table_name = "relaxed";
-                        break;
-                        case 't' : /* transparent */
-                            selection_repivot_table_name = "transparent";
-                        break;
-                        default : /* no match */
-                            selection_repivot_table_name = "experimental";
-                        break;
-                    }
-                    if ((0U!=flags['7'])||(0U!=flags['8']))
-                        (V)fprintf(stderr,
-                            "You had better set -6 BEFORE -7 or -8...\n");
-                break;
-                case '7' :
-                    flags[c] = 1U;
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no factors) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* factors value(s) */
-                    }
-                    for (x=0UL; x<repivot_table_size; x++) {
-                        y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
-                            f,log_arg);
-                        set_factor1(x,&y,y);
-                        if ('\0' != *endptr) pcc=endptr+1;
-                        else break;
-                    }
-                    /* pass over arg to satisfy loop conditions */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
-                break;
-                case '8' :
-                    flags[c] = 1U;
-                    if ('\0' == *(++pcc)) {
-                        if ((argc<=optind+1)||('-'==argv[optind+1][0])) {
-                            /* next arg (no factors) */
-                            pcc--;
-                            continue;
-                        }
-                        pcc = argv[++optind]; /* factors value(s) */
-                    }
-                    for (x=0UL; x<repivot_table_size; x++) {
-                        y = (size_t)snlround(parse_expr(pcc, &endptr, 10),
-                            f,log_arg);
-                        set_factor2(x,&y,y);
-                        if ('\0' != *endptr) pcc=endptr+1;
-                        else break;
-                    }
-                    /* pass over arg to satisfy loop conditions */
-                    for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
                 break;
                 case '9' :
                     flags[c] = 1U;
@@ -1946,7 +1814,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         }
                         pcc = argv[++optind]; /* factors value(s) */
                     }
-                    ratio = (size_t)snlround(parse_expr(pcc,&endptr,10),
+                    ratio = (size_t)snlround(parse_expr(1.0,pcc,&endptr,10),
                         f,log_arg); /* number of order statistics */
                     /* pass over arg to satisfy loop conditions */
                     for (pcc=endptr; '\0' != *pcc; pcc++) ;
@@ -2042,7 +1910,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         pcc = argv[++optind]; /* factors value(s) */
                     }
                     quickselect_cache_size = (size_t)snlround(
-                        parse_expr(pcc,&endptr,10),f,log_arg);
+                        parse_expr(1.0,pcc,&endptr,10),f,log_arg);
                     /* pass over arg to satisfy loop conditions */
                     for (pcc=endptr; '\0' != *pcc; pcc++) ;
                     pcc--;
@@ -2175,20 +2043,15 @@ usage:
                         (V)fprintf(stdout,
                             "%stiming column = %d\n", comment, col);
                     break;
-                    case '0' : /*FALLTHROUGH*/
-                    case '1' : /*FALLTHROUGH*/
-                    case '2' : /*FALLTHROUGH*/
                     case '3' : /*FALLTHROUGH*/
                     case '4' : /*FALLTHROUGH*/
                     case '5' : /*FALLTHROUGH*/
-                    case '6' : /*FALLTHROUGH*/
-                    case '7' : /*FALLTHROUGH*/
-                    case '8' : /*FALLTHROUGH*/
                     case 'c' : /*FALLTHROUGH*/
                     case 'm' : /*FALLTHROUGH*/
                     case 'O' : /*FALLTHROUGH*/
                     case 'U' : /*FALLTHROUGH*/
-                    case 'q' :
+                    case 'q' : /*FALLTHROUGH*/
+                    case 't' :
                         if (0UL==z) {
                             (V)fprintf(stdout, "%ssave_partial = %u\n", comment,
                                 save_partial);
@@ -2202,17 +2065,14 @@ usage:
                                 lopsided_partition_limit);
                             if ((DEBUGGING(SORT_SELECT_DEBUG))||(0U==flags['h'])
                             ) {
-                                /* use z as bitmap of sampling tables output */
-                                /* sorting sampling table */
-                                w=SORTING;
-                                z |= (0x01UL<<w);
-                                pst=sampling_tables[w];
+
+                                pst=sorting_sampling_table;
+                                pcc=sampling_table_name(pst);
                                 (V)fprintf(stdout,"%s sampling table:\n%s\n",
-                                    sampling_table_name(pst),
+                                    pcc,
                                     "                  max_nmemb,     samples"
                                     );
-                                for (d=0.0,i=0,w=0UL,x=1UL;
-                                (SAMPLING_TABLE_SIZE)>w;
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
                                 w++,x*=3UL)
                                 {
                                     y = pst[w].max_nmemb;
@@ -2221,7 +2081,8 @@ usage:
                                         (V)fprintf(stdout,"/* 65535 */\n");
                                     if ((4294967295UL<y)&&(0UL<w)
                                     &&(4294967295UL>=pst[w-1UL].max_nmemb))
-                                        (V)fprintf(stdout,"/* 4294967295 */\n");
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
                                     if (((SIZE_MAX)==y)||(2UL>y)
                                     ||((0UL<w)&&(y<pst[w-1UL].max_nmemb))
                                     ) {
@@ -2235,112 +2096,291 @@ usage:
                                         10, ' ', 11, f, log_arg);
                                     (V)fprintf(stdout,
                                         "   { %s %s }, /* %s */\n",
+                                        buf,buf2,pcc);
+                                    if ((SIZE_MAX)==y) continue;
+                                }
+
+                                pst=middle_sampling_table;
+                                pcc=sampling_table_name(pst);
+                                (V)fprintf(stdout,"%s sampling table:\n%s\n",
+                                    pcc,
+                                    "                  max_nmemb,     samples"
+                                    );
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
+                                w++,x*=3UL)
+                                {
+                                    y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
+                                    if ((4294967295UL<y)&&(0UL<w)
+                                    &&(4294967295UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
+                                    if (((SIZE_MAX)==y)||(2UL>y)
+                                    ||((0UL<w)&&(y<pst[w-1UL].max_nmemb))
+                                    ) {
+                                        pst[w].max_nmemb=(SIZE_MAX);
+                                        strcpy(buf,
+                                            "             (SIZE_MAX),");
+                                    } else
+                                        i = snul(buf,sizeof(buf),NULL,"UL,",
+                                            y, 10, ' ', 21, f, log_arg);
+                                    i = snul(buf2,sizeof(buf2),NULL,"UL",x,
+                                        10, ' ', 11, f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "   { %s %s }, /* %s */\n",
+                                        buf,buf2,pcc);
+                                    if ((SIZE_MAX)==y) continue;
+                                }
+
+                                pst=ends_sampling_table;
+                                pcc=sampling_table_name(pst);
+                                (V)fprintf(stdout,"%s sampling table:\n%s\n",
+                                    pcc,
+                                    "                  max_nmemb,     samples"
+                                    );
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
+                                w++,x*=3UL)
+                                {
+                                    y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
+                                    if ((4294967295UL<y)&&(0UL<w)
+                                    &&(4294967295UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
+                                    if (((SIZE_MAX)==y)||(2UL>y)
+                                    ||((0UL<w)&&(y<pst[w-1UL].max_nmemb))
+                                    ) {
+                                        pst[w].max_nmemb=(SIZE_MAX);
+                                        strcpy(buf,
+                                            "             (SIZE_MAX),");
+                                    } else
+                                        i = snul(buf,sizeof(buf),NULL,"UL,",
+                                            y, 10, ' ', 21, f, log_arg);
+                                    i = snul(buf2,sizeof(buf2),NULL,"UL",x,
+                                        10, ' ', 11, f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "   { %s %s }, /* %s */\n",
+                                        buf,buf2,pcc);
+                                    if ((SIZE_MAX)==y) continue;
+                                }
+
+                                pst=mos_sorting_sampling_table;
+                                (V)fprintf(stdout,"%s sampling table:\n%s\n",
+                                    sampling_table_name(pst),
+                                    "                  max_nmemb,     samples"
+                                    );
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
+                                w++,x+=2UL)
+                                {
+                                    y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
+                                    if ((4294967295UL<y)&&(0UL<w)
+                                    &&(4294967295UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
+                                    if (((SIZE_MAX)==y)||(2UL>y)) {
+                                        pst[w].max_nmemb=(SIZE_MAX);
+                                        strcpy(buf,
+                                            "             (SIZE_MAX),");
+                                    } else
+                                        i = snul(buf,sizeof(buf),NULL,"UL,",
+                                            y, 10, ' ', 21, f, log_arg);
+                                    i = snul(buf2,sizeof(buf2),NULL,"UL",x,
+                                        10, ' ', 11, f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "   { %s %s }, /* %s */\n",
                                         buf,buf2,sampling_table_name(pst));
                                     if ((SIZE_MAX)==y) continue;
-                                    if (x!=y) {
-                                        i++;
-                                        d+=(double)y/(double)x/(double)x/(double)i;
-                                    }
                                 }
-                                (V)sng(buf, sizeof(buf), NULL, NULL, d, -6,
-                                    3, f, log_arg);
-                                (V)fprintf(stdout,"/* %s k=%s */\n",
-                                    sampling_table_name(pst),buf);
-                                /* selection sampling tables */
-                                for (v=0U; v<8U; v++) {
-                                    w=sampling_distribution_remap[v];
-                                    if (0UL!=(z&(0x01UL<<w))) continue;
-                                    z |= (0x01UL<<w);
-                                    pst=sampling_tables[w];
-                                    (V)fprintf(stdout,"%s sampling table:\n%s\n",
-                                        sampling_table_name(pst),
-                                        "                  max_nmemb,     samples"
-                                        );
-                                    for (d=0.0,i=0,w=0UL,x=1UL;
-                                    (SAMPLING_TABLE_SIZE)>w;
-                                    w++,x*=3UL)
-                                    {
-                                        y = pst[w].max_nmemb;
-                                        if ((65535UL<y)&&(0UL<w)
-                                        &&(65535UL>=pst[w-1UL].max_nmemb))
-                                            (V)fprintf(stdout,"/* 65535 */\n");
-                                        if ((4294967295UL<y)&&(0UL<w)
-                                        &&(4294967295UL>=pst[w-1UL].max_nmemb))
-                                            (V)fprintf(stdout,
-                                                "/* 4294967295 */\n");
-                                        if (((SIZE_MAX)==y)||(2UL>y)
-                                        ||((0UL<w)&&(y<pst[w-1UL].max_nmemb))
-                                        ) {
-                                            pst[w].max_nmemb=(SIZE_MAX);
-                                            strcpy(buf,
-                                                "             (SIZE_MAX),");
-                                        } else
-                                            i = snul(buf,sizeof(buf),NULL,"UL,",
-                                                y, 10, ' ', 21, f, log_arg);
-                                        i = snul(buf2,sizeof(buf2),NULL,"UL",x,
-                                            10, ' ', 11, f, log_arg);
-                                        (V)fprintf(stdout,
-                                            "   { %s %s }, /* %s */\n",
-                                            buf,buf2,sampling_table_name(pst));
-                                        if ((SIZE_MAX)==y) continue;
-                                        if (x!=y) {
-                                            i++;
-                                            d+=(double)y/(double)x/(double)x/(double)i;
-                                        }
-                                    }
-                                    (V)sng(buf, sizeof(buf), NULL, NULL, d, -6,
-                                        3, f, log_arg);
-                                    (V)fprintf(stdout,"/* %s k=%s */\n",
-                                        sampling_table_name(pst),buf);
-                                }
-                                if (QUICKSELECT_OPTIMIZE_COMPARISONS == (options & (QUICKSELECT_OPTIMIZE_COMPARISONS)))
-                                    pcc2 = pcc = "complex";
-                                else
-                                    pcc=sorting_repivot_table_name, pcc2=selection_repivot_table_name;
-                                (V)fprintf(stdout,"sorting repivot table (%s):\n%s\n",
-                                    pcc, " samples, factor1, factor2"
+
+                                pst=mos_middle_sampling_table;
+                                (V)fprintf(stdout,"%s sampling table:\n%s\n",
+                                    sampling_table_name(pst),
+                                    "                  max_nmemb,     samples"
                                     );
-                                for (x=0UL; x<repivot_table_size; x++) {
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
+                                w++,x+=2UL)
+                                {
+                                    y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
+                                    if ((4294967295UL<y)&&(0UL<w)
+                                    &&(4294967295UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
+                                    if (((SIZE_MAX)==y)||(2UL>y)) {
+                                        pst[w].max_nmemb=(SIZE_MAX);
+                                        strcpy(buf,
+                                            "             (SIZE_MAX),");
+                                    } else
+                                        i = snul(buf,sizeof(buf),NULL,"UL,",
+                                            y, 10, ' ', 21, f, log_arg);
+                                    i = snul(buf2,sizeof(buf2),NULL,"UL",x,
+                                        10, ' ', 11, f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "   { %s %s }, /* %s */\n",
+                                        buf,buf2,sampling_table_name(pst));
+                                    if ((SIZE_MAX)==y) continue;
+                                }
+
+                                pst=mos_ends_sampling_table;
+                                (V)fprintf(stdout,"%s sampling table:\n%s\n",
+                                    sampling_table_name(pst),
+                                    "                  max_nmemb,     samples"
+                                    );
+                                for (i=0,w=0UL,x=1UL; (SAMPLING_TABLE_SIZE)>w;
+                                w++,x+=2UL)
+                                {
+                                    y = pst[w].max_nmemb;
+                                    if ((65535UL<y)&&(0UL<w)
+                                    &&(65535UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,"/* 65535 */\n");
+                                    if ((4294967295UL<y)&&(0UL<w)
+                                    &&(4294967295UL>=pst[w-1UL].max_nmemb))
+                                        (V)fprintf(stdout,
+                                            "/* 4294967295 */\n");
+                                    if (((SIZE_MAX)==y)||(2UL>y)) {
+                                        pst[w].max_nmemb=(SIZE_MAX);
+                                        strcpy(buf,
+                                            "             (SIZE_MAX),");
+                                    } else
+                                        i = snul(buf,sizeof(buf),NULL,"UL,",
+                                            y, 10, ' ', 21, f, log_arg);
+                                    i = snul(buf2,sizeof(buf2),NULL,"UL",x,
+                                        10, ' ', 11, f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "   { %s %s }, /* %s */\n",
+                                        buf,buf2,sampling_table_name(pst));
+                                    if ((SIZE_MAX)==y) continue;
+                                }
+
+                                prt=ros_sorting_repivot_table;
+                                pcc="remedian of samples sorting";
+                                (V)fprintf(stdout,"%s repivot table:\n%s\n",pcc,
+                                    "    min_samples, factor1, factor2"
+                                    );
+                                for (i=0,x=0UL; ; ++i,x=prt[i].min_samples)
+                                {
                                     unsigned char factor1, factor2;
-                                    i = snul(buf,sizeof(buf),"/* "," */ {",
-                                        sorting_sampling_table[x].samples, 10,
-                                        ' ', 3, f, log_arg);
-                                    repivot_factors(x,NULL,&factor1,&factor2);
-                                    i = snul(buf2,sizeof(buf2),NULL,"U,",
+                                    x = prt[i].min_samples;
+                                    factor1=prt[i].factor1;
+                                    factor2=prt[i].factor2;
+                                    if ((SIZE_MAX)==x) {
+                                        strcpy(buf,
+                                            "(SIZE_MAX),");
+                                    } else
+                                        (V)snul(buf,sizeof(buf),NULL,"UL,",
+                                            x, 10, ' ', 8, f, log_arg);
+                                    (V)snul(buf2,sizeof(buf2),NULL,"U,",
                                         (unsigned long)factor1, 10, ' ', 3,
                                         f, log_arg);
-                                    i = snul(buf3,sizeof(buf3),NULL,"U",
+                                    (V)snul(buf3,sizeof(buf3),NULL,"U",
                                         (unsigned long)factor2, 10, ' ', 3,
                                         f, log_arg);
                                     (V)fprintf(stdout,
-                                        "%s %s %s }, /* sorting %s */%s\n",
+                                        "    { %s %s %s }, /* %s */\n",
                                         buf,buf2,buf3,
-                                        sorting_repivot_table_name,
-                                        repivot_comment[x]);
+                                        pcc);
+                                    if ((SIZE_MAX)==x) break;
                                 }
-                                (V)fprintf(stdout,
-                                    "selection repivot table (%s):\n%s\n",
-                                    pcc2, " samples, factor1, factor2"
+
+                                prt=ros_selection_repivot_table;
+                                pcc="remedian of samples selection";
+                                (V)fprintf(stdout,"%s repivot table:\n%s\n",pcc,
+                                    "    min_samples, factor1, factor2"
                                     );
-                                for (x=0UL; x<repivot_table_size; x++) {
+                                for (i=0,x=0UL; ; ++i,x=prt[i].min_samples)
+                                {
                                     unsigned char factor1, factor2;
-                                    /* #samples is uniform for all sampling tables */
-                                    i = snul(buf,sizeof(buf),"/* "," */ { ",
-                                        sorting_sampling_table[x].samples, 10,
-                                        ' ', 3, f, log_arg);
-                                    repivot_factors(x,
-                                        (const size_t *)(&factor1),
-                                        &factor1, &factor2);
-                                    i = snul(buf2,sizeof(buf2),NULL,"U,",
-                                        factor1, 10, ' ', 3, f, log_arg);
-                                    i = snul(buf3,sizeof(buf3),NULL,"U",factor2,
-                                        10, ' ', 3, f, log_arg);
+                                    x = prt[i].min_samples;
+                                    factor1=prt[i].factor1;
+                                    factor2=prt[i].factor2;
+                                    if ((SIZE_MAX)==x) {
+                                        strcpy(buf,
+                                            "(SIZE_MAX),");
+                                    } else
+                                        (V)snul(buf,sizeof(buf),NULL,"UL,",
+                                            x, 10, ' ', 8, f, log_arg);
+                                    (V)snul(buf2,sizeof(buf2),NULL,"U,",
+                                        (unsigned long)factor1, 10, ' ', 3,
+                                        f, log_arg);
+                                    (V)snul(buf3,sizeof(buf3),NULL,"U",
+                                        (unsigned long)factor2, 10, ' ', 3,
+                                        f, log_arg);
                                     (V)fprintf(stdout,
-                                        "%s %s %s }, /* selection %s */%s\n",
+                                        "    { %s %s %s }, /* %s */\n",
                                         buf,buf2,buf3,
-                                        selection_repivot_table_name,
-                                        repivot_comment[x]);
+                                        pcc);
+                                    if ((SIZE_MAX)==x) break;
                                 }
+
+                                prt=mos_sorting_repivot_table;
+                                pcc="median of samples sorting";
+                                (V)fprintf(stdout,"%s repivot table:\n%s\n",pcc,
+                                    "    min_samples, factor1, factor2"
+                                    );
+                                for (i=0,x=0UL; ; ++i,x=prt[i].min_samples)
+                                {
+                                    unsigned char factor1, factor2;
+                                    x = prt[i].min_samples;
+                                    factor1=prt[i].factor1;
+                                    factor2=prt[i].factor2;
+                                    if ((SIZE_MAX)==x) {
+                                        strcpy(buf,
+                                            "(SIZE_MAX),");
+                                    } else
+                                        (V)snul(buf,sizeof(buf),NULL,"UL,",
+                                            x, 10, ' ', 8, f, log_arg);
+                                    (V)snul(buf2,sizeof(buf2),NULL,"U,",
+                                        (unsigned long)factor1, 10, ' ', 3,
+                                        f, log_arg);
+                                    (V)snul(buf3,sizeof(buf3),NULL,"U",
+                                        (unsigned long)factor2, 10, ' ', 3,
+                                        f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "    { %s %s %s }, /* %s */\n",
+                                        buf,buf2,buf3,
+                                        pcc);
+                                    if ((SIZE_MAX)==x) break;
+                                }
+
+                                prt=mos_selection_repivot_table;
+                                pcc="median of samples selection";
+                                (V)fprintf(stdout,"%s repivot table:\n%s\n",pcc,
+                                    "    min_samples, factor1, factor2"
+                                    );
+                                for (i=0,x=0UL; ; ++i,x=prt[i].min_samples)
+                                {
+                                    unsigned char factor1, factor2;
+                                    x = prt[i].min_samples;
+                                    factor1=prt[i].factor1;
+                                    factor2=prt[i].factor2;
+                                    if ((SIZE_MAX)==x) {
+                                        strcpy(buf,
+                                            "(SIZE_MAX),");
+                                    } else
+                                        (V)snul(buf,sizeof(buf),NULL,"UL,",
+                                            x, 10, ' ', 8, f, log_arg);
+                                    (V)snul(buf2,sizeof(buf2),NULL,"U,",
+                                        (unsigned long)factor1, 10, ' ', 3,
+                                        f, log_arg);
+                                    (V)snul(buf3,sizeof(buf3),NULL,"U",
+                                        (unsigned long)factor2, 10, ' ', 3,
+                                        f, log_arg);
+                                    (V)fprintf(stdout,
+                                        "    { %s %s %s }, /* %s */\n",
+                                        buf,buf2,buf3,
+                                        pcc);
+                                    if ((SIZE_MAX)==x) break;
+                                }
+
                                 if (0U!=flags['m']) {
                                     (V)fprintf(stdout, "%lu order statistic%s, %c\n",
                                         selection_nk, selection_nk==1UL?"":"s",
@@ -2350,13 +2390,14 @@ usage:
                             if (0UL==z) z++;
                         }
                     break;
-                    case 'a' :
-                    case 'M' :
+                    case 'a' : /*FALLTHROUGH*/
+                    case 'M' : /*FALLTHROUGH*/
                     case 'p' : /*FALLTHROUGH*/
+                    case 'Z' : /*FALLTHROUGH*/
                     case '|' : /*FALLTHROUGH*/
                     case '/' : /*FALLTHROUGH*/
-                    case '&' :
-                    case '<' :
+                    case '&' : /*FALLTHROUGH*/
+                    case '<' : /*FALLTHROUGH*/
                     case '@' :
                         if (0U==q) {
                             decode_options(stdout,options,comment,"");
@@ -2447,43 +2488,19 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 #endif
     if (argc > optind+2) {
         startn =
-            (size_t)snlround(parse_expr(argv[optind++],&endptr,10),f,log_arg);
+            (size_t)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,log_arg);
         if (2UL > startn) startn = 2UL;
-        pcc = argv[optind++];
-        while ('\0' != *pcc) {
-            switch (*pcc) {
-                case '*' :
-                    mult *=
-                        (size_t)snlround(parse_num(++pcc,&endptr,10),f,log_arg);
-                    if (1UL > mult) mult = 1UL;
-                    if (1UL<mult) incr=0UL;
-                break;
-                case '/' :
-                    div *=
-                        (size_t)snlround(parse_num(++pcc,&endptr,10),f,log_arg);
-                    if (1UL > div) div = 1UL;
-                    if (1UL<div) incr=0UL;
-                break;
-                case '+' :
-                    pcc++; /*FALLTHROUGH*/
-                default :
-                    incr=(size_t)snlround(parse_num(pcc,&endptr,10),f,log_arg);
-                    if (0UL<incr) div=mult=1UL;
-                    endptr = "";
-                break;
-            }
-            pcc=endptr;
-        }
+        incr = argv[optind++];
         if (0U==flags['h'])
             (V)fprintf(stdout,
-                "%sstartn = %lu, div = %lu, incr = %lu, mult = %lu\n",
-                comment, startn, div, incr, mult);
+                "%sstartn = %lu, incr = %s\n",
+                comment, startn, incr);
     }
 
     if (optind >= argc) {
         ul = 0UL;
     } else {
-        ul = (size_t)snlround(parse_expr(argv[optind++], &endptr, 10),f,log_arg);
+        ul = (size_t)snlround(parse_expr(1.0,argv[optind++], &endptr, 10),f,log_arg);
         if (0U==flags['h']) (V)fprintf(stdout, "%sul = %lu\n", comment, ul);
     }
     if (1UL > ul) ul = 10000UL;
@@ -2491,22 +2508,22 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stdout,
-            "%s line %d: ul = %lu, startn = %lu, div = %lu, incr = %lu, mult = %lu\n",
-             __func__, __LINE__, ul, startn, div, incr, mult);
+            "%s line %d: ul = %lu, startn = %lu, incr = %s\n",
+             __func__, __LINE__, ul, startn, incr);
 #endif
     if ((ul<startn)||(0UL==startn)) startn = ul;
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stdout,
-            "%s line %d: startn = %lu, div = %lu, incr = %lu, mult = %lu\n",
-             __func__, __LINE__, startn, div, incr, mult);
+            "%s line %d: startn = %lu, incr = %s\n",
+             __func__, __LINE__, startn, incr);
 #endif
 
     if (optind >= argc) {
         count = 0UL;
     } else {
         /* parse count and counting options */
-        count=(unsigned long)snlround(parse_expr(argv[optind++],&endptr,10),f,
+        count=(unsigned long)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,
             log_arg);
         while ('\0'!=*(pcc=endptr)) {
             switch (*pcc) {
@@ -2518,7 +2535,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                     endptr= ++pcc;
                 break;
                 case '<' :
-                      count_limit=(unsigned long)snlround(parse_expr(++pcc,
+                      count_limit=(unsigned long)snlround(parse_expr(1.0,++pcc,
                           &endptr,10),f,log_arg);
                 break;
                 default:
@@ -2543,8 +2560,8 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stdout,
-            "%s line %d: startn = %lu, div = %lu, incr = %lu, mult = %lu\n",
-            __func__, __LINE__, startn, div, incr, mult);
+            "%s line %d: startn = %lu, incr = %s\n",
+            __func__, __LINE__, startn, incr);
     if (DEBUGGING(SORT_SELECT_DEBUG))
         if ((0U==flags['h'])&&(NULL!=f))
             f(LOG_INFO, log_arg, "%s%s: args processed", comment, prog);
@@ -2553,10 +2570,10 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
     q=1UL;
     if (0U==flags['h'])
         (V)fprintf(stdout,
-            "%s%s: %s line %d: startn = %lu, div = %lu, incr = %lu, mult = %lu,"
+            "%s%s: %s line %d: startn = %lu, incr = %s,"
             " ul = %lu, count = %lu, var_count = %c, count_limit=%lu, ul*count "
             "= %lu, q = %lu\n",
-            comment, __func__, source_file, __LINE__, startn, div, incr, mult,
+            comment, __func__, source_file, __LINE__, startn, incr,
             ul, count, var_count, count_limit, ul*count, q);
 
     /* data types */
@@ -2698,6 +2715,20 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
         return 0;
 
     /* allocate data arrays */
+    /* refarray is the basis for all types */
+    refarray=malloc(sizeof(long)*ul);
+    if (NULL==refarray) errs++;
+    if (0U<errs) {
+        logger(LOG_ERR, log_arg,
+            "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
+        goto done;
+    }
+#if DEBUG_CODE
+    if (DEBUGGING(MEMORY_DEBUG))
+        (V)fprintf(stderr, "/* %s: %s line %d: refarray at %p through %p */\n",
+            __func__,source_file,__LINE__,(void *)refarray,
+            ((char *)refarray)+sizeof(long)*ul);
+#endif /* DEBUG_CODE */
     global_sz=sz;
     if (0UL!=flags['I']) {
         array=malloc(sizeof(int)*sz);
@@ -2846,23 +2877,9 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 (void *)sharray, ((char *)sharray)+sizeof(short)*sz);
 #endif /* DEBUG_CODE */
     }
-    /* refarray is the basis for all types */
-    refarray=malloc(sizeof(long)*sz);
-    if (NULL==refarray) errs++;
-    if (0U<errs) {
-        logger(LOG_ERR, log_arg,
-            "%s: %s: %s line %d: %m", prog, __func__, source_file, __LINE__);
-        goto done;
-    }
     global_refarray = refarray, global_larray = larray, global_parray = parray,
         global_darray = darray, global_iarray = array,
         global_data_array = data_array, global_sharray = sharray;
-#if DEBUG_CODE
-    if (DEBUGGING(MEMORY_DEBUG))
-        (V)fprintf(stderr, "/* %s: %s line %d: refarray at %p through %p */\n",
-            __func__,source_file,__LINE__,(void *)refarray,
-            ((char *)refarray)+sizeof(long)*sz);
-#endif /* DEBUG_CODE */
 
 #if DEBUG_CODE
     if (DEBUGGING(MEMORY_DEBUG))
@@ -2939,9 +2956,10 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
         /* emit revised counts if header is not suppressed */
         if (0U==flags['h'])
             (V)fprintf(stdout,
-                "%s: %s line %d: startn = %lu, div = %lu, incr = %lu, mult = %lu, ul = %lu, count = %lu, ul*count = %lu, q = %lu\n",
-                __func__, source_file, __LINE__, startn, div, incr, mult, ul,
-                count, ul*count, q);
+                "%s: %s line %d: startn = %lu, incr = %s, ul = %lu, count = %lu"
+                ", ul*count = %lu, q = %lu\n",
+                __func__, source_file, __LINE__, startn, incr, ul, count,
+                ul*count, q);
     }
 
     /* restore (re-seed) random number generator(s) before each call to test_function() */
@@ -3185,7 +3203,10 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 
         if (0U!=errs) break;
 
-        z=snlround((double)(n+incr)*(double)mult/(double)div,f,log_arg);
+        buf[0]='\0';
+        if (isalnum(*incr)||('('==*incr)) buf[0]='+',buf[1]='\0';
+        (V)strncat(buf,incr,sizeof(buf)-3);
+        z=snlround(parse_expr((double)n,buf,&endptr,10),f,log_arg);
         if (z<=n) z=++n;
     }
 

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.16 dated 2018-05-07T06:46:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.21 dated 2018-07-27T00:46:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mbmqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mbmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "mbmqsort.c"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2018-05-07T06:46:12Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2018-07-27T00:46:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -74,16 +74,16 @@ static
 
 #include "dedicated_sort_src.h"
 
+QUICKSELECT_EXTERN
+#include "sample_index_decl.h" /* d_sample_index */
+;
+
 #include "pivot_src.h"
 
 #include "insertion_sort_src.h" /* isort_bs */
 
 QUICKSELECT_EXTERN
 #include "partition_decl.h" /* d_partition */
-;
-
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
 ;
 
 /* Data cache size (bytes), initialized on first run */
@@ -137,6 +137,11 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
     unsigned int options)
 {
     size_t nmemb=beyond-first;
+    size_t cache_limit, lneq=0UL, lnne=0UL;
+    if (size>sizeof(char*)) /* direct sorting in data cache */
+        cache_limit=(quickselect_cache_size<<1)/size/3UL; /* 1.5*size within cache */
+    else /* indirect mergesort */
+        cache_limit=quickselect_cache_size/pointer_and_a_half; /* 1.5 pointers within cache */
     for (;;) {
         char *pc, *pd, *pe, *pf, *pm;
         size_t p, q;
@@ -152,10 +157,21 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
            interest here, not run-time.  Run-time can be (and is) optimized in
            quickselect, which incorporates all of the improvements.
         */
-        if (((quickselect_cache_size>>1)>=nmemb)
-        &&(quickselect_cache_size>=nmemb*size)
-        && ((0U!=(options&(MOD_DEDICATED_SORT))) 
-        )) {
+        if ((0U!=(options&(MOD_DEDICATED_SORT))) 
+            && ((5UL>nmemb) /* small sub-array; network no worse than best-case D&C */
+/* stable and optimize comparison methods only work within cache limits */
+            ||((nmemb<=cache_limit)&&
+              ((0U!=(options&(QUICKSELECT_STABLE))) /* stable methods */
+              ||(0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) /* minimize comparisons */
+              ||(
+#if 0
+              (nel>nmemb)&& /* XXX not useful unless nel is a parameter set by wrapper (or internal stack is used instead of recursion) */
+              /* not first partition; D&C 1st time in case constant or binary */
+              /* can only determine non-constant, non-binary, non-ternary after first partition */
+#endif
+              (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
+              )
+            )) {
             int ret;
 #if DEBUG_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG))
@@ -165,7 +181,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                    source_file,__LINE__,first,beyond,size,options);
 #endif
             ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
-                swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+                swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                 options);
             switch (ret) {
                 case 0 : /* sorting is complete */
@@ -258,18 +274,13 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                "nmemb=%lu, size=%lu, options=0x%x */\n",
                __func__,source_file,__LINE__,first,beyond,nmemb,size,options);
 #endif
-        /* freeze low-address samples which will be used for pivot selection */
-        if (aqcmp==compar) {
-            (V)freeze_some_samples(base,first,beyond,size,compar,swapf,
-                alignsize,size_ratio,table_index,options);
-        }
         pm=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
-            size_ratio,table_index,NULL,quickselect_cache_size,pbeyond,options,
-            &pc,&pd,&pe,&pf);
-        pivot_minrank=nmemb;
+            size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,pbeyond,
+            options,&pc,&pd,&pe,&pf,NULL,NULL);
         /* no provision for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pm,pe,pf,size,compar,swapf,
             alignsize,size_ratio,quickselect_cache_size,options,&q,&p);
+        lneq=p-q; lnne=nmemb-lneq;
         if (q-first<beyond-p) { /* > region is larger */
             if (first+1UL<q) { /* at least 2 elements */
                 unsigned int idx=table_index;

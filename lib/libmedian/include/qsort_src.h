@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is qsort_src.h version 1.16 dated 2018-04-16T05:52:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is qsort_src.h version 1.17 dated 2018-06-10T01:03:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.qsort_src.h */
@@ -100,8 +100,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: qsort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "qsort_src.h"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2018-04-16T05:52:06Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2018-06-10T01:03:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -336,19 +336,6 @@ QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
            quickselect_loop) so that quickselect_loop can be made inline.
         */
         size_t size_ratio;
-        unsigned int table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615 ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-        ; /* starting point; refined by sample_index() */
 
         if ((char)0==file_initialized) initialize_file(__FILE__);
 
@@ -366,7 +353,7 @@ QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
 
         /* Special-case sorting is handled in quickselect_loop. */
         PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             0U,NULL,NULL);
     }
     SUFFIX3

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.23 dated 2018-05-14T06:50:17Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.25 dated 2018-06-12T02:15:44Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.23"
-#define MODULE_DATE "2018-05-14T06:50:17Z"
+#define MODULE_VERSION "1.25"
+#define MODULE_DATE "2018-06-12T02:15:44Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -72,35 +72,6 @@
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
-
-/* repivot_factors is used by median_test main */
-extern
-void repivot_factors(unsigned int repivot_table_index, const size_t *pk,
-    unsigned char *pf1, unsigned char *pf2)
-{
-    if ((char)0==file_initialized) initialize_file(__FILE__);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-if (DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
-"/* %s: %s line %d: repivot_table_index=%u */\n",
-__func__,source_file,__LINE__,repivot_table_index);
-#endif /* DEBUG_CODE */
-    if (repivot_table_index>repivot_table_size) {
-        *pf1 = 3U, *pf2 = 3U;
-    } else {
-        if (NULL!=pk) { /* selection */
-            *pf1 = selection_repivot_table[repivot_table_index].factor1;
-            *pf2 = selection_repivot_table[repivot_table_index].factor2;
-        } else { /* sorting */
-            *pf1 = sorting_repivot_table[repivot_table_index].factor1;
-            *pf2 = sorting_repivot_table[repivot_table_index].factor2;
-        }
-    }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-if (DEBUGGING(SHOULD_REPIVOT_DEBUG)) (V)fprintf(stderr,
-"/* %s: %s line %d: factor1=%u, factor2=%u */\n",
-__func__,source_file,__LINE__,*pf1,*pf2);
-#endif /* DEBUG_CODE */
-}
 
 #undef QUICKSELECT_BUILD_FOR_SPEED
 #define QUICKSELECT_BUILD_FOR_SPEED 1
@@ -150,7 +121,6 @@ int quickselect_internal(char *base, size_t nmemb,
     size_t *indices = NULL;
     char **pointers = NULL;
     void (*pswapf)(char *, char *, size_t);
-    unsigned int table_index;
 
     /* Initialization of strings is performed here (rather than in
        quickselect_loop) so that quickselect_loop can be made inline.
@@ -168,7 +138,7 @@ int quickselect_internal(char *base, size_t nmemb,
     */
     if (((0UL!=nmemb) && ((NULL==base) || (0UL==size) || (NULL==compar)))
     || ((0UL!=nk) && (NULL==pk))
-    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION)))
+    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT)))
     ) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: nmemb=%lu, base=%p, size=%lu, compar=%s, pk=%p,"
@@ -201,21 +171,6 @@ int quickselect_internal(char *base, size_t nmemb,
     /* Determine cache size once on first call. */
     if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
 
-    /* rough estimate for table_size */
-    table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-        sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-        sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-        sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-    ; /* starting point; refined by sample_index() */
-
     if (0UL==nk) pk=NULL;
     else if (NULL==pk) onk=nk=0UL;
     else if (1UL<nk) { /* binary search requires nondecreasing pk */
@@ -238,7 +193,7 @@ int quickselect_internal(char *base, size_t nmemb,
 
         if (q<nk) { /* fix (sort) iff broken (not nondecreasing) */
             d_quickselect_loop((char *)pk,0UL,nk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-                salignsize,sratio,2U,quickselect_cache_size,0UL,0U,NULL,NULL);
+                salignsize,sratio,quickselect_cache_size,0UL,0U,NULL,NULL);
         }
         /* verify, fix uniqueness */
         for (p=0UL,q=1UL; q<=nk; q++) { /* CLEARLY executed iff nk>0UL */
@@ -336,12 +291,6 @@ int quickselect_internal(char *base, size_t nmemb,
         __func__,source_file,__LINE__,(unsigned long)size,
         (unsigned long)alignsize,(unsigned long)size_ratio);
 #endif
-    if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++)
-            stats_table[q].max_ratio=stats_table[q].repivot_ratio=0UL,
-                stats_table[q].repivots=0UL;
-    }
 
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
@@ -372,7 +321,7 @@ int quickselect_internal(char *base, size_t nmemb,
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
         size_t n;
         d_quickselect_loop((char *)pointers,0UL,nmemb,sizeof(char *),compar,pk,
-            0UL,nk,pswapf,sizeof(char *),1UL,table_index,quickselect_cache_size,
+            0UL,nk,pswapf,sizeof(char *),1UL,quickselect_cache_size,
             0UL,options,NULL,NULL);
         if (NULL==indices) indices=(size_t *)pointers;
         indices=convert_pointers_to_indices(base,nmemb,size,pointers,
@@ -386,25 +335,14 @@ int quickselect_internal(char *base, size_t nmemb,
 __func__,source_file,__LINE__,size_ratio,nmemb);
             options&=~(QUICKSELECT_INDIRECT);
             d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
-                alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+                alignsize,size_ratio,quickselect_cache_size,0UL,
                 options,NULL,NULL);
         } else if (0UL!=n)
             nmoves+=n*size_ratio;
     } else
         d_quickselect_loop(base,0UL,nmemb,size,compar,pk,0UL,nk,swapf,
-            alignsize,size_ratio,table_index,quickselect_cache_size,0UL,options,
+            alignsize,size_ratio,quickselect_cache_size,0UL,options,
             NULL,NULL);
-
-    if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++) {
-            if (0UL<stats_table[q].max_ratio)
-                (V)fprintf(stderr,
-                    "%s: table_index=%lu, max_ratio=%lu, repivots=%lu@%lu */\n",
-                    __func__,q,stats_table[q].max_ratio,
-                    stats_table[q].repivots,stats_table[q].repivot_ratio);
-        }
-    }
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
     /* This may be expensive if the caller supplied a large number of duplicate
@@ -412,7 +350,7 @@ __func__,source_file,__LINE__,size_ratio,nmemb);
     */
     if (0UL!=s) { /* there were duplicates */
         d_quickselect_loop((char *)pk,0UL,onk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-            salignsize,sratio,2U,quickselect_cache_size,0UL,0U,NULL,NULL);
+            salignsize,sratio,quickselect_cache_size,0UL,0U,NULL,NULL);
 
     }
     return ret;

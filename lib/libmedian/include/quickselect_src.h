@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.21 dated 2018-04-16T05:52:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.23 dated 2018-07-27T18:19:26Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_src.h */
@@ -133,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_src.h"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-04-16T05:52:06Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2018-07-27T18:19:26Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -193,6 +193,11 @@ void (*pointerswap)(char *,char *,size_t)=NULL;
 size_t quickselect_cache_size = 0UL;
 #else
 extern size_t quickselect_cache_size;
+#endif
+
+/* size_tcmp for sorting order statistic ranks */
+#if ! __STDC_WANT_LIB_EXT1__
+COMPARE_DEFINITION(SIZE_TCMP,size_t)
 #endif
 
 #if  __STDC_WANT_LIB_EXT1__
@@ -346,7 +351,6 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
     void (*sswapf)(char *, char *, size_t);
     size_t *indices = NULL;
     char **pointers = NULL;
-    unsigned int table_index;
 
     /* Validate supplied parameters.  Provide a hint by setting errno if
        supplied parameters are invalid.
@@ -437,7 +441,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
 
         if (q<nk) { /* fix (sort) iff broken (not nondecreasing) */
             quickselect_loop((char *)pk,0UL,nk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-                salignsize,sratio,1U,quickselect_cache_size,0UL,0U,NULL,NULL);
+                salignsize,sratio,quickselect_cache_size,0UL,0U,NULL,NULL);
         }
         /* verify, fix uniqueness */
         for (p=0UL,q=1UL; q<=nk; q++) {
@@ -457,21 +461,6 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
 
     /* swap function for direct sorting/selection */
     if (NULL==swapf) swapf=swapn(alignsize);
-
-        /* guesstimate table_index */
-        table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615 ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-        ; /* starting point; refined by sample_index() */
 
     /* Don't use indirection if size_ratio==1UL (it would be inefficient). */
     if (1UL==size_ratio) options&=~(QUICKSELECT_INDIRECT);
@@ -495,7 +484,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
         ret= QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
             COMPAR_ARGS,pk,0UL,nk,pointerswap,alignsize,size_ratio,
-            table_index,quickselect_cache_size,0UL,options,NULL,NULL);
+            quickselect_cache_size,0UL,options,NULL,NULL);
         if (NULL==indices) indices=(size_t *)pointers;
         indices=convert_pointers_to_indices(base,nmemb,size,pointers,
             nmemb,indices,0UL,nmemb);
@@ -510,12 +499,12 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
             size_ratio=size/alignsize;
             swapf=swapn(alignsize);
             ret= QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
-                nk,swapf,alignsize,size_ratio,table_index,
-                quickselect_cache_size,0UL,options,NULL,NULL);
+                nk,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
+                options,NULL,NULL);
         }
     } else
         ret= QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
@@ -524,7 +513,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
     */
     if (0UL!=s) { /* there were duplicates */
         quickselect_loop((char *)pk,0UL,onk,sz,size_tcmp,NULL,0UL,0UL,sswapf,
-            salignsize,sratio,1U,0UL,quickselect_cache_size,0U,NULL,NULL);
+            salignsize,sratio,0UL,quickselect_cache_size,0U,NULL,NULL);
     }
     return ret;
 }

@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.31 dated 2018-05-15T02:09:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.36 dated 2018-08-04T14:01:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -298,20 +298,6 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #endif /* RSIZE_MAX */
 
 #undef optind
-#undef DISABLED
-#undef TRANSPARENT
-#undef LOOSE
-#undef RELAXED
-#undef AGGRESSIVE
-#undef EXPERIMENTAL
-
-/* repivot tuning */
-#define DISABLED                               0
-#define TRANSPARENT                            1 /* (almost) no repivots for random inputs */
-#define LOOSE                                  2 /* adversary < 2 N log N */
-#define RELAXED                                3 /* adversary < 1.5 N log N */
-#define AGGRESSIVE                             4 /* penalty < 0.1% */
-#define EXPERIMENTAL                           5 /* experimental */
 
 /* space-saving */
 #undef V
@@ -373,8 +359,9 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define TEST_SEQUENCE_PERMUTATIONS             25U /* 0x02000000 */
 #define TEST_SEQUENCE_COMBINATIONS             26U /* 0x04000000 */
 #define TEST_SEQUENCE_ADVERSARY                27U /* 0x08000000 */
+#define TEST_SEQUENCE_WORST                    28U /* 0x10000000 */
 
-#define TEST_SEQUENCE_COUNT                    28U
+#define TEST_SEQUENCE_COUNT                    29U
 #if TEST_SEQUENCE_COUNT > 32
 # error "TEST_SEQUENCE_COUNT " xbuildstr(TEST_SEQUENCE_COUNT) " is incompatible with 32-bit unsigned integers"
 #endif
@@ -404,8 +391,8 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define NETWORKSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) networksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define P9QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) p9qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define ILLUMOSQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) illumos_qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
-#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION),NULL,NULL)
-#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION))
+#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT),NULL,NULL)
+#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define RUNSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) runsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define SELSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) selsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
@@ -496,6 +483,8 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
        EXCHANGE_SWAP(mswapf,ma,mb,msize,malignsize,msize_ratio,/**/)
 #endif
 
+#define RCX(ma,mb) REVERSE_COMPARE_EXCHANGE((ma),(mb),options,size,swapf,alignsize,size_ratio)
+
 /* structure definitions */
 struct data_struct {
     /* fields similar to struct tm, but different sizes and offsets */
@@ -554,23 +543,6 @@ struct data_struct {
    table may also be used to avoid multiplication and/or division by 3.
 */
 #include "tables.h"
-/* repivot factors are relatively small unsigned integers */
-struct stats_table_struct {
-    size_t max_ratio; /* for statistics */
-    size_t repivots;  /* for statistics */
-    size_t repivot_ratio;  /* for statistics */
-};
-struct breakpoint_table_struct {
-    size_t min_min_bp;    /* for optimization */
-    size_t max_min_bp;    /* for optimization */
-    size_t min_max_bp;    /* for optimization */
-    size_t max_max_bp;    /* for optimization */
-    size_t min_min_nmemb; /* for optimization */
-    size_t max_min_nmemb; /* for optimization */
-    size_t min_max_nmemb; /* for optimization */
-    size_t max_max_nmemb; /* for optimization */
-    size_t optimum_bp;    /* for optimization */
-};
 
 #if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
 /* aligned data block */
@@ -624,20 +596,11 @@ extern float *global_uarray;
 extern float *global_sarray;
 extern float *global_warray;
 extern double *global_darray;
-extern struct breakpoint_table_struct breakpoint_table[(SAMPLING_TABLE_SIZE)]; /* big enough to match biggest sampling_table_size */
 extern struct data_struct **global_parray;
 extern struct data_struct *global_data_array;
-extern struct stats_table_struct stats_table[(SAMPLING_TABLE_SIZE)]; /* big enough to match biggest sampling_table_size */
 # if ASSERT_CODE + DEBUG_CODE
 extern FILE *logfile;
 #endif /* ASSERT_CODE */
-
-/* libmedian tables.c */
-extern struct repivot_table_struct sorting_repivot_table_transparent[];
-extern struct repivot_table_struct sorting_repivot_table_loose[];
-extern struct repivot_table_struct sorting_repivot_table_relaxed[];
-extern struct repivot_table_struct sorting_repivot_table_aggressive[];
-extern struct repivot_table_struct sorting_repivot_table_disabled[];
 
 /* aqsort.c */
 extern int aqcmp(const void *px, const void *py);
@@ -811,7 +774,7 @@ extern void op_tests(const char *prefix, const char *prog,
     void (*f)(int, void *, const char *,...), void *log_arg);
 
 /* parse.c */
-extern double parse_expr(const char *p, char **pendptr, int base);
+extern double parse_expr(double n, const char *p, char **pendptr, int base);
 extern double parse_num(const char *p, char **pendptr, int base);
 
 /* plan9.c */

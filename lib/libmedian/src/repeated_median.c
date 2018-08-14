@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repeated_median.c version 1.13 dated 2018-03-06T23:27:01Z. \ $ */
+/* $Id: ~|^` @(#)   This is repeated_median.c version 1.14 dated 2018-07-27T18:17:12Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "repeated_median" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repeated_median.c */
@@ -45,8 +45,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repeated_median.c ~|^` @(#)"
 #define SOURCE_MODULE "repeated_median.c"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-03-06T23:27:01Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-07-27T18:17:12Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -115,6 +115,8 @@
 static char repeated_median_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
 static const char *source_file = NULL;
+
+COMPARE_DEFINITION(DOUBLECMP,double)
 
 #if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define MEDIAN_INLINE inline

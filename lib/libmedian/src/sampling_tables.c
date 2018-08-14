@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_tables.c version 1.5 dated 2018-05-18T01:35:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_tables.c version 1.6 dated 2018-08-13T20:58:02Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.sampling_tables.c */
@@ -60,8 +60,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "sampling_tables.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-05-18T01:35:57Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2018-08-13T20:58:02Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -78,30 +78,54 @@
 #endif /* SIZE_MAX */
 
 /* data structures */
-struct sampling_table_struct sorting_sampling_table[] = { /* 000 q -> SORTING 5U */
-   {                     8UL,           1UL }, /* sorting */
-   {                    60UL,           3UL }, /* sorting */
-   {                   461UL,           9UL }, /* sorting */
-   {                  3099UL,          27UL }, /* sorting */
-   {                 22293UL,          81UL }, /* sorting */
+/* Sampling for selection depends on the distribution of order statistic ranks.
+   Specifically on whether or not there are desired order statistic ranks near
+   the middle of the sub-array.  If there are desired ranks near the middle,
+   more samples for pivot selection leads to an improved rank (i.e. closer to
+   the median) for the pivot, and a better chance of selecting one of the
+   desired ranks as the pivot (which eliminates it from further processing).
+   Otherwise, fewer samples may be used to reduce the cost of pivot selection,
+   as partitioning need not be so precise.  The distribution of desired order
+   statistic ranks starts with a determination of a "raw" distribution, based on
+   the presence or absence of desired ranks in three bands of the sub-array,
+   leading to 8 possible values: 000, 001, 010, 011, 100, 101, 110, and 111,
+   where a 1 indicates presence of desired order statistic ranks in a band.
+   Sorting (as distinct from order statistic selection, and indicated by 000)
+   uses a separate sampling table.  When selecting a large number of
+   order statistics, it may be more efficient to simply sort the sub-array,
+   where "large" depends on the distribution of order statistics as well as
+   their number and the size of the sub-array.  Order statistics ranks which are
+   widely distributed result in an advantage to sorting at a lower proportion of
+   desired ranks to the sub-array size than for other distributions.
+*/
+/* tables for remedian pivot selection */
+/* Remedian of samples always estimates the sample median. */
+struct sampling_table_struct sorting_sampling_table[] = { /* 000 */
+   {                    17UL,           1UL }, /* ros sorting */
+   {                    88UL,           3UL }, /* ros sorting */
+   {                   483UL,           9UL }, /* ros sorting */
+   {                  2883UL,          27UL }, /* ros sorting */
+   {                 18923UL,          81UL }, /* ros sorting */
 #if (SIZE_MAX) > 65535 /* (16 bits limit) */
-   {                138090UL,         243UL }, /* sorting */
-   {                804783UL,         729UL }, /* sorting */
-   {               6028983UL,        2187UL }, /* sorting */
-   {              40424362UL,        6561UL }, /* sorting */
-   {             271045547UL,       19683UL }, /* sorting */
-   {            1817361729UL,       59049UL }, /* sorting */
+   {                162215UL,         243UL }, /* ros sorting */
+   {               1459939UL,         729UL }, /* ros sorting */
+   {              13139450UL,        2187UL }, /* ros sorting */
+   {             118255054UL,        6561UL }, /* ros sorting */
+   {            1064295489UL,       19683UL }, /* ros sorting */
 # if (SIZE_MAX) > 4294967295 /* (32 bits limit) */
-   {           12185419368UL,      177147UL }, /* sorting */
-   {           81703297029UL,      531441UL }, /* sorting */
-   {          547821009993UL,     1594323UL }, /* sorting */
-   {         3673142576893UL,     4782969UL }, /* sorting */
-   {        24628439114385UL,    14348907UL }, /* sorting */
-   {       165133805866052UL,    43046721UL }, /* sorting */
-   {      1107222983688002UL,   129140163UL }, /* sorting */
-   {      7423935572594868UL,   387420489UL }, /* sorting */
-   {     49777524670288100UL,  1162261467UL }, /* sorting */
+   {            9578659400UL,       59049UL }, /* ros sorting */
+   {           86207934600UL,      177147UL }, /* ros sorting */
+   {          775871411402UL,      531441UL }, /* ros sorting */
+   {         6982842702621UL,     1594323UL }, /* ros sorting */
+   {        62845584323585UL,     4782969UL }, /* ros sorting */
+   {       565610258912263UL,    14348907UL }, /* ros sorting */
+   {      5090492330210370UL,    43046721UL }, /* ros sorting */
+   {     45814430971893300UL,   129140163UL }, /* ros sorting */
+   {    412329878747040000UL,   387420489UL }, /* ros sorting */
+   {   3710968908723360000UL,  1162261467UL }, /* ros sorting */
+/*    18446744073709551616 = 2^64 */
 # else /* 32 bits */
+   {   (SIZE_MAX),                  59049UL },
    {   (SIZE_MAX),                 177147UL },
    {   (SIZE_MAX),                 531441UL },
    {   (SIZE_MAX),                1594323UL },
@@ -132,30 +156,42 @@ struct sampling_table_struct sorting_sampling_table[] = { /* 000 q -> SORTING 5U
    {   (SIZE_MAX),               (SIZE_MAX) }, /* 3486784401 */
 #endif
 };
-struct sampling_table_struct ends_sampling_table[] = { /* 001 e -> ENDS 1U */
-   {                    12UL,           1UL }, /* ends */
-   {                   117UL,           3UL }, /* ends */
-   {                  6884UL,           9UL }, /* ends */
+
+/* When one or more desired order statistic ranks are near the median rank,
+   using additional samples (compared to sorting) can reduce the overall
+   number of comparisons.  If the desired rank if matched, the problem size is
+   directly reduced.  If the pivot is adjacent to the desired rank, the region
+   containing the desired rank can be processed via one of the special-case
+   selection functions.  If the desired rank is near the pivot, the region not
+   containing the rank near the pivot (if it has any desired ranks) can have a
+   pivot chosen so as to greatly reduce the problem size (i.e. by more than a
+   factor of 2).
+*/
+struct sampling_table_struct middle_sampling_table[] = { /* 010 m */
+   {                    10UL,           1UL }, /* ros middle */
+   {                    26UL,           3UL }, /* ros middle */
+   {                   110UL,           9UL }, /* ros middle */
+   {                   498UL,          27UL }, /* ros middle */
+   {                  1958UL,          81UL }, /* ros middle */
+   {                 11000UL,         243UL }, /* ros middle */
 #if (SIZE_MAX) > 65535 /* (16 bits limit) */
-   {                400198UL,          27UL }, /* ends */
-   {              18849664UL,          81UL }, /* ends */
+   {                 72730UL,         729UL }, /* ros middle */
+   {                747154UL,        2187UL }, /* ros middle */
+   {               3985811UL,        6561UL }, /* ros middle */
+   {              20710866UL,       19683UL }, /* ros middle */
+   {             107616806UL,       59049UL }, /* ros middle */
+   {             559193312UL,      177147UL }, /* ros middle */
+   {            2905653671UL,      531441UL }, /* ros middle */
 # if (SIZE_MAX) > 4294967295 /* (32 bits limit) */
-   {            1102422680UL,         243UL }, /* ends */
-   {           60384694013UL,         729UL }, /* ends */
-   {         3307543773989UL,        2187UL }, /* ends */
-   {       181169185265224UL,        6561UL }, /* ends */
-   {      9923458594195450UL,       19683UL }, /* ends */
-   {    543552869250629000UL,       59049UL }, /* ends */
-# else /* 32 bits */
-   {   (SIZE_MAX),                    243UL },
-   {   (SIZE_MAX),                    729UL },
-   {   (SIZE_MAX),                   2187UL },
-   {   (SIZE_MAX),                   6561UL },
-   {   (SIZE_MAX),                  19683UL },
-   {   (SIZE_MAX),                  59049UL },
-# endif
-   {   (SIZE_MAX),                 177147UL },
-   {   (SIZE_MAX),                 531441UL },
+   {           15098219347UL,     1594323UL }, /* ros middle */
+   {           78452649026UL,     4782969UL }, /* ros middle */
+   {          407651922289UL,    14348907UL }, /* ros middle */
+   {         2118221523611UL,    43046721UL }, /* ros middle */
+   {        11006601901726UL,   129140163UL }, /* ros middle */
+   {        57191981137406UL,   387420489UL }, /* ros middle */
+   {       297178251346509UL,  1162261467UL }, /* ros middle */
+/*    18446744073709551616 = 2^64 */
+# else
    {   (SIZE_MAX),                1594323UL },
    {   (SIZE_MAX),                4782969UL },
    {   (SIZE_MAX),               14348907UL },
@@ -163,11 +199,9 @@ struct sampling_table_struct ends_sampling_table[] = { /* 001 e -> ENDS 1U */
    {   (SIZE_MAX),              129140163UL },
    {   (SIZE_MAX),              387420489UL },
    {   (SIZE_MAX),             1162261467UL },
+# endif
    {   (SIZE_MAX),             3486784401UL }, /* 32 and 64 bits */
 #else /* SIZE_MAX == 65535 (16 bits limit) */
-   {   (SIZE_MAX),                     27UL },
-   {   (SIZE_MAX),                     81UL },
-   {   (SIZE_MAX),                    243UL },
    {   (SIZE_MAX),                    729UL },
    {   (SIZE_MAX),                   2187UL },
    {   (SIZE_MAX),                   6561UL },
@@ -185,30 +219,43 @@ struct sampling_table_struct ends_sampling_table[] = { /* 001 e -> ENDS 1U */
    {   (SIZE_MAX),               (SIZE_MAX) }, /* 3486784401 */
 #endif
 };
-struct sampling_table_struct middle_sampling_table[] = { /* 010 m -> MIDDLE 2U */
-   {                     8UL,           1UL }, /* middle */
-   {                    24UL,           3UL }, /* middle */
-   {                   430UL,           9UL }, /* middle */
-   {                  3418UL,          27UL }, /* middle */
-   {                 22486UL,          81UL }, /* middle */
+
+/* Remedian of samples ends sampling table is used when there are no desired
+   order statistic ranks near the median, but there are ranks near both array
+   ends.  It is desirable to split the array near the median to minimize
+   recursion depth, but a precisely even split is unimportant because the next
+   iteration will eliminate the parts of the array which contain no desired
+   ranks (currently near the middle of the sub-array being processed, at one
+   end of each of the two regions resulting from the partition using the pivot
+   element selected during this iteration).  Therefore fewer samples can be used
+   than when sorting or selecting for a rank near the median.
+*/
+struct sampling_table_struct ends_sampling_table[] = { /* 101 s q2 */
+   {                    12UL,           1UL }, /* ros ends */
+   {                    63UL,           3UL }, /* ros ends */
+   {                   563UL,           9UL }, /* ros ends */
+   {                  5100UL,          27UL }, /* ros ends */
+   {                 45900UL,          81UL }, /* ros ends */
 #if (SIZE_MAX) > 65535 /* (16 bits limit) */
-   {                157775UL,         243UL }, /* middle */
-   {                884868UL,         729UL }, /* middle */
-   {               9445653UL,        2187UL }, /* middle */
-   {              74269197UL,        6561UL }, /* middle */
-   {             583963175UL,       19683UL }, /* middle */
+   {                413100UL,         243UL }, /* ros ends */
+   {               3717900UL,         729UL }, /* ros ends */
+   {              33461100UL,        2187UL }, /* ros ends */
+   {             301149900UL,        2187UL }, /* ros ends */
+   {            2710349100UL,        6561UL }, /* ros ends */
 # if (SIZE_MAX) > 4294967295 /* (32 bits limit) */
-   {            4591580387UL,       59049UL }, /* middle */
-   {           36102636877UL,      177147UL }, /* middle */
-   {          283867487789UL,      531441UL }, /* middle */
-   {         2231990724059UL,     1594323UL }, /* middle */
-   {        17549676544793UL,     4782969UL }, /* middle */
-   {       137989438534381UL,    14348907UL }, /* middle */
-   {      1084982113398765UL,    43046721UL }, /* middle */
-   {      8530987580632442UL,   129140163UL }, /* middle */
-   {     67077372246188300UL,   387420489UL }, /* middle */
-   {    527415357826619000UL,  1162261467UL }, /* middle */
-# else
+   {           24393141900UL,       19683UL },
+   {          219538277100UL,       59049UL },
+   {         1975844493900UL,      177147UL },
+   {        17782600445100UL,      531441UL },
+   {       160043404006000UL,     1594323UL },
+   {      1440390636050000UL,     4782969UL },
+   {     12963515724500000UL,    14348907UL },
+   {    116671641520000000UL,    43046721UL },
+   {   1050044773680000000UL,   129140163UL },
+   {   9450402963140000000UL,   387420489UL },
+/*    18446744073709551616 = 2^64 */
+# else /* 32 bits */
+   {   (SIZE_MAX),                  19683UL },
    {   (SIZE_MAX),                  59049UL },
    {   (SIZE_MAX),                 177147UL },
    {   (SIZE_MAX),                 531441UL },
@@ -218,8 +265,8 @@ struct sampling_table_struct middle_sampling_table[] = { /* 010 m -> MIDDLE 2U *
    {   (SIZE_MAX),               43046721UL },
    {   (SIZE_MAX),              129140163UL },
    {   (SIZE_MAX),              387420489UL },
-   {   (SIZE_MAX),             1162261467UL },
 # endif
+   {   (SIZE_MAX),             1162261467UL },
    {   (SIZE_MAX),             3486784401UL }, /* 32 and 64 bits */
 #else /* SIZE_MAX == 65535 (16 bits limit) */
    {   (SIZE_MAX),                    243UL },
@@ -241,55 +288,86 @@ struct sampling_table_struct middle_sampling_table[] = { /* 010 m -> MIDDLE 2U *
 #endif
 };
 
-/* Sampling for selection depends on the distribution of order statistic ranks.
-   Specifically on whether or not there are desired order statistic ranks near
-   the middle of the sub-array.  If there are desired ranks near the middle,
-   more samples for pivot selection leads to an improved rank (i.e. closer to
-   the median) for the pivot, and a better chance of selecting one of the
-   desired ranks as the pivot (which eliminates it from further processing).
-   Otherwise, fewer samples may be used to reduce the cost of pivot selection,
-   as partitioning need not be so precise.  The distribution of desired order
-   statistic ranks starts with a determination of a "raw" distribution, based on
-   the presence or absence of desired ranks in three bands of the sub-array,
-   leading to 8 possible values: 000, 001, 010, 011, 100, 101, 110, and 111,
-   where a 1 indicates presence of desired order statistic ranks in a band.  The
-   8 raw distribution values are then translated to one of 2 values for sampling
-   for selection, based on whether or not there are desired ranks near the
-   middle of the sub-array, as noted above (the middle band is tested first, and
-   one other band is checked if necessary to discriminate between distributions
-   which have ranks in 2 or 3 bands).  Sorting (as distinct from order statistic
-   selection) uses a separate sampling table.  When selecting a large number of
-   order statistics, it may be more efficient to simply sort the sub-array,
-   where "large" depends on the distribution of order statistics as well as
-   their number and the size of the sub-array.  Order statistics ranks which are
-   widely distributed result in an advantage to sorting at a lower proportion of
-   desired ranks to the sub-array size than for other distributions.  A table
-   with two columns, for widely-distributed and for others, is used to indicate
-   when sorting is preferred to continued selection; rows of the table
-   correspond to sub-array size and the table entry values represent the largest
-   number of desired order statistic ranks for which continued selection is
-   appropriate.  The raw order statistic distribution is translated into a
-   suitable column index value for that table.
+/* median-of-samples (mos) uses differently arranged tables using the common
+   structure.  The number of samples is an odd number.  The table is the
+   same size as other sampling tables; larger arrays have sample size computed.
 */
-/* Lookup table; raw distribution to sampling_distribution_enum value. */
-/* The number of array elements is determined by the number of possible raw
-   distribution values, i.e. 8.  Varying the sampling table during selection
-   results in a decrease in the number of comparisons and swaps vs. what would
-   be used if the sorting sampling table were always used.
-*/
-unsigned char sampling_distribution_remap[8] = {
-    ENDS,      /* 00 000 -> ENDS */
-    ENDS,      /* 01 001 -> ENDS */
-    MIDDLE,    /* 02 010 -> MIDDLE */
-    MIDDLE,    /* 03 011 -> MIDDLE */
-    ENDS,      /* 04 100 -> ENDS */
-    SORTING,   /* 05 101 -> SORTING */ /* for balanced recursion */
-    MIDDLE,    /* 06 110 -> MIDDLE */
-    MIDDLE     /* 07 111 -> MIDDLE */
+struct sampling_table_struct mos_sorting_sampling_table[] = {
+   {                    15UL,           1UL }, /* mos sorting */
+   {                    15UL,           3UL }, /* mos sorting */
+   {                    72UL,           5UL }, /* mos sorting */
+   {                   109UL,           7UL }, /* mos sorting */
+   {                   187UL,           9UL }, /* mos sorting */
+   {                   296UL,          11UL }, /* mos sorting */
+   {                   438UL,          13UL }, /* mos sorting */
+   {                   587UL,          15UL }, /* mos sorting */
+   {                   767UL,          17UL }, /* mos sorting */
+   {                   973UL,          19UL }, /* mos sorting */
+   {                  1179UL,          21UL }, /* mos sorting */
+   {                  1443UL,          23UL }, /* mos sorting */
+   {                  1718UL,          25UL }, /* mos sorting */
+   {                  2027UL,          27UL }, /* mos sorting */
+   {                  2352UL,          29UL }, /* mos sorting */
+   {                  2700UL,          31UL }, /* mos sorting */
+   {                  3072UL,          33UL }, /* mos sorting */
+   {                  3468UL,          35UL }, /* mos sorting */
+   {                  3888UL,          37UL }, /* mos sorting */
+   {                  4332UL,          39UL }, /* mos sorting */
+   {                  4800UL,          41UL }, /* mos sorting */
 };
-/* sampling table pointers indexed by sampling_distribution_enum value */
-struct sampling_table_struct *sampling_tables[SAMPLING_TABLES] = {
-    sorting_sampling_table,     /* SORTING 0U */
-    ends_sampling_table,        /* ENDS 1U */
-    middle_sampling_table,      /* MIDDLE 2U */
+
+struct sampling_table_struct mos_middle_sampling_table[] = {
+   {                    10UL,           1UL }, /* mos middle */
+   {                    24UL,           3UL }, /* mos middle */
+   {                    48UL,           5UL }, /* mos middle */
+   {                    74UL,           7UL }, /* mos middle */
+   {                   100UL,           9UL }, /* mos middle */
+   {                   115UL,          11UL }, /* mos middle */
+   {                   212UL,          13UL }, /* mos middle */
+   {                   279UL,          15UL }, /* mos middle */
+   {                   338UL,          17UL }, /* mos middle */
+   {                   422UL,          19UL }, /* mos middle */
+   {                   499UL,          21UL }, /* mos middle */
+   {                   562UL,          23UL }, /* mos middle */
+   {                   627UL,          25UL }, /* mos middle */
+   {                   715UL,          27UL }, /* mos middle */
+   {                   801UL,          29UL }, /* mos middle */
+   {                   892UL,          31UL }, /* mos middle */
+   {                   988UL,          33UL }, /* mos middle */
+   {                  1090UL,          35UL }, /* mos middle */
+   {                  1187UL,          37UL }, /* mos middle */
+   {                  1265UL,          39UL }, /* mos middle */
+   {                  1399UL,          41UL }, /* mos middle */
+};
+
+/* When processing a sub-array with desired ranks which are near one end of the
+   sub-array (or where there are no ranks near one end), the pivot may be
+   selected from the samples at a rank other than the median of the samples so
+   as to split the array near one of the desired ranks or to eliminate a large
+   part of the sub-array which contains no desired ranks.  The pivot selection
+   method is still called "median of samples" even if a sample other than the
+   median is selected.
+*/
+struct sampling_table_struct mos_ends_sampling_table[] = {
+   {                     8UL,           1UL }, /* mos ends */
+   {                     9UL,           3UL }, /* mos ends */
+   {                    23UL,           5UL }, /* mos ends */
+   {                    44UL,           7UL }, /* mos ends */
+   {                    92UL,           9UL }, /* mos ends */
+   {                   107UL,          11UL }, /* mos ends */
+   {                   126UL,          13UL }, /* mos ends */
+   {                   227UL,          15UL }, /* mos ends */
+   {                   252UL,          17UL }, /* mos ends */
+   {                   363UL,          19UL }, /* mos ends */
+   {                   406UL,          21UL }, /* mos ends */
+   {                   439UL,          23UL }, /* mos ends */
+   {                   503UL,          25UL }, /* mos ends */
+   {                   538UL,          27UL }, /* mos ends */
+   {                   669UL,          29UL }, /* mos ends */
+   {                   835UL,          31UL }, /* mos ends */
+   {                   892UL,          33UL }, /* mos ends */
+   {                   932UL,          35UL }, /* mos ends */
+   {                   990UL,          37UL }, /* mos ends */
+   {                  1597UL,          39UL }, /* mos ends */
+   {                  1667UL,          41UL }, /* mos ends */
 };

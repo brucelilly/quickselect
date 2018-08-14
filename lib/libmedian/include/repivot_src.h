@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_src.h version 1.14 dated 2018-05-16T14:41:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_src.h version 1.16 dated 2018-06-12T02:18:51Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.repivot_src.h */
@@ -95,8 +95,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "repivot_src.h"
-#define MODULE_VERSION "1.14"
-#define MODULE_DATE "2018-05-16T14:41:05Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2018-06-12T02:18:51Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -139,9 +139,15 @@ char repivot_src_file_initialized=0;
 */
 QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
 #include "should_repivot_decl.h"
+/*
+unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
+    const size_t samples, int method, unsigned int options,
+    const size_t *pk, int *pn2)
+*/
 {
     size_t q, ratio;
     const struct repivot_table_struct *prt;
+    int i;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
@@ -152,88 +158,94 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
         repivot_src_file_initialized++;
     }
 #endif
-    A((SAMPLING_TABLE_SIZE)>table_index);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if (DEBUG_CODE > 1) && defined(DEBUGGING)
     if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, "
-            "table_index=%u, pk=%p */\n",__func__,repivot_src_file,
-            __LINE__,nmemb,n,pst[table_index].samples,table_index,
-            (const void *)pk);
+            "method=%d, options=0x%x, pk=%p */\n",__func__,repivot_src_file,
+            __LINE__,nmemb,n,samples,method,options,(const void *)pk);
 #endif
+    options &= ~(QUICKSELECT_RESTRICT_RANK); /* clean slate */
+    /* no repivot unless >= 3 medians-of-3 */
+    if (SELECTION_MIN_REPIVOT>n) return options; /* too small to repivot */
     if (NULL==pk) { /* sorting */
-        if (SELECTION_MIN_REPIVOT>n) return 0U;
-        prt=sorting_repivot_table;
+        switch (method) {
+            case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+            /*FALLTHROUGH*/
+            case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+               prt=ros_sorting_repivot_table;
+            break;
+            case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+            return options; /* never repivot if already repivoted */
+            case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+               prt=mos_sorting_repivot_table;
+            break;
+#if (ASSERT_CODE > 0)
+            default :
+                (V)fprintf(stderr,"/* %s line %d: invalid method %d */\n",
+                    __func__,__LINE__,method);
+                abort();
+            break;
+#endif /* ASSERT_CODE */
+        }
     } else { /* order statistic selection */
-        /* no repivot unless >= 3 medians-of-3 */
-        if (SELECTION_MIN_REPIVOT>n) return 0U;
-        prt=selection_repivot_table;
+        switch (method) {
+            case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+            /*FALLTHROUGH*/
+            case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+               prt=ros_selection_repivot_table;
+            break;
+            case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+            return options; /* never repivot if already repivoted */
+            case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+               prt=mos_selection_repivot_table;
+            break;
+#if (ASSERT_CODE > 0)
+            default :
+                (V)fprintf(stderr,"/* %s line %d: invalid method %d */\n",
+                    __func__,__LINE__,method);
+                abort();
+            break;
+#endif /* ASSERT_CODE */
+        }
     }
     A(n<nmemb);
     q=nmemb-n;
     A(0UL<q);
     if (n<=q) { /* ratio 0; return w/o incurring division cost */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if (DEBUG_CODE > 1) && defined(DEBUGGING)
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu"
-                ", table_index=%u, pk=%p, ppeq=%p, ratio<1, no repivot */\n",
+                ", pk=%p, ratio<1, no repivot */\n",
                 __func__,repivot_src_file,__LINE__,nmemb,n,
-                pst[table_index].samples,table_index,(const void *)pk,
-                (void *)ppeq);
+                samples,(const void *)pk);
 #endif
-        return 0U;
+        return options;
     }
     ratio=n/q;
-#if defined(DEBUGGING)
-    if ((NULL==ppeq)&&(DEBUGGING(RATIO_GRAPH_DEBUG)))
-        /* for graphing worst-case partition ratios */
-        if (ratio>stats_table[table_index].max_ratio)
-            stats_table[table_index].max_ratio = ratio;
+    for (i=0; samples>=prt[i+1].min_samples; i++) ; /* index for table entry */
+#if (DEBUG_CODE > 1) && defined(DEBUGGING)
+    if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
+    ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
+        (V)fprintf(stderr,"/* %s: %s line %d: i=%d, "
+            "samples=%lu>=%lu */\n",
+            __func__,repivot_src_file,__LINE__,i,samples,
+            prt[i].min_samples);
 #endif
-    if (table_index>=repivot_table_size) {
-        /* ratio from median-of-medians < 3 */
-        if (3UL<=ratio) {
+    if ((ratio>=prt[i].factor1)
+    || ((ratio>=prt[i].factor2)&&(++*pn2>=2))) {
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples"
-                    "=%lu, table_index=%u, pk=%p, ppeq=%p, ratio=%lu>=3, "
-                    "repivot */\n",__func__,repivot_src_file,__LINE__,nmemb,n,
-                    pst[table_index].samples,table_index,(const void *)pk,
-                    (void *)ppeq,ratio);
-#endif
-            return QUICKSELECT_RESTRICT_RANK;
-        }
-    } else {
-        if ((ratio>=prt[table_index].factor1)
-        || ((ratio>=prt[table_index].factor2)&&(++*pn2>=2))) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, "
-                    "samples=%lu, table_index=%u, pk=%p, ppeq=%p, ratio=%lu"
-                    ", factor1=%d, factor2=%d, count=%d, repivot */\n",
-                    __func__,repivot_src_file,__LINE__,nmemb,n,
-                    pst[table_index].samples,table_index,
-                    (const void *)pk,(void *)ppeq,ratio,
-                    prt[table_index].factor1,
-                    prt[table_index].factor2,*pn2);
-#endif
-            return QUICKSELECT_RESTRICT_RANK;
-        }
-    }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-    if (3UL<=ratio)
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
-            (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples"
-                "=%lu, table_index=%u, pk=%p, ppeq=%p, ratio=%lu, "
-                "factor1=%d, factor2=%d, count=%d, no repivot */\n",
-                __func__,repivot_src_file,__LINE__,nmemb,n,
-                pst[table_index].samples,table_index,(const void *)pk,
-                (void *)ppeq,ratio,prt[table_index].factor1,
-                prt[table_index].factor2,*pn2);
+            (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, "
+                "samples=%lu>=%lu, method=%d, pk=%p, ratio=%lu, "
+                "factor1=%d, factor2=%d, count=%d, repivot */\n",
+                __func__,repivot_src_file,__LINE__,nmemb,n,samples,
+                prt[i].min_samples,method,(const void *)pk,ratio,
+                prt[i].factor1,prt[i].factor2,*pn2);
 #endif
-    return 0U;
+        options |= QUICKSELECT_RESTRICT_RANK;
+    }
+    return options;
 }

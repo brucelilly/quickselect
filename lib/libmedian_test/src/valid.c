@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is valid.c version 1.3 dated 2017-12-06T23:19:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is valid.c version 1.4 dated 2018-06-06T00:47:43Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.valid.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: valid.c ~|^` @(#)"
 #define SOURCE_MODULE "valid.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-12-06T23:19:14Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2018-06-06T00:47:43Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2017"
 
@@ -101,6 +101,7 @@ int valid_test(unsigned int test_type, unsigned int testnum, size_t n)
         case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :     /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_VALUES_RECIPROCAL : /*FALLTHROUGH*/
         case TEST_SEQUENCE_RANDOM_VALUES :            /*FALLTHROUGH*/
+        case TEST_SEQUENCE_WORST :                    /*FALLTHROUGH*/
         break;
         default:
             (V)fprintf(stderr, "// %s: %s line %d: unrecognized testnum %u\n",

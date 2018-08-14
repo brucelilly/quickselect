@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect.h version 1.14 dated 2018-05-10T02:58:39Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect.h version 1.16 dated 2018-07-29T15:25:48Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.indirect.h */
@@ -53,7 +53,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INDIRECT_H_VERSION "indirect.h 1.14 2018-05-10T02:58:39Z"
+#define INDIRECT_H_VERSION "indirect.h 1.16 2018-07-29T15:25:48Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -682,8 +682,7 @@ QUICKSELECT_EXTERN
 /* dereferenced pointers; no OPT_COMPAR required. */
 static INDIRECT_INLINE
 void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
-    size_t pbeyond, COMPAR_DECL, unsigned int table_index, size_t cache_sz,
-    unsigned int options)
+    size_t pbeyond, COMPAR_DECL, size_t cache_sz, unsigned int options)
 {
     if (1UL<nmemb) { /* size 1 (or smaller) is by definition sorted */
         size_t n1=(nmemb>>1), n2=nmemb-n1;
@@ -715,8 +714,8 @@ void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
                 */
                 (V)QUICKSELECT_LOOP((char *)pointers,pfirst,pfirst+n1,
                         sizeof(char *),COMPAR_ARGS,NULL,0UL,0UL,
-                        pointerswap,sizeof(char *),1UL,table_index,
-                        cache_sz,pbeyond,options|QUICKSELECT_INDIRECT,NULL,NULL);
+                        pointerswap,sizeof(char *),1UL,cache_sz,pbeyond,
+                        options|QUICKSELECT_INDIRECT,NULL,NULL);
 # if ASSERT_CODE > 1
                 for (n2=1UL; n2<n1; n2++) {
                     char *pb=pointers[pfirst+n2], *pa=pointers[pfirst+n2-1UL];
@@ -735,9 +734,9 @@ void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
             }
             A(1UL<n2);
             (V)QUICKSELECT_LOOP((char *)pointers,pfirst+n1,pfirst+nmemb,
-                sizeof(char *),COMPAR_ARGS,NULL,0UL,0UL,
-                pointerswap,sizeof(char *),1UL,table_index,
-                cache_sz,pbeyond+nb,options|QUICKSELECT_INDIRECT,NULL,NULL);
+                sizeof(char *),COMPAR_ARGS,NULL,0UL,0UL,pointerswap,
+                sizeof(char *),1UL,cache_sz,pbeyond+nb,
+                options|QUICKSELECT_INDIRECT,NULL,NULL);
             merge_pointers(pointers+pfirst,pointers+pfirst+n1,
                 pointers+pfirst+nmemb,pointers+pbeyond,COMPAR_ARGS);
         }
@@ -765,21 +764,20 @@ size_t rearrange_array(char *base, size_t nmemb, size_t size, size_t *indices,
         return SIZE_MAX;
     }
     if (0UL<nmemb) {
-        /* Step through the indices: at the first index which points to an
-           array element whose position cpos=((address-base)/size) differs from
-           the index position fpos=((p-indices)/sizeof(char *)), find the cycle
-           in the array which needs to be rotated to permute the array into the
-           desired order.  Folow that cycle, rotating the data by alignsize
-           slices until the elements have been rearranged, then update the
-           indices.  Continue, looking for the next cycle until all cycles have
-           been processed. Indices are unconditionally updated by the algorithm.
-           The return value is the number of data moves.
+        /* Step through the indices: at the first index which points to an array
+           element whose position ((address-base)/size) differs from its desired
+           index position, find the cycle in the array which needs to be rotated
+           to permute the array into the desired order.  Follow that cycle,
+           rotating the data by alignsize slices until the elements have been
+           rearranged, then update the indices.  Continue, looking for the next
+           cycle until all cycles have been processed. Indices are
+           unconditionally updated by the algorithm.  The return value is the
+           number of data moves.
            indices[0] corresponds to the data element at base+first*size
         */
         register size_t cpos, hpos, ppos, n, o, slice;
         register char *cp, *p, *hp, *q;
 #if INDIRECT_ASSERT_CODE
-        cp=base+first*size, hp=base+beyond*size;
         /* index sanity check; n counts errors */
         /* this is a check on caller-supplied data */
         for (n=0UL,hpos=0UL; hpos<nmemb; hpos++) {
@@ -802,6 +800,7 @@ size_t rearrange_array(char *base, size_t nmemb, size_t size, size_t *indices,
            to be fast.
         */
         /* Four variants, depending on alignsize; identical other than type. */
+
 /* type finagle */
 #if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
 # define TYPE8 uint_least64_t
@@ -822,6 +821,8 @@ size_t rearrange_array(char *base, size_t nmemb, size_t size, size_t *indices,
 # endif /* 4 byte types */
 # define TYPE2 short
 #endif /* C99 */
+
+/* macro which does the work: */
 #define REARRANGE_ARRAY(mtype)                                                \
 for (n=0UL,o=first,p=base+o*size; n<nmemb; n++,o++,p+=size) {                 \
     cpos=indices[n];/*current index element to be at first+n*/                \
@@ -842,6 +843,8 @@ for (n=0UL,o=first,p=base+o*size; n<nmemb; n++,o++,p+=size) {                 \
         cpos=indices[hpos-first]; indices[hpos-first]=hpos; ndata_moves++;    \
     } /* index update cycle loop */                                           \
 } /* array index loop */
+
+        /* Invoke the macro with the appropriate data type. */
         switch (alignsize) {
             case 8UL : REARRANGE_ARRAY(TYPE8)
             break;

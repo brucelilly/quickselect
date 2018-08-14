@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is debug.c version 1.9 dated 2018-03-20T19:45:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is debug.c version 1.10 dated 2018-07-12T20:58:16Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.debug.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: debug.c ~|^` @(#)"
 #define SOURCE_MODULE "debug.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-03-20T19:45:13Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-07-12T20:58:16Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -70,9 +70,9 @@ const char *debug_name(unsigned int value)
         case PARTITION_ANALYSIS_DEBUG :
         return "analysis";
         case PARTITION_DEBUG :
-        return "partition";
+        return "partitioning";
         case PIVOT_SELECTION_DEBUG :
-        return "pivot";
+        return "pivots";
         case PK_ADJUSTMENT_DEBUG :
         return "duplicates";
         case RATIO_GRAPH_DEBUG :
@@ -84,7 +84,7 @@ const char *debug_name(unsigned int value)
         case REPARTITION_DEBUG :
         return "repartition";
         case REPIVOT_DEBUG :
-        return "repivot";
+        return "repivoting";
         case SAMPLING_DEBUG :
         return "sampling";
         case SHOULD_REPIVOT_DEBUG :

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is illumos.c version 1.4 dated 2018-05-15T02:12:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is illumos.c version 1.9 dated 2018-07-27T00:44:55Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.illumos.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: illumos.c ~|^` @(#)"
 #define SOURCE_MODULE "illumos.c"
-#define MODULE_VERSION "1.4"
-#define MODULE_DATE "2018-05-15T02:12:59Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-07-27T00:44:55Z"
 #define COPYRIGHT_HOLDER "Sun Microsystems, Inc"
 #define COPYRIGHT_DATE "2008"
 
@@ -67,16 +67,16 @@ static
 
 #include "dedicated_sort_src.h"
 
+QUICKSELECT_EXTERN
+#include "sample_index_decl.h" /* d_sample_index */
+;
+
 #include "pivot_src.h"
 
 #include "insertion_sort_src.h" /* isort_bs */
 
 QUICKSELECT_EXTERN
 #include "partition_decl.h" /* d_partition */
-;
-
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
 ;
 
 extern size_t quickselect_cache_size; /* BL */
@@ -108,7 +108,7 @@ extern size_t quickselect_cache_size; /* BL */
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)illumos.c	1.4	2018-05-15 SMI"
+#pragma ident	"@(#)illumos.c	1.9	2018-07-27 SMI"
 
 #if !defined(_KERNEL) && !defined(_KMDB)
 # if 0 /* non-standard header file excluded BL */
@@ -157,7 +157,7 @@ extern size_t quickselect_cache_size; /* BL */
 #ifndef	_QSORT_H
 #define	_QSORT_H
 
-#pragma ident	"@(#)illumos.c	1.4	2018-05-15 SMI"
+#pragma ident	"@(#)illumos.c	1.9	2018-07-27 SMI"
 
 /*
  * Declarations for qsort().
@@ -282,26 +282,16 @@ illumos_qsort(
         size_t          offset;         /* BL: offset for med3 */
         size_t          alignsize;      /* BL */
         size_t          size_ratio;     /* BL */
-        unsigned int    table_index;    /* BL */
+        size_t          cache_limit;    /* BL */
+        size_t          nel;            /* BL */
+        size_t          lneq;           /* BL */
+        size_t          lnne;           /* BL */
 
         /* BL: added initialization for ID strings */
         if ((char)0==file_initialized) initialize_file(__FILE__);
         /* BL: Determine cache size once on first call. */
         if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
         options |= QUICKSELECT_NO_REPIVOT;
-        table_index=nrec<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-        ; /* starting point; refined by sample_index() */
 
 	/*
 	 * choose a swap function based on alignment and size
@@ -343,6 +333,11 @@ illumos_qsort(
                 alignsize = 1UL; /* BL */
 	}
         size_ratio = rsiz / alignsize; /* BL */
+        if (rsiz>sizeof(char*)) /* direct sorting in data cache */
+            cache_limit=(quickselect_cache_size<<1)/rsiz/3UL; /* 1.5*size within cache */
+        else /* indirect mergesort */
+            cache_limit=quickselect_cache_size/pointer_and_a_half; /* 1.5 pointers within cache */
+        nel = nrec; /* BL */
 
 	/*
 	 * qsort is a partitioning sort
@@ -374,32 +369,48 @@ illumos_qsort(
 		 * if number records < threshold use linear insertion sort
 		 *
 		 * this also handles the special case where the partition
+yields (BL)
 		 * 0 or 1 records length.
 		 */
 
+                /* BL: permit modifications (last conditional is original code) */
                 if (2UL>nrec) continue; /* BL */
-                table_index=d_sample_index(sorting_sampling_table,table_index,nrec);
                 if (MOD_DEDICATED_SORT==(options&(MOD_DEDICATED_SORT))) { /* BL */
-                    int ret;
-                    ret= DEDICATED_SORT(basep,(b_lim-(char*)basep)/rsiz,
-                        (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,
-                        swapf,alignsize,size_ratio,table_index,
-                        quickselect_cache_size,0UL,options);
-                    switch (ret) {
-                        case 0 : /* sorting is complete */
-            /* <- */    continue; /* Done; */
-                        case EINVAL : /* error */
-                            fprintf(stderr,
-                                "%s: %s line %d: EINVAL from dedicated_sort\n",
-                                __func__,source_file,__LINE__);
-                        return ;
-                        case EAGAIN : /* continue with divide-and-conquer */
-                        break;
-                        default : /* ? */
-                            fprintf(stderr,
-                                "%s: %s line %d: %d from dedicated_sort\n",
-                                __func__,source_file,__LINE__,ret);
-                        return ;
+                    if ((5UL>nrec) /* small sub-array; network no worse than best-case D&C */
+                        /* stable and optimize comparison methods only work within cache limits */
+                    ||((nrec<=cache_limit)&&
+                      ((0U!=(options&(QUICKSELECT_STABLE))) /* stable methods */
+                      ||(0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) /* minimize comparisons */
+                      ||(
+#if 1
+                      (nel>nrec)&& /* XXX not useful unless nel is a parameter set by wrapper (or internal stack is used instead of recursion) */
+                      /* not first partition; D&C 1st time in case constant or binary */
+                      /* can only determine non-constant, non-binary, non-ternary after first partition */
+#endif
+                      (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
+                      )
+                    ) {
+                        int ret;
+                        ret= DEDICATED_SORT(basep,(b_lim-(char*)basep)/rsiz,
+                            (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,
+                            swapf,alignsize,size_ratio,
+                            quickselect_cache_size,0UL,options);
+                        switch (ret) {
+                            case 0 : /* sorting is complete */
+                /* <- */    continue; /* Done; */
+                            case EINVAL : /* error */
+                                fprintf(stderr,
+                                    "%s: %s line %d: EINVAL from dedicated_sort\n",
+                                    __func__,source_file,__LINE__);
+                            return ;
+                            case EAGAIN : /* continue with divide-and-conquer */
+                            break;
+                            default : /* ? */
+                                fprintf(stderr,
+                                    "%s: %s line %d: %d from dedicated_sort\n",
+                                    __func__,source_file,__LINE__,ret);
+                            return ;
+                        }
                     }
                 } else if (0U!=(options&(MOD_ISORT_BS))) {
                     if (7UL>nrec) /* same cutoff but median-of-3 @ size 7 */
@@ -453,63 +464,29 @@ illumos_qsort(
                 if (aqcmp==cmp) {
                     nfrozen=0UL;
 		    if (nrec < THRESH_M3) {
-                        m2 = b_lim + (nrec / 2) * rsiz;
-                        if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
-                            switch (nrec) {
-                                case 0UL :
-                                case 1UL :
-                                case 2UL :
-                                case 3UL :
-                                case 4UL :
-                                case 6UL :
-                                case 8UL :
-                                    /* leave pivot at [upper-]middle element */
-                                break;
-                                case 5UL :
-                                case 7UL :
-                                case 9UL :
-                                    m2+=rsiz; /* away from middle for bitonic */
-                                break;
-                                default :
-                                    m2+=rsiz*((nrec-1UL)/8); /* 1/2+1/8=5/8 */
-                                break;
-                            }
+                        if (MOD_SAMPLE_QUALITY!=(options&(MOD_SAMPLE_QUALITY))) {
+                            m2 = b_lim + (nrec / 2) * rsiz;
+                            (V)freeze(aqindex(m2,basep,rsiz));
+                            pivot_minrank=1UL;
                         }
-                        (V)freeze(aqindex(m2,basep,rsiz));
-                        pivot_minrank=1UL;
 		    } else if (MOD_SAMPLE_QUANTITY==(options&(MOD_SAMPLE_QUANTITY))) {
-                        (V)freeze_some_samples(basep,(b_lim-(char*)basep)/rsiz,
-                            (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,
-                            alignsize,size_ratio,table_index,options);
+                        ;
 		    } else if (nrec < THRESH_M9) {
-                        if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
-                            mid = b_lim + ((nrec - 1) / 2) * rsiz;
-                            offset = (nrec / 3) * rsiz;
-                            (V)freeze(aqindex(mid,basep,rsiz));
-                            (V)freeze(aqindex(mid+offset,basep,rsiz));
-                        } else {
+                        if (MOD_SAMPLE_QUALITY!=(options&(MOD_SAMPLE_QUALITY))) {
 			    i = ((nrec - 1) / 2) * rsiz;
                             (V)freeze(aqindex(b_lim,basep,rsiz));
                             (V)freeze(aqindex(b_lim+i,basep,rsiz));
+                            pivot_minrank=2UL;
                         }
-                        pivot_minrank=2UL;
 		    } else {
-                        if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
-                            mid = b_lim + ((nrec - 1) / 2) * rsiz;
-                            offset = (nrec / 3) * rsiz;
-                            i = (nrec / 9) * rsiz;
-                            (V)freeze(aqindex(mid-offset-i,basep,rsiz));
-                            (V)freeze(aqindex(mid-i,basep,rsiz));
-                            (V)freeze(aqindex(mid-offset,basep,rsiz));
-                            (V)freeze(aqindex(mid,basep,rsiz));
-                        } else {
+                        if (MOD_SAMPLE_QUALITY!=(options&(MOD_SAMPLE_QUALITY))) {
 			    i = ((nrec - 1) / 8) * rsiz;
                             (V)freeze(aqindex(b_lim,basep,rsiz));
                             (V)freeze(aqindex(b_lim+i,basep,rsiz));
                             (V)freeze(aqindex(b_lim+3*i,basep,rsiz));
                             (V)freeze(aqindex(b_lim+4*i,basep,rsiz));
+                            pivot_minrank=4UL;
                         }
-                        pivot_minrank=4UL;
                     }
                 }
 
@@ -569,8 +546,8 @@ illumos_qsort(
                     /* implies also TERNARY and SAMPLE_QUALITY */
                     m2=d_select_pivot(basep,(b_lim-(char*)basep)/rsiz,
                         (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,alignsize,
-                        size_ratio,table_index,NULL,quickselect_cache_size,0UL,
-                        options,&m1,&m1,&m3,&m3);
+                        size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,
+                        0UL,options,&m1,&m1,&m3,&m3,NULL,NULL);
 		} else if (nrec < THRESH_M9) {
 			/* use median of 3 */
 			i = ((nrec - 1) / 2) * rsiz;
@@ -627,6 +604,8 @@ illumos_qsort(
                             }
                         }
 		}
+
+                if (aqcmp==cmp) pivot_minrank=nrec; /* BL: allow freezes during partitioning */
 
 		/*
 		 * quick sort partitioning
@@ -805,6 +784,8 @@ illumos_qsort(
 		 */
 		b_nrec = (b_par - b_lim) / rsiz;
 		t_nrec = (t_lim - t_par) / rsiz;
+                lnne = b_nrec + t_nrec; /* BL */
+                lneq = nrec - lnne; /* BL */
 
 #if 0 /* BL: for verification of adverse sequence */
                 if (aqcmp==cmp) {

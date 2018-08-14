@@ -148,7 +148,6 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
     COMPAR_DECL, size_t *pk, size_t nk, unsigned int options)
 {
     errno_t ret=0;
-    unsigned int table_index;
     size_t onk=nk; /* original nk value */
     size_t s=0UL;  /* rotation amount */
     size_t alignsize, size_ratio;
@@ -270,26 +269,10 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
         }
     }
 
-    /* guesstimate table_index for quickselect_loop */
-    table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-        sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-        sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-        sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-    ; /* starting point; refined by sample_index() */
-    A(table_index < (SAMPLING_TABLE_SIZE));
-
     /* Special-case selection and sorting are handled in quickselect_loop. */
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
         ret=QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
-            COMPAR_ARGS,pk,0UL,nk,pswapf,alignsize,1UL,table_index,quickselect_cache_size,0UL,
+            COMPAR_ARGS,pk,0UL,nk,pswapf,alignsize,1UL,quickselect_cache_size,0UL,
             options,NULL,NULL);
         if (NULL==indices) indices=(size_t *)pointers;
         indices=convert_pointers_to_indices(base,nmemb,size,pointers,
@@ -306,13 +289,13 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
             if (0U==instrumented) swapf=swapn(alignsize);
             else swapf=iswapn(alignsize);
             ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
-                nk,swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,options,NULL,
+                nk,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,
                 NULL);
         } else if (0UL!=alignsize)
             nmoves+=alignsize*size_ratio;
     } else
         ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
-            swapf,alignsize,size_ratio,table_index,quickselect_cache_size,0UL,
+            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
@@ -384,20 +367,6 @@ QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t s
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     if (1UL<nmemb) { /* nothing to do for fewer than 2 elements */
-        unsigned int table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL /* XXX */
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-            sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-            sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-        ; /* starting point; refined by sample_index() */
-
         /* Determine cache size once on first call. */
         if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
 
@@ -432,7 +401,7 @@ QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t s
             size_t *indices=(size_t *)pointers;
             ret=QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
                 COMPAR_ARGS,NULL,0UL,0UL,pswapf,alignsize,1UL,
-                table_index,quickselect_cache_size,0UL,options,NULL,NULL);
+                quickselect_cache_size,0UL,options,NULL,NULL);
             indices=convert_pointers_to_indices(base,nmemb,size,pointers,
                 nmemb,indices,0UL,nmemb);
             A(NULL!=indices);
@@ -446,13 +415,13 @@ QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t s
                 if (0U==instrumented) swapf=swapn(alignsize);
                 else swapf=iswapn(alignsize);
                 ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,
-                    0UL,swapf,alignsize,size_ratio,table_index,
+                    0UL,swapf,alignsize,size_ratio,
                     quickselect_cache_size,0UL,options,NULL,NULL);
                 } else if (0UL!=alignsize)
                 nmoves+=alignsize*size_ratio;
         } else
             ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,
-                0UL,0UL,swapf,alignsize,size_ratio,table_index,
+                0UL,0UL,swapf,alignsize,size_ratio,
                 quickselect_cache_size,0UL,options,NULL,NULL);
     }
     A(0==ret); /* shouldn't get an error for internal calls! */

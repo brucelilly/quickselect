@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.18 dated 2018-05-15T03:18:09Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.21 dated 2018-07-27T04:31:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.18 2018-05-15T03:18:09Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.21 2018-07-27T04:31:10Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -110,33 +110,6 @@
 /* static inline (1) or separate major functions (0) */
 #ifndef QUICKSELECT_BUILD_FOR_SPEED
 # define QUICKSELECT_BUILD_FOR_SPEED      1
-#endif
-
-/* Repivoting parameters (for sorting) control the tradeoff between minimal
-   effect on random inputs and effective repivoting of adverse inputs.
-   Choices are (defined by macros later):
-    DISABLED    repivot only under extreme circumstances
-    TRANSPARENT (almost) no repivots for random inputs
-    LOOSE       worst adverse sorting performance < 2.0 N log(N)
-    RELAXED     adverse input sorting performance < 1.5 N log(N)
-    AGGRESSIVE  best practical adverse input sorting performance
-# define SORTING_TABLE_ENTRIES           DISABLED
-# define SORTING_TABLE_ENTRIES           TRANSPARENT
-# define SORTING_TABLE_ENTRIES           LOOSE
-# define SORTING_TABLE_ENTRIES           RELAXED
-# define SORTING_TABLE_ENTRIES           AGGRESSIVE
-*/
-#ifndef SORTING_TABLE_ENTRIES
-# undef DISABLED
-# undef TRANSPARENT
-# undef LOOSE
-# undef RELAXED
-# undef AGGRESSIVE
-  /* Configure by copying one of the commented lines (above) below this line. */
-# define SORTING_TABLE_ENTRIES           RELAXED
-  /* FYI: selection is more sensitive to lopsided partitions and always uses
-     very aggressive repivoting (not configurable).
-  */
 #endif
 
 /* The sorting network for 3 elements can be arranged to favor already-sorted
@@ -244,9 +217,13 @@
 
 /* Avoid sorting networks for nmemb>QUICKSELECT_MAX_NETWORK (saves code space,
    faster for inputs with duplicate values). Range 3-16 (sizes 2-3 are always
-   used; there are none available > 16). Recommended value 4.
+   used; there are none available > 16). Recommended value 5.  Note in
+   particular that sorting networks are data oblivious; they use the same
+   number of comparisons for any input, even "easy" inputs such as constant
+   values or already-sorted inputs (which divide-and-conquer, merge sorts, and
+   even insertion sort can handle efficiently).
 */
-#define QUICKSELECT_MAX_NETWORK 4
+#define QUICKSELECT_MAX_NETWORK 5
 
 /*******************************************************************************
    Nothing to configure below this line. The remainder of this file contains
@@ -266,30 +243,6 @@
    of 3 elements available.
 */
 #define SELECTION_MIN_REPIVOT            9UL
-
-/* repivot tuning */
-/* XXX can perhaps be reduced to 3 options (eliminate LOOSE) */
-#define DISABLED    0
-#define TRANSPARENT 1 /* (almost) no repivots for random inputs */
-#define LOOSE       2 /* adversary < 2.0 N log N */
-#define RELAXED     3 /* adversary < 1.5 N log N */
-#define AGGRESSIVE  4 /* minimum adversary comparison complexity < 1.4 N log N */
-
-/* defaults */
- /* in case not defined above */
-#ifndef SORTING_TABLE_ENTRIES
-# define SORTING_TABLE_ENTRIES RELAXED
-#endif
- /* in case of bogus definition above */
-#if (( SORTING_TABLE_ENTRIES != DISABLED ) \
-  && ( SORTING_TABLE_ENTRIES != TRANSPARENT ) \
-  && ( SORTING_TABLE_ENTRIES != LOOSE ) \
-  && ( SORTING_TABLE_ENTRIES != RELAXED ) \
-  && ( SORTING_TABLE_ENTRIES != AGGRESSIVE ) \
-)
-# undef SORTING_TABLE_ENTRIES
-# define SORTING_TABLE_ENTRIES RELAXED
-#endif
 
 /* for assertions */
 #if ! ASSERT_CODE
@@ -485,6 +438,7 @@
 #define QUICKSELECT_PIVOT_REMEDIAN_FULL     1
   /* alters data order (cannot be used for stable sort/selection) */
 #define QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS 2
+#define QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES 3
 
 /* defined values for partition_method */
   /* partial order not preserved (cannot be used for stable sort/selection) */

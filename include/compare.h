@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.h version 1.8 dated 2018-03-07T22:04:03Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.h version 1.9 dated 2018-07-27T18:20:28Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "compare" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/include/s.compare.h */
 
 /* version-controlled header file version information */
-#define COMPARE_H_VERSION "compare.h 1.8 2018-03-07T22:04:03Z"
+#define COMPARE_H_VERSION "compare.h 1.9 2018-07-27T18:20:28Z"
 
 #include <stddef.h>             /* size_t NULL */
 #if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
@@ -46,9 +46,11 @@
 # define COMPARE_INLINE /**/
 #endif /* C99 */
 
+#define COMPARE_EXTERN extern
+
 /* Generic macro. Implementation avoids overflow. */
-#undef typecmp
-#define typecmp(type) {                                            \
+#undef TYPECMP
+#define TYPECMP(type) {                                            \
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {              \
         const type a= *((const type *)p1), b= *((const type *)p2); \
                                                                    \
@@ -58,83 +60,165 @@
     return 0;                                                      \
 }
 
-static COMPARE_INLINE int charcmp(const void *p1, const void *p2)
-typecmp(char)
+#define COMPARE_DECLARATION(x) x;
+#define COMPARE_DEFINITION(x,type) x TYPECMP(type)
 
-static COMPARE_INLINE int doublecmp(const void *p1, const void *p2)
-typecmp(double)
+#define CHARCMP COMPARE_EXTERN COMPARE_INLINE int charcmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int floatcmp(const void *p1, const void *p2)
-typecmp(float)
+#define DOUBLECMP COMPARE_EXTERN COMPARE_INLINE int doublecmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int intcmp(const void *p1, const void *p2)
-typecmp(int)
+#define FLOATCMP COMPARE_EXTERN COMPARE_INLINE int floatcmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int shortcmp(const void *p1, const void *p2)
-typecmp(short)
+#define INTCMP COMPARE_EXTERN COMPARE_INLINE int intcmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int longcmp(const void *p1, const void *p2)
-typecmp(long)
+#define SHORTCMP COMPARE_EXTERN COMPARE_INLINE int shortcmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int ulcmp(const void *p1, const void *p2)
-typecmp(unsigned long)
+#define LONGCMP COMPARE_EXTERN COMPARE_INLINE int longcmp(const void *p1, const void *p2)
 
-static COMPARE_INLINE int size_tcmp(const void *p1, const void *p2)
-typecmp(size_t)
+#define ULCMP COMPARE_EXTERN COMPARE_INLINE int ulcmp(const void *p1, const void *p2)
+
+#define SIZE_TCMP COMPARE_EXTERN COMPARE_INLINE int size_tcmp(const void *p1, const void *p2)
+
+COMPARE_DECLARATION(CHARCMP)
+COMPARE_DECLARATION(DOUBLECMP)
+COMPARE_DECLARATION(FLOATCMP)
+COMPARE_DECLARATION(INTCMP)
+COMPARE_DECLARATION(SHORTCMP)
+COMPARE_DECLARATION(LONGCMP)
+COMPARE_DECLARATION(ULCMP)
+COMPARE_DECLARATION(SIZE_TCMP)
 
 /* C99 mandatory specific-size types */
 #if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-static inline int int_least8_tcmp(const void *p1, const void *p2)
-typecmp(int_least8_t)
+#define INT_LEAST8_TCMP COMPARE_EXTERN COMPARE_INLINE int int_least8_tcmp(const void *p1, const void *p2)
 
-static inline int int_fast8_tcmp(const void *p1, const void *p2)
-typecmp(int_fast8_t)
+#define INT_FAST8_TCMP COMPARE_EXTERN COMPARE_INLINE int int_fast8_tcmp(const void *p1, const void *p2)
 
-static inline int uint_least8_tcmp(const void *p1, const void *p2)
-typecmp(uint_least8_t)
+#define UINT_LEAST8_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_least8_tcmp(const void *p1, const void *p2)
 
-static inline int uint_fast8_tcmp(const void *p1, const void *p2)
-typecmp(uint_fast8_t)
+#define UINT_FAST8_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_fast8_tcmp(const void *p1, const void *p2)
 
-static inline int int_least16_tcmp(const void *p1, const void *p2)
-typecmp(int_least16_t)
+#define INT_LEAST16_TCMP COMPARE_EXTERN COMPARE_INLINE int int_least16_tcmp(const void *p1, const void *p2)
 
-static inline int int_fast16_tcmp(const void *p1, const void *p2)
-typecmp(int_fast16_t)
+#define INT_FAST16_TCMP COMPARE_EXTERN COMPARE_INLINE int int_fast16_tcmp(const void *p1, const void *p2)
 
-static inline int uint_least16_tcmp(const void *p1, const void *p2)
-typecmp(uint_least16_t)
+#define UINT_LEAST16_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_least16_tcmp(const void *p1, const void *p2)
 
-static inline int uint_fast16_tcmp(const void *p1, const void *p2)
-typecmp(uint_fast16_t)
+#define UINT_FAST16_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_fast16_tcmp(const void *p1, const void *p2)
 
-static inline int int_least32_tcmp(const void *p1, const void *p2)
-typecmp(int_least32_t)
+#define INT_LEAST32_TCMP COMPARE_EXTERN COMPARE_INLINE int int_least32_tcmp(const void *p1, const void *p2)
 
-static inline int int_fast32_tcmp(const void *p1, const void *p2)
-typecmp(int_fast32_t)
+#define INT_FAST32_TCMP COMPARE_EXTERN COMPARE_INLINE int int_fast32_tcmp(const void *p1, const void *p2)
 
-static inline int uint_least32_tcmp(const void *p1, const void *p2)
-typecmp(uint_least32_t)
+#define UINT_LEAST32_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_least32_tcmp(const void *p1, const void *p2)
 
-static inline int uint_fast32_tcmp(const void *p1, const void *p2)
-typecmp(uint_fast32_t)
+#define UINT_FAST32_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_fast32_tcmp(const void *p1, const void *p2)
 
-static inline int int_least64_tcmp(const void *p1, const void *p2)
-typecmp(int_least64_t)
+#define INT_LEAST64_TCMP COMPARE_EXTERN COMPARE_INLINE int int_least64_tcmp(const void *p1, const void *p2)
 
-static inline int int_fast64_tcmp(const void *p1, const void *p2)
-typecmp(int_fast64_t)
+#define INT_FAST64_TCMP COMPARE_EXTERN COMPARE_INLINE int int_fast64_tcmp(const void *p1, const void *p2)
 
-static inline int uint_least64_tcmp(const void *p1, const void *p2)
-typecmp(uint_least64_t)
+#define UINT_LEAST64_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_least64_tcmp(const void *p1, const void *p2)
 
-static inline int uint_fast64_tcmp(const void *p1, const void *p2)
-typecmp(uint_fast64_t)
+#define UINT_FAST64_TCMP COMPARE_EXTERN COMPARE_INLINE int uint_fast64_tcmp(const void *p1, const void *p2)
+
+COMPARE_DECLARATION(INT_LEAST8_TCMP)
+COMPARE_DECLARATION(INT_FAST8_TCMP)
+COMPARE_DECLARATION(UINT_LEAST8_TCMP)
+COMPARE_DECLARATION(UINT_FAST8_TCMP)
+
+COMPARE_DECLARATION(INT_LEAST16_TCMP)
+COMPARE_DECLARATION(INT_FAST16_TCMP)
+COMPARE_DECLARATION(UINT_LEAST16_TCMP)
+COMPARE_DECLARATION(UINT_FAST16_TCMP)
+
+COMPARE_DECLARATION(INT_LEAST32_TCMP)
+COMPARE_DECLARATION(INT_FAST32_TCMP)
+COMPARE_DECLARATION(UINT_LEAST32_TCMP)
+COMPARE_DECLARATION(UINT_FAST32_TCMP)
+
+COMPARE_DECLARATION(INT_LEAST64_TCMP)
+COMPARE_DECLARATION(INT_FAST64_TCMP)
+COMPARE_DECLARATION(UINT_LEAST64_TCMP)
+COMPARE_DECLARATION(UINT_FAST64_TCMP)
 #endif /* C99 */
 
-#undef typecmp
-#undef COMPARE_INLINE
+#if 0
+COMPARE_EXTERN COMPARE_INLINE int charcmp(const void *p1, const void *p2);
+TYPECMP(char)
+
+COMPARE_EXTERN COMPARE_INLINE int doublecmp(const void *p1, const void *p2);
+TYPECMP(double)
+
+COMPARE_EXTERN COMPARE_INLINE int floatcmp(const void *p1, const void *p2);
+TYPECMP(float)
+
+COMPARE_EXTERN COMPARE_INLINE int intcmp(const void *p1, const void *p2);
+TYPECMP(int)
+
+COMPARE_EXTERN COMPARE_INLINE int shortcmp(const void *p1, const void *p2);
+TYPECMP(short)
+
+COMPARE_EXTERN COMPARE_INLINE int longcmp(const void *p1, const void *p2);
+TYPECMP(long)
+
+COMPARE_EXTERN COMPARE_INLINE int ulcmp(const void *p1, const void *p2);
+TYPECMP(unsigned long)
+
+COMPARE_EXTERN COMPARE_INLINE int size_tcmp(const void *p1, const void *p2);
+TYPECMP(size_t)
+
+/* C99 mandatory specific-size types */
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+COMPARE_EXTERN COMPARE_INLINE int int_least8_tcmp(const void *p1, const void *p2);
+TYPECMP(int_least8_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_fast8_tcmp(const void *p1, const void *p2);
+TYPECMP(int_fast8_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_least8_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_least8_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_fast8_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_fast8_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_least16_tcmp(const void *p1, const void *p2);
+TYPECMP(int_least16_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_fast16_tcmp(const void *p1, const void *p2);
+TYPECMP(int_fast16_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_least16_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_least16_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_fast16_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_fast16_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_least32_tcmp(const void *p1, const void *p2);
+TYPECMP(int_least32_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_fast32_tcmp(const void *p1, const void *p2);
+TYPECMP(int_fast32_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_least32_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_least32_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_fast32_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_fast32_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_least64_tcmp(const void *p1, const void *p2);
+TYPECMP(int_least64_t)
+
+COMPARE_EXTERN COMPARE_INLINE int int_fast64_tcmp(const void *p1, const void *p2);
+TYPECMP(int_fast64_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_least64_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_least64_t)
+
+COMPARE_EXTERN COMPARE_INLINE int uint_fast64_tcmp(const void *p1, const void *p2);
+TYPECMP(uint_fast64_t)
+#endif /* C99 */
+#endif
 
 #define	COMPARE_H_INCLUDED
 #endif

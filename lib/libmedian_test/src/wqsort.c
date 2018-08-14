@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.19 dated 2018-05-14T06:00:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.24 dated 2018-07-12T20:59:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,13 +46,14 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.19"
-#define MODULE_DATE "2018-05-14T06:00:10Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2018-07-12T20:59:36Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
 #define QUICKSELECT_LOOP d_quickselect_loop
+#define SAMPLING_TABLE_FUNCTION_NAME d_sampling_table
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -67,16 +68,518 @@ QUICKSELECT_EXTERN
 # define QUICKSELECT_LOOP_DECLARED 1
 #endif /* QUICKSELECT_LOOP_DECLARED */
 
+QUICKSELECT_EXTERN
+#include "sample_index_decl.h" /* d_sample_index */
+;
+
+/* sampling_table declaration */
+#include "sampling_table_decl.h"
+;
+
 #include "pivot_src.h"
 
 extern void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
     size_t beyondk, size_t *pfk, size_t *pbk);
-extern struct sampling_table_struct *d_sampling_table(size_t first, size_t beyond,
-    const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
-    unsigned int *psort, unsigned int *pindex, size_t nmemb);
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
+
+static size_t lsz=sizeof(long);
+static void (*lswap)(char *, char *, size_t)=NULL;
+
+/* minimum rank for pivot after partitioning, for pivot selection method */
+static QUICKSELECT_INLINE size_t min_rank(size_t nmemb, size_t s, int method)
+{
+    size_t r;
+
+    switch (method) {
+        case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+        /*FALLTHROUGH*//* to remedian */
+        case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+            if (3UL>s) return 0UL;
+            r=floor_log3(s);
+            for (s=2UL,nmemb=1UL; nmemb<r; nmemb++,s<<=1) ;
+            s--;
+            return s;
+        break;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+            r=nmemb/3UL;
+            return (((r-1UL)>>1)<<1)+1UL;
+        break;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+            return s/2UL;
+        break;
+    }
+}
+
+/* like remedian; return two sample indices which may potentially be used to
+   find the largest sample index < x
+*/
+static void two_choices(size_t mid,size_t s,size_t x,size_t *ps1,size_t *ps2)
+{
+    /* 3 sample indices are mid-s, mid, mid+s */
+    /* if mid < x, mid-s can be eliminated as a possibility */
+    /* if mid >= x, mid+s can be eliminated as a possibility */
+    if (mid<x) {
+        *ps1=mid, *ps2=mid+s;
+    } else {
+        *ps1=mid-s, *ps2=mid;
+    }
+}
+
+/* return index of rightmost sample with index < x
+   array size nmemb starting at index first with n uniformly-spaced samples
+      obtained by pivot sampling method pm
+*/
+static size_t sample_index_lt(size_t nmemb, size_t first, size_t n, size_t x, int pm)
+{
+    size_t i, mid, o, p, q, r, s, t, u, v;
+    mid=first+(nmemb>>1); /* index of [upper-]middle element */
+    /* single sample may be offset from mid, positions of larger number of
+       samples depends on pivot selection method
+    */
+#if 0
+fprintf(stderr,"/* %s line %d: nmemb=%lu, first=%lu, mid=%lu, n=%lu, x=%lu, method=%d */\n",__func__,__LINE__,nmemb,first,mid,n,x,pm);
+#endif
+    switch (n) {
+        case 1UL :
+            switch (nmemb) {
+                case 0UL : case 1UL : case 2UL : case 3UL : case 4UL :
+                case 6UL : case 8UL :
+                    /* leave pivot at [upper-]middle element */
+                break;
+                case 5UL : case 7UL : case 9UL :
+                    mid++; /* away from middle for bitonic */
+                break;
+                default :
+                    mid+=((nmemb-1UL)/8); /* 1/2+1/8=5/8 */
+                break;
+            }
+            if (x<=mid) i=0UL; else i=mid;
+        break;
+        default :
+            switch (pm) {
+                case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+                /*FALLTHROUGH*//* to remedian */
+                case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+                   /* n is a power of 3
+                      top-level samples are at mid +- nmemb/3
+                      next-level samples are at current-level samples +-
+                         current spacing/3
+                   */
+                   /* r is current-level spacing */
+                   /* o is minimum spacing */
+                   /* p<=q are samples at current level */
+                   /* s<=t<=u<=v are samples at next level */
+                   for (p=q=mid,r=nmemb/3UL,o=nmemb/n; o<=r; r/=3UL) {
+                       two_choices(p,r,x,&s,&t);
+                       if (p!=q) {
+                           two_choices(q,r,x,&u,&v);
+                           /* now have 4 choices: s, t, u, v */
+                           if (s>=x) { /* t,u,v are not viable */
+                               if (3*o<=r) { /* at least one more iteration */
+                                   p=q=s;
+                               } else {
+                                   i=0UL; /* s>=x */
+                                   break; /* loop would terminate anyway */
+                               }
+                           } else if (t>=x) { /* u,v are not viable */
+                               if (3*o<=r) { /* at least one more iteration */
+                                   p=s, q=t;
+                               } else {
+                                   i=s; /* t>=x */
+                                   break; /* loop would terminate anyway */
+                               }
+                           } else if (u>=x) { /* v is not viable */
+                               /* s<=t<=u; s is not viable */
+                               if (3*o<=r) { /* at least one more iteration */
+                                   p=t, q=u;
+                               } else {
+                                   i=t; /* u>=x */
+                                   break; /* loop would terminate anyway */
+                               }
+                           } else if (v>=x) {
+                               /* s<=t<=u<=v; s,t are not viable */
+                               if (3*o<=r) { /* at least one more iteration */
+                                   p=u, q=v;
+                               } else {
+                                   i=u; /* v>=x */
+                                   break; /* loop would terminate anyway */
+                               }
+                           } else { /* s<=t<=u<=v<x; s,t,u are not viable */
+                               if (3*o<=r) { /* at least one more iteration */
+                                   p=q=v;
+                               } else {
+                                   i=v; /* v<x */
+                                   break; /* loop would terminate anyway */
+                               }
+                           }
+                       } else {
+                           /* only 2 choices: s or t */
+                           if (3*o<=r) { /* at least one more iteration */
+                               p=s, q=t;
+                           } else {
+                               if (t<x) i=t;
+                               else if (s>=x) i=0UL;
+                               else i=s;
+                               break; /* loop would terminate anyway */
+                           }
+                       }
+                   }
+                break;
+                case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+/* XXX */
+/* XXX what is desired: index of median in mid-position, index of median in original position, index of some element in set of 3? */
+                break;
+                case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+                    /* simple case: samples are uniformly spaced around mid */
+                    for (o=nmemb/n,i=mid+(n>>1)*o; i>=x; i-=o)
+                        if (i<=o) return 0UL;
+                break;
+            }
+        break;
+    }
+    return i;
+}
+
+/* XXX work in progress:
+   As large sub-arrays are processed, pivot selection might use
+   median-of-medians or median of samples, and median finding entails
+   pivot selection for quickselect to find the median of medians or samples.
+   Reversing the data movement to produce worst-case input at every stage
+   can quickly get quite complicated.
+*/
+void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
+    size_t firstk, size_t beyondk, size_t size_ratio,
+    unsigned int distribution, unsigned int options)
+{
+    size_t karray[1], mid, n, nmemb=beyond-first, o, p, q, r, s, t, u, prank;
+    auto size_t lk, rk;
+    auto unsigned int new_distribution;
+    int method;
+    register long *pb, *pc, *pivot, *pm;
+    if (NULL==lswap) lswap=swapn(lsz);
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,__LINE__,first,beyond,nmemb);
+#endif
+    switch (nmemb) {
+        /* small sub-arrays with no method (using dedicated_sort) */
+        case 0UL : return;
+        case 1UL : return;
+        return;
+        case 2UL :
+                /* 0 1 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
+                /* 1 0 */
+#if 0
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+        return;
+        case 3UL :
+                /* 0 1 2 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+2UL,lsz,lsz,1UL,/**/);
+                /* 2 1 0 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
+                /* 1 2 0 */
+#if 0
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+        return;
+        case 4UL :
+                /* 0 1 2 3 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
+                /* 1 0 2 3 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+2UL,lsz,lsz,1UL,/**/);
+                /* 2 0 1 3 */
+                EXCHANGE_SWAP(lswap,base+first+2UL,base+first+3UL,lsz,lsz,1UL,
+                    /**/);
+                /* 2 0 3 1 */
+#if 0
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+        return;
+        case 5UL :
+                /* 0 1 2 3 4 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
+                /* 1 0 2 3 4 */
+                EXCHANGE_SWAP(lswap,base+first,base+first+3UL,lsz,lsz,1UL,/**/);
+                /* 3 0 2 1 4 */
+                EXCHANGE_SWAP(lswap,base+first+3UL,base+first+4UL,lsz,lsz,1UL,
+                    /**/);
+                /* 3 0 2 4 1 */
+#if 0
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,__LINE__,first,beyond,nmemb);
+#endif
+        return;
+        default:
+            new_distribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,
+                firstk,beyondk,NULL,&pk,nmemb,size_ratio,options);
+            method=pivot_method(NULL,nmemb,0UL,0UL,new_distribution,size_ratio,
+                options);
+            n=samples(nmemb,method,new_distribution,options);
+            if ((QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method)&&(1UL==n))
+                method=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* pivot offset */
+#if 0
+            mid=first+(nmemb>>1); /* index of [upper-]middle element */
+#else
+            /* sample element near the middle */
+            if (1UL<n)
+                mid=sample_index_lt(nmemb,first,n,first+(nmemb>>1)+1UL,method);
+            else
+                mid=sample_index_lt(nmemb,first,n,beyond,method);
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, n=%lu, mid=%lu */\n",__func__,__LINE__,first,nmemb,n,mid);
+#endif
+/* make_adverse line 310: first=3, nmemb=6, mid=0 */
+#endif
+            switch (n) {
+#if 0
+                case 1UL :
+                    /* single sample: extreme value at sample (pivot) */
+                    switch (nmemb) {
+                        case 6UL : case 8UL :
+                            /* leave pivot at [upper-]middle element */
+                        break;
+                        case 7UL : case 9UL :
+                            mid++; /* away from middle for bitonic */
+                        break;
+                        default :
+                            mid+=((nmemb-1UL)/8); /* 1/2+1/8=5/8 */
+                        break;
+                    }
+                    /* make sequence for next smaller size */
+                    make_adverse(base,first,beyond-1UL,pk,firstk,beyondk,
+                        size_ratio,distribution,options);
+                    /* large element is in last position */
+                    /* swap extreme element into position */
+fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",__func__,__LINE__,first,beyond,nmemb,mid);
+                    EXCHANGE_SWAP(lswap,base+mid,base+(beyond-1UL),lsz,lsz,1UL,
+                        /**/);
+                        print_some_array(base,first,beyond-1UL,"/* "," */",options);
+                return;
+#endif
+                default :
+                    prank=min_rank(nmemb,n,method);
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%d, prank=%lu */\n",__func__,__LINE__,first,beyond,nmemb,n,method,prank);
+#endif
+                    /* split will be at pivot (rank prank) */
+#if 0
+                    base[first+prank]=(long)first+(long)prank;
+#endif
+                    /* left and right regions should be adverse sequences */
+                    /* if ratio is large, large region will use median of
+                       medians
+                    */
+                    r=(nmemb-1UL-prank)/(1UL+prank); /* ratio */
+                    if (0UL<prank) {
+                        if (NULL!=pk) d_klimits(first,first+prank,pk,firstk,
+                            beyondk,&lk,&rk);
+                        else rk=firstk, lk=beyondk;
+                        new_distribution=SAMPLING_TABLE_FUNCTION_NAME(first,
+                            first+prank,pk,lk,rk,NULL,&pk,prank,size_ratio,options);
+                        make_adverse(base,first,first+prank,pk,lk,rk,
+                            size_ratio,new_distribution,options);
+                    }
+                    if (prank<beyond-1UL) {
+                        if (NULL!=pk) d_klimits(first+prank+1UL,beyond,pk,
+                            firstk,beyondk,&lk,&rk);
+                        else rk=firstk, lk=beyondk;
+                        new_distribution=SAMPLING_TABLE_FUNCTION_NAME(
+                            first+prank+1UL,beyond,pk,lk,rk,NULL,&pk,
+                            nmemb-prank-1UL,size_ratio,options);
+                        make_adverse(base,first+prank+1UL,beyond,pk,lk,
+                            rk,size_ratio,new_distribution,options);
+                    }
+                    o = nmemb / n; /* elements offset between samples */
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%d, mid=%lu, o=%lu, prank=%lu, r=%lu */\n",__func__,__LINE__,first,beyond,nmemb,n,method,mid,o,prank,r);
+                        print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+                    /* Put prank+1 extreme values in positions where they would
+                       be prior to partitioning, i.e. in sample positions for
+                       remedian, and in the middle of the array for median of
+                       medians and median of samples.  This step is the reverse
+                       of partitioning.  For median of medians and median of
+                       samples, the pivot should be in the middle, with smaller
+                       elements to its left.
+                    */
+                    switch (method) {
+                        case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+                        /*FALLTHROUGH*//* to remedian */
+                        case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+                            /* pivot goes to highest sample less than the lower-
+                               middle element+1.  prank/2 samples go in the next
+                               sample positions below that.  Remaining samples
+                               go in sample locations below
+                               lower-middle+1-(nmemb/3) (i.e. left side of first
+                               row of samples).
+                               This works up to nmemb=2047.
+                            */
+                            if (1UL<n) {
+                                mid=first+((nmemb-1UL)>>1); /* lower-middle index */
+                                o=sample_index_lt(nmemb,first,n,mid+2UL,method);
+                            } else o=mid;
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, prank=%lu, nmemb=%lu, mid=%lu, o=%lu */\n",__func__,__LINE__,first,prank,nmemb,mid,o);
+#endif
+                            EXCHANGE_SWAP(lswap,base+first+prank,base+o,lsz,lsz,
+                                1UL,/**/);
+                            if (1UL<n) {
+                                for (p=first,q=first+(prank>>1); p<q; p++) {
+                                    o=sample_index_lt(nmemb,first,n,o,method);
+                                    if (o==p) continue;
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, q=%lu, o=%lu, mid=%lu */\n",__func__,__LINE__,first,p,q,o,mid);
+#endif
+                                    EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
+                                        /**/);
+                                }
+                                for (o=mid+2UL-(nmemb/3UL),q=first+prank; p<q; p++) {
+                                    o=sample_index_lt(nmemb,first,n,o,method);
+                                    if (o==p) continue;
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, q=%lu, o=%lu, mid=%lu */\n",__func__,__LINE__,first,p,q,o,mid);
+#endif
+                                    EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
+                                        /**/);
+                                }
+                            }
+                        break;
+                        case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+                        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, n=%lu (pre-de-partition) */\n",__func__,__LINE__,first,nmemb,mid,n);
+#endif
+                            q=(n>>1);
+                            for (p=first,o=mid-q; o<=mid; p++,o++) {
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, o=%lu, p=%lu (de-partition) */\n",__func__,__LINE__,first,nmemb,mid,o,p);
+#endif
+                                EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
+                                    /**/);
+                            }
+                            /* If the pivot for the middle section isn't the
+                               middle element, swap the pivot to where it's
+                               expected to be found.  If the samples (or
+                               medians) in the middle section will be rearranged
+                               for median finding, undo that.
+                               This works up to nmemb=1917.
+                            */
+                            o=samples(n,pivot_method(NULL,nmemb,0UL,0UL,2U,size_ratio,options),
+                                2U,options);
+                            switch (o) {
+                                case 1UL : /* median pivot might be offset */
+                                    p=mid;
+                                    switch (n) {
+                                        case 0UL : case 1UL : case 2UL : case 3UL :
+                                        case 4UL : case 6UL : case 8UL :
+                                            /* leave pivot at [upper-]middle element */
+                                        break;
+                                        case 5UL : case 7UL : case 9UL :
+                                            p++; /* away from middle for bitonic */
+                                        break;
+                                        default :
+                                            p+=((n-1UL)/8); /* 1/2+1/8=5/8 */
+                                        break;
+                                    }
+                                    if (p!=mid) {
+                                        EXCHANGE_SWAP(lswap,base+p,base+mid,lsz,lsz,
+                                            1UL,/**/);
+                                    }
+                                break;
+                                default :
+                                    p=(o>>1),q=n/o,s=mid+p,t=mid-p;
+                                    for (u=mid+p*q; mid<s; s--,u-=q) {
+                                        if (s!=u) {
+                                            EXCHANGE_SWAP(lswap,base+s,base+u,
+                                                lsz,lsz, 1UL,/**/);
+                                        }
+                                    }
+                                    for (u=mid-p*q; mid>t; t++,u+=q) {
+                                        if (t!=u) {
+                                            EXCHANGE_SWAP(lswap,base+t,base+u,
+                                                lsz,lsz, 1UL,/**/);
+                                        }
+                                    }
+                                break;
+                            }
+                        break;
+                    }
+                    /* If the pivot selection method is median of medians or
+                       median of samples,
+                       make the median selection adverse, then
+                       distribute the mid-array elements (medians of 3 or
+                       samples) to appropriate positions in the array.  This
+                       step is the reverse of pivot selection.
+                       Note that after
+                       the mid-array elements have been permuted to make median
+                       finding adverse, it is no longer clear where the small-
+                       valued elements are; for median of medians, elements will
+                       have to be dispersed such that the dispersed elements are
+                       medians of the sets of 3.
+                       For median of samples, the dispersion is purely
+                       mechanical.
+                       Before reversing pivot selection, the middle samples or
+                       medians should be partitioned around the median, as that
+                       is the order they will have during forward processing.
+                    */
+                    if ((1UL<n)&&((QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS==method)
+                    ||(QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method))) {
+#if 0 /* XXX don't worry about making median selection adverse; it will make dispersion of samples for median of medians very complicated */
+                        size_t karray[1];
+                        karray[0]=mid;
+                        make_adverse(base,mid-(n>>1),mid+(n>>1),karray,0UL,1UL,
+                            size_ratio,2U,options);
+#endif
+                        switch (method) {
+                            case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+/* XXX */
+                                /* For median of medians, 
+                                */
+                            break;
+                            case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+#if 1
+                                q=(n>>1),p=mid+q,r=mid-q;
+                                for (o=beyond; r<=p; p--) {
+                                    o=sample_index_lt(nmemb,first,n,o,method);
+                                    if (p==o) continue;
+#if 0
+fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, o=%lu, q=%lu, r=%lu, mid=%lu (undo pivot selection) */\n",__func__,__LINE__,first,p,o,q,r,mid);
+#endif
+                                    EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,
+                                        1UL,/**/);
+                                }
+#else
+                                p=(n>>1),q=nmemb/n,s=mid+p,t=mid-p;
+                                for (u=mid+p*q; mid<s; s--,u-=q) {
+                                    if (s!=u) {
+                                        EXCHANGE_SWAP(lswap,base+s,base+u,
+                                            lsz,lsz, 1UL,/**/);
+                                    }
+                                }
+                                for (u=mid-p*q; mid>t; t++,u+=q) {
+                                    if (t!=u) {
+                                        EXCHANGE_SWAP(lswap,base+t,base+u,
+                                            lsz,lsz, 1UL,/**/);
+                                    }
+                                }
+#endif
+                            break;
+                        }
+                    }
+
+#if 0
+                        print_some_array(base,first,beyond-1UL,"/* "," */",options);
+#endif
+                break;
+            }
+        return;
+    }
+}
 
 static
 QUICKSELECT_INLINE
@@ -142,8 +645,8 @@ char *freeze_some_samples(register char *base, register size_t first,
 #if DEBUG_CODE
     if (DEBUGGING(WQSORT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-            "table_index=%u, options=0x%x */\n",__func__,source_file,__LINE__,
-            first,beyond,table_index,options);
+            "options=0x%x */\n",__func__,source_file,__LINE__,
+            first,beyond,options);
 #endif
     switch (options&((QUICKSELECT_STABLE)|(QUICKSELECT_RESTRICT_RANK))) {
 #if QUICKSELECT_STABLE
@@ -168,8 +671,8 @@ char *freeze_some_samples(register char *base, register size_t first,
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "table_index=%u, options=0x%x, pivot_minrank=%lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    "options=0x%x, pivot_minrank=%lu */\n",
+                    __func__,source_file,__LINE__,first,beyond,
                     options,pivot_minrank);
 #endif
             /* pre-freeze before pivot selection */
@@ -205,10 +708,10 @@ char *freeze_some_samples(register char *base, register size_t first,
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "table_index=%u, options=0x%x, pivot_minrank=%lu: "
+                    "options=0x%x, pivot_minrank=%lu: "
                     "pre-freeze %lu frozen elements, overall pivot rank %lu/%lu"
                     ", pivot rank within samples ([%lu,%lu) by %lu) %lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    __func__,source_file,__LINE__,first,beyond,
                     options,pivot_minrank,p,q,nmemb,x,u,w,t);
 #endif
             /* freeze low-address samples which will be used for pivot selection */
@@ -266,10 +769,10 @@ char *freeze_some_samples(register char *base, register size_t first,
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "table_index=%u, options=0x%x, pivot_minrank=%lu: post-"
+                    "options=0x%x, pivot_minrank=%lu: post-"
                     "freeze %lu frozen elements, overall pivot rank %lu/%lu, "
                     "pivot rank within %lu samples %lu */\n",__func__,
-                    source_file,__LINE__,first,beyond,table_index,options,
+                    source_file,__LINE__,first,beyond,options,
                     pivot_minrank,p,q,nmemb,s*3UL,t);
 #endif
         break;
@@ -281,9 +784,9 @@ char *freeze_some_samples(register char *base, register size_t first,
 #if DEBUG_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "table_index=%u, options=0x%x, pivot_minrank=%lu: pre-"
+                    "options=0x%x, pivot_minrank=%lu: pre-"
                     "selection %lu frozen elements, pivot rank %lu */\n",
-                    __func__,source_file,__LINE__,first,beyond,table_index,
+                    __func__,source_file,__LINE__,first,beyond,
                     options,pivot_minrank,p,q);
 #endif
         break;
@@ -312,6 +815,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
     size_t nmemb, r, ratio=0, s, samples, t;
     auto size_t lk=firstk, p, q, rk=beyondk;
     auto unsigned int sort;
+    auto unsigned int distribution;
     struct sampling_table_struct *psts;
         
     for (;;) {
@@ -328,29 +832,21 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
             && (nmemb<5UL) /* must avoid indirection */
             ) {
                 (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,
-                    0UL,swapf,alignsize,size_ratio,table_index,
-                    quickselect_cache_size,0UL,options,NULL,NULL);
+                    0UL,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
+                    options,NULL,NULL);
                 return;
             }
         } else return;
-        A(table_index < (SAMPLING_TABLE_SIZE));
-        psts=d_sampling_table(first,beyond,pk,firstk,beyondk,NULL,&sort,
-            &table_index,nmemb);
-        samples=psts[table_index].samples;
-
-        /* freeze low-address samples which will be used for pivot selection */
-        if (aqcmp==compar)
-            (V)freeze_some_samples(base,first,beyond,size,compar,swapf,alignsize,
-                size_ratio,table_index,options);
+        distribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,firstk,beyondk,NULL,
+            &pk,nmemb,size_ratio,options);
 
         /* normal pivot selection (for comparison and swap counts) */
         pivot=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
-            size_ratio,table_index,NULL,quickselect_cache_size,pbeyond,options,
-            &pc,&pd,&pe,&pf);
+            size_ratio,distribution,NULL,0UL,0UL,quickselect_cache_size,pbeyond,options,
+            &pc,&pd,&pe,&pf,NULL,&samples);
 #if DEBUG_CODE
         t=pivot_minrank;
 #endif
-        pivot_minrank=nmemb;
         /* XXX no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
             alignsize,size_ratio,quickselect_cache_size,options,&p,&q);
@@ -421,16 +917,6 @@ void wqsort(void *base, size_t nmemb, size_t size,
     if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
     if (0U==instrumented) swapf=swapn(alignsize); else swapf=iswapn(alignsize);
 
-#if DEBUG_CODE
-    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) {
-        /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++)
-            stats_table[q].max_ratio=stats_table[q].repivot_ratio=0UL,
-                stats_table[q].repivots=0UL;
-    }
-#endif
-
     table_index=nmemb<=
 #if ( SIZE_MAX < 65535 )
 # error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
@@ -449,18 +935,4 @@ void wqsort(void *base, size_t nmemb, size_t size,
     nfrozen=0UL, pivot_minrank=nmemb;
     wqsort_internal(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
         pk,0UL,nk,table_index,0UL,options,0);
-
-#if DEBUG_CODE
-    if (DEBUGGING(WQSORT_DEBUG)&&DEBUGGING(RATIO_GRAPH_DEBUG)) {
-        /* for graphing worst-case partition ratios */
-        size_t q;
-        for (q=0UL; q<(SAMPLING_TABLE_SIZE); q++) {
-            if (0UL<stats_table[q].max_ratio)
-                (V)fprintf(stderr,
-                    "/* %s: table_index=%lu, max_ratio=%lu, repivots=%lu@%lu */\n",
-                    __func__,q,stats_table[q].max_ratio,
-                    stats_table[q].repivots,stats_table[q].repivot_ratio);
-        }
-    }
-#endif
 }

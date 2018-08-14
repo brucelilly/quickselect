@@ -66,10 +66,10 @@ C11 = -std=c11
 MAKE_DEPEND_ARG = -MM
 
 # optimization flag
-OPTIMIZE = -Ofast
+#OPTIMIZE = -Ofast
 #OPTIMIZE = -Os
 #OPTIMIZE = -Oz
-#OPTIMIZE = -O3
+OPTIMIZE = -O3
 #OPTIMIZE = -O2
 #OPTIMIZE = -O1
 #OPTIMIZE = -O0

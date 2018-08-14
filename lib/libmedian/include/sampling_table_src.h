@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.10 dated 2018-05-10T02:21:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.15 dated 2018-08-13T20:57:01Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-05-10T02:21:19Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2018-08-13T20:57:01Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -117,6 +117,7 @@
 /* system header files */
 #include <assert.h>             /* assert */
 #include <limits.h>             /* *_MAX */
+#include <math.h>               /* pow */
 #include <stddef.h>             /* size_t NULL */
 
 #if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
@@ -135,8 +136,7 @@ char sampling_table_src_file_initialized=0;
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
-/* sample_index: return index into sampling table psts (size stsz entries) for
-   nmemb
+/* sample_index: return index into sampling table psts for nmemb
 */
 /* called from sampling_table and quicksort */
 #if QUICKSELECT_BUILD_FOR_SPEED
@@ -144,16 +144,30 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "sample_index_decl.h"
 {
+#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+    if ((char)0==sampling_table_src_file_initialized) {
+        (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
+        sampling_table_src_file_initialized++;
+    }
+    if (DEBUGGING(SAMPLING_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: idx=%u, nmemb=%lu */\n",
+            __func__,sampling_table_src_file,__LINE__,idx,nmemb);
+#endif
     if (3UL>nmemb) idx=0U;
     else {
-        A((psts==sorting_sampling_table) ||(psts==ends_sampling_table)
-        ||(psts==middle_sampling_table));
         if (idx>=(SAMPLING_TABLE_SIZE)-1U) idx=(SAMPLING_TABLE_SIZE)-2U;
         while (nmemb>psts[idx].max_nmemb) idx++;
         A((SAMPLING_TABLE_SIZE)>idx);
         while ((0U<idx)&&(nmemb<=psts[idx-1U].max_nmemb)) idx--;
     }
     A((SAMPLING_TABLE_SIZE)>idx);
+#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+    if (DEBUGGING(SAMPLING_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: idx=%u, nmemb=%lu, max_nmemb=%lu, samples=%lu */\n",
+            __func__,sampling_table_src_file,__LINE__,idx,nmemb,psts[idx].max_nmemb,psts[idx].samples);
+#endif
     return idx;
 }
 
@@ -162,6 +176,401 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
 #include "sampling_table_decl.h"
 ;
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
+
+/* size_t floor of square root of size_t argument */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif
+size_t size_t_sqrt(size_t n)
+{
+    if (1UL<n) {                /* else sqrt(1)=1, sqrt(0)=0 */
+        size_t q, r, s, t;
+
+        q=(n>>2);               /* q=n/4 */
+        r=size_t_sqrt(q);       /* r=sqrt(n/4) ~ sqrt(n)/2 */
+        s=(r<<1);               /* s=2r ~ sqrt(n) */
+        t=s+1UL;                /* t=s+1 */
+#if DEBUG_CODE
+        if (DEBUGGING(SORT_SELECT_DEBUG))
+            (V)fprintf(stderr,
+                "/* %s line %d: n=%lu, q=%lu, r=%lu, s=%lu, t=%lu t*t=%lu */\n",
+                __func__,__LINE__,n,q,r,s,t,t*t);
+#endif
+        /* s if t^2>n, else t */
+        if ((((SIZE_MAX)>>1)<t)||(t*t>n)) return s; else return t;
+    }
+    return n;                   /* sqrt(1)=1, sqrt(0)=0 */
+}
+
+/* floor of base 3 logarithm of size_t argument */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif
+size_t floor_log3(register size_t n)
+{
+    switch (n) {
+        default :
+            { register size_t l, m, x=floor_log3(SIZE_MAX);
+                /* n not an exact power of 3
+                   n < SIZE_MAX
+                   stop when l==x to avoid overflow of m
+                */
+                for (l=0UL,m=3UL; (l<x)&&(m<n); l++,m*=3UL) ;
+                return l;
+            }
+        break;
+        /* huge case */
+        case (SIZE_MAX) :
+#if ( SIZE_MAX > 65535 ) /* > 16 bits */
+# if ( SIZE_MAX > 4294967295 ) /* > 32 bits */
+        return 40UL; /* 64 bits */
+# endif /* > 32 bits */
+        return 20UL; /* 32 bits */
+#else
+        return 10UL; /* 16 bits */
+#endif /* > 16 bits */
+        /* exact cases */
+#if ( SIZE_MAX > 65535 ) /* > 16 bits */
+# if ( SIZE_MAX > 4294967295 ) /* > 32 bits */
+/*    2^64 = 18446744073709551616 */
+        case 12157665459056928801UL : return 40UL;
+        case 4052555153018976267UL  : return 39UL;
+        case 1350851717672992089UL  : return 38UL;
+        case 450283905890997363UL   : return 37UL;
+        case 150094635296999121UL   : return 36UL;
+        case 50031545098999707UL    : return 35UL;
+        case 16677181699666569UL    : return 34UL;
+        case 5559060566555523UL     : return 33UL;
+        case 1853020188851841UL     : return 32UL;
+        case 617673396283947UL      : return 31UL;
+        case 205891132094649UL      : return 30UL;
+        case 68630377364883UL       : return 29UL;
+        case 22876792454961UL       : return 28UL;
+        case 7625597484987UL        : return 27UL;
+        case 2541865828329UL        : return 26UL;
+        case 847288609443UL         : return 25UL;
+        case 282429536481UL         : return 24UL;
+        case 94143178827UL          : return 23UL;
+        case 31381059609UL          : return 22UL;
+        case 10460353203UL          : return 21UL;
+# endif /* > 32 bits */
+        case 3486784401UL           : return 20UL;
+        case 1162261467UL           : return 19UL;
+        case 387420489UL            : return 18UL;
+        case 129140163UL            : return 17UL;
+        case 43046721UL             : return 16UL;
+        case 14348907UL             : return 15UL;
+        case 4782969UL              : return 14UL;
+        case 1594323UL              : return 13UL;
+        case 531441UL               : return 12UL;
+        case 177147UL               : return 11UL;
+#endif /* > 16 bits */
+        case 59049UL                : return 10UL;
+        case 19683UL                : return 9UL;
+        case 6561UL                 : return 8UL;
+        case 2187UL                 : return 7UL;
+        case 729UL                  : return 6UL;
+        case 243UL                  : return 5UL;
+        case 81UL                   : return 4UL;
+        case 27UL                   : return 3UL;
+        case 9UL                    : return 2UL;
+        case 3UL                    : return 1UL;
+        case 1UL                    : return 0UL;
+        /* argument error */
+        case 0UL                    : return 0UL;
+    }
+}
+
+#if ! __STDC_WANT_LIB_EXT1__ && ! defined(DEBUGGING)
+double mos_middle_power = 0.810;
+double mos_ends_power = 0.810;
+#else
+extern double mos_middle_power;
+extern double mos_ends_power;
+#endif
+static double mos_middle_multiplier = 0.0;
+static double mos_ends_multiplier = 0.0;
+
+/* determine the number of samples to use for pivot selection */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif
+size_t samples(size_t nmemb, int method, unsigned int distribution,
+    unsigned int options)
+{
+    register size_t n, r;
+    struct sampling_table_struct *pst;
+
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SAMPLING_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s line %d: nmemb=%lu, method=%d, distribution=%u, "
+            "options=0x%x */\n",
+            __func__,__LINE__,nmemb,method,distribution,options);
+#endif
+    switch (method) {
+        case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+            n=floor_log3(n);
+        break;
+        case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+            /* sampling table and initial estimate (binary search) of index */
+            switch (distribution) {
+                /* separated ranks near ends, none in middle; reduced number of
+                   samples because precise split is not necessary -- both
+                   regions will be processed, and each of those will have ranks
+                   at one end
+                */
+                case 5U : /*FALLTHROUGH*/
+                /* cases 1 and 4 not using median of samples (never happens) */
+                case 1U : /*FALLTHROUGH*/ case 4U :
+                    pst=ends_sampling_table;
+                    r=nmemb<=
+#if ( SIZE_MAX < 65535 )
+# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
+#elif ( SIZE_MAX == 65535 ) /* 16 bits */
+                        pst[1].max_nmemb?1UL:2UL
+#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
+                        pst[2].max_nmemb?1UL:3UL
+#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
+                        pst[5].max_nmemb?2UL:7UL
+#else
+# error "strange SIZE_MAX " SIZE_MAX
+#endif /* word size */
+                    ;
+                break;
+                case 2U : /*FALLTHROUGH*/
+                    pst=middle_sampling_table;
+                    r=nmemb<=
+#if ( SIZE_MAX < 65535 )
+# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
+#elif ( SIZE_MAX == 65535 ) /* 16 bits */
+                        pst[2].max_nmemb?1UL:3UL
+#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
+                        pst[5].max_nmemb?2UL:7UL
+#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
+                        pst[9].max_nmemb?5UL:14UL
+#else
+# error "strange SIZE_MAX " SIZE_MAX
+#endif /* word size */
+                    ;
+                break;
+                case 3U : /*FALLTHROUGH*/ case 6U : /* cases 3 and 6 use sorting table */
+                case 7U : /*FALLTHROUGH*/ /* case 7 uses sorting table */
+                default : /* sorting */
+                    pst=sorting_sampling_table;
+                    r=nmemb<=
+#if ( SIZE_MAX < 65535 )
+# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
+#elif ( SIZE_MAX == 65535 ) /* 16 bits */
+                        pst[2].max_nmemb?1UL:3UL
+#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
+                        pst[5].max_nmemb?2UL:8UL
+#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
+                        pst[9].max_nmemb?5UL:14UL
+#else
+# error "strange SIZE_MAX " SIZE_MAX
+#endif /* word size */
+                    ;
+                break;
+            }
+            /* refine index (linear search) */
+            r=(size_t)SAMPLE_INDEX_FUNCTION_NAME(pst,(unsigned int)r,nmemb);
+            /* # samples from table */
+            n=pst[r].samples;
+        break;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+            n = nmemb/3UL; /* number of medians */
+        break;
+        default :
+#if ASSERT_CODE + DEBUG_CODE
+            (V)fprintf(stderr,"%s line %d: unrecognized pivot method %d\n",
+                __func__,__LINE__,method);
+        break;
+#else   /*FALLTHROUGH*/
+#endif /* ASSERT_CODE + DEBUG_CODE */
+        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+            switch (distribution) {
+                case 3U : /*FALLTHROUGH*/ case 6U : /*FALLTHROUGH*/ /* cases 3 and 6 use middle table */
+                case 2U :
+                    pst=mos_middle_sampling_table;
+                break;
+                case 1U : /*FALLTHROUGH*/ case 4U :
+                    pst=mos_ends_sampling_table;
+                break;
+                case 5U : /*FALLTHROUGH*/ /* case 5 uses sorting table */
+                /* case 5 uses remedian except for size_ratio 1 */
+                case 7U : /*FALLTHROUGH*/ /* case 7 uses sorting table */
+                default : /* 000 sorting */
+                    pst=mos_sorting_sampling_table;
+                break;
+            }
+            if (pst[SAMPLING_TABLE_SIZE-1].max_nmemb>=nmemb) {
+                /* sample sizes differ for small nmemb */
+                for (r=0UL; r<SAMPLING_TABLE_SIZE; r++) {
+                    if (nmemb<=pst[r].max_nmemb) {
+                        n=pst[r].samples;
+                        break;
+                    }
+                }
+            } else { /* compute number of samples for nmemb */
+                /* odd # samples 2*k+1 for k proportional to sqrt(nmemb) */
+                if (pst==mos_middle_sampling_table) {
+                    /* Martinez & Roura found optimum samples for median pivot
+                       selection to be 1+2*sqrt(nmemb/4/Beta), where Beta is the
+                       scaled number of comparisons for median selection.  So,
+                       for 2.25N selection cost, use 1+2*sqrt(nmemb/9).  For 2N,
+                       use 1+2*sqrt(nmemb/8); for 1.75N, use 1+2*sqrt(nmemb/7);
+                       for 1.5N, use 1+2*sqrt(nmemb/6).
+                       However, empirical testing shows that the optimum number
+                       of samples is much greater for large arrays.
+                    */
+                    if (0.0==mos_middle_multiplier) {
+                        /* Match multiplier to top end of table values. */
+                        n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
+                            +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
+                        mos_middle_multiplier
+                            =(double)
+                            ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
+                            /pow(0.5*(double)n,mos_middle_power);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                        if (DEBUGGING(SAMPLING_DEBUG))
+                            (V)fprintf(stderr,
+                                "/* %s line %d: mos_middle_power=%.3f, "
+                                "mos_middle_multiplier=%.5f */\n",
+                                __func__,__LINE__,mos_middle_power,
+                                mos_middle_multiplier);
+#endif
+                    }
+                    n = 1UL +
+                        (((size_t)(pow((double)nmemb,mos_middle_power)
+                        *mos_middle_multiplier))<<1);
+                } else if (pst==mos_ends_sampling_table) {
+                    /* Pivot selection for pivot rank near an array end uses
+                       about twice as many samples as for a median pivot.
+                    */
+                    if (0.0==mos_ends_multiplier) {
+                        /* Match multiplier to top end of table values. */
+                        n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
+                            +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
+                        mos_ends_multiplier
+                            =(double)
+                            ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
+                            /pow(0.5*(double)n,mos_ends_power);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                        if (DEBUGGING(SAMPLING_DEBUG))
+                            (V)fprintf(stderr,
+                                "/* %s line %d: mos_ends_power=%.3f, "
+                                "mos_ends_multiplier=%.5f */\n",
+                                __func__,__LINE__,mos_ends_power,
+                                mos_ends_multiplier);
+#endif
+                    }
+                    n = 1UL +
+                        (((size_t)(pow((double)nmemb,mos_ends_power)
+                        *mos_ends_multiplier))<<1);
+                } else { /* mos_sorting_sampling_table */
+                    /* n (the number of samples to use for sorting) depends on
+                       Beta (the cost of selecting the median of samples), which
+                       varies with n.  A table is used for small nmemb, which
+                       uses small n (where Beta varies from 1 to about 2.2).
+                       For n roughly from 40 to 256, Beta is a maximum at about
+                       2.2, and the corresponding range for nmemb is 4800 to
+                       196608 elements.  Beta is ~ 1.98 at n ~ 1800, ~ 1.8 at
+                       n ~ 8000, ~ 1.62 at n ~ 60000, and asymptotically
+                       approaches 1.5.  Because nmemb increases with the square
+                       of the number of samples, the computation using Beta~2.16
+                       is used for all but very large arrays (and very small
+                       ones using the table values).
+                    */
+                    if (1340000UL>nmemb) { /* < 651 samples */
+                        n = ((size_t_sqrt(nmemb/12UL))<<1) + 1UL; /* sqrt(nmemb/3) [2*beta*ln(2) = 3 for beta=2.16404] */
+                    } else if (44011800UL>nmemb) { /* ~4201 samples */
+                        n = ((size_t_sqrt(nmemb/11UL))<<1) + 1UL; /* beta ~ 1.98 */
+                    } else if (22460000000UL>nmemb) { /* ~100001 samples */
+                        n = ((size_t_sqrt(nmemb/10UL))<<1) + 1UL; /* beta ~ 1.8 */
+                    } else {
+                        n = ((size_t_sqrt(nmemb/9UL))<<1) + 1UL; /* beta ~ 1.62 */
+                    }
+                }
+            }
+        break;
+    }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+    if (DEBUGGING(SAMPLING_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s line %d: nmemb=%lu, n=%lu, r=%lu, method=%d, options=0x%x */\n",
+            __func__,__LINE__,nmemb,n,r,method,options);
+#endif
+    return n;
+}
+
+/* Determine a suitable method for pivot selection. */
+#if QUICKSELECT_BUILD_FOR_SPEED
+static QUICKSELECT_INLINE
+#endif
+int pivot_method(size_t *pk, size_t nmemb, size_t firstk, size_t beyondk,
+    unsigned int raw_distribution, size_t size_ratio, unsigned int options)
+{
+#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+    if ((char)0==sampling_table_src_file_initialized) {
+        (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
+        sampling_table_src_file_initialized++;
+    }
+    if (DEBUGGING(PIVOT_SELECTION_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: pk=%p, distribution=%u, size_ratio=%lu, options"
+            "=0x%x */\n",__func__,sampling_table_src_file,__LINE__,
+            pk,raw_distribution,size_ratio,options);
+#endif /* DEBUG DEBUGGING */
+#if QUICKSELECT_STABLE
+    /* Stable sorting or selection requires preserving partial order during
+       pivot selection. In-place remedian is used.
+    */
+    if (0U!=(options&(QUICKSELECT_STABLE))) {
+        if (0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
+            return QUICKSELECT_PIVOT_REMEDIAN_FULL ;
+        return QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+    } else
+#endif /* QUICKSELECT_STABLE */
+    /* Pivot selection requiring restricted rank (break-glass) uses
+       median-of-medians or full remedian (for stable sorting/selection).
+    */
+    if (0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
+        return QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS ;
+    else {
+        /* Might use "median" of samples with offset rank or true median of
+           samples. In either case, sample data movement is relatively costly;
+           it can introduce disorder into already-sorted input (which will
+           have to be undone during partitioning and recursion) and data
+           movement for large elements is expensive.  There are a few
+           mitigating cases: if comparisons are very costly, median of samples
+           yields fewer overall comparisons than remedian of samples (but more
+           swaps).  For trivial (basic types) data, the additional data
+           movement costs might be acceptable.  Finally, selection (vs. sorting)
+           for order statistics which are grouped on one side of the sub-array,
+           selection of the pivot from the samples can use a rank other than the
+           median of the samples, to (ideally) eliminate more than half of the
+           sub-array, reducing recursion (actually iteration) depth.
+        */
+        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
+            return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+        if ((NULL!=pk)&&(beyondk>firstk)) { /* maybe offset rank for selection */
+        /* Suitable distributions for median of samples (based primarily on
+           number of swaps) depends on the partitioning method.
+        */
+            /* independent of size_ratio */
+            if ((1U==raw_distribution)||(4U==raw_distribution))
+                return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+            /* for basic types (size_ratio==1) because of swaps */
+            if (
+            (5U!=raw_distribution)
+            &&(1UL==size_ratio)
+            )
+                return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+        }
+    }
+    return QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+}
 
 /* kgroups returns the number of groups of contiguous order statistic ranks in
    [pk[firstk],pk[beyondk]).
@@ -179,7 +588,7 @@ size_t kgroups(size_t *pk, size_t firstk, size_t beyondk)
     return n;
 }
 
-/* sampling_table: select a suitable sampling table */
+/* sampling_table: determine distribution of order statistic ranks */
 /* called from select_pivot, quickselect_loop and quickselect public wrapper
    function
 */
@@ -187,9 +596,13 @@ size_t kgroups(size_t *pk, size_t firstk, size_t beyondk)
 static QUICKSELECT_INLINE
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #include "sampling_table_decl.h"
+/*
+unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
+    size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
+    const size_t **ppk, size_t nmemb, size_t size_ratio, unsigned int options)
+*/
 {
-    unsigned char distribution, raw, sort=1U;
-    struct sampling_table_struct *psts=sorting_sampling_table;
+    unsigned int raw=0U, sort=1U;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
@@ -230,54 +643,89 @@ static QUICKSELECT_INLINE
     &&(0U==(options&(QUICKSELECT_STRICT_SELECTION))) /* not strict selection */
     ) {
         /* Sort if expected cost 2+logP=log(4P) of selection of P groups of
-           order statistic ranks is not lower than the expected cost log(nmemb)
+           order statistic ranks is greater than the expected cost log(nmemb)
            for sorting.  Because log is a monotonic function, it suffices to
            compare 4P vs. nmemb, or equivalently, P vs. nmemb/4.  If this
            simple comparison results in sorting, it is not necessary to
            characterize to distribution of desired order statistics in bands.
         */
         size_t kg=kgroups(pk,firstk,beyondk);
-        if (kg>=(nmemb>>2)) pk=NULL; /* sort */
+        if (kg>(nmemb>>2)) pk=NULL; /* sort */
     }
     if (NULL!=pk) { /* selection, not sorting */
-        size_t bk, fk, m1, m2, nk, nr, qk, x;
+        size_t bk, fk, m1, m2, nk, nl, nr, x;
         A(beyondk>firstk);
         nk=beyondk-firstk;
         /* Characterize distribution of desired order statistic ranks */
-        raw=0UL; /* raw 000 */
         /* median(s): lower(m1) and upper (m2) */
         m1=first+((nmemb-1UL)>>1); m2=first+(nmemb>>1);
-        x=(nmemb>>3)+1UL; /* nmemb/8 + 1 */
+        /* middle range 1/4-3/4 is appropriate for median of samples */
+        /* For nmemb=4 (indices 0 1 2 3), m1=1, m2=2
+           left 1/4 region is [0,1), middle 1/2 is [1,3), right 1/4 is [3,4)
+           x is offset from m1,m2 for regions
+           for nmemb=4, x=0; should be 1 starting at nmemb=7
+        */
+        A(nmemb>2UL);
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (nmemb<3UL) {
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: nmemb=%lu, nk=%lu, first=%lu, "
+                "m1=%lu, m2=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, pk[%lu]="
+                "%lu, pk[%lu]=%lu */\n",__func__,sampling_table_src_file,__LINE__,
+                (unsigned long)nmemb,(unsigned long)nk,
+                (unsigned long)first,(unsigned long)m1,
+                (unsigned long)m2,(unsigned long)beyond,(unsigned long)firstk,
+                (unsigned long)beyondk,(unsigned long)firstk,
+                (unsigned long)pk[firstk],(unsigned long)beyondk-1UL,
+                (unsigned long)pk[beyondk-1UL]);
+            abort();
+        }
+#endif
+        x=(((nmemb+1UL)>>2)-1UL);
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(SAMPLING_DEBUG)
         ||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(REPIVOT_DEBUG)
         )
             (V)fprintf(stderr,
-                "/* %s: %s line %d: nmemb=%lu, nk=%lu, x(%s)=%lu, first=%lu, "
+                "/* %s: %s line %d: nmemb=%lu, nk=%lu, x=%lu, first=%lu, "
                 "m1=%lu, m2=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, pk[%lu]="
                 "%lu, pk[%lu]=%lu */\n",__func__,sampling_table_src_file,__LINE__,
                 (unsigned long)nmemb,(unsigned long)nk,
-                16UL<=nk?"nmemb/32+1":1UL<nk?"nmemb/2/nk+1":"nmemb/4+1",
                 (unsigned long)x,(unsigned long)first,(unsigned long)m1,
                 (unsigned long)m2,(unsigned long)beyond,(unsigned long)firstk,
                 (unsigned long)beyondk,(unsigned long)firstk,
                 (unsigned long)pk[firstk],(unsigned long)beyondk-1UL,
                 (unsigned long)pk[beyondk-1UL]);
 #endif
-        KLIMITS_FUNCTION_NAME(m1-x,m2+x,pk,firstk,beyondk,&fk,&bk);
-        nr = ((bk>fk)?bk-fk:0UL); /* ranks in [3/8-,5/8+) */
-        if (0UL!=nr) raw|=2U;
-        qk=nk>>2; /* 1/4 */
-        if ((1UL<nk)&&(qk<=nr+1UL)&&(nr<=qk+1UL)) {
-            /* nr OK for distributed ranks; check for ends,separated */
-            KLIMITS_FUNCTION_NAME(first,m2+x,pk,firstk,beyondk,&fk,&bk);
-            qk = ((bk>fk)?bk-fk:0UL); /* ranks in [0,3/8-) */
-            if (0UL!=qk) raw|=4U;
-            nr += qk; /* now ranks in [0,5/8+) */
-            qk=(nk>>1)+(nk>>3); /* 5/8 */
-            if ((qk<=nr+1UL)&&(nr<=qk+1UL))
-                raw|=1U;
+        /* desired ranks in left region [first,m1-x) */
+        KLIMITS_FUNCTION_NAME(first,m1-x,pk,firstk,beyondk,&fk,&bk);
+        nl = ((bk>fk)?bk-fk:0UL); /* ranks in left region */
+        if (0UL!=nl) raw|=4U; /* there are ranks in the left region */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SAMPLING_DEBUG)
+        ||DEBUGGING(REPARTITION_DEBUG)
+        ||DEBUGGING(REPIVOT_DEBUG)
+        )
+            (V)fprintf(stderr,
+                "/* %s: %s line %d: %lu in left\n",
+                __func__,sampling_table_src_file,__LINE__,nl);
+#endif
+        if (nl<nk) {
+            /* desired ranks in right region [m2+x+1UL,beyond) */
+            KLIMITS_FUNCTION_NAME(m2+x+1UL,beyond,pk,firstk,beyondk,&fk,&bk);
+            nr = ((bk>fk)?bk-fk:0UL); /* ranks in right region */
+            if (0UL!=nr) raw|=1U; /* there are ranks in the right region */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+            if (DEBUGGING(SAMPLING_DEBUG)
+            ||DEBUGGING(REPARTITION_DEBUG)
+            ||DEBUGGING(REPIVOT_DEBUG)
+            )
+                (V)fprintf(stderr,
+                    "/* %s: %s line %d: %lu in right\n",
+                    __func__,sampling_table_src_file,__LINE__,nr);
+#endif
+            if (nl+nr<nk) raw|=2U; /* there are ranks in the middle */
         }
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(SAMPLING_DEBUG)
@@ -293,19 +741,6 @@ static QUICKSELECT_INLINE
                 (unsigned long)firstk,(unsigned long)pk[firstk],
                 (unsigned long)beyondk-1UL,(unsigned long)pk[beyondk-1UL]);
 #endif
-        /* convert raw distribution to enumerated value */
-        distribution=sampling_distribution_remap[raw];
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(SAMPLING_DEBUG)
-        ||DEBUGGING(REPARTITION_DEBUG)
-        ||DEBUGGING(REPIVOT_DEBUG)
-        )
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, remapped "
-                "distribution=%u, ppeq=%p */\n",__func__,sampling_table_src_file,__LINE__,
-                (unsigned long)first,(unsigned long)beyond,(unsigned long)nmemb,
-                distribution,(void *)ppeq);
-#endif
         if (NULL==ppeq) {
             /* Worst-case sort of 3 elements costs 3 comparisons and at most
                2 swaps.  Worst-case selection of minimum or maximum of 3
@@ -319,30 +754,55 @@ static QUICKSELECT_INLINE
                Moreover, simple selection cases exist for selection of order
                statistic ranks in arrays of 3 or fewer elements.
             */
-            if (SELECTION_BREAKPOINT_OFFSET<=nmemb) { /* possibly select */
-                if ((SELECTION_BREAKPOINT_TABLE_MAX_NMEMB)>=nmemb) {
-                    /* table breakpoints determine sorting vs. selection */
-                    if (0U!=(options&(QUICKSELECT_STABLE)))
-                        x=stable_selection_breakpoint
-                            [nmemb-SELECTION_BREAKPOINT_OFFSET]
-                            [selection_distribution_remap[raw]];
-                    else
-                        x=selection_breakpoint
-                            [nmemb-SELECTION_BREAKPOINT_OFFSET]
-                            [selection_distribution_remap[raw]];
-                    if (x>=nk)
-                        sort=0U;
-                } else { /* large sub-arrays */
-                    /* 1/8, 15/16 sorting vs. selection rules of thumb */
-                    if (7U==raw) { /* distributed ranks */
-                        if (nk<=(nmemb>>3)) sort=0U; /* <= nmemb/8 ranks */
-                    } else { /* middle, extended, separated, ends */
-                        if (nk<=nmemb-(nmemb>>4)) sort=0U; /* <=15/16 nmemb */
-                    }
+            if ((0U!=(options&(QUICKSELECT_STRICT_SELECTION))) /* strict selection */
+            || (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) /* repivoting */
+            || (nk<=3UL)) /* only a few order statistics */
+                sort=0U;
+            else {
+                /* preliminary pivot selection method based on selection */
+                int m=pivot_method(pk,nmemb,firstk,beyondk,raw,size_ratio,options);
+                switch (m) {
+                    case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+                        if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) {
+                            /* run-time */
+                            if (7U==raw) { /* distributed ranks */
+                                if (nk<=(nmemb>>4)) /* nmemb/16 ranks */
+                                    sort=0U;
+                            } else { /* middle, extended, separated, ends */
+                                if (nk<=(nmemb>>1)+(nmemb>>3)) /* 5/8 nmemb */
+                                    sort=0U;
+                            }
+                        } else { /* minimum comparisons */
+                            if (7U==raw) { /* distributed ranks */
+                                if (nk<=(nmemb>>3)) /* nmemb/8 ranks */
+                                    sort=0U;
+                            } else { /* middle, extended, separated, ends */
+                                if (nk<=nmemb-(nmemb>>4)) /* 15/16 nmemb */
+                                    sort=0U;
+                            }
+                        }
+                    break;
+                    default : /* median of samples */
+                        if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) {
+                            /* run-time */
+                            if (7U==raw) { /* distributed ranks */
+                                if (nk<=(nmemb/40UL))
+                                    sort=0U;
+                            } else { /* middle, extended, separated, ends */
+                                if (nk<=(nmemb>>1)+(nmemb>>2)) /* 3/4 nmemb */
+                                    sort=0U;
+                            }
+                        } else { /* minimum comparisons */
+                            if (7U==raw) { /* distributed ranks */
+                                if (nk<=(nmemb>>1)) /* nmemb/2 ranks */
+                                    sort=0U;
+                            } else { /* middle, extended, separated, ends */
+                                sort=0U;
+                            }
+                        }
+                    break;
                 }
-                if ((0U!=sort)&&(0U!=(options&(QUICKSELECT_STRICT_SELECTION))))
-                    sort=0U; /* strict selection */
-            } /* sort/select equivalent @2-3 elements (extents irrelevant) */
+            }
         } else {
             /* no sort if == region extents are required */
             sort=0U;
@@ -358,7 +818,7 @@ static QUICKSELECT_INLINE
             (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, distribution=%u */\n",
                 __func__,sampling_table_src_file,__LINE__,(unsigned long)nmemb,
-                distribution);
+                raw);
 #endif
     } /* else sorting */
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
@@ -370,29 +830,6 @@ static QUICKSELECT_INLINE
             "/* %s: %s line %d: nmemb=%lu, sort=%u */\n",
             __func__,sampling_table_src_file,__LINE__,(unsigned long)nmemb,sort);
 #endif
-    /* Select sampling table based on whether sorting or selecting, and if the
-       latter, on the distribution of the desired order statistic ranks.
-       If sort!=1U (i.e. it has been reset to 0U), distribution has been set.
-    */
-    A((0U!=sort)||((SAMPLING_TABLES)>distribution));
-    if (0U==sort) psts=sampling_tables[distribution]; /* selection */
-    else *ppk=NULL; /* sorting */
-#if ASSERT_CODE
-    if ((psts!=sorting_sampling_table)
-    &&(psts!=ends_sampling_table)
-    &&(psts!=middle_sampling_table)
-    ) {
-        (V)fprintf(stderr,
-            "/* %s: %s line %d: nmemb=%lu, pk=%p, firstk=%lu, beyondk=%lu, sort"
-            "=%u, distribution=%u */\n",__func__,sampling_table_src_file,__LINE__,
-            (unsigned long)nmemb,(const void *)pk,(unsigned long)firstk,
-            (unsigned long)beyondk,sort,distribution);
-    }
-#endif
-    A((psts==sorting_sampling_table)
-    ||(psts==ends_sampling_table)
-    ||(psts==middle_sampling_table)
-    );
-    /* table_index is only determined if divide-and-conquer is used */
-    return psts;
+    if (0U!=sort) *ppk=NULL; /* sorting */
+    return raw;
 }

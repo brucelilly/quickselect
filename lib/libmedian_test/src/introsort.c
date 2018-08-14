@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is introsort.c version 1.17 dated 2018-05-15T02:02:47Z. \ $ */
+/* $Id: ~|^` @(#)   This is introsort.c version 1.20 dated 2018-06-12T18:30:26Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.introsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: introsort.c ~|^` @(#)"
 #define SOURCE_MODULE "introsort.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-05-15T02:02:47Z"
+#define MODULE_VERSION "1.20"
+#define MODULE_DATE "2018-06-12T18:30:26Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -112,8 +112,8 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
             (V)freeze_some_samples(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio,table_index,options);
         pivot=SELECT_PIVOT_FUNCTION_NAME(base,first,beyond,size,compar,swapf,
-            alignsize,size_ratio,table_index,NULL,cache_sz,pbeyond,options,&pc,
-            &pd,&pe,&pf);
+            alignsize,size_ratio,0U,NULL,0UL,0UL,cache_sz,pbeyond,
+            options,&pc,&pd,&pe,&pf,NULL,NULL);
         pivot_minrank=beyond-first;
         /* partition is modified Bentley&McIlroy split-end partition returning
            indices of equal-to and greater-than region starts.  This efficient
@@ -159,8 +159,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
                array size and options.
             */
             (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,NULL,0UL,0UL,
-                swapf,alignsize,size_ratio,table_index,cache_sz,pbeyond,options,
-                NULL,NULL);
+                swapf,alignsize,size_ratio,cache_sz,pbeyond,options,NULL,NULL);
     }
 }
 

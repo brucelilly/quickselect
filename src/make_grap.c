@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is make_grap.c version 1.12 dated 2018-05-03T16:26:02Z. \ $ */
+/* $Id: ~|^` @(#)   This is make_grap.c version 1.14 dated 2018-08-07T04:09:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "make_grap" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.make_grap.c */
@@ -95,8 +95,8 @@ void     arc4random_addrandom(u_char *, int);
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: make_grap.c ~|^` @(#)"
 #define SOURCE_MODULE "make_grap.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-05-03T16:26:02Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2018-08-07T04:09:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -287,7 +287,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     ls.procid = procid;         /* filled in below (uses logger for error reporting) */
     ls.enterpriseId = NULL;
     ls.software = prog;
-    ls.swVersion = "1.12";       /* maintained by version control system */
+    ls.swVersion = "1.14";       /* maintained by version control system */
     ls.language = NULL;
     ls.pip = iplist;            /* filled in below (uses logger for error reporting) */
     ls.func = NULL;
@@ -812,8 +812,13 @@ if (debug) fprintf(stderr,"# line %d: dim=%lu, odim=%lu, maxcount=%lu, count=%lu
             ytickintvl=snround(exp2(ytickintvl),NULL,NULL);
             minytick=exp2(minytick);
             maxytick=exp2(maxytick);
-            while (minytick*ytickintvl<miny) minytick*=ytickintvl;
-            while (maxytick>maxy*ytickintvl) maxytick/=ytickintvl;
+#if DEBUG_CODE
+(void)fprintf(stderr,"%s %s line %d: ytickintvl=%.15G, minytick=%.15G, maxytick=%.15G, yw=%d, yp=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,ytickintvl,minytick,maxytick,yw,yp,ingrap?grapcommentend:commentend);
+#endif /* DEBUG_CODE */
+            while (minytick>miny) minytick/=ytickintvl;
+            while (minytick<0.9*miny) minytick*=ytickintvl;
+            while (maxytick<maxy) maxytick*=ytickintvl;
+            while (maxytick>1.1*maxy) maxytick/=ytickintvl;
             yp=formatprecision(stderr,minytick,maxytick,ytickintvl);
             yw=formatwidth(stderr, minytick,maxytick,yp);
 #if DEBUG_CODE
@@ -852,8 +857,17 @@ if (debug) fprintf(stderr,"# line %d: dim=%lu, odim=%lu, maxcount=%lu, count=%lu
                 d=1.0;
             xtickintvl=intvl(stderr, minlx, maxlx, d, minlx, maxlx, maxxticks, 0U);
             xtickintvl=snround(exp2(xtickintvl),NULL,NULL);
-            minxtick=minx;
-            maxxtick=maxx;
+            minxtick=mintick(stderr, minlx, maxlx, d, xtickintvl, minlx, maxlx);
+            maxxtick=maxtick(stderr, minlx, maxlx, d, xtickintvl, minlx, maxlx);
+            minxtick=exp2(minxtick);
+            maxxtick=exp2(maxxtick);
+#if DEBUG_CODE
+(void)fprintf(stderr,"%s %s line %d: xtickintvl=%.15G, minxtick=%.15G, maxxtick=%.15G, xw=%d, xp=%d %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,xtickintvl,minxtick,maxxtick,xw,xp,ingrap?grapcommentend:commentend);
+#endif /* DEBUG_CODE */
+            while (minxtick>minx) minxtick/=xtickintvl;
+            while (minxtick<0.9*minx) minxtick*=xtickintvl;
+            while (maxxtick<maxx) maxxtick*=xtickintvl;
+            while (maxxtick>1.1*maxx) maxxtick/=xtickintvl;
 #if DEBUG_CODE
 (void)fprintf(stderr,"%s %s line %d: minlx=%G, maxlx=%G, xtickintvl=%G, minxtick=%G, maxxtick=%G %s",ingrap?grapcommentstart:commentstart,__func__,__LINE__,minlx,maxlx,xtickintvl,minxtick,maxxtick,ingrap?grapcommentend:commentend);
 #endif /* DEBUG_CODE */

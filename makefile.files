@@ -536,7 +536,7 @@ C99LIB20OBJS =\
  quickselect.o\
  repivot_tables.o\
  sampling_tables.o\
- selection_table.o\
+# selection_table.o\
 # dedicated_sort.o\
 # cutoff_value.o\
 # cutoff_table.o\

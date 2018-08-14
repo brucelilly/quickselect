@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.23 dated 2018-05-17T21:26:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.28 dated 2018-08-01T15:15:07Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.23"
-#define MODULE_DATE "2018-05-17T21:26:13Z"
+#define MODULE_VERSION "1.28"
+#define MODULE_DATE "2018-08-01T15:15:07Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -224,10 +224,14 @@ static
 /* structures */
 /* regions resulting from partitioning */
 struct region_struct {
-    size_t first;  /* base array */
+    size_t first;  /* range in base array */
     size_t beyond;
-    size_t firstk; /* order statistics */
+    size_t *pk;
+    size_t firstk; /* range of order statistics */
     size_t beyondk;
+    size_t neq;
+    size_t nne;
+    unsigned int options;
     unsigned char process; /* 0=false */
 };
 
@@ -255,7 +259,7 @@ void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     ||DEBUGGING(REPIVOT_DEBUG)
     )
         (V) fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p, "
-            "ppgt=%p, optioons=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,
+            "ppgt=%p, options=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,
             (unsigned long)first,(unsigned long)beyond,(void *)ppeq,
             (void *)ppgt,options);
 #endif
@@ -542,8 +546,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, size_t nmemb, const size_t *pk, size_t firstk,
     size_t beyondk, size_t cachesz, size_t pbeyond, unsigned int options,
-    char **ppeq, char **ppgt, struct sampling_table_struct **ppst,
-    const size_t **ppk, unsigned int *pindex)
+    char **ppeq, char **ppgt, unsigned int *pdistribution, const size_t **ppk)
 {
     int ret=1; /* caller continues */
     size_t nk=beyondk-firstk;
@@ -551,76 +554,45 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
     if ((3UL>nk)&&((2UL>nk)||(NULL==ppeq))) {
         size_t fk=pk[firstk],  /* first (smallest) rank requested */
             ek=pk[beyondk-1UL],/* end rank requested */
-            sp=first+1UL,      /* second element rank */
-            lp=beyond-1UL,     /* last element rank */
-            pp=beyond-2UL;     /* penultimate element rank */
+            lp=beyond-1UL;     /* last element rank */
 #if (DEBUG_CODE > 0)
         if ((0UL==nk)||(ek<first)||(fk>=beyond)||(ek<fk)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: (0==nk)||(ek<first)||(fk>=beyond)||(ek<fk):"
                 " first=%lu, beyond=%lu, pk=%p, firstk=%lu, beyondk=%lu, nk=%lu"
-                ", fk=%lu, ek=%lu */\n",__func__,quickselect_loop_src_file,__LINE__,first,
-                beyond,(const void *)pk,firstk,beyondk,nk,fk,ek);
+                ", fk=%lu, ek=%lu */\n",__func__,quickselect_loop_src_file,
+                __LINE__,first,beyond,(const void *)pk,firstk,beyondk,nk,fk,ek);
+            (V)fprintf(stderr,"/* pk[%lu]=%lu, pk[%lu]=%lu */\n",
+                firstk,pk[firstk],beyondk-1UL,pk[beyondk-1UL]);
+            abort();
         }
 #endif
         A(fk>=first);A(ek<beyond); /* arg sanity */
         A((beyondk==firstk+1UL)||(fk!=ek)); /* no duplicate rank requests */
         switch (nk) {
-            case 1UL : /* any of smallest 2 or largest 2 */
-                if ((fk==first)||(fk==sp)) {
+            case 1UL : /* smallest or largest */
+                if (fk==first) {
                     SELECT_MIN_FUNCTION_NAME(base,first,beyond,size,
                         COMPAR_ARGS,swapf,alignsize,size_ratio,options,ppeq,ppgt);
-                    if (fk==sp) {
-                        SELECT_MIN_FUNCTION_NAME(base,sp,beyond,size,
-                            COMPAR_ARGS,swapf,alignsize,size_ratio,options,ppeq,
-                            ppgt);
-                        if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                        &&(0==OPT_COMPAR(*ppeq-size,*ppeq,options)))
-                            (*ppeq)-=size;
-                    }
                     return 0 ;
-                } else if ((ek==lp)||(ek==pp)) {
+                } else if (ek==lp) {
                     SELECT_MAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
                         swapf,alignsize,size_ratio,options,ppeq,ppgt);
-                    if (ek==pp) {
-                        SELECT_MAX_FUNCTION_NAME(base,first,lp,size,COMPAR_ARGS,
-                            swapf,alignsize,size_ratio,options,ppeq,ppgt);
-                        if ((NULL!=ppeq/*)&&(NULL!=ppgt)*/)
-                        &&(0==OPT_COMPAR(*ppeq,*ppgt,options)))
-                            (*ppgt)+=size;
-                    }
                     return 0 ;
                 }
             break;
-            case 2UL : /* 2 smallest, 2 largest, or smallest & largest */
+            case 2UL : /* smallest & largest */
                 A(NULL==ppeq);
-                if (fk==first) {
-                    if (ek==lp) { /* smallest & largest */
-                        SELECT_MINMAX_FUNCTION_NAME(base,first,beyond,size,
-                            COMPAR_ARGS,swapf,alignsize,size_ratio,options);
-                        return 0 ;
-                    } else if (ek==sp) { /* 2 smallest */
-                        SELECT_MIN_FUNCTION_NAME(base,first,beyond,size,
-                            COMPAR_ARGS,swapf,alignsize,size_ratio,options,NULL,
-                            NULL);
-                        SELECT_MIN_FUNCTION_NAME(base,sp,beyond,size,
-                            COMPAR_ARGS,swapf,alignsize,size_ratio,options,NULL,
-                            NULL);
-                        return 0 ;
-                    }
-                } else if ((fk==pp)&&(ek==lp)) { /* 2 largest */
-                    SELECT_MAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
-                        swapf,alignsize,size_ratio,options,NULL,NULL);
-                    SELECT_MAX_FUNCTION_NAME(base,first,lp,size,COMPAR_ARGS,
-                        swapf,alignsize,size_ratio,options,NULL,NULL);
+                if ((fk==first)&&(ek==lp)) { /* smallest & largest */
+                    SELECT_MINMAX_FUNCTION_NAME(base,first,beyond,size,
+                        COMPAR_ARGS,swapf,alignsize,size_ratio,options);
                     return 0 ;
                 }
             break;
         }
     }
-    A(*pindex < (SAMPLING_TABLE_SIZE));
-    *ppst=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,firstk,beyondk,ppeq,ppk,
-        nmemb,options);
+    *pdistribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,firstk,beyondk,
+        ppeq,ppk,nmemb,size_ratio,options);
     return ret;
 }
 
@@ -659,6 +631,12 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
            be (and will not be) further partitioned.  Otherwise, only the region
            containing the median's (of medians) rank will be processed.
         */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
+            (V) fprintf(stderr,
+                "/* %s: %s line %d: first=%lu, beyond=%lu, p=%lu, q=%lu, r=%lu */\n",
+                __func__,quickselect_loop_src_file,__LINE__,first,beyond,p,q,r);
+#endif
     }
     A(*plk>=firstk);A(*prk<=beyondk);A(*plk<=*prk);
 }
@@ -752,12 +730,35 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* definition */
+#if QUICKSELECT_BUILD_FOR_SPEED
+ QUICKSELECT_INLINE
+#endif
 # include "quickselect_loop_decl.h"
+/*
+QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
+    size_t beyond, const size_t size, COMPAR_DECL, const size_t *pk,
+    size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t),
+    size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond,
+    unsigned int options, char **ppeq, char **ppgt)
+*/
 {
     QUICKSELECT_RETURN_TYPE ret=0;
     auto int c=0; /* repivot factor2 count for iterative operation */
-    size_t nmemb;
-    struct sampling_table_struct *pst=sorting_sampling_table;
+    auto unsigned int distribution=0U; /* sorting */
+    auto size_t lneq=0UL, lnne=0UL;
+#if ( SIZE_MAX > 65535 ) /* > 16 bits */
+# if ( SIZE_MAX > 4294967295 ) /* > 32 bits */
+#  define QUICKSELECT_MAX_STACK 64
+# else /* 32 bits */
+# define QUICKSELECT_MAX_STACK 32
+# endif /* 32 bits */
+#else /* 16 bits */
+# define QUICKSELECT_MAX_STACK 16
+#endif /* 16 bits */
+    struct region_struct stack[QUICKSELECT_MAX_STACK];
+    unsigned char stack_top=(unsigned char)(QUICKSELECT_MAX_STACK);
+    int method;
+    size_t cache_limit, nel, nmemb, samples;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
@@ -786,101 +787,111 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
     A(2UL<=nmemb);
     /* ppeq,ppgt consistency: both or neither NULL */
     A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
-    for (; 2UL<=nmemb;) { /* loop until done */
+    if (size>sizeof(char*)) /* direct sorting in data cache */
+        cache_limit=(cachesz<<1)/size/3UL; /* 1.5*size within cache */
+    else /* indirect mergesort */
+        cache_limit=cachesz/pointer_and_a_half; /* 1.5 pointers within cache */
+    for (nel=nmemb; 2UL<=nmemb;) { /* loop until done */
         char *pc, *pd, *pe, *pf, *pivot;
         struct region_struct lt_region, gt_region, *ps_region, *pl_region;
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
-            "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
-            "table_index=%u */\n",
-            __func__,quickselect_loop_src_file,__LINE__,first,beyond,nmemb,table_index);
-#endif
-        A(table_index < (SAMPLING_TABLE_SIZE));
         if (NULL!=pk) { /* selection only */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+            if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
+                (V) fprintf(stderr,
+                    "/* %s: %s line %d: first=%lu, beyond=%lu, firstk=%lu, "
+                    "beyondk=%lu, pk[%lu]=%lu, pk[%lu]=%lu */\n",
+                    __func__,quickselect_loop_src_file,__LINE__,first,beyond,
+                    firstk,beyondk,firstk,pk[firstk],beyondk-1UL,
+                    pk[beyondk-1UL]);
+#endif
             /* Check for special-case selection: 1-2 order statistic ranks */
             if (0==special_cases(base,first,beyond,size,COMPAR_ARGS,swapf,
                 alignsize,size_ratio,nmemb,pk,firstk,beyondk,cachesz,pbeyond,
-                options,ppeq,ppgt,&pst,&pk,&table_index))
-                return ret ;
-            A((SAMPLING_TABLE_SIZE)>table_index);
-            A((0U==table_index)||(nmemb>pst[table_index-1U].max_nmemb));
+                options,ppeq,ppgt,&distribution,&pk))
+                goto pop_stack ; /* selection in this region is complete */
         }
 
         /* Separate test, not else clause; special_cases may change pk. */
         if (NULL==pk) { /* sorting only */
-            A(pst==sorting_sampling_table); A(NULL==ppeq);
+            A(NULL==ppeq);
+            if ((5UL>nmemb) /* small sub-array; network no worse than best-case D&C */
+/* stable and optimize comparison methods only work within cache limits */
+            ||((nmemb<=cache_limit)&&
+              ((0U!=(options&(QUICKSELECT_STABLE))) /* stable methods */
+              ||(0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) /* minimize comparisons */
+              ||(
+              (nel>nmemb)&& /* ! 1st partition; D&C in case constant, binary */
+              /* can only determine non-constant, non-binary, non-ternary after 1st partition */
+              (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
+              )
+            ) {
+                /* small array or not 1st sub-array and not M-ary input */
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (nmemb<=quickselect_small_array_cutoff) {
+                if (nmemb<=quickselect_small_array_cutoff) {
 #endif
-                ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
-                    swapf,alignsize,size_ratio,table_index,cachesz,pbeyond,
-                    options);
-                switch (ret) {
-                    case 0 : /* sorting is complete */
-                    return ret ;
-                    case EINVAL : /* error */
+                    ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
+                        swapf,alignsize,size_ratio,cachesz,pbeyond,options);
+                    switch (ret) {
+                        case 0 : /* sorting (of this region) is complete */
+                        goto pop_stack ;
+                        case EINVAL : /* error */
 #if ASSERT_CODE + DEBUG_CODE
-                        fflush(stderr); fflush(stdout);
-                        (V)fprintf(stderr,
-                            "/* %s: line %d: EINVAL return %d from "
-                            "dedicated_sort */\n",
-                            __func__,__LINE__,ret);
-                        A(ret!=EINVAL);
+                            fflush(stderr); fflush(stdout);
+                            (V)fprintf(stderr,
+                                "/* %s: line %d: EINVAL return %d from "
+                                "dedicated_sort */\n",
+                                __func__,__LINE__,ret);
+                            A(ret!=EINVAL);
 #endif
-                    return ret ;
-                    case EAGAIN : /* continue with divide-and-conquer */
-                        ret = 0; /* for quickselect_loop return */
-                    break;
-                    default : /* ? */
+                        return ret ;
+                        case EAGAIN : /* continue with divide-and-conquer */
+                            ret = 0; /* for quickselect_loop return */
+                        break;
+                        default : /* ? */
 #if ASSERT_CODE + DEBUG_CODE
-                        fflush(stderr); fflush(stdout);
-                        (V)fprintf(stderr,
-                            "/* %s: line %d: unexpected return %d from "
-                            "dedicated_sort */\n",
-                            __func__,__LINE__,ret);
-                        A(ret==0);
+                            fflush(stderr); fflush(stdout);
+                            (V)fprintf(stderr,
+                                "/* %s: line %d: unexpected return %d from "
+                                "dedicated_sort */\n",
+                                __func__,__LINE__,ret);
+                            A(ret==0);
 #endif
-                    return ret ;
+                        return ret ;
+                    }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
                 }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#endif
             }
+#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+            else
+                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    (V)fprintf(stderr,
+                        "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
+                        "nel=%lu, size=%lu, lneq=%lu, lnne=%lu, size_ratio=%lu,"
+                        " pbeyond=%lu, compar=%s, cachesz=%lu, cache_limit=%lu,"
+                        " options=0x%x"
+                        " */\n",__func__,quickselect_loop_src_file,__LINE__,
+                        (unsigned long)first,(unsigned long)beyond,
+                        (unsigned long)nmemb,(unsigned long)nel,
+                        (unsigned long)size,(unsigned long)lneq,
+                        (unsigned long)lnne,(unsigned long)size_ratio,
+                        (unsigned long)pbeyond,comparator_name(compar),
+                        (unsigned long)cachesz,(unsigned long)cache_limit,
+                        options);
+                }
 #endif
         }
 
-        /* Divide-and-conquer; set sampling table index. */
-        table_index=SAMPLE_INDEX_FUNCTION_NAME(pst, table_index, nmemb);
-
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
-            "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
-            "table_index=%u */\n",
-            __func__,quickselect_loop_src_file,__LINE__,first,beyond,nmemb,table_index);
-#endif
-#if ASSERT_CODE
-        if (nmemb>pst[table_index].max_nmemb)
-            (V)fprintf(stderr,"%s: %s line %d: nmemb=%lu, table_index=%u, "
-                "pst[%u].max_nmemb=%lu */\n",__func__,quickselect_loop_src_file,__LINE__,
-                nmemb,table_index,table_index,pst[table_index].max_nmemb);
-        A(pst[table_index].max_nmemb>=nmemb);
-        if ((0U<table_index)&&(nmemb<=pst[table_index-1U].max_nmemb))
-            (V)fprintf(stderr,"%s: %s line %d: nmemb=%lu, table_index=%u, "
-                "pst[%u].max_nmemb=%lu */\n",__func__,quickselect_loop_src_file,__LINE__,
-                nmemb,table_index,table_index-1U,pst[table_index-1U].max_nmemb);
-        A((0U==table_index)||(pst[table_index-1U].max_nmemb<nmemb));
-#endif /* ASSERT_CODE */
-
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        /* antiqsort handshake */
-        /* freeze low-address samples which will be used for pivot selection */
-        if (aqcmp==compar)
-            (V)freeze_some_samples(base,first,beyond,size,compar,swapf,
-                alignsize,size_ratio,table_index,options);
-#endif
+        /* Divide-and-conquer. */
 
 #if defined(DEBUGGING)
         /* count repivots */
-        if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
+        if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
+#if 0 /* 1 count or 0 don't count repivoting for median-of-medians */
+        && (NULL==ppeq)
+#endif
+        ) {
             nrepivot++;
 # if (DEBUG_CODE > 0)
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG))
@@ -892,10 +903,10 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         }
 #endif
 
-        /* select a pivot element */
+        /* select a pivot element, update method and samples */
         pivot=SELECT_PIVOT_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
-            swapf,alignsize,size_ratio,table_index,pk,cachesz,pbeyond,options,
-            &pc,&pd,&pe,&pf);
+            swapf,alignsize,size_ratio,distribution,pk,firstk,beyondk,cachesz,
+            pbeyond,options,&pc,&pd,&pe,&pf,&method,&samples);
         A(NULL!=pivot);
         if (NULL==pivot) {
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
@@ -917,31 +928,31 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(PIVOT_SELECTION_DEBUG)) {
             size_t x=(pivot-base)/size;
-            (V)fprintf(stderr, "/* %s: pivot=%p[%lu] */\n",
-                __func__,(void *)pivot,x);
+            (V)fprintf(stderr, "/* %s line %d: pivot=%p[%lu], pc@%lu, pd@%lu, pe@%lu, "
+                "pf@%lu */\n", __func__,__LINE__,(void *)pivot,x,(pc-base)/size,
+                (pd-base)/size,(pe-base)/size,(pf-base)/size);
             if (pivot!=base+size*x)
-                (V)fprintf(stderr, "/* %s: pivot %p is misaligned: %p */\n",
-                    __func__,pivot,base+size*x);
+                (V)fprintf(stderr, "/* %s line %d: pivot %p is misaligned: %p */\n",
+                    __func__,__LINE__,pivot,base+size*x);
             if (nmemb<=MAX_ARRAY_PRINT)
                 print_some_array(base,first,beyond-1UL, "/* "," */",options);
         }
 #endif
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (aqcmp==compar) {
-            /* antiqsort handshake */
-            pivot_minrank=nmemb;
-        }
-#endif
-
         /* Partition the array around the pivot element into less-than,
            equal-to, and greater-than (w.r.t. the pivot) regions.  The
-           equal-to region requires no further processing.
+           equal-to region requires no further processing. The large region in
+           particular should have the pk pointer saved as special_cases may set
+           pk to NULL for some small region before the large region is popped
+           from the stack.
         */
+        lt_region.pk=gt_region.pk=pk;
         lt_region.first=first, gt_region.beyond=beyond;
         PARTITION_FUNCTION_NAME(base,first,beyond,pc,pd,pivot,pe,pf,size,
             COMPAR_ARGS,swapf,alignsize,size_ratio,cachesz,options,
             &(lt_region.beyond),&(gt_region.first));
+        lt_region.neq=gt_region.neq=lneq=gt_region.first-lt_region.beyond;
+        lt_region.nne=gt_region.nne=lnne=nmemb-lneq;
         /* regions: < [first,lt_region.beyond)
                     > [gt_region.first,beyond)
         */
@@ -964,7 +975,7 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         }
 #endif
 
-        if (NULL!=pk) { /* selection only */
+        if (NULL!=pk) { /* selection only; desired ranks for regions */
             rank_tests(base,first,lt_region.beyond,gt_region.first,beyond,size,
                 pk,firstk,beyondk,&(lt_region.beyondk),&(gt_region.firstk),ppeq,
                 ppgt);
@@ -977,10 +988,28 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #endif
 
         /* Which region(s) should be processed? */
-        lt_region.process=(((lt_region.first+1UL<lt_region.beyond)
-            &&((NULL==pk)||(lt_region.firstk<lt_region.beyondk)))?1U:0U);
-        gt_region.process=(((gt_region.first+1UL<gt_region.beyond)
-            &&((NULL==pk)||(gt_region.firstk<gt_region.beyondk)))?1U:0U);
+#define PROCESS_ELEMENTS   1U /* process region with more than 1 element */
+#define PROCESS_STATISTICS 2U /* process region with at least one order statistic for selection */
+        lt_region.process=gt_region.process=0U;
+        if (NULL!=pk) { /* selection */
+            /* requirements for processing:
+                  firstk<beyondk (at least one order statistic)
+                  first+1UL<beyond (at least 2 elements)
+            */
+            if ((lt_region.firstk<lt_region.beyondk)
+            &&(lt_region.first+1UL<lt_region.beyond)) {
+                lt_region.process |= PROCESS_STATISTICS ;
+            }
+            if ((gt_region.firstk<gt_region.beyondk)
+            &&(gt_region.first+1UL<gt_region.beyond)) {
+                gt_region.process |= PROCESS_STATISTICS ;
+            }
+        } else { /* sorting */
+            if (lt_region.first+1UL<lt_region.beyond)
+                lt_region.process |= PROCESS_ELEMENTS ;
+            if (gt_region.first+1UL<gt_region.beyond)
+                gt_region.process |= PROCESS_ELEMENTS ;
+        }
 
         /* Categorize less-than and greater-than regions as small and large. */
         if (lt_region.beyond-lt_region.first<gt_region.beyond-gt_region.first) {
@@ -994,12 +1023,15 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
         /* default pivot selection uses array SAMPLES */
         options &= ~(QUICKSELECT_RESTRICT_RANK);
 
+        pl_region->options=ps_region->options=options;
+
         /* Process less-than and/or greater-than regions by relative size. */
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(PARTITION_DEBUG)) {
             (V)fprintf(stderr,"/* %s: %s line %d: small region from partition "
-                "of nmemb=%lu, s=%lu, e=%lu, t=%lu, pk=%p, firstk=%lu, beyondk="
-                "%lu, ppeq=%p%s */\n",__func__,quickselect_loop_src_file,__LINE__,nmemb,
+                "of nmemb=%lu, s=%lu, e=%lu, t=%lu, pk=%p, small region "
+                "firstk=%lu, beyondk=%lu, ppeq=%p%s */\n",__func__,
+                quickselect_loop_src_file,__LINE__,nmemb,
                 ps_region->beyond-ps_region->first,
                 gt_region.first-lt_region.beyond,
                 pl_region->beyond-pl_region->first,
@@ -1012,117 +1044,30 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
             size_t n=pl_region->beyond-pl_region->first, r;
             r = n/(nmemb-n);
             (V)fprintf(stderr,"/* %s: %s line %d: regions from partition of nme"
-                "mb=%lu, s=%lu, e=%lu, t=%lu, table_index=%u, samples=%lu, "
-                "pk=%p, ppeq=%p, firstk=%lu, beyondk=%lu, count=%d, ratio=%lu%s"
-                " */\n",__func__,quickselect_loop_src_file,__LINE__,nmemb,
+                "mb=%lu, s=%lu, e=%lu, t=%lu, distribution=%u, size_ratio=%lu, "
+                "method=%d, samples=%lu, pk=%p, ppeq=%p, large region "
+                "firstk=%lu, beyondk=%lu, count=%d, ratio=%lu, options=0x%x%s "
+                "*/\n",__func__,
+                quickselect_loop_src_file,__LINE__,nmemb,
                 ps_region->beyond-ps_region->first,
-                gt_region.first-lt_region.beyond, n,
-                table_index, pst[table_index].samples,
-                (const void *)pk, (void *)ppeq,
-                pl_region->firstk, pl_region->beyondk,
-                c, r,(0U==pl_region->process)?" (ignored)":"");
-            if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-                if (r>stats_table[table_index].max_ratio)
-                    stats_table[table_index].max_ratio=r;
-            }
+                gt_region.first-lt_region.beyond,n,distribution,size_ratio,
+                method,samples,(const void *)pk,(void *)ppeq,
+                pl_region->firstk,pl_region->beyondk,
+                c,r,options,(0U==pl_region->process)?" (ignored)":"");
+            if (DEBUGGING(PARTITION_DEBUG))
+                print_some_array(base,first,beyond-1UL,"/* "," */",options);
         }
 #endif
-        if (0U!=pl_region->process) { /* Process large region. */
-            if (0U!=ps_region->process) { /* Recurse on small region. */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-                if (DEBUGGING(SORT_SELECT_DEBUG))
-                    (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu"
-                        ", nmemb=%lu, table_index=%u, both regions (%lu) */\n",
-                        __func__,quickselect_loop_src_file,__LINE__,first,
-                        beyond,nmemb,table_index,ps_region->first);
-#endif
-#if defined(DEBUGGING)
-                nrecursions++;
-#endif
-#if (DEBUG_CODE > 0)
-                if (NULL!=pk) {
-                    if ((pk[ps_region->beyondk-1UL]<ps_region->first)
-                       ||(pk[ps_region->firstk]>=ps_region->beyond)
-                    ) {
-                        (V)fprintf(stderr,"/* %s: %s line %d: (0==nk)||"
-                            "(ek<first)||(fk>=beyond)||(ek<fk): first=%lu, "
-                            "beyond=%lu, pk=%p, firstk=%lu(%lu), beyondk=%lu"
-                            "(-1:%lu) */\n",__func__,quickselect_loop_src_file,__LINE__,
-                            ps_region->first,ps_region->beyond,(const void *)pk,
-                            ps_region->firstk,pk[ps_region->firstk],
-                            ps_region->beyondk,pk[ps_region->beyondk-1UL]);
-                     }
-                 }
-#endif
-                /* The small region will use a table index no larger than was
-                   used for the current sub-array; the current table_index is a
-                   reasonable starting point to find the index for the small
-                   region (and for the large region).
-                */
-                ret= QUICKSELECT_LOOP(base,ps_region->first,ps_region->beyond,size,
-                    COMPAR_ARGS,pk,ps_region->firstk,ps_region->beyondk,swapf,
-                    alignsize,size_ratio,table_index,cachesz,pbeyond,options,
-                    ppeq,ppgt);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-                if (DEBUGGING(SORT_SELECT_DEBUG))
-                    (V)fprintf(stderr,"/* %s: %s line %d: ps_region->first=%lu,"
-                        " ps_region->beyond=%lu: quickselect_loop returned %d "
-                        "*/\n",__func__,quickselect_loop_src_file,__LINE__,
-                        ps_region->first,ps_region->beyond,ret);
-#endif
-                A(0==ret);
-                if(0!=ret) return ret;
-            }
-            /* Iterate on large region. */
-            first=pl_region->first, beyond=pl_region->beyond,
-                firstk=pl_region->firstk, beyondk=pl_region->beyondk;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(SORT_SELECT_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: large region [%lu,%lu) "
-                    "*/\n",__func__,quickselect_loop_src_file,__LINE__,first,
-                    beyond);
-            if (0U!=((QUICKSELECT_RESTRICT_RANK)&options)) {
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG))
-                    (V)fprintf(stderr,"/* %s: %s line %d: restricted rank flag "
-                        "not reset: first=%lu, beyond=%lu, firstk=%lu, beyondk="
-                        "%lu, options=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,
-                        first,beyond,firstk,beyondk,options);
-            }
-#endif
-        } else /* large region to be ignored; maybe iterate small region */
-            /* Don't be distracted by comments; pay attention to the braces! */
-        if (0U!=ps_region->process) { /* Iterate on small region. */
-            first=ps_region->first, beyond=ps_region->beyond,
-                firstk=ps_region->firstk, beyondk=ps_region->beyondk;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(REPARTITION_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: small region: first=%lu, "
-                    "beyond=%lu, firstk=%lu, beyondk=%lu: %s */\n",__func__,
-                    quickselect_loop_src_file,__LINE__,first,beyond,firstk,beyondk,
-                    "continuing");
-#endif
-        } else {
-            /* not processing small region (nor large region) */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(REPARTITION_DEBUG))
-                (V)fprintf(stderr,"/* %s: %s line %d: %s */\n",__func__,
-                    quickselect_loop_src_file,__LINE__,"done");
-#endif
-            if (NULL!=ppeq) { A(NULL!=*ppeq); A(NULL!=*ppgt); }
-            return ret ; /* Process neither; nothing left to do. */
-        }
-        /* remaining region processing */
-        A(first<beyond);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
-            "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
-            "table_index=%u */\n",
-            __func__,quickselect_loop_src_file,__LINE__,first,beyond,nmemb,table_index);
-#endif
-        /* Only if iterating on the large region, determine whether or not a
-           robust pivot selection method should be used.
+
+        /* If both regions are to be processed, put the large region on the
+           stack.  If only the large region is to be processed, set up variables
+           and iterate.  If neither region is to be processed, do nothing here
+           (fall through to next section, which will pop a region from the stack
+           for processing, or, if the stack is empty, will return to the
+           caller).  If the large region is to be processed, determine whether
+           to repivot.
         */
-        if (first==pl_region->first) {
+        if (0U!=pl_region->process) { /* Process large region. */
             /* Should large region be repivoted? */
             /* Determine whether or not to repivot/repartition region of size r
                elements (large region) resulting from a partition of nmemb
@@ -1133,35 +1078,156 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
                repivoting.
             */
             if (0U==(options&(QUICKSELECT_NO_REPIVOT)))
-                options|=SHOULD_REPIVOT_FUNCTION_NAME(nmemb,beyond-first,pst,
-                    table_index,pk,&c,ppeq);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-                if (DEBUGGING(RATIO_GRAPH_DEBUG)) { /* for graphing worst-case partition ratios */
-                    if (0U!=(options&QUICKSELECT_RESTRICT_RANK)) {
-                        size_t r=(beyond-first)/(nmemb+first-beyond);
-                        stats_table[table_index].repivots++;
-                        if ((0UL==stats_table[table_index].repivot_ratio)
-                        || (r<stats_table[table_index].repivot_ratio)
-                        )
-                            stats_table[table_index].repivot_ratio=r;
+                pl_region->options|=SHOULD_REPIVOT_FUNCTION_NAME(nmemb,
+                    pl_region->beyond-pl_region->first,samples,method,options,
+                    pk,&c);
+            if (0U!=ps_region->process) { /* Iterate on small region (below). */
+#if (DEBUG_CODE > 0)
+#if defined(DEBUGGING)
+                if (DEBUGGING(SORT_SELECT_DEBUG))
+                    (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu"
+                        ", nmemb=%lu, both regions [%lu,%lu), [%lu,%lu) */\n",
+                        __func__,quickselect_loop_src_file,__LINE__,first,
+                        beyond,nmemb,ps_region->first,ps_region->beyond,
+                        pl_region->first,pl_region->beyond);
+#endif /* DEBUGGING */
+                if (NULL!=pk) {
+                    if ((pk[ps_region->beyondk-1UL]<ps_region->first)
+                       ||(pk[ps_region->firstk]<ps_region->first)
+                       ||(pk[ps_region->firstk]>=ps_region->beyond)
+                       ||(pk[ps_region->beyondk-1UL]>=ps_region->beyond)
+                    ) {
+                       (V)fprintf(stderr,"/* %s: %s line %d: (0==nk)||"
+                           "(ek<first)||(fk>=beyond)||(ek<fk): first=%lu, "
+                           "beyond=%lu, pk=%p, firstk=%lu(%lu), beyondk=%lu"
+                           "(-1:%lu) */\n",__func__,quickselect_loop_src_file,__LINE__,
+                           ps_region->first,ps_region->beyond,(const void *)pk,
+                           ps_region->firstk,pk[ps_region->firstk],
+                           ps_region->beyondk,pk[ps_region->beyondk-1UL]);
+                        abort();
+                    }
+                    if ((pk[pl_region->beyondk-1UL]<pl_region->first)
+                       ||(pk[pl_region->firstk]<pl_region->first)
+                       ||(pk[pl_region->firstk]>=pl_region->beyond)
+                       ||(pk[pl_region->beyondk-1UL]>=pl_region->beyond)
+                    ) {
+                       (V)fprintf(stderr,"/* %s: %s line %d: (0==nk)||"
+                           "(ek<first)||(fk>=beyond)||(ek<fk): first=%lu, "
+                           "beyond=%lu, pk=%p, firstk=%lu(%lu), beyondk=%lu"
+                           "(-1:%lu) */\n",__func__,quickselect_loop_src_file,__LINE__,
+                           pl_region->first,pl_region->beyond,(const void *)pk,
+                           pl_region->firstk,pk[pl_region->firstk],
+                           pl_region->beyondk,pk[pl_region->beyondk-1UL]);
+                        abort();
                     }
                 }
-#endif
+#endif /* DEBUG_CODE > 0 */
+                 /* Push large region onto stack for later processing. */
+                if (0U<stack_top) {
+                    stack[--stack_top]=*pl_region; /* structure copy */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+                        unsigned char x;
+                        for (x=stack_top; x<QUICKSELECT_MAX_STACK; x++)
+                            (V)fprintf(stderr,"/* %s: %s line %d: stack[%u]: "
+                                "first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu,"
+                                " options=0x%x */\n",
+                                __func__,quickselect_loop_src_file,__LINE__,x,
+                                stack[x].first,stack[x].beyond,stack[x].firstk,
+                                stack[x].beyondk,stack[x].options);
+                    }
+#endif /* DEBUGGING */
+                 }
+            } else { /* Large region only; iterate now. */
+                first=pl_region->first, beyond=pl_region->beyond,
+                    firstk=pl_region->firstk, beyondk=pl_region->beyondk,
+                    options=pl_region->options;
+                nmemb=beyond-first; /* update nmemb after should_repivot call */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                if (DEBUGGING(SORT_SELECT_DEBUG))
+                    (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu"
+                        ", nmemb=%lu, large region */\n",
+                        __func__,quickselect_loop_src_file,__LINE__,first,
+                        beyond,nmemb);
+#endif /* DEBUGGING */
+                continue;
+            }
         }
+
+        /* If the small region is to be processed, set up variables and iterate;
+           otherwise, pop a region from the stack and set up variables to
+           iterate, unless there are no regions on the stack, in which case
+           return to caller.
+        */
+        if (0U!=ps_region->process) { /* Iterate on small region. */
+            first=ps_region->first, beyond=ps_region->beyond,
+                firstk=ps_region->firstk, beyondk=ps_region->beyondk,
+                options=ps_region->options;
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(REPARTITION_DEBUG))
-            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, firstk"
-                "=%lu, beyondk=%lu: %s */\n",__func__,quickselect_loop_src_file,__LINE__,
-                first,beyond,firstk,beyondk,"continuing");
+            if (DEBUGGING(REPARTITION_DEBUG))
+                (V)fprintf(stderr,"/* %s: %s line %d: small region: first=%lu, "
+                    "beyond=%lu, firstk=%lu, beyondk=%lu: %s */\n",__func__,
+                    quickselect_loop_src_file,__LINE__,first,beyond,firstk,beyondk,
+                    "continuing");
 #endif
-        nmemb=beyond-first; /* update nmemb after should_repivot call */
+            nmemb=beyond-first; /* update nmemb after should_repivot call */
+            continue;
+        } else {
+            /* not processing small region (nor large region) */
+pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG))
-            (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb="
-                "%lu, table_index=%u */\n",__func__,quickselect_loop_src_file,__LINE__,first,
-                beyond,nmemb,table_index);
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
+                    unsigned char x;
+                    for (x=stack_top; x<QUICKSELECT_MAX_STACK; x++)
+                        (V)fprintf(stderr,"/* %s: %s line %d: stack[%u]: "
+                            "first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu,"
+                            " options=0x%x */\n",
+                            __func__,quickselect_loop_src_file,__LINE__,x,
+                            stack[x].first,stack[x].beyond,stack[x].firstk,
+                            stack[x].beyondk,stack[x].options);
+                }
+#endif /* DEBUGGING */
+                first=stack[stack_top].first,
+                    beyond=stack[stack_top].beyond,
+                    /* restore saved pk, as special_cases may have set pk to NULL */
+                    pk=stack[stack_top].pk,
+                    firstk=stack[stack_top].firstk,
+                    beyondk=stack[stack_top].beyondk,
+                    lneq=stack[stack_top].neq,
+                    lnne=stack[stack_top].nne,
+                    options=stack[stack_top].options;
+                stack_top++;
+                nmemb=beyond-first; /* update nmemb after should_repivot call */
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+                if (DEBUGGING(REPARTITION_DEBUG))
+                    (V)fprintf(stderr,"/* %s: %s line %d: popped region: first=%lu, "
+                        "beyond=%lu, firstk=%lu, beyondk=%lu: %s */\n",__func__,
+                        quickselect_loop_src_file,__LINE__,first,beyond,firstk,beyondk,
+                        "continuing");
 #endif
-        A(nmemb==beyond-first);
+                continue;
+            }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+            if (DEBUGGING(REPARTITION_DEBUG))
+                (V)fprintf(stderr,"/* %s: %s line %d: %s */\n",__func__,
+                    quickselect_loop_src_file,__LINE__,"done");
+#endif
+            if (NULL!=ppeq) { A(NULL!=*ppeq); A(NULL!=*ppgt); }
+#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+            if ((NULL!=ppeq)&&(1UL==beyondk-firstk)) {
+                /* *ppeq must be within sub-array */
+                if ((*ppeq<base+first*size)||(*ppeq>=base+beyond*size)) {
+                    (V)fprintf(stderr,
+                        "/* %s line %d: first=%lu, beyond=%lu, firstk=%lu, beyondk="
+                        "%lu, *ppeq@%lu, *ppgt@%lu */\n",__func__,__LINE__,first,
+                        beyond,firstk,beyondk,(*ppeq-base)/size,(*ppgt-base)/size);
+                    print_some_array(base,first,beyond-1UL,"/* "," */",options);
+                    abort();
+                }
+            }
+#endif
+            return ret ; /* Process neither; nothing left to do. */
+        }
     }
     return ret;
 }

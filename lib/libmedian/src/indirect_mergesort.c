@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect_mergesort.c version 1.17 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect_mergesort.c version 1.18 dated 2018-06-09T23:03:50Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect_mergesort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.indirect_mergesort.c */
@@ -95,8 +95,8 @@ rearranging the pointers, then rearranges array elements and cleans up.
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: indirect_mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "indirect_mergesort.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-06-09T23:03:50Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -177,23 +177,10 @@ int indirect_mergesort(char *base, size_t nmemb, size_t size,
             char **pointers=set_array_pointers(NULL,nptrs,base,size,0UL,nmemb);
             if (NULL!=pointers) {
                 char **p; size_t *indices, n;
-                unsigned int table_index=nmemb<=
-#if ( SIZE_MAX < 65535 )
-# error "SIZE_MAX < 65535 [C11 draft N1570 7.20.3]"
-#elif ( SIZE_MAX == 65535 ) /* 16 bits */
-                    sorting_sampling_table[2].max_nmemb?1UL:3UL
-#elif ( SIZE_MAX == 4294967295 ) /* 32 bits */
-                    sorting_sampling_table[5].max_nmemb?2UL:7UL
-#elif ( SIZE_MAX == 18446744073709551615UL ) /* 64 bits */
-                    sorting_sampling_table[10].max_nmemb?5UL:15UL
-#else
-# error "strange SIZE_MAX " SIZE_MAX
-#endif /* word size */
-                ; /* starting point; refined by sample_index() */
                 if ((char)0 == indirect_initialized) initialize_indirect();
                 /* mergesort using indirection; pointers moved, not data */
                 pointer_mergesort(pointers,0UL,base,nmemb,nmemb,compar,
-                    table_index,quickselect_cache_size,QUICKSELECT_INDIRECT);
+                    quickselect_cache_size,QUICKSELECT_INDIRECT);
                 /* discard extra pointers */
                 /* C11 defines aligned_alloc, but no aligned versions of
                    calloc or realloc; it is assumed(!) that realloc doesn't

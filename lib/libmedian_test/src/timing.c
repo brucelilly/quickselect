@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timing.c version 1.37 dated 2018-05-16T02:56:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is timing.c version 1.44 dated 2018-07-18T16:27:23Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.timing.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: timing.c ~|^` @(#)"
 #define SOURCE_MODULE "timing.c"
-#define MODULE_VERSION "1.37"
-#define MODULE_DATE "2018-05-16T02:56:44Z"
+#define MODULE_VERSION "1.44"
+#define MODULE_DATE "2018-07-18T16:27:23Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -570,6 +570,9 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                     duplicate_test_data(input_data,(char *)global_refarray,
                         DATA_TYPE_LONG,ratio,0UL,n);
                 break;
+                case TEST_SEQUENCE_WORST :
+                    /* do nothing here; sequence is type-dependent */
+                break;
                 case TEST_SEQUENCE_ADVERSARY :
                     /* do nothing here; sequence is function-dependent */
                 break;
@@ -645,7 +648,80 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             karray[0] = u>>1; /* lower-median */
                             karray[1] = k; /* upper-median */
                         } else {
-                            nk = selection_nk;
+                            /* Notes for testing sampling tables for
+                               selection:
+                               Remedian of samples:
+                                  Remedian of samples is used initially for
+                                  rank distributions 2,3,5,6. Median of
+                                  samples is used for distributions 1,4 and
+                                  sorting tables are used for distributions
+                                  0 and 7.  The remedian of samples "middle"
+                                  sampling table is used for distribution 2
+                                  and the remedian of samples "ends"
+                                  sampling table is used for distribution 5
+                                  (only).  Initial use of the "ends" table
+                                  can be forced with -[2 -ms4 which uses
+                                  size_ratio>1 to preclude median of samples
+                                  and places 2 ranks at each end of the
+                                  array (subsequent partitioning will use
+                                  the median of samples "ends" table); 2
+                                  ranks precludes a search for min/max.
+                                  Initial use of remedian of samples "ends"
+                                  can also be forced with -[2 -mqN with N>1,
+                                  which will subsequently use the median of
+                                  samples "ends" and "middle" tables.
+                                  Use of the remedian of samples "middle"
+                                  table can be forced with -[2 -mm, which
+                                  will use that table on the first partition
+                                  only.  Distributions 2 and 6 may be forced
+                                  with -mr and -ml respectively; they use the
+                                  sorting sampling table.
+                               Median of samples:
+                                  Median of samples is used always for rank
+                                  distributions 1 and 4 ("ends"), and for
+                                  distributions 2 ("middle") only if
+                                  size_ratio==1.  Use of the median of
+                                  samples "ends" table can be forced with
+                                  -[1 (to force size_ratio 1) with a basic
+                                  type (short, int, long, or double) and
+                                  using -m{b,e,l,r}N with 1<N<nmemb/4 (which
+                                  should first use the "ends" table, then
+                                  the "middle" table, then sort), or using
+                                  -mq (or -mq1) (which should alternate
+                                  between the "ends" and "middle" tables).
+                                  The "middle" table is forced using
+                                  -[1 -mm, which may also use the "ends"
+                                  table if the desired rank isn't caught on
+                                  the initial partition.  Distributions 2 and 6
+                                  may be forced with -mr and -ml respectively.
+                            */
+                            /* order statistic rank quantity */
+                            switch (flags['m']) {
+                                case 'q' : /* quartile */
+                                    /* If selection_nk==1, ranks are placed at one
+                                       side of the array only; for selection_nk>1,
+                                       ranks may be placed on both sides.
+                                    */
+                                    /* Force value of selection_nk to be either 1 or
+                                       2.
+                                    */
+                                    if (1UL<selection_nk) selection_nk=2UL;
+                                    if (11UL>n) nk=1UL;
+                                    else if (21UL>n) nk=selection_nk;
+                                    else
+                                        for (nk=selection_nk,x=21UL; x<=n;
+                                        nk+=selection_nk,x=((x+1UL)<<2)-1UL
+                                        )
+                                            ;
+                                break;
+                                case 'l' : /*FALLTHROUGH*/ case 'r' : /* 110 011 */
+                                    for (w=(n>>2),x=1UL,y=2UL; y<w; x++,y<<=1) ;
+                                    nk = (3UL*y)>>2;
+                                break;
+                                default :
+                                    nk = selection_nk;
+                                break;
+                            }
                             if (nk>n) nk=n;
 #if DEBUG_CODE
                             if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
@@ -659,35 +735,66 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 "/* %s: %s line %d: karray at %p through %p */\n",
                                 __func__,source_file,__LINE__,(void *)karray, ((char *)karray)+sizeof(double)*nk);
 #endif
+                            /* order statistic rank quality and assignment */
                             switch (flags['m']) {
-                                case 'b' : /* beginning */ /*FALLTHROUGH*/
-                                case 'l' : /* left */
+                                case 'b' : /* beginning 100 */
                                     for (t=0UL; t<nk; t++)
                                         karray[t] = (t<n)?t:u;
                                 break;
-                                case 'm' : /* middle */
-                                    x = (n-nk)>>1;
-                                    for (t=0UL; t<nk; t++)
-                                        karray[t] = t+x;
+                                case 'd' : /*FALLTHROUGH*/
+                                default : /* distributed 010 (d1-d3) 111 (d4+) */
+                                    y=n/(1UL+nk);
+                                    x=(n-(nk-1UL)*y)>>1;
+                                    for (t=0U; t<nk; t++,x+=y)
+                                        karray[t] = x;
                                 break;
-                                case 'r' : /* right */ /*FALLTHROUGH*/
-                                case 'e' : /* end */
-                                    for (t=0UL; t<nk; t++)
+                                case 'e' : /* end 001 */
+                                    for (t=0U; t<nk; t++)
                                         karray[t] = (nk<n)?n-nk+t:((t<n)?t:u);
                                 break;
-                                case 's' : /* separated */
+                                case 'l' : /* left 110 */
+                                    for (t=0U,x=1UL,w=n/y; t<nk; t++,x+=w)
+                                        karray[t] = x;
+                                break;
+                                case 'm' : /* middle 010 */
+                                    x = (n-nk)>>1;
+                                    for (t=0U; t<nk; t++)
+                                        karray[t] = t+x;
+                                break;
+                                case 'q' : /* quartile 100 101 */
+                                    /* If selection_nk==1UL, place ranks on one
+                                       side (only) of the array such that the
+                                       raw distribution is 4 or 1, so that the
+                                       median of samples "ends" sampling table
+                                       is used.  If selection_nk>1UL, ranks may
+                                       be placed on both sides of the array so
+                                       that the remedian of samples "ends"
+                                       sampling table is used initially
+                                       (subsequent partitions will use the
+                                       median of samples "ends" sampling table
+                                       for pivot selection in each region).
+                                    */
+                                    for (y=n,t=0U; ; ) {
+                                        if (0UL<y) y=((y-1UL)>>1)-((y+1UL)>>2);
+                                        karray[t] = y;
+                                        t++;
+                                        if (1UL<selection_nk) {
+                                            if (t<=nk-t)
+                                                karray[nk-t] = u-y;
+                                            if (t==nk-t) break;
+                                        } else if (t==nk) break;
+                                    }
+                                break;
+                                case 'r' : /* right 011 */
+                                    for (t=0U,x=u-1UL,w=n/y; t<nk; t++,x-=w)
+                                        karray[nk-1UL-t] = x;
+                                break;
+                                case 's' : /* separated 101 */
                                     x = (nk>>1);
-                                    for (t=0UL; t<x; t++)
+                                    for (t=0U; t<x; t++)
                                         karray[t] = (t<n)?t:u;
                                     for (; t<nk; t++)
                                         karray[t] = (nk<n)?n-nk+t:((t<n)?t:u);
-                                break;
-                                case 'd' : /*FALLTHROUGH*/
-                                default : /* distributed */
-                                    y=n/nk;
-                                    x=(n-(nk-1UL)*y)>>1;
-                                    for (t=0UL; t<nk; t++,x+=y)
-                                        karray[t] = x;
                                 break;
                             }
                         }
@@ -942,6 +1049,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         /* do nothing here */
                     break;
                 }
+                /* types */
                 for (type=ls_bit_number(t=types); type<32U; type=ls_bit_number(t)) {
                     t &= ~(0x01<<type);
 #if DEBUG_CODE
@@ -998,11 +1106,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         log_arg);
                     if (0U != flags['i']) reset_counters(1U);
                     for (m=*pdn=0UL; m<count; m++) {
-                        /* Generate randomized, type-independent, count-dependent,
+                        /* Generate randomized, type-dependent, count-dependent,
                            function-independent sequence data here.
                            Permutations and combinations are
                            function-independent and type-independent but
                            count-dependent.
+                           Worst-case sequence is type-dependent (because of
+                           size_ratio)
                            Invariant sequences are copied from refarray.
                         */
                         /* preparation */
@@ -1050,12 +1160,29 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 }
                             break;
                             case TEST_SEQUENCE_ADVERSARY :
-                                if ((1UL<count)&&(NULL!=fp)) {
+                                if ((1UL<m)&&(NULL!=fp)) {
                                     (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
                                        ' ',
                                         c,f,log_arg);
                                     (V)fprintf(fp," %s/%s",buf,buf1);
                                     fflush(fp);
+                                }
+                            break;
+                            case TEST_SEQUENCE_WORST :
+                                if (1UL<m) {
+                                    if (NULL!=fp) {
+                                        (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
+                                           ' ',
+                                            c,f,log_arg);
+                                        (V)fprintf(fp," %s/%s",buf,buf1);
+                                        fflush(fp);
+                                    }
+                                } else {
+                                    (V)generate_long_test_array(global_refarray,
+                                        n,TEST_SEQUENCE_SORTED,1UL,max_val,f,
+                                        log_arg);
+                                    make_adverse(global_refarray,0UL,n,karray,
+                                        0UL,nk,ratio*size_ratio,0U,options);
                                 }
                             break;
                             default :
@@ -1080,7 +1207,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                     default : /* error */
                                     return ++errs;
                                 }
-                                if ((1UL<count)&&(NULL!=fp)) {
+                                if ((1UL<m)&&(NULL!=fp)) {
                                     (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
                                         ' ',c,f,log_arg);
                                     (V)fprintf(fp," %s/%s",buf,buf1);
@@ -1199,7 +1326,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 if (NULL!=fp) { fputc('\r', fp); fflush(fp); }
                             break;
                             default:
-                                if ((1UL<count)&&(NULL!=fp)) {
+                                if ((1UL<m)&&(NULL!=fp)) {
                                     (V)fprintf(fp," %3lu%%\r",
                                         (m+1UL)*100UL/count);
                                     fflush(fp);
@@ -1225,12 +1352,12 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         if (test_w < best_w) best_w = test_w;
                         if (0UL<count) {
                             A(*pdn<count);
-                            (*puarray)[*pdn] = test_u;
-                            (*psarray)[*pdn] = test_s;
-                            (*pwarray)[*pdn] = test_w;
+                            global_uarray[*pdn] = test_u;
+                            global_sarray[*pdn] = test_s;
+                            global_warray[*pdn] = test_w;
                             (*pdn)++;
                         }
-                        update_counters(size_ratio);
+                        update_counters(ratio*size_ratio);
                         if (0U < errs) break;
                         if ((tot_w > timeout)&&(m+1UL<count)) {
                             count = m; /* horrible performance; break out of loop */
@@ -1250,7 +1377,6 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 fflush(stderr);
                             }
                         }
-                        /* cleanup */
                     } /* count loop */
                     /* cleanup */
                     switch (sequence) {
@@ -1359,7 +1485,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
                             x=npartitions,y=nrepivot;
-                            quickselect_internal((void *)(*puarray),*pdn,sizeof(float),
+                            quickselect_internal((void *)global_uarray,*pdn,sizeof(float),
                                 floatcmp,marray,12UL,0U,NULL,NULL);
 #if ASSERT_CODE
                             /* With marray in increasing (sorted) order, marray should
@@ -1367,7 +1493,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             */
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
-                            quickselect_internal((void *)(*psarray),*pdn,sizeof(float),
+                            quickselect_internal((void *)global_sarray,*pdn,sizeof(float),
                                 floatcmp,marray,12UL,0U,NULL,NULL);
 #if ASSERT_CODE
                             /* With marray in increasing (sorted) order, marray should
@@ -1375,7 +1501,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             */
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
-                            quickselect_internal((void *)(*pwarray),*pdn,sizeof(float),
+                            quickselect_internal((void *)global_warray,*pdn,sizeof(float),
                                 floatcmp,marray,12UL,0U,NULL,NULL);
                             npartitions=x,nrepivot=y;
 #if ASSERT_CODE
@@ -1421,55 +1547,85 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                 tot_s, -4, 3, f, log_arg); /* total system */
                             (V)sng(buf16, sizeof(buf16), NULL, NULL,
                                 tot_w, -4, 3, f, log_arg); /* total wall-clock */
-                            test_u = ((*puarray)[b[5]] + (*puarray)[b[6]]) / 2.0;
+                            test_u = (global_uarray[b[5]] + global_uarray[b[6]]) / 2.0;
                             (V)sng(buf2, sizeof(buf2), NULL, NULL,
                                 test_u / factor, -4, 3, f, log_arg); /* scaled median user */
                             (V)sng(buf5, sizeof(buf5), NULL, NULL,
                                 test_u, -4, 3, f, log_arg); /* median user */
                             (V)sng(buf17, sizeof(buf17), NULL, NULL,
-                                (*puarray)[b[0]], -4, 3, f, log_arg); /* min user */
+                                global_uarray[b[0]], -4, 3, f, log_arg); /* min user */
                             (V)sng(buf18, sizeof(buf18), NULL, NULL,
-                                (*puarray)[b[11]], -4, 3, f, log_arg); /* max user */
-                            test_s = ((*psarray)[b[5]] + (*psarray)[b[6]]) / 2.0;
+                                global_uarray[b[11]], -4, 3, f, log_arg); /* max user */
+                            test_s = (global_sarray[b[5]] + global_sarray[b[6]]) / 2.0;
                             (V)sng(buf11, sizeof(buf11), NULL, NULL,
                                 test_s, -4, 3, f, log_arg); /* median system */
                             (V)sng(buf12, sizeof(buf12), NULL, NULL,
                                 test_s / factor, -4, 3, f, log_arg); /* scaled median system */
                             (V)sng(buf19, sizeof(buf19), NULL, NULL,
-                                (*psarray)[b[0]], -4, 3, f, log_arg); /* min sys */
+                                global_sarray[b[0]], -4, 3, f, log_arg); /* min sys */
                             (V)sng(buf20, sizeof(buf20), NULL, NULL,
-                                (*psarray)[b[11]], -4, 3, f, log_arg); /* max sys */
-                            test_w = ((*pwarray)[b[5]] + (*pwarray)[b[6]]) / 2.0;
+                                global_sarray[b[11]], -4, 3, f, log_arg); /* max sys */
+                            test_w = (global_warray[b[5]] + global_warray[b[6]]) / 2.0;
                             (V)sng(buf13, sizeof(buf13), NULL, NULL,
                                 test_w, -4, 3, f, log_arg); /* median wall-clock */
                             (V)sng(buf14, sizeof(buf14), NULL, NULL,
                                 test_w / factor, -4, 3, f, log_arg); /* scaled median wall-clock */
                             (V)sng(buf21, sizeof(buf21), NULL, NULL,
-                                (*pwarray)[b[0]], -4, 3, f, log_arg); /* min wall */
+                                global_warray[b[0]], -4, 3, f, log_arg); /* min wall */
                             (V)sng(buf22, sizeof(buf22), NULL, NULL,
-                                (*pwarray)[b[11]], -4, 3, f, log_arg); /* max wall */
+                                global_warray[b[11]], -4, 3, f, log_arg); /* max wall */
 #if DEBUG_CODE
                             if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                                 "/* %s: %s line %d: factor=%G, count=%lu, dn=%lu, median=%G (%s) */\n",
                                 __func__, source_file,__LINE__, factor, count, *pdn, test_u, buf2);
 #endif /* DEBUG_CODE */
                             if (0U!=flags['B']) {
-                                /* wall-clock box plot data:
+                                /* box plot data:
                                    2%, 9%, 1/4, median, 3/4, 91%, 98%
                                    min, 2%, 9%, 10%, 1/4, median, 3/4, 90%, 91%, 98%, max
                                 */
+                                (V)printf(
+                                    "%s%s %s %s %s user-time box plot: %s",
+                                    comment,pcc,pfunc,ptest,typename,buf17); /*min*/
+                                for (w=1UL; w<5UL; w++) {
+                                    (V)sng(buf23, sizeof(buf23), NULL, NULL,
+                                        global_uarray[b[w]], -4, 3, f, log_arg);
+                                    (V)printf(" %s",buf23);
+                                }
+                                (V)printf(" %s",buf5); /* median (b[5]+b[6])/2 */
+                                for (w=7UL; w<11UL; w++) {
+                                    (V)sng(buf23, sizeof(buf23), NULL, NULL,
+                                        global_uarray[b[w]], -4, 3, f, log_arg);
+                                    (V)printf(" %s",buf23);
+                                }
+                                (V)printf(" %s\n",buf18); /* max */
+                                (V)printf(
+                                    "%s%s %s %s %s system-time box plot: %s",
+                                    comment,pcc,pfunc,ptest,typename,buf19); /*min*/
+                                for (w=1UL; w<5UL; w++) {
+                                    (V)sng(buf23, sizeof(buf23), NULL, NULL,
+                                        global_sarray[b[w]], -4, 3, f, log_arg);
+                                    (V)printf(" %s",buf23);
+                                }
+                                (V)printf(" %s",buf11); /* median (b[5]+b[6])/2 */
+                                for (w=7UL; w<11UL; w++) {
+                                    (V)sng(buf23, sizeof(buf23), NULL, NULL,
+                                        global_sarray[b[w]], -4, 3, f, log_arg);
+                                    (V)printf(" %s",buf23);
+                                }
+                                (V)printf(" %s\n",buf20); /* max */
                                 (V)printf(
                                     "%s%s %s %s %s wall-clock box plot: %s",
                                     comment,pcc,pfunc,ptest,typename,buf21); /*min*/
                                 for (w=1UL; w<5UL; w++) {
                                     (V)sng(buf23, sizeof(buf23), NULL, NULL,
-                                        (*pwarray)[b[w]], -4, 3, f, log_arg);
+                                        global_warray[b[w]], -4, 3, f, log_arg);
                                     (V)printf(" %s",buf23);
                                 }
                                 (V)printf(" %s",buf13); /* median (b[5]+b[6])/2 */
                                 for (w=7UL; w<11UL; w++) {
                                     (V)sng(buf23, sizeof(buf23), NULL, NULL,
-                                        (*pwarray)[b[w]], -4, 3, f, log_arg);
+                                        global_warray[b[w]], -4, 3, f, log_arg);
                                     (V)printf(" %s",buf23);
                                 }
                                 (V)printf(" %s\n",buf22); /* max */
@@ -1613,6 +1769,12 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                     break;
                     case TEST_SEQUENCE_MEDIAN3KILLER :
                         (V)printf("#Median-of-3 killer sequence:\n");
+                        for(j=0UL; j<n; j++) {
+                            (V)printf("%ld\n", global_refarray[j]);
+                        }
+                    break;
+                    case TEST_SEQUENCE_WORST :
+                        (V)printf("#quickselect killer sequence:\n");
                         for(j=0UL; j<n; j++) {
                             (V)printf("%ld\n", global_refarray[j]);
                         }

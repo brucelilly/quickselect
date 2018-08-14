@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.15 dated 2018-05-15T03:06:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.18 dated 2018-08-14T10:05:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,19 +96,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-05-15T03:06:12Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-08-14T10:05:21Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
-
-/* Configuration: Array size limit for non-divide-and-conquer methods (insertion
-   sort, merge sorts, network sort).  Avoids performance issues with those
-   methods with some inputs at non-trivial size (e.g. binary input with merge
-   sorts) except where those methods are required for specified options (e.g.
-   QUICKSELECT_STABLE).  However, it also precludes improved performance which
-   those methods can provide with random input.
-*/
-#define MAX_NON_DNC 5
 
 /* local header files needed */
 #include "quickselect_config.h" /* QUICKSELECT_INLINE */
@@ -197,8 +188,7 @@ QUICKSELECT_EXTERN
 static QUICKSELECT_INLINE
 int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
     size_t nmemb, size_t size, COMPAR_DECL, size_t alignsize, size_t size_ratio,
-    unsigned int table_index, size_t cache_sz, size_t pbeyond,
-    unsigned int options)
+    size_t cache_sz, size_t pbeyond, unsigned int options)
 {
     int r=0;
     if ((NULL==base)
@@ -243,7 +233,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
 #endif
             ) { /* already have pointers for indirect mergesort */
                 pointer_mergesort((char **)base,first,base,beyond-first,pbeyond,
-                    COMPAR_ARGS,table_index,cache_sz,options);
+                    COMPAR_ARGS,cache_sz,options);
             } else {
                 size_t n, *indices, npointers=nmemb+((nmemb+1UL)>>1);
 #if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
@@ -266,7 +256,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                 (V)set_array_pointers(pointers,npointers,base,size,first,beyond);
                 /* mergesort using indirection; pointers moved, not data */
                 pointer_mergesort(pointers,0UL,base,nmemb,nmemb,COMPAR_ARGS,
-                    table_index,cache_sz,options|(QUICKSELECT_INDIRECT));
+                    cache_sz,options|(QUICKSELECT_INDIRECT));
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
                     print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: ",
@@ -317,8 +307,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
 static QUICKSELECT_INLINE
 int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     register char *pa, *pb, *pc;
@@ -341,10 +330,14 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
        very high size_ratio (> ~ 200); at 3 elements it uses the same average
        number of comparisons as merge sort and the decision tree.
        If partial order stability is required, the stable unrolled merge sort is
-       used except at very high size_ratio (where stable insertion sort is
-       used); otherwise the slightly faster decision tree is used.
+       used; otherwise the slightly faster decision tree is used.
     */
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+#if 1
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))
+#else
+    if (1
+#endif
+    ) {
         /* simplified merge for 3 elements */
         /* split */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
@@ -441,8 +434,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
 static QUICKSELECT_INLINE
 int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     register char *pa, *pb, *pc, *pd;
@@ -460,7 +452,6 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
 #if QUICKSELECT_MAX_NETWORK < 4
         if (128UL<size_ratio) return EAGAIN;
 #else
-        /* sorting network */
         /* sorting network: 5 comparisons in 3 parallel groups */
         /* Optimal sorting network is always better than divide-and-conquer:
            lower overhead, same average comparisons, same average data movement.
@@ -519,8 +510,7 @@ check4:
 static QUICKSELECT_INLINE
 int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     register char *pa, *pb;
@@ -541,9 +531,6 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         /* See J. Gamble http://pages.ripco.net/~jgamble/nw.html */
         /* non-stable, not optimized for expensive comparisons */
         /* 9 comparisons with 4 parallelizable groups */
-        /* Optimal sorting network is always better than divide-and-conquer:
-           lower overhead, same average comparisons, less average data movement.
-        */
         register char *pc, *pd, *pe;
 # if ((DEBUG_CODE)>0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
@@ -569,7 +556,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         goto check5;
 #endif
     }
-    /* Simplified merge for 5 elements; average 7.5 comparisons. */
+    /* Simplified merge for 5 elements; average 7.233 comparisons. */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
@@ -582,7 +569,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     /* split 2-3 elements */
     CX(pa,pb);
     ret= ded_sort3(base,first+2UL,beyond,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     /* merge pieces */
     inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
@@ -605,8 +592,7 @@ check5:
 static QUICKSELECT_INLINE
 int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     A(first+6UL==beyond);
@@ -652,7 +638,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
         goto check6;
 #endif
     }
-    /* Simplified merge for 6 elements; average 10.576 comparisons. */
+    /* Simplified merge for 6 elements; average 9.924 comparisons. */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
@@ -663,9 +649,9 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
 #endif
     /* split 3-3 elements */
     ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     ret= ded_sort3(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     /* merge pieces */
     inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
@@ -688,8 +674,7 @@ check6:
 static QUICKSELECT_INLINE
 int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     A(first+7UL==beyond);
@@ -746,7 +731,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
         goto check7;
 #endif
     }
-    /* Simplified merge for 7 elements; average 14.034 comparisons and 9.077 swap equivalents. */
+    /* Simplified merge for 7 elements; average 12.823 comparisons and 8.474 swap equivalents. */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
@@ -757,9 +742,9 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
 #endif
     /* split 3-4 elements */
     ret= ded_sort3(base,first,first+3UL,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     ret= ded_sort4(base,first+3UL,beyond,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     /* merge pieces */
     inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
@@ -782,8 +767,7 @@ check7:
 static QUICKSELECT_INLINE
 int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int table_index, size_t cache_sz,
-    size_t pbeyond, unsigned int options)
+    size_t size_ratio, unsigned int options)
 {
     register int ret=0;
     A(first+8UL==beyond);
@@ -835,7 +819,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
         goto check8;
 #endif
     }
-    /* Simplified merge for 8 elements; average 17.28 comparisons and 12.081 swap equivalents. */
+    /* Simplified merge for 8 elements; average 15.909 comparisons and 11.075 swap equivalents. */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
@@ -846,9 +830,9 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
 #endif
     /* split 4-4 elements */
     ret= ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     ret= ded_sort4(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
-        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+        alignsize,size_ratio,options);
     /* merge pieces */
     inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
@@ -875,8 +859,8 @@ check8:
 static QUICKSELECT_INLINE
 int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     size_t size, COMPAR_DECL, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio, unsigned int table_index,
-    size_t cache_sz, size_t pbeyond, unsigned int options)
+    size_t alignsize, size_t size_ratio, size_t cache_sz, size_t pbeyond,
+    unsigned int options)
 {
     register int ret=0;
     register size_t mid, na;
@@ -893,12 +877,22 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     /* No median-of-medians for sub-arrays (if divide-and-conquer is used) */
     options&=~(QUICKSELECT_RESTRICT_RANK);
     /* Sorting pieces could proceed in parallel.  */
-    ret= QUICKSELECT_LOOP(base,first,mid,size,COMPAR_ARGS,NULL,0UL,0UL,
-        swapf,alignsize,size_ratio,table_index,cache_sz,pbeyond,options,
-        NULL,NULL);
-    ret= QUICKSELECT_LOOP(base,mid,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
-        swapf,alignsize,size_ratio,table_index,cache_sz,pbeyond,options,
-        NULL,NULL);
+    ret= DEDICATED_SORT(base,first,mid,size,COMPAR_ARGS,swapf,alignsize,
+        size_ratio,cache_sz,pbeyond,options);
+#if ((DEBUG_CODE)>0) || ((ASSERT_CODE)>0)
+    if (EAGAIN==ret) {
+        (V)fprintf(stderr,"/* %s line %d: EAGAIN: first=%lu, mid=%lu, size_ratio=%lu, options=0x%x */\n",__func__,__LINE__,first,mid,size_ratio,options);
+        abort();
+    }
+#endif
+    ret= DEDICATED_SORT(base,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
+        size_ratio,cache_sz,pbeyond,options);
+#if ((DEBUG_CODE)>0) || ((ASSERT_CODE)>0)
+    if (EAGAIN==ret) {
+        (V)fprintf(stderr,"/* %s line %d: EAGAIN: mid=%lu, beyond=%lu, size_ratio=%lu, options=0x%x */\n",__func__,__LINE__,mid,beyond,size_ratio,options);
+        abort();
+    }
+#endif
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         nmemb=test_array_sort(base,first,mid-1UL,size,
@@ -942,9 +936,16 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
    Return EAGAIN to direct caller to use divide-and-conquer.
    Return EINVAL for caller error (shouldn't happen for internal calls).
 */
+/*
+DEDICATED_SORT_RETURN_TYPE DEDICATED_SORT(char *base, size_t first,
+    size_t beyond, size_t size, COMPAR_DECL,
+    void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
+    size_t cache_sz, size_t pbeyond, unsigned int options)
+*/
 /* definition */
 #if QUICKSELECT_BUILD_FOR_SPEED
 static
+QUICKSELECT_INLINE
 #endif
 # include "dedicated_sort_decl.h"
 {
@@ -963,34 +964,18 @@ static
     A(256UL<=cache_sz); A(beyond>first);
     if (beyond<=first+1UL) { /* nmemb <= 1UL */
 #if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: ERROR: first=%lu >= beyond=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
-                (unsigned long)beyond);
-        }
+        (V)fprintf(stderr,
+            "/* %s: %s line %d: ERROR: first=%lu >= beyond=%lu */\n",
+            __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
+            (unsigned long)beyond);
+        abort();
 #endif
         A(beyond>first+1UL);
         return EINVAL; /* shouldn't happen */
-    } else if (((MAX_NON_DNC<(nmemb=beyond-first)) /* poor w/ some inputs */
-       && (0U==(options&(QUICKSELECT_STABLE|QUICKSELECT_OPTIMIZE_COMPARISONS))))
-    || (((nmemb*pointer_and_a_half>cache_sz)) /* too big; indirect mergesort */
-    || (3UL*size>(cache_sz>>1))) /* elements too big for cache */
-    ) {
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
-            (V)fprintf(stderr,
-                "/* %s: %s line %d: EAGAIN for divide-and-conquer nmemb=%lu, "
-                " size=%lu, cache_sz=%lu */\n",
-                __func__,dedicated_sort_src_file,__LINE__,(unsigned long)nmemb,
-                (unsigned long)size,(unsigned long)cache_sz);
-        }
-#endif
-        return EAGAIN; /* caller should use divide-and-conquer */
     } else { /* at least 2 elements */
         char *pa, *pb;
 
-        switch (nmemb) {
+        switch (nmemb=beyond-first) {
 #if ASSERT_CODE
             /* cases should be excluded by outer if test */
             case 0UL : /*FALLTHROUGH*/
@@ -1014,27 +999,27 @@ static
             break;
             case 3UL :
                 ret = ded_sort3(base,first,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
             break;
             case 4UL :
                 ret = ded_sort4(base,first,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
             break;
             case 5UL :
-                ret = ded_sort5(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
-                    size_ratio,table_index,cache_sz,pbeyond,options);
+                ret = ded_sort5(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,options);
             break;
             case 6UL :
-                ret = ded_sort6(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
-                    size_ratio,table_index,cache_sz,pbeyond,options);
+                ret = ded_sort6(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,options);
             break;
             case 7UL :
-                ret = ded_sort7(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
-                    size_ratio,table_index,cache_sz,pbeyond,options);
+                ret = ded_sort7(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,options);
             break;
             case 8UL :
-                ret = ded_sort8(base,first,beyond,size,COMPAR_ARGS,swapf,alignsize,
-                    size_ratio,table_index,cache_sz,pbeyond,options);
+                ret = ded_sort8(base,first,beyond,size,COMPAR_ARGS,swapf,
+                    alignsize,size_ratio,options);
             break;
             case 9UL :
                 if (0U==(options&(
@@ -1090,9 +1075,9 @@ static
 #endif
                 /* These sorts can be performed in parallel. */
                 (V)ded_sort4(base,first,first+4UL,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 (V)ded_sort5(base,first+4UL,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 /* merge pieces */
                 inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,options);
@@ -1149,9 +1134,9 @@ static
                 }
 #endif
                 (V)ded_sort5(base,first,first+5UL,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 (V)ded_sort5(base,first+5UL,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 /* merge pieces */
                 inplace_merge(base,first,first+5UL,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,options);
@@ -1206,9 +1191,9 @@ static
                 }
 #endif
                 (V)ded_sort5(base,first,first+5UL,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 (V)ded_sort6(base,first+5UL,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 /* merge pieces */
                 inplace_merge(base,first,first+5UL,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,options);
@@ -1265,9 +1250,9 @@ static
                 }
 #endif
                 (V)ded_sort6(base,first,first+6UL,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 (V)ded_sort6(base,first+6UL,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 /* merge pieces */
                 inplace_merge(base,first,first+6UL,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,options);
@@ -1331,9 +1316,9 @@ static
                 }
 #endif
                 (V)ded_sort6(base,first,first+6UL,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 (V)ded_sort7(base,first+6UL,beyond,size,COMPAR_ARGS,swapf,
-                    alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                    alignsize,size_ratio,options);
                 /* merge pieces */
                 inplace_merge(base,first,first+6UL,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,options);
@@ -1393,7 +1378,7 @@ static
                 }
                 if (128UL<size_ratio) {
                     ret=limited_indirect_mergesort(base,first,beyond,nmemb,
-                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        size,COMPAR_ARGS,alignsize,size_ratio,
                         cache_sz,pbeyond,options);
                 } else {
                     /* simplified in-place merge sort for 13 elements */
@@ -1407,9 +1392,9 @@ static
                     }
 #endif
                     (V)ded_sort7(base,first,first+7UL,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     (V)ded_sort7(base,first+7UL,beyond,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     /* merge pieces */
                     inplace_merge(base,first,first+7UL,beyond,size,COMPAR_ARGS,
                         swapf,alignsize,size_ratio,options);
@@ -1471,7 +1456,7 @@ static
                 }
                 if (128UL<size_ratio) {
                     ret=limited_indirect_mergesort(base,first,beyond,nmemb,
-                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        size,COMPAR_ARGS,alignsize,size_ratio,
                         cache_sz,pbeyond,options);
                 } else {
                     /* simplified in-place merge sort for 13 elements */
@@ -1485,9 +1470,9 @@ static
                     }
 #endif
                     (V)ded_sort7(base,first,first+7UL,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     (V)ded_sort8(base,first+7UL,beyond,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     /* merge pieces */
                     inplace_merge(base,first,first+7UL,beyond,size,COMPAR_ARGS,
                         swapf,alignsize,size_ratio,options);
@@ -1549,7 +1534,7 @@ static
                 }
                 if (25UL<size_ratio) {
                     ret=limited_indirect_mergesort(base,first,beyond,nmemb,
-                        size,COMPAR_ARGS,alignsize,size_ratio,table_index,
+                        size,COMPAR_ARGS,alignsize,size_ratio,
                         cache_sz,pbeyond,options);
                 } else {
                     /* simplified in-place merge sort for 13 elements */
@@ -1563,9 +1548,9 @@ static
                     }
 #endif
                     (V)ded_sort8(base,first,first+8UL,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     (V)ded_sort8(base,first+8UL,beyond,size,COMPAR_ARGS,swapf,
-                        alignsize,size_ratio,table_index,cache_sz,pbeyond,options);
+                        alignsize,size_ratio,options);
                     /* merge pieces */
                     inplace_merge(base,first,first+8UL,beyond,size,COMPAR_ARGS,
                         swapf,alignsize,size_ratio,options);
@@ -1580,12 +1565,12 @@ static
                             if (70UL<nmemb)
                                 ret=limited_indirect_mergesort(base,first,
                                     beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    size_ratio,cache_sz,pbeyond,
                                     options);
                             else
                                 ret=inplace_mergesort(base,first,beyond,nmemb,
                                     size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                                    table_index,cache_sz,pbeyond,options);
+                                    cache_sz,pbeyond,options);
                         } else return EAGAIN;
                     break;
                     case 2UL :
@@ -1604,7 +1589,7 @@ static
                                 if (60UL<nmemb)
                                     ret=limited_indirect_mergesort(base,first,
                                         beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        size_ratio,cache_sz,pbeyond,
                                         options);
                                 else if (25UL<nmemb)
                                     isort_bs(base,first,beyond,size,COMPAR_ARGS,
@@ -1612,19 +1597,19 @@ static
                                 else
                                     ret=inplace_mergesort(base,first,beyond,
                                         nmemb,size,COMPAR_ARGS,swapf,alignsize,
-                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        size_ratio,cache_sz,pbeyond,
                                         options);
                             break;
                             default : /* OPTIMIZE_COMPARISONS w/ or w/o STABLE */
                                 if (60UL<nmemb)
                                     ret=limited_indirect_mergesort(base,first,
                                         beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        size_ratio,cache_sz,pbeyond,
                                         options);
                                 else
                                     ret=inplace_mergesort(base,first,beyond,
                                         nmemb,size,COMPAR_ARGS,swapf,alignsize,
-                                        size_ratio,table_index,cache_sz,pbeyond,
+                                        size_ratio,cache_sz,pbeyond,
                                         options);
                             break;
                         }
@@ -1637,12 +1622,12 @@ static
                             if (40UL<nmemb)
                                 ret=limited_indirect_mergesort(base,first,
                                     beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    size_ratio,cache_sz,pbeyond,
                                     options);
                             else
                                 ret=inplace_mergesort(base,first,beyond,nmemb,
                                     size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                                    table_index,cache_sz,pbeyond,options);
+                                    cache_sz,pbeyond,options);
                         } else return EAGAIN;
                     break;
                     case 5UL : /*FALLTHROUGH*/
@@ -1653,12 +1638,12 @@ static
                             if (32UL<nmemb)
                                 ret=limited_indirect_mergesort(base,first,
                                     beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    size_ratio,cache_sz,pbeyond,
                                     options);
                             else
                                 ret=inplace_mergesort(base,first,beyond,nmemb,
                                     size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                                    table_index,cache_sz,pbeyond,options);
+                                    cache_sz,pbeyond,options);
                         } else return EAGAIN;
                     break;
                     default :
@@ -1688,12 +1673,12 @@ static
                             if (23UL<nmemb)
                                 ret=limited_indirect_mergesort(base,first,
                                     beyond,nmemb,size,COMPAR_ARGS,alignsize,
-                                    size_ratio,table_index,cache_sz,pbeyond,
+                                    size_ratio,cache_sz,pbeyond,
                                     options);
                             else
                                 ret=inplace_mergesort(base,first,beyond,nmemb,
                                     size,COMPAR_ARGS,swapf,alignsize,size_ratio,
-                                    table_index,cache_sz,pbeyond,options);
+                                    cache_sz,pbeyond,options);
                         } else return EAGAIN;
                     break;
                 }

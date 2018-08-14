@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.8 dated 2018-04-20T04:02:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.9 dated 2018-07-27T18:21:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-04-20T04:02:20Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-07-27T18:21:36Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -55,6 +55,37 @@
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+COMPARE_DEFINITION(CHARCMP,char)
+/* doublecmp (used by repeated_median) is defined in libmedian repeated_median.c */
+COMPARE_DEFINITION(FLOATCMP,float)
+COMPARE_DEFINITION(INTCMP,int)
+COMPARE_DEFINITION(LONGCMP,long)
+COMPARE_DEFINITION(SHORTCMP,short)
+COMPARE_DEFINITION(ULCMP,unsigned long)
+/* size_tcmp (used by quickselect) is defined in libmedian quickselect_src.h */
+
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+COMPARE_DEFINITION(INT_LEAST8_TCMP,int_least8_t)
+COMPARE_DEFINITION(INT_FAST8_TCMP,int_fast8_t)
+COMPARE_DEFINITION(UINT_LEAST8_TCMP,uint_least8_t)
+COMPARE_DEFINITION(UINT_FAST8_TCMP,uint_fast8_t)
+
+COMPARE_DEFINITION(INT_LEAST16_TCMP,int_least16_t)
+COMPARE_DEFINITION(INT_FAST16_TCMP,int_fast16_t)
+COMPARE_DEFINITION(UINT_LEAST16_TCMP,uint_least16_t)
+COMPARE_DEFINITION(UINT_FAST16_TCMP,uint_fast16_t)
+
+COMPARE_DEFINITION(INT_LEAST32_TCMP,int_least32_t)
+COMPARE_DEFINITION(INT_FAST32_TCMP,int_fast32_t)
+COMPARE_DEFINITION(UINT_LEAST32_TCMP,uint_least32_t)
+COMPARE_DEFINITION(UINT_FAST32_TCMP,uint_fast32_t)
+
+COMPARE_DEFINITION(INT_LEAST64_TCMP,int_least64_t)
+COMPARE_DEFINITION(INT_FAST64_TCMP,int_fast64_t)
+COMPARE_DEFINITION(UINT_LEAST64_TCMP,uint_least64_t)
+COMPARE_DEFINITION(UINT_FAST64_TCMP,uint_fast64_t)
+#endif /* C99 */
 
 int ilongcmp(const void *p1, const void *p2)
 {
@@ -236,7 +267,7 @@ int timecmp(const void *p1, const void *p2)
     if ((NULL != p1) && (NULL != p2) && (p1 != p2)) {
         const struct data_struct *pa = (const struct data_struct *)p1,
             *pb = (const struct data_struct *)p2;
-        int i, j, k;
+        int i;
 
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(COMPARE_DEBUG)) {

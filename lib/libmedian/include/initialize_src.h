@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is initialize_src.h version 1.10 dated 2018-04-16T05:53:02Z. \ $ */
+/* $Id: ~|^` @(#)   This is initialize_src.h version 1.12 dated 2018-07-18T16:21:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.initialize_src.h */
@@ -83,7 +83,9 @@ static const char *file_build_options= ID_STRING_PREFIX SOURCE_MODULE " "
 #if defined(GENERATOR_TEST) && GENERATOR_TEST
     ", GENERATOR_TEST=" xbuildstr(GENERATOR_TEST)
 #endif
+#if defined(QUICKSELECT_MAX_NETWORK) && QUICKSELECT_MAX_NETWORK
     ", QUICKSELECT_MAX_NETWORK=" xbuildstr(QUICKSELECT_MAX_NETWORK)
+#endif
     ", QUICKSELECT_DEFAULT_CACHE_SIZE=" xbuildstr(QUICKSELECT_DEFAULT_CACHE_SIZE)
     ", QUICKSELECT_INDIRECT=" xbuildstr(QUICKSELECT_INDIRECT)
 #if QUICKSELECT_STABLE
@@ -94,20 +96,6 @@ static const char *file_build_options= ID_STRING_PREFIX SOURCE_MODULE " "
     ", QUICKSELECT_STABLE=" xbuildstr(QUICKSELECT_STABLE)
 #if defined(SILENCE_WHINEY_COMPILERS) && SILENCE_WHINEY_COMPILERS
     ", SILENCE_WHINEY_COMPILERS=" xbuildstr(SILENCE_WHINEY_COMPILERS)
-#endif
-#ifdef SORTING_TABLE_ENTIRES
-    ", SORTING_TABLE_ENTRIES="
-# if SORTING_TABLE_ENTRIES == TRANSPARENT
-        "transparent"
-# elif SORTING_TABLE_ENTRIES == LOOSE
-        "loose"
-# elif SORTING_TABLE_ENTRIES == RELAXED
-        "relaxed"
-# elif SORTING_TABLE_ENTRIES == AGGRESSIVE
-        "aggressive"
-# else
-        "disabled"
-# endif
 #endif
     ", built with " QUICKSELECT_CONFIG_H_VERSION
     "\\ $"

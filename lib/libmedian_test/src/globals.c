@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is globals.c version 1.12 dated 2018-05-07T05:24:39Z. \ $ */
+/* $Id: ~|^` @(#)   This is globals.c version 1.13 dated 2018-06-03T19:59:08Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.globals.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: globals.c ~|^` @(#)"
 #define SOURCE_MODULE "globals.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-05-07T05:24:39Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2018-06-03T19:59:08Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -122,9 +122,6 @@ struct data_struct *global_data_array = NULL;
 float *global_uarray = NULL;
 float *global_sarray = NULL;
 float *global_warray = NULL;
-
-struct stats_table_struct stats_table[(SAMPLING_TABLE_SIZE)]; /* big enough to match biggest sampling_table_size */
-struct breakpoint_table_struct breakpoint_table[(SAMPLING_TABLE_SIZE)]; /* big enough to match biggest sampling_table_size */
 
 # if ASSERT_CODE + DEBUG_CODE
 FILE *logfile = NULL;
