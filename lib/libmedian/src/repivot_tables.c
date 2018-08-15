@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.8 dated 2018-08-13T19:37:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.9 dated 2018-08-15T15:12:31Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repivot_tables.c */
@@ -58,8 +58,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "repivot_tables.c"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2018-08-13T19:37:28Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2018-08-15T15:12:31Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -102,55 +102,42 @@
 
 /* for remedian of samples pivot selection (limited rank guarantee) */
 struct repivot_table_struct ros_sorting_repivot_table[] = {
-#if 1
-/* small overhead (0.12%); <2 N log N worst-case */
-    {   1UL,      89U, 13U },
+    {   1UL,      89U,  9U },
+/* @3UL: factor2 11U overhead 0.17%; ~ 1.39 N log N @94 worst-case */
+/* @3UL: factor2 12U overhead 0.16%; ~ 1.43 N log N @29 worst-case */
+/* @3UL: factor2 13U overhead 0.12%; ~ 1.47 N log N @29 worst-case */
+/* @3UL: factor2 14U overhead 0.10%; ~ 1.61 N log N @31 worst-case */
     {   3UL,      89U, 13U },
-#else
-/* <1.5 N log N worst-case, 0.225% overhead */
-    {   1UL,      89U, 12U },
-    {   3UL,      89U,  9U },
-#endif
     {   9UL,      89U, 22U },
     {  27UL,      10U,  9U },
-    {  81UL,       4U,  4U },
-    { 243UL,       3U,  3U },
-    { (SIZE_MAX),  3U,  3U } /* sentinel */
+    {  81UL,       6U,  6U },
+    { (SIZE_MAX),  6U,  6U } /* sentinel */
 };
 struct repivot_table_struct ros_selection_repivot_table[] = {
-    {   1UL,      12U, 10U },
-    {   3UL,      11U,  5U },
+    {   1UL,      12U,  9U },
+    {   3UL,      11U,  6U },
     {   9UL,      12U,  6U },
-    {  27UL,      10U,  9U },
-    {  81UL,       4U,  4U },
-    { 243UL,       3U,  3U },
-    { (SIZE_MAX),  3U,  3U } /* sentinel */
+    {  27UL,      10U,  6U },
+    {  81UL,       6U,  6U },
+    { (SIZE_MAX),  6U,  6U } /* sentinel */
 };
 
 /* for median of samples pivot selection */
+/* <1.36 N log N worst-case, 0.0014% overhead */
 struct repivot_table_struct mos_sorting_repivot_table[] = {
-    {   1UL,      38U, 10U },
+    {   1UL,      38U,  9U },
     {   3UL,      38U, 12U },
-#if 0
-/* small overhead (0.12%); <2 N log N worst-case */
-    {   5UL,      38U, 12U },
-    {   7UL,      38U, 16U },
-#else
-/* <1.5 N log N worst-case, 0.225% overhead */
     {   5UL,      38U,  7U },
     {   7UL,      38U, 12U },
-#endif
     {   9UL,      22U, 12U },
     {  11UL,      18U,  9U },
     {  13UL,      12U,  9U },
     {  17UL,       7U,  7U },
-    {  27UL,       5U,  5U },
-    {  31UL,       4U,  4U },
-    {  47UL,       3U,  3U },
-    { (SIZE_MAX),  3U,  3U } /* sentinel */
+    {  27UL,       6U,  6U },
+    { (SIZE_MAX),  6U,  6U } /* sentinel */
 };
 struct repivot_table_struct mos_selection_repivot_table[] = {
-    {   1UL,      10U, 10U },
+    {   1UL,      10U,  9U },
     {   3UL,      16U,  6U },
     {   5UL,      16U,  6U },
     {   7UL,      15U,  6U },
@@ -158,8 +145,6 @@ struct repivot_table_struct mos_selection_repivot_table[] = {
     {  11UL,      10U,  6U },
     {  13UL,      10U,  6U },
     {  17UL,       7U,  6U },
-    {  27UL,       5U,  5U },
-    {  31UL,       4U,  4U },
-    {  47UL,       3U,  3U },
-    { (SIZE_MAX),  3U,  3U } /* sentinel */
+    {  27UL,       6U,  6U },
+    { (SIZE_MAX),  6U,  6U } /* sentinel */
 };
