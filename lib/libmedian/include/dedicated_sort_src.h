@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.18 dated 2018-08-14T10:05:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.19 dated 2018-08-16T01:59:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2018-08-14T10:05:21Z"
+#define MODULE_VERSION "1.19"
+#define MODULE_DATE "2018-08-16T01:59:15Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -1585,6 +1585,7 @@ QUICKSELECT_INLINE
                         )) {
                             case 0U :
                             return EAGAIN;
+#if QUICKSELECT_STABLE
                             case QUICKSELECT_STABLE :
                                 if (60UL<nmemb)
                                     ret=limited_indirect_mergesort(base,first,
@@ -1600,6 +1601,7 @@ QUICKSELECT_INLINE
                                         size_ratio,cache_sz,pbeyond,
                                         options);
                             break;
+#endif /* QUICKSELECT_STABLE */
                             default : /* OPTIMIZE_COMPARISONS w/ or w/o STABLE */
                                 if (60UL<nmemb)
                                     ret=limited_indirect_mergesort(base,first,

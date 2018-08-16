@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.28 dated 2018-08-01T15:15:07Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.29 dated 2018-08-16T02:44:27Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.28"
-#define MODULE_DATE "2018-08-01T15:15:07Z"
+#define MODULE_VERSION "1.29"
+#define MODULE_DATE "2018-08-16T02:44:27Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -224,15 +224,16 @@ static
 /* structures */
 /* regions resulting from partitioning */
 struct region_struct {
-    size_t first;  /* range in base array */
+    size_t first;               /* range in base array */
     size_t beyond;
     size_t *pk;
-    size_t firstk; /* range of order statistics */
+    size_t firstk;              /* range of order statistics */
     size_t beyondk;
     size_t neq;
     size_t nne;
     unsigned int options;
-    unsigned char process; /* 0=false */
+    unsigned char process;      /* 0=false */
+    int c;                      /* repivot factor2 counter */
 };
 
 #include "dedicated_sort_src.h"
@@ -888,7 +889,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #if defined(DEBUGGING)
         /* count repivots */
         if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
-#if 0 /* 1 count or 0 don't count repivoting for median-of-medians */
+#if 1 /* 0 count or 1 don't count repivoting for median-of-medians */
         && (NULL==ppeq)
 #endif
         ) {
@@ -1024,6 +1025,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         options &= ~(QUICKSELECT_RESTRICT_RANK);
 
         pl_region->options=ps_region->options=options;
+        ps_region->c=0;
 
         /* Process less-than and/or greater-than regions by relative size. */
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
@@ -1081,6 +1083,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                 pl_region->options|=SHOULD_REPIVOT_FUNCTION_NAME(nmemb,
                     pl_region->beyond-pl_region->first,samples,method,options,
                     pk,&c);
+            pl_region->c=c;
             if (0U!=ps_region->process) { /* Iterate on small region (below). */
 #if (DEBUG_CODE > 0)
 #if defined(DEBUGGING)
@@ -1162,7 +1165,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         if (0U!=ps_region->process) { /* Iterate on small region. */
             first=ps_region->first, beyond=ps_region->beyond,
                 firstk=ps_region->firstk, beyondk=ps_region->beyondk,
-                options=ps_region->options;
+                options=ps_region->options, c=0;
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)
             if (DEBUGGING(REPARTITION_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: small region: first=%lu, "
@@ -1195,7 +1198,8 @@ pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
                     beyondk=stack[stack_top].beyondk,
                     lneq=stack[stack_top].neq,
                     lnne=stack[stack_top].nne,
-                    options=stack[stack_top].options;
+                    options=stack[stack_top].options,
+                    c=stack[stack_top].c;
                 stack_top++;
                 nmemb=beyond-first; /* update nmemb after should_repivot call */
 #if (DEBUG_CODE > 0) && defined(DEBUGGING)

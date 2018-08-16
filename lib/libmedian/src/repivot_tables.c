@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.9 dated 2018-08-15T15:12:31Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.10 dated 2018-08-16T03:41:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repivot_tables.c */
@@ -58,8 +58,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "repivot_tables.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-08-15T15:12:31Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2018-08-16T03:41:21Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -103,11 +103,11 @@
 /* for remedian of samples pivot selection (limited rank guarantee) */
 struct repivot_table_struct ros_sorting_repivot_table[] = {
     {   1UL,      89U,  9U },
-/* @3UL: factor2 11U overhead 0.17%; ~ 1.39 N log N @94 worst-case */
-/* @3UL: factor2 12U overhead 0.16%; ~ 1.43 N log N @29 worst-case */
-/* @3UL: factor2 13U overhead 0.12%; ~ 1.47 N log N @29 worst-case */
-/* @3UL: factor2 14U overhead 0.10%; ~ 1.61 N log N @31 worst-case */
-    {   3UL,      89U, 13U },
+/* @3UL: factor2 11U overhead 0.010%; ~ 1.39 N log N @94 worst-case */
+/* @3UL: factor2 12U overhead 0.007%; ~ 1.43 N log N @29 worst-case */
+/* @3UL: factor2 13U overhead 0.004%; ~ 1.47 N log N @29 worst-case */
+/* @3UL: factor2 14U overhead 0.003%; ~ 1.61 N log N @31 worst-case */
+    {   3UL,      89U, 11U },
     {   9UL,      89U, 22U },
     {  27UL,      10U,  9U },
     {  81UL,       6U,  6U },
