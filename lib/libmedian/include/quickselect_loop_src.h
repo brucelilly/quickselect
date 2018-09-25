@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.29 dated 2018-08-16T02:44:27Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.30 dated 2018-09-20T01:28:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.29"
-#define MODULE_DATE "2018-08-16T02:44:27Z"
+#define MODULE_VERSION "1.30"
+#define MODULE_DATE "2018-09-20T01:28:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -245,10 +245,6 @@ struct region_struct {
 /* Keeps track of (and relocates if necessary) elements comparing equal to the
    desired (minimum or maximum) element if ppeq,ppgt are not NULL.
 */
-/* XXX might want this visible for test program, minmaxsort */
-/* XXX or put code in a separate file, include here and there with macro
-       to specify whether or not functions are static
-*/
 static QUICKSELECT_INLINE
 void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
@@ -348,7 +344,6 @@ void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     }
 }
 
-/* XXX might want this visible for test program, minmaxsort */
 static QUICKSELECT_INLINE
 void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
@@ -454,7 +449,6 @@ void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
    Overall minimum is the smaller of the two minima; overall maximum is the
    larger of the two maxima.
 */
-/* XXX might want this visible for test program, minmaxsort */
 static QUICKSELECT_INLINE
 void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond,
     size_t size, COMPAR_DECL, unsigned int options, char **pmn, char **pmx)
@@ -491,7 +485,6 @@ void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond,
 }
 
 /* Selection of both minimum and maximum using recursive find_minmax. */
-/* XXX might want this visible for test program, minmaxsort */
 static QUICKSELECT_INLINE
 void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
