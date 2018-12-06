@@ -160,27 +160,43 @@ then
 fi
 
 # check for availability of required programs
+prog=awk
+path=`whence ${prog} 2>/dev/null'`
+if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+if test -z "${path}" ; then
+	prog=nawk
+	path=`whence ${prog} 2>/dev/null'`
+	if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+	if test -z "${path}" ; then
+		prog=mawk
+		path=`whence ${prog} 2>/dev/null'`
+		if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+		if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
+	fi
+fi
+awk=${path}
+
 prog=uname
-path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
-if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+path=`whence -v ${prog} 2>/dev/null | ${awk} '{ print $NF }'`
+if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | ${awk} '{ print $NF }'` ; fi
 if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 prog=tr
-path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
-if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+path=`whence -v ${prog} 2>/dev/null | ${awk} '{ print $NF }'`
+if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | ${awk} '{ print $NF }'` ; fi
 if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 prog=hostname
-path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
-if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+path=`whence -v ${prog} 2>/dev/null | ${awk} '{ print $NF }'`
+if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | ${awk} '{ print $NF }'` ; fi
 if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 prog=cat
-path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
-if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+path=`whence -v ${prog} 2>/dev/null | ${awk} '{ print $NF }'`
+if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | ${awk} '{ print $NF }'` ; fi
 if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 if test 0 -eq 1
 then
 prog=domainname
-path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
-if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+path=`whence -v ${prog} 2>/dev/null | ${awk} '{ print $NF }'`
+if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | ${awk} '{ print $NF }'` ; fi
 if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 fi
 

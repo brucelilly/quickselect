@@ -284,12 +284,17 @@ case ${OS} in
 		DIG=dig
 	;;
 esac
-export IPV6_PREFIX=`ifconfig -a | grep inet6 | egrep -v " fe80::| ::1" | sed -e "s/addr: //" -e "s/inet6 //" | cut -d: -f1-4 | awk '{print $1}'`
+export IPV6_PREFIX=`ifconfig -a | grep inet6 | egrep -v " fe80::| ::1" | sed -e "s/addr: //" -e "s/inet6 //" | cut -d: -f1-4 | awk '{print $1 ; exit 0}'`
 if test ${debug} -gt 0
 then
 	echo IPV6_PREFIX \"${IPV6_PREFIX}\"
 fi
-export ADDRESS=`${DIG} +short ${FQDN} A`
+# if no nameservers are available, dig puts an error message on stdout, which gets assigned
+#export ADDRESS=`${DIG} +short ${FQDN} A` 
+#if test -z "${ADDRESS}"
+#then
+	export ADDRESS=`grep ${FQDN} /etc/hosts | grep -v '^#' | awk '{print $1}'`
+#fi
 if test -z "${ADDRESS}"
 then
 	prog=nslookup
@@ -330,6 +335,15 @@ then
 	if test ${debug} -gt 0
 	then
 		echo DNS_MASTER \"${DNS_MASTER}\"
+	fi
+
+	export DNS_TYPE=master
+	if test -n "${DNS_TYPE}"
+	then
+		if test ${debug} -gt 0
+		then
+			echo DNS_TYPE "(based on all masters)" \"${DNS_TYPE}\"
+		fi
 	fi
 
 	if test -z "${DNS_TYPE}" -a -n "${DNS_MASTER}"

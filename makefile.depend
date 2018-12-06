@@ -740,7 +740,7 @@ $(PRE_DEPEND) :
 			if test "$(PUBLIC_CONFIGDIR)" != "$(CONFIGDIR)" ; then \
 				echo "$(PUBLIC_CONFIGDIR)/$${file} : $(CONFIGDIR)/$${file}" >> $@.$${PPID}.temp ;\
 				echo '	@if test ! -d $$(@D) ; then $$(MKDIR) -p -m $$(DIRMODE) $$(@D) ; fi' >> $@.$${PPID}.temp ;\
-				echo '	$$(RSYNC) $$(RSYNC_OPTS) $$? $$@' >> $@.$${PPID}.temp ;\
+				echo '	$$(RSYNC) $$(RSYNC_OPTS) $$(CONFIGDIR)/'"$${file}" '$$(PUBLIC_CONFIGDIR)/'"$${file}" >> $@.$${PPID}.temp ;\
 			fi ;\
 		done ;\
 	else	echo 'INSTALLED_CONFIGFILES :' >> $@.$${PPID}.temp ;\
