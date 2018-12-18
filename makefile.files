@@ -59,11 +59,22 @@ MAKEFILES_READ += makefile.files
 C11OBJS =\
 #
 C99OBJS =\
+ bstest.o\
  make_grap.o\
  median_test.o\
+ swaptest.o\
+ graphingtest.o\
  simple_config.o\
+ generate_cutoff_table.o\
+ malloc_test.o\
+ memcpy_test.o\
 # 
 OBJS =\
+ heap_test.o\
+ lemd.o\
+ numtest.o\
+ thermostatd.o\
+# udp.o\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += C11OBJS C99OBJS OBJS
@@ -71,7 +82,10 @@ MACROS += C11OBJS C99OBJS OBJS
 # Header files used by main program source files, located in $(HDRDIR).
 HDRS =\
  compare.h\
+ conform.h\
  exchange.h\
+ lemd.h\
+ signals_decl.h\
  zz_build_str.h\
 #
 # Do not change the following line, which is used for debugging via `make macros`.
@@ -104,7 +118,7 @@ DEFS += -DRSYNC=\"$(RSYNC)\"
 # Library archive names and archive member object files (leave unused ones empty)
 #  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
 # C11- and C99-compiled object files are listed separately
-LIB1ARCH = # liblemd.a
+LIB1ARCH = liblemd.a
 C11LIB1OBJS =\
 #
 C99LIB1OBJS =\
@@ -128,7 +142,7 @@ LIB1MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB1ARCH C11LIB1OBJS C99LIB1OBJS LIB1OBJS LIB1HDRS LIB1MAN
 
-LIB2ARCH = # libthermostatd.a
+LIB2ARCH = libthermostatd.a
 C11LIB2OBJS =\
 #
 C99LIB2OBJS =\
@@ -154,7 +168,7 @@ LIB2MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB2ARCH C11LIB2OBJS C99LIB2OBJS LIB2OBJS LIB2HDRS LIB2MAN
 
-LIB3ARCH = # libradioclk.a
+LIB3ARCH = libradioclk.a
 C11LIB3OBJS =\
 #
 C99LIB3OBJS =\
@@ -201,7 +215,7 @@ LIB3MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB3ARCH C11LIB3OBJS C99LIB3OBJS LIB3OBJS LIB3HDRS LIB3MAN
 
-LIB4ARCH = # libautobaud.a
+LIB4ARCH = libautobaud.a
 C11LIB4OBJS =\
 #
 C99LIB4OBJS =\
@@ -230,7 +244,7 @@ LIB4MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB4ARCH C11LIB4OBJS C99LIB4OBJS LIB4OBJS LIB4HDRS LIB4MAN
 
-LIB5ARCH = # librefclock_fifo.a
+LIB5ARCH = librefclock_fifo.a
 C11LIB5OBJS =\
 #
 C99LIB5OBJS =\
@@ -428,7 +442,7 @@ LIB15MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB15ARCH C11LIB15OBJS C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
 
-LIB16ARCH = # libangle.a
+LIB16ARCH = libangle.a
 C11LIB16OBJS =\
 #
 C99LIB16OBJS =\
@@ -582,7 +596,7 @@ LIB20MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB20ARCH C11LIB20OBJS C99LIB20OBJS LIB20OBJS LIB20HDRS LIB20MAN
 
-LIB21ARCH = # libstring.a
+LIB21ARCH = libstring.a
 C11LIB21OBJS =\
 #
 C99LIB21OBJS =\
@@ -598,7 +612,7 @@ LIB21MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB21ARCH C11LIB21OBJS C99LIB21OBJS LIB21OBJS LIB21HDRS LIB21MAN
 
-LIB22ARCH = # libpool.a
+LIB22ARCH = libpool.a
 C11LIB22OBJS =\
 #
 C99LIB22OBJS =\
@@ -890,6 +904,7 @@ C99LIB39OBJS =\
  debug.o\
  dual.o\
  duplicate.o\
+ db.o\
  sort5.o\
  operations.o\
  compare.o\

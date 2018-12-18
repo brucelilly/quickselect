@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.38 dated 2018-08-05T00:26:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.39 dated 2018-12-18T13:19:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.38"
-#define MODULE_DATE "2018-08-05T00:26:40Z"
+#define MODULE_VERSION "1.39"
+#define MODULE_DATE "2018-12-18T13:19:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -66,9 +66,9 @@ extern double mos_ends_power;
 
 /* shell specials: ;&()|<> \"'#$`~{}*?[ */
 /* getopt treats ? and : specially (: may be used as a magic silence flag) */
-/* available characters: 012678Y(){}\;'"`  plus control characters and whitespace */
-#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>]"
-#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
+/* available characters: 012678(){}\'"`  plus control characters and whitespace */
+#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>];"
+#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-;] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
 -a [opts]\ttest illumos qsort, possibly with modifications\n\
 -A\talphabetic (string) data type tests\n\
 -b [0]\ttest Bentley&McIlroy qsort optionally w/o instrumentation\n\
@@ -144,6 +144,7 @@ extern double mos_ends_power;
 -= names\ttest named functions (rexexp)\n\
 ->\ttest sorting small arrays by merging runs\n\
 -] n\tset cache size to n, overriding determination by system\n\
+-;\tsimulate database lookup of data elements\n\
 start\tbegin testing with array size\n\
 incr\tincrement array size (expression)\n\
 size\tnumber of items in each test (maximum size if start is given) (default 10000)\n\
@@ -2833,7 +2834,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 (void *)darray, ((char *)darray)+sizeof(double)*sz);
 #endif /* DEBUG_CODE */
     }
-    if (0U!=flags['L']) {
+    if ((0U!=flags['L'])||(0U!=flags[';'])) {
         larray=malloc(sizeof(long)*sz);
         if (NULL==larray) errs++;
         if (0U<errs) {

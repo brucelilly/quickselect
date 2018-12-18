@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timing.c version 1.44 dated 2018-07-18T16:27:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is timing.c version 1.45 dated 2018-12-18T13:19:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.timing.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: timing.c ~|^` @(#)"
 #define SOURCE_MODULE "timing.c"
-#define MODULE_VERSION "1.44"
-#define MODULE_DATE "2018-07-18T16:27:23Z"
+#define MODULE_VERSION "1.45"
+#define MODULE_DATE "2018-12-18T13:19:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -827,8 +827,13 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         if (DEBUGGING(SORT_SELECT_DEBUG))
                             (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                        pv=type_array(type);
-                        size=ratio*type_size(type);
+                        if (0U!=flags[';']) {
+                            pv=global_larray;;
+                            size=sizeof(long);
+                        } else {
+                            pv=type_array(type);
+                            size=ratio*type_size(type);
+                        }
                         /* generate new test sequence */
                         if ((NULL!=f)&&(0U==flags[':'])) {
                             if (0U!=flags['K']) fprintf(stderr, "# ");
@@ -1062,9 +1067,15 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                    pv=type_array(type);
-                    size=ratio*type_size(type);
-                    alignsize=type_alignment(type);
+                    if (0U!=flags[';']) {
+                        pv=global_larray;;
+                        size=sizeof(long);
+                        alignsize=type_alignment(DATA_TYPE_LONG);
+                    } else {
+                        pv=type_array(type);
+                        size=ratio*type_size(type);
+                        alignsize=type_alignment(type);
+                    }
 #if DEBUG_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: pv=%p, size=%lu, "
@@ -1216,7 +1227,12 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             break;
                         } /* sequence switch */
                         /* copy test sequence to typed array */
-                        duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        if (0U!=flags[';']) {
+                            write_database_files(global_refarray,n,type);
+                            initialize_indices(n);
+                        } else {
+                            duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        }
                         /* run test */
                         if (0U != flags['i']) reset_counters(0U);
                         test_s = test_u = test_w = 0.0;

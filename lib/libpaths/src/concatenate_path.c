@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    concatenate_path.c copyright 2010-2017 Bruce Lilly.   \ concatenate_path.c $
+* $Id: ~|^` @(#)    concatenate_path.c copyright 2010-2018 Bruce Lilly.   \ concatenate_path.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is concatenate_path.c version 1.7 dated 2017-09-01T02:22:30Z. \ $ */
+/* $Id: ~|^` @(#)   This is concatenate_path.c version 1.8 dated 2018-12-16T19:20:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "paths" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libpaths/src/s.concatenate_path.c */
@@ -64,10 +64,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: concatenate_path.c ~|^` @(#)"
 #define SOURCE_MODULE "concatenate_path.c"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2017-09-01T02:22:30Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2018-12-16T19:20:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2010-2017"
+#define COPYRIGHT_DATE "2010-2018"
 
 /* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
@@ -136,7 +136,7 @@ static void initialize_paths(void)
    put result in buf (if not NULL) of size sz (if large enough)
    return length of result if buf is not NULL and is large enough,
      or size required for result if buf is NULL or is too small
-   neither dir nor base are checked for existence or nomalized
+   neither dir nor base are checked for existence or normalized
    no expansion of relative path components is performed
 */
 int concatenate_path(const char *dir, const char *base, const char *suffix,

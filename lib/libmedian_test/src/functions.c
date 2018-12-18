@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.22 dated 2018-07-27T18:18:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.23 dated 2018-12-18T13:19:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2018-07-27T18:18:38Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2018-12-18T13:19:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -299,6 +299,12 @@ const char *comparator_name(int (*compar)(const void *, const void *,...))
     if (compar==(int (*)(const void *,const void *,...))aqcmp) return "aqcmp";
     if (compar==(int (*)(const void *,const void *,...))floatcmp) return "floatcmp";
     if (compar==(int (*)(const void *,const void *,...))size_tcmp) return "size_tcmp";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_struct) return "db_compare_struct";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_string) return "db_compare_string";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_double) return "db_compare_double";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_long) return "db_compare_long";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_int) return "db_compare_int";
+    if (compar==(int (*)(const void *,const void *,...))db_compare_short) return "db_compare_short";
     if (NULL==compar) return "NULL";
     return "unknown";
 }
@@ -310,30 +316,30 @@ int (*type_comparator(unsigned int type, unsigned char *flags))(const void *, co
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #if DEBUG_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
-        (V)fprintf(stderr,"/* %s: type=%u, flags['i']=%u */\n",__func__,type,flags['i']);
+        (V)fprintf(stderr,"/* %s: type=%u, flags['i']=%u, flags[';']=%u */\n",__func__,type,0U+flags['i'],flags[';']);
 #endif
     switch (type) {
         case DATA_TYPE_CHAR :          return NULL;
         break;
         case DATA_TYPE_SHORT :
-            if (0U!=flags['i']) return ishortcmp; else return shortcmp;
+            if (0U!=flags[';']) return db_compare_short; else if (0U!=flags['i']) return ishortcmp; else return shortcmp;
         break;
         case DATA_TYPE_INT :
-            if (0U!=flags['i']) return iintcmp; else return intcmp;
+            if (0U!=flags[';']) return db_compare_int; else if (0U!=flags['i']) return iintcmp; else return intcmp;
         break;
         case DATA_TYPE_LONG :
-            if (0U!=flags['i']) return ilongcmp; else return longcmp;
+            if (0U!=flags[';']) return db_compare_long; else if (0U!=flags['i']) return ilongcmp; else return longcmp;
         break;
         case DATA_TYPE_FLOAT :          return floatcmp;
         break;
         case DATA_TYPE_DOUBLE :
-            if (0U!=flags['i']) return idoublecmp; else return doublecmp;
+            if (0U!=flags[';']) return db_compare_double; else if (0U!=flags['i']) return idoublecmp; else return doublecmp;
         break;
         case DATA_TYPE_STRUCT :
-            if (0U!=flags['i']) return itimecmp; else return timecmp;
+            if (0U!=flags[';']) return db_compare_struct; else if (0U!=flags['i']) return itimecmp; else return timecmp;
         break;
         case DATA_TYPE_STRING :
-            if (0U!=flags['i']) return idata_struct_strcmp; else return data_struct_strcmp;
+            if (0U!=flags[';']) return db_compare_string; else if (0U!=flags['i']) return idata_struct_strcmp; else return data_struct_strcmp;
         break;
         case DATA_TYPE_POINTER :
             if (0U!=flags['i']) return iindcmp; else return indcmp;

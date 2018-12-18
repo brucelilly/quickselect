@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.36 dated 2018-08-04T14:01:12Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.37 dated 2018-12-18T13:19:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -661,6 +661,20 @@ extern unsigned int correctness_tests(unsigned int sequences, unsigned int funct
     unsigned int p, unsigned int *plast_adv,
     void (*f)(int, void *, const char *, ...), void *log_arg,
     unsigned char *flags);
+
+/* db.c */
+extern int db_compare_double(const long *pindx1, const long *pindx2);
+extern int db_compare_int(const long *pindx1, const long *pindx2);
+extern int db_compare_long(const long *pindx1, const long *pindx2);
+extern int db_compare_short(const long *pindx1, const long *pindx2);
+extern int db_compare_string(const long *pindx1, const long *pindx2);
+extern int db_compare_struct(const long *pindx1, const long *pindx2);
+extern void index_to_path(unsigned long indx, const char *prefix, char *path, unsigned int sz);
+extern void initialize_indices(size_t n);
+extern void read_text_file(const char *path, char *buf, unsigned int sz);
+extern void ref_to_text(long l, unsigned int data_type, char *buf, unsigned int sz);
+extern void text_to_datum(const char *buf, unsigned int data_type, void *datum);
+extern void write_database_files(long *p, size_t n, unsigned int data_type);
 
 /* debug.c */
 extern const char *debug_name(unsigned int value);

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.37 dated 2018-06-26T00:37:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.38 dated 2018-12-18T13:19:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.37"
-#define MODULE_DATE "2018-06-26T00:37:40Z"
+#define MODULE_VERSION "1.38"
+#define MODULE_DATE "2018-12-18T13:19:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -631,8 +631,13 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                         if (DEBUGGING(SORT_SELECT_DEBUG))
                             (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                        pv=type_array(type);
-                        size=ratio*type_size(type);
+                        if (0U!=flags[';']) {
+                            pv=global_larray;;
+                            size=sizeof(long);
+                        } else {
+                            pv=type_array(type);
+                            size=ratio*type_size(type);
+                        }
 #if GENERATOR_TEST
                         compar=type_comparator(type,flags); /* for generator tests */
 #endif
@@ -869,9 +874,15 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                    pv=type_array(type);
-                    size=ratio*type_size(type);
-                    alignsize=type_alignment(type);
+                    if (0U!=flags[';']) {
+                        pv=global_larray;;
+                        size=sizeof(long);
+                        alignsize=type_alignment(DATA_TYPE_LONG);
+                    } else {
+                        pv=type_array(type);
+                        size=ratio*type_size(type);
+                        alignsize=type_alignment(type);
+                    }
 #if DEBUG_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: pv=%p, size=%lu, "
@@ -1035,7 +1046,12 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                         } /* sequence switch */
 do_test:
                         /* copy test sequence to typed array */
-                        duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        if (0U!=flags[';']) {
+                            write_database_files(global_refarray,n,type);
+                            initialize_indices(n);
+                        } else {
+                            duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        }
                         /* long test data is in long array larray */
                         /* test sequence has been copied to others */
                         /* verify correctness of test sequences */
