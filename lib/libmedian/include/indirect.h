@@ -12,7 +12,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    indirect.h copyright 2017-2018 Bruce Lilly. \ indirect.h $
+* $Id: ~|^` @(#)    indirect.h copyright 2017-2019 Bruce Lilly. \ indirect.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect.h version 1.16 dated 2018-07-29T15:25:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect.h version 1.18 dated 2019-03-15T14:07:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.indirect.h */
@@ -53,7 +53,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INDIRECT_H_VERSION "indirect.h 1.16 2018-07-29T15:25:48Z"
+#define INDIRECT_H_VERSION "indirect.h 1.18 2019-03-15T14:07:13Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -62,6 +62,8 @@
                                    Value > 1 will increase comparisons count.
                                    N.B. assert() likely won't work here.
                                 */
+
+#include "quickselect_config.h" /* COMPAR_DECL COMPAR_ARGS */
 
 #include <errno.h>              /* errno E* */
 #include <stddef.h>             /* size_t */
@@ -93,15 +95,9 @@
 # define INDIRECT_INLINE /**/
 #endif /* C99 */
 
-/* indirect.c */
-INDIRECT_EXTERN char **set_array_pointers(char **pointers, size_t nptrs,
-    char *base, size_t size, size_t first, size_t beyond);
-INDIRECT_EXTERN size_t *convert_pointers_to_indices(char *base, size_t nmemb, size_t size,
-    char **pointers, size_t nptrs, size_t *indices, size_t first, size_t beyond);
-
 /* indirect_mergesort.c */
 INDIRECT_EXTERN int indirect_mergesort(char *base, size_t nmemb, size_t size,
-    int (*compar)(const void *, const void *));
+    COMPAR_DECL);
 
 /* inline code follows */
 
@@ -113,13 +109,124 @@ INDIRECT_EXTERN int indirect_mergesort(char *base, size_t nmemb, size_t size,
 # include "exchange.h"
 #endif
 
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
+#if 0
+/* indirect.c */
+INDIRECT_EXTERN char **set_array_pointers(char **pointers, size_t nptrs,
+    char *base, size_t size, size_t first, size_t beyond);
+INDIRECT_EXTERN size_t *convert_pointers_to_indices(char *base, size_t nmemb, size_t size,
+    char **pointers, size_t nptrs, size_t *indices, size_t first, size_t beyond);
+
+#else
+
+static INDIRECT_INLINE
+char **set_array_pointers(char **pointers, size_t nptrs, char *base,
+    size_t size, size_t first, size_t beyond)
+{
+    register size_t nmemb;
+
+    /* Argument validity check. */
+    if ((NULL==base)
+    || (0UL==size)
+    || (first>beyond)
+    || (nptrs < (nmemb=beyond-first)) /* N.B. AFTER ensuring beyond >= first */
+    || (0UL==nmemb) /* N.B. AFTER assignment to nmemb! */
+    ) {
+        errno=EINVAL;
+        return NULL;
+    }
+    /* Allocate pointers array if not supplied. */
+    if (NULL==pointers) {
+#if QUICKSELECT_USE_ALIGNED_ALLOC && defined(__STDC__) \
+&& ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
+        pointers=(char **)aligned_alloc((size_t)(QUICKSELECT_DEFAULT_ALIGNMENT),
+            sizeof(char *)*nptrs);
+#elif QUICKSELECT_USE_POSIX_MEMALIGN
+        int r=posix_memalign((void **)(&pointers),
+            (size_t)(QUICKSELECT_DEFAULT_ALIGNMENT),sizeof(char *)*nptrs);
+        if (r!=0) {
+            pointers=NULL; /* maybe changed by posix_memalign */
+            errno=r;
+        }
+#else
+        pointers=(char **)malloc(sizeof(char *)*nptrs);
+#endif
+    }
+    /* Initialize pointers to elements (unless allocation failed). */
+    /* pointer[0] -> base+first*size, etc. */
+    if (NULL!=pointers) {
+        register size_t n;
+        register char *p;
+
+        for (n=0UL,p=base+first*size; n<nmemb; n++,p+=size) pointers[n]=p;
+#if INDIRECT_MERGE_ZERO_UNUSED_POINTERS
+        for (; n<nptrs; n++) pointers[n]=NULL;
+#endif
+    }
+    return pointers;
+}
+
+static INDIRECT_INLINE
+size_t *convert_pointers_to_indices(char *base, size_t nmemb, size_t size,
+    char **pointers, size_t nptrs, size_t *indices, size_t first, size_t beyond)
+{
+    /* Check argument validity. */
+    if ((nptrs < nmemb)
+    || (((char *)pointers==(char *)indices)&&(sizeof(size_t)>sizeof(char *)))
+    || (NULL==base)
+    || (NULL==indices)
+    || (0UL==size)
+    || (first>beyond)
+    || (first+nmemb<beyond)
+    ) {
+        errno=EINVAL;
+        return NULL;
+    }
+    if (0UL<nmemb) {
+        register size_t n;
+#if ASSERT_CODE
+        register size_t i;
+        char *pl=base+first*size, *p, *pu=base+beyond*size;
+        /* pointer sanity check */
+        for (n=0UL,i=0UL; i<nptrs; i++) {
+            p=pointers[i];
+            if ((pl<=p)&&(p<pu)) continue;
+            (V)fprintf(stderr,
+                "%s: %s line %d: pointers[%lu]=%p is out of bounds: base=%p, "
+                "beyond@%p: %ld\n",__func__,source_file,__LINE__,i,(void *)p,
+                (void *)base,(void *)pu,(long)(p-base)/(long)size);
+            n++;
+        }
+        A(0UL==n);
+#endif /* ASSERT_CODE */
+        /* Allocate array of indices if not provided. */
+        if (NULL==indices) {
+#if QUICKSELECT_USE_ALIGNED_ALLOC && defined(__STDC__) \
+&& ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 201101L) /* C11 */
+            indices=(size_t *)aligned_alloc(
+                (size_t)(QUICKSELECT_DEFAULT_ALIGNMENT),sizeof(size_t)*nptrs);
+#elif QUICKSELECT_USE_POSIX_MEMALIGN
+            int r=posix_memalign((void **)(&indices),(
+                size_t)(QUICKSELECT_DEFAULT_ALIGNMENT),sizeof(size_t)*nptrs);
+            if (r!=0) {
+                indices=NULL; /* maybe changed by posix_memalign */
+                errno=r;
+            }
+#else
+            indices=(size_t *)malloc(sizeof(size_t)*nptrs);
+#endif
+            if (NULL==indices) return indices;
+        }
+        /* Convert. */
+        for (n=0UL; n<nptrs; n++) {
+            if (NULL!=pointers[n])
+                indices[n]=(pointers[n]-base)/size;
+            else indices[n]=first+n;
+            A(indices[n]<beyond);A(indices[n]>=first);
+        }
+    }
+    return indices;
+}
+#endif
 
 /* swap function for pointers */
 extern void (*pointerswap)(char *,char *,size_t);
@@ -172,12 +279,10 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
     size_t r, o, t, x, y;
 
     A(l<=m);A(m<u);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
         (V)fprintf(stderr,"/* %s %d: l=%lu, m=%lu, u=%lu, n1=%lu, n2=%lu, options"
             "=0x%x */\n",__func__,__LINE__,l,m,u,m-l,u-m,options);
-#endif
-#if defined(DEBUGGING)
     nmerges++;
 #endif
     /* Find and swap the first element of the left side which is larger than the
@@ -213,7 +318,7 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
         s=l,t=m;
         p=base+s*size;
         q=base+t*size;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
         print_some_array(base,l,u-1UL,"/* pre-merge: "," */",options);
 #endif
@@ -221,7 +326,7 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
             A(p==base+s*size);
             /* limited-range linear search */
             if ((r=s+3UL)>t) r=t; /* test limit */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(COMPARE_DEBUG)) {
         (V)fprintf(stderr, "/* %s %d: r=%lu, s=%lu, t=%lu "
             "*/\n",__func__,__LINE__,r,s,t);
@@ -268,7 +373,7 @@ void inplace_merge(char *base, const size_t l, size_t m, const size_t u,
                 if (t>1UL)
                     for (z=t-2UL; r<=z;) {
                         p=base+(o=BS_MID_L(r,z))*size;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(COMPARE_DEBUG)) {
         (V)fprintf(stderr, "/* %s: o=%lu, r=%lu, z=%lu "
             "*/\n",__func__,o,r,z);
@@ -480,20 +585,18 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
        and to be only slightly suboptimal for M-ary, reversed, and constant
        inputs.
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG)) {
         (V)fprintf(stderr, "/* %s: nmemb=%lu, n1=%lu, n2=%lu, displaced=%lu "
             "*/\n",__func__,end2-sorted1,sorted2-sorted1,end2-sorted2,
             displaced-sorted1);
     }
-#endif
 
-#if defined(DEBUGGING)
     nmerges++;
 #endif
     if (lim==sorted1) lim++;
     if (lim>sorted2) lim=sorted2;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
         (V)fprintf(stderr, "/* %s: lim=%p[%lu], sorted2=%p[%lu] */\n",
             __func__,(void *)lim,lim-sorted1,(void *)sorted2,sorted2-sorted1);
@@ -501,11 +604,11 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
     for (dhead=dtail=displaced,e2=*s2; s1<lim; s1++)
     {
         e1=*s1;
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         npderefs++;
 #endif
         if (0<OPT_COMPAR((const void *)e1,(const void *)e2,C_OPT)) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
                 (V)fprintf(stderr, "/* %s e1=%p[%lu] > e2=%p[%lu], "
                     "lim-sorted1=%lu, sorted2-sorted1-1=%lu */\n",__func__,e1,
@@ -527,7 +630,7 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
             *(dtail++)=*s1, *s1=*(s2++);
             break;
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         else {
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
                 (V)fprintf(stderr, "/* %s e1=%p[%lu] <= e2=%p[%lu], "
@@ -542,10 +645,8 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
             return; /* done */
         }
         e1=*(sorted2-1); /* last element of first region */
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         npderefs++;
-#endif
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
             (V)fprintf(stderr, "/* %s none displaced: e1=%p[%lu], e2=%p[%lu], "
                 "lim-sorted1=%lu, sorted2-sorted1-1=%lu */\n",__func__,e1,
@@ -560,7 +661,7 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
         /* already tested 1st part last element e1@sorted2-1 (index b below) */
         a=lim-sorted1,b=(sorted2-sorted1)-1UL,z=(b>0UL?b-1UL:0UL);
         if (a>b) a=b; /* not past last element of first part */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
             (V)fprintf(stderr, "/* %s none displaced, pre-binary search: a=%lu,"
                 " z=%lu */\n",__func__,a,z);
@@ -568,20 +669,20 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
         for (; a<=z; ) {
             b=BS_MID_L(a,z);
             e1=sorted1[b]; /* b is mid-range index */
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             npderefs++;
 #endif
             if (0<OPT_COMPAR((const void *)e1,(const void *)e2,C_OPT))
                 z=b-1UL; /* try farther left */
             else a=b+1UL; /* try farther right */
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
             (V)fprintf(stderr, "/* %s post-binary search: a=%lu, b=%lu, z=%lu, "
                 "s1 %p, s2 %p */\n",__func__,a,b,z,*(sorted1+a),*s2);
 #endif
         s1=sorted1+a, e1=*(dtail++)=*s1, *s1=*(s2++);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG)) {
             (V)fprintf(stderr, "/* %s displaced a=%lu -> dhead=%lu with s1=%lu "
                 "*/\n",__func__,a,dhead-sorted1,s1-sorted1);
@@ -591,7 +692,7 @@ void merge_pointers(char **sorted1, char **sorted2, char **end2,
 #if SILENCE_WHINEY_COMPILERS /* e1 really has already been set... */
       else e1=*dhead;
 #endif
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     npderefs+=2UL, npcopies+=2UL;
 #endif
 #if 1
@@ -610,7 +711,7 @@ if (e1!=*dhead) fprintf(stderr,"/* %s: e1=%p, *dhead=%p */\n",__func__,e1,*dhead
 #endif
     for (e2=*s2,s1++; s1<sorted2; s1++) {
         *(dtail++)=*s1; /* element from the first part is always displaced */
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         npderefs+=2UL, npcopies++;
 #endif
         A(s1!=s2);
@@ -624,7 +725,7 @@ if (e1!=*dhead) fprintf(stderr,"/* %s: e1=%p, *dhead=%p */\n",__func__,e1,*dhead
        elements from the second sorted set and the displaced region continue
        until one of those regions is exhausted.
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MERGE_DEBUG))
         (V)fprintf(stderr, "/* %s: displaced vs. set 2 */\n",__func__);
 /* XXX could check for last displaced < first remaining of 2nd set, and last of
@@ -644,7 +745,7 @@ if (e2!=*s2) fprintf(stderr,"/* %s: e2=%p, *s2=%p */\n",__func__,e2,*s2);
     if (s1!=sorted2) { fprintf(stderr,"s1!=sorted2\n"); abort(); }
 #endif
     for (e1=*dhead,e2=*s2; (s2<end2)&&(dhead<dtail); s1++) {
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         npderefs+=2UL, npcopies++;
 #endif
         if (0<OPT_COMPAR((const void *)e1,(const void *)e2,C_OPT)) {
@@ -657,20 +758,12 @@ if (e2!=*s2) fprintf(stderr,"/* %s: e2=%p, *s2=%p */\n",__func__,e2,*s2);
     /* Finally, append remaining displaced pointers to the merged pointers. */
     while (dhead<dtail) {
         *(s1++)=*(dhead++);
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         npcopies++;
 #endif
     }
     A(dhead==dtail);
 }
-
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
 
 /* Indirectly sort by mergesort an array of nmemb elements at base, pointed to
    by nmemb pointers starting at pointers (and with more NULL pointers after
@@ -686,7 +779,7 @@ void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
 {
     if (1UL<nmemb) { /* size 1 (or smaller) is by definition sorted */
         size_t n1=(nmemb>>1), n2=nmemb-n1;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr, "/* %s: nmemb=%lu, n1=%lu, n2=%lu, pfirst=%lu, "
                 "pbeyond=%lu */\n",__func__,nmemb,n1,n2,pfirst,pbeyond);
@@ -712,8 +805,26 @@ void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
                 /* Use of dedicated_sort permits optimization for speed or
                    number of comparisons.
                 */
-                (V)QUICKSELECT_LOOP((char *)pointers,pfirst,pfirst+n1,
-                        sizeof(char *),COMPAR_ARGS,NULL,0UL,0UL,
+                (V)
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_loop_s
+# else
+            d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_loop_s
+# else
+            quickselect_loop
+# endif
+#endif
+                        ((char *)pointers,pfirst,pfirst+n1,
+                        sizeof(char *),compar,
+#if __STDC_WANT_LIB_EXT1__
+                        context,
+#endif
+			NULL,0UL,0UL,
                         pointerswap,sizeof(char *),1UL,cache_sz,pbeyond,
                         options|QUICKSELECT_INDIRECT,NULL,NULL);
 # if ASSERT_CODE > 1
@@ -733,8 +844,26 @@ void pointer_mergesort(char **pointers, size_t pfirst, char *base, size_t nmemb,
 # endif
             }
             A(1UL<n2);
-            (V)QUICKSELECT_LOOP((char *)pointers,pfirst+n1,pfirst+nmemb,
-                sizeof(char *),COMPAR_ARGS,NULL,0UL,0UL,pointerswap,
+            (V)
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_loop_s
+# else
+            d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_loop_s
+# else
+            quickselect_loop
+# endif
+#endif
+               ((char *)pointers,pfirst+n1,pfirst+nmemb,
+                sizeof(char *),compar,
+#if __STDC_WANT_LIB_EXT1__
+                context,
+#endif
+		NULL,0UL,0UL,pointerswap,
                 sizeof(char *),1UL,cache_sz,pbeyond+nb,
                 options|QUICKSELECT_INDIRECT,NULL,NULL);
             merge_pointers(pointers+pfirst,pointers+pfirst+n1,

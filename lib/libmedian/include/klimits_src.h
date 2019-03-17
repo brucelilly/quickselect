@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    klimits_src.h copyright 2017-2018 Bruce Lilly.   \ klimits_src.h $
+* $Id: ~|^` @(#)    klimits_src.h copyright 2017-2019 Bruce Lilly.   \ klimits_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is klimits_src.h version 1.6 dated 2018-04-23T05:16:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is klimits_src.h version 1.8 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.klimits_src.h */
@@ -101,10 +101,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: klimits_src.h ~|^` @(#)"
 #define SOURCE_MODULE "klimits_src.h"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-04-23T05:16:05Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 #if !defined(QUICKSELECT_BUILD_FOR_SPEED) || !defined(QUICKSELECT_INLINE)
 # include "quickselect_config.h"
@@ -134,16 +134,10 @@
 #define A(me) assert(me)
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-/* declaration */
-#include "klimits_decl.h"
-;
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-
-#if ! QUICKSELECT_BUILD_FOR_SPEED
 /* static data */
 static char klimits_initialized = (char)0;
 static const char *filenamebuf = __FILE__ ;
-static const char *source_file = NULL;
+static const char *source_file;
 
 /* initialize at run-time */
 static QUICKSELECT_INLINE
@@ -155,20 +149,22 @@ void initialize_klimits(void)
     if (NULL == s) s = filenamebuf; else s++;
     klimits_initialized = register_build_strings(NULL, &source_file, s);
 }
-#endif
+#else
+extern char klimits_initialized;
+#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
 /* klimits: find range of order statistic ranks corresponding to sub-array
             limits.
 */
-#include "klimits_decl.h"
+QUICKSELECT_KLIMITS
 {
     size_t h, l, lk, rk;
 
     A(NULL!=pfk);A(NULL!=pbk);A(NULL!=pk);
 #if ! QUICKSELECT_BUILD_FOR_SPEED
-    if ((char)0==file_initialized) initialize_klimits();
+    if ((char)0==klimits_initialized) initialize_klimits();
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG)
     ||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(REPIVOT_DEBUG)
@@ -196,7 +192,7 @@ void initialize_klimits(void)
     A(lk>=firstk);A(lk<=beyondk);A(rk>=firstk);A(rk<=beyondk);
     A((lk==beyondk)||(pk[lk]>=first));A((rk==beyondk)||(pk[rk]>=beyond));
     *pfk=lk, *pbk=rk;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG)
     ||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(REPIVOT_DEBUG)

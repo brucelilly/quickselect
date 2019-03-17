@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    partition_src.h copyright 2017-2018 Bruce Lilly.   \ partition_src.h $
+* $Id: ~|^` @(#)    partition_src.h copyright 2017-2019 Bruce Lilly.   \ partition_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.21 dated 2018-08-02T04:54:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.24 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -133,10 +133,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-08-02T04:54:57Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -154,8 +154,9 @@
 #endif
 
 /* local header files needed */
+#include "median_test_config.h" /* aqcmp pivot_minrank */
 #include "quickselect_config.h"
-#include "exchange.h"           /* blockmove irotate protate EXCHANGE_SWAP */
+#include "exchange.h"           /* blockmove irotate EXCHANGE_SWAP */
 #include "indirect.h"           /* rearrange_array */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
@@ -175,12 +176,6 @@
 #if ASSERT_CODE
 # include <stdio.h>
 #endif
-
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-/* declaration */
-#include "partition_decl.h"
-;
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
 #if (QUICKSELECT_STABLE != 0)
 /* static data */
@@ -223,7 +218,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
             |   |   |   |   |   |   |
             (l) eq1 gt1 mid eq2 gt2  (u)
         */
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(PARTITION_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: first=%lu, mid=%lu, eq1=%lu, gt1=%lu: "
@@ -300,7 +295,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                        indirect sort/select, size_ratio==1 because only pointers
                        are moved here.
                     */
-# if defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                     if ((0UL!=m)&&(SIZE_MAX>m))
                         nmoves+=m*size_ratio;
 # endif
@@ -344,7 +339,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                       minimize the total number of swaps.
                     */
                     if ((0UL==leq)||(0UL==req)||(leq+req<m)) { /* method 3 */
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(PARTITION_DEBUG)) {
                             (V)fprintf(stderr,
                                 "/* %s: %s line %d: first=%lu, beyond=%lu, "
@@ -369,7 +364,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                         /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
                         if (0UL<leq+req) {
                             gt1=eq1+rlt, mid=gt1+req, eq2=mid+leq;
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                             if (DEBUGGING(PARTITION_DEBUG)) {
                                 (V)fprintf(stderr,
                                     "/* %s: %s line %d: method 3b: exchange = "
@@ -387,7 +382,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                                 size_ratio);
                         }
                     } else if (lgt<rlt) { /* method 2 */
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(PARTITION_DEBUG)) {
                             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
                                 "beyond=%lu, eq1=%lu, gt1=%lu, mid=%lu, eq2=%lu"
@@ -410,7 +405,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                         /* +-----------------------------+ */
                         /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
                         mid=gt1+rlt, eq2=mid+req;
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(PARTITION_DEBUG)) {
                             (V)fprintf(stderr,"/* %s: %s line %d: method 2b: "
                                 "exchange L=,R< by rotating eq1|gt1|mid first="
@@ -428,7 +423,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                         /* | L< | L= | L> | R< | R= | R> | */
                         /* +-----------------------------+ */
                         /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(PARTITION_DEBUG)) {
                             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
                                 "beyond=%lu, eq1=%lu, gt1=%lu, mid=%lu, eq2=%lu"
@@ -450,7 +445,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                         /* +-----------------------------+ */
                         /* (l)  eq1  gt1  mid  eq2  gt2  (u) */
                         gt1=eq1+rlt, mid=gt1+leq;
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(PARTITION_DEBUG)) {
                             (V)fprintf(stderr,"/* %s: %s line %d: method 1b: "
                                 "exchange L>,R= by rotating mid|eq2|gt2: first="
@@ -472,7 +467,7 @@ void merge_partitions(char *base, size_t first, size_t eq1, size_t gt1,
                 }
             break;
         }
-# if (ASSERT_CODE + DEBUG_CODE) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(PARTITION_DEBUG)) {
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, *peq="
                 "%lu, *pgt=%lu: merged partition, nsw=%lu */\n",__func__,
@@ -523,12 +518,9 @@ void linear_partition(char *base, size_t first, size_t beyond,
     register char *pb, *pg;
     register int c=0;
     register size_t i, ieq, igt;
-# if 0 /* for non-stable linear partition code */
-    register size_t j, k;
-# endif
 
     pl=base+size*first, pu=base+size*beyond;
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pc@%lu, pd@%lu, pivot@"
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
@@ -627,7 +619,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                     }
                 }
             }
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr, "/* %s: %s line %d: conditions:",
                    __func__,source_file,__LINE__);
@@ -645,7 +637,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                     beyond,*peq,*pgt);
 #  endif
             A(*peq<=*pgt);A(first<=*peq);A(*pgt<=beyond);
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* ieq=%lu, *peq=%lu, igt=%lu, *pgt=%lu */\n",
                     ieq,*peq,igt,*pgt);
@@ -658,7 +650,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                 while ((i<ieq)&&(0>conditions[i])) indices[i]=first+i, i++;
                 while ((first+j>=igt)&&(0<conditions[j])) indices[j]=first+j, j--;
                 while ((first+k<igt)&&(0==conditions[k])) indices[k]=first+k, k++;
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: i=%lu(%d), j=%lu(%d),"
                         " k=%lu(%d) */\n",__func__,source_file,__LINE__,i,
@@ -693,7 +685,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                     A(0==1);
                 }
             }
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr, "/* *peq=%lu, *pgt= %lu, indices:",*peq,*pgt);
                 for (i=0UL; i<nmemb; i++)
@@ -768,7 +760,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                     }
                 }
             }
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr, "/* %s: %s line %d: ieq=%lu, conditions:",
                    __func__,source_file,__LINE__,ieq);
@@ -792,7 +784,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
                 A(i<beyond);
             }
             *pgt=first+ieq;
-#  if (DEBUG_CODE>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,
                     "/* %s: %s line %d: *peq=%lu, *pgt= %lu, indices:",
@@ -807,7 +799,7 @@ void linear_partition(char *base, size_t first, size_t beyond,
     }
     i=rearrange_array(base,nmemb,size,indices,nmemb,first,beyond,alignsize);
     A(nmemb>(i>>1));
-# if defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
     /* Update count of moves: for direct data sort/select,
        size_ratio reflects data size compared to alignsize (which
        is assumed to be the basic move size used by movement); for
@@ -816,8 +808,6 @@ void linear_partition(char *base, size_t first, size_t beyond,
     */
     if (0UL!=i)
         nmoves+=(i+nmemb)*size_ratio;
-# endif
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
     if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: partitioned: "
@@ -845,7 +835,7 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
     /* divide-and-conquer partition */
     pl=base+size*first, pu=base+size*beyond;
 
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pc@%lu, pd@%lu, pivot@"
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
@@ -871,7 +861,7 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
         *pgt=(pe-base)/size;
     } else if ((beyond-first)*(size+1UL+pointer_and_char)<pcachesz) {
         /* fits in cache */
-# if (ASSERT_CODE + DEBUG_CODE > 0) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(PARTITION_DEBUG)) {
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, size="
                 "%lu, pcachesz=%lu */\n",__func__,source_file,__LINE__,first,
@@ -892,7 +882,7 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
             */
             ipc=(pc-base)/size, ipd=(pd-base)/size, ipe=(pe-base)/size,
                 ipf=(pf-base)/size;
-# if (ASSERT_CODE + DEBUG_CODE > 0) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, ipc=%lu, ipd="
                     "%lu, ipe=%lu, ipf=%lu, beyond=%lu */\n",__func__,
@@ -943,7 +933,7 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
                unpartitioned sub-array.
             */
             size_t mid=first+((beyond-first)>>1), eq2, gt2;
-# if (ASSERT_CODE + DEBUG_CODE > 0) && defined(DEBUGGING)
+# if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, mid=%lu, eq2="
                     "%lu, gt2=%lu, beyond=%lu */\n",__func__,source_file,
@@ -964,18 +954,18 @@ void divide_and_conquer_partition(char *base, size_t first, size_t beyond,
 }
 #endif /* (QUICKSELECT_STABLE != 0) */
 
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "partition_decl.h"
+#if __STDC_WANT_LIB_EXT1__
+QUICKSELECT_PARTITION_S
+#else
+QUICKSELECT_PARTITION
+#endif
 {
     char *pa, *ph, *pl, *pu;
     register char *pb, *pg;
     register int c=0, d=0;
 
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE && ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
-# if (DEBUG_CODE>0)
     if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, pc@%lu, pd@%lu, pivot@"
             "%lu, pe@%lu, pf@%lu, beyond=%lu, options=0x%x */\n",__func__,
@@ -996,11 +986,10 @@ static QUICKSELECT_INLINE
             abort();
         }
     }
-# endif /* DEBUG_CODE */
     npartitions++;
     /* antiqsort handshake; allow further freezes during partitioning */
     if (aqcmp==compar) pivot_minrank=beyond-first;
-#endif /* DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
     /* Stable sorting methods (insertion sort, in-place mergesort, indirect
        mergesort) are all faster than sorting using stable divide-and-conquer
        quicksort, provided sufficient memory is available for the extra space
@@ -1022,7 +1011,7 @@ static QUICKSELECT_INLINE
                avoid recomparisons during partitioning.
             */
             A((pc==pl)||(pf==pu)||(pc+size==pf));
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: (on entry) first=%lu, pl@%lu, pc@"
                     "%lu, pd@%lu, pe@%lu, pf@%lu, pu@beyond=%lu, pivot@%lu, options=0x"
@@ -1060,7 +1049,7 @@ static QUICKSELECT_INLINE
             /* |   =   |   <   |  ?  : < :=: > :  ?  |   >   |   =   | */
             /* +-----------------------------------------------------+ */
             /*  l       a       b    [c   d e   f]  G g       h       u*/
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: (ready) first=%lu, pl@%lu, pa@%lu"
                     ", pb@%lu, pg@%lu, ph@%lu, beyond=%lu, pivot@%lu, options=0x%x */\n",
@@ -1175,7 +1164,7 @@ static QUICKSELECT_INLINE
                 }
             }
             /* Canonicalize */
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: (before canonicalization)"
                     " first=%lu, pa@%lu, pb@%lu, pg@%lu, ph@%lu, beyond=%lu, "
@@ -1192,7 +1181,7 @@ static QUICKSELECT_INLINE
             pd=blockmove(pl,pa,pb,swapf);
             pe=blockmove(pb,ph,pu,swapf);
             A(pl<=pd); A(pd<pe); A(pe<=pu);
-# if (DEBUG_CODE>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG)||DEBUGGING(PARTITION_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: (after canonicalization) "
                     "first=%lu, pd@%lu, pe@%lu, beyond=%lu, options=0x%x */\n",

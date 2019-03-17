@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    repivot_src.h copyright 2017-2018 Bruce Lilly.   \ repivot_src.h $
+* $Id: ~|^` @(#)    repivot_src.h copyright 2017-2019 Bruce Lilly.   \ repivot_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_src.h version 1.16 dated 2018-06-12T02:18:51Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_src.h version 1.18 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.repivot_src.h */
@@ -95,10 +95,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "repivot_src.h"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2018-06-12T02:18:51Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "quickselect_config.h" /* SELECTION_MIN_REPIVOT */
@@ -116,18 +116,15 @@
 #include <assert.h>             /* assert */
 #include <stddef.h>             /* size_t NULL */
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
 #include <limits.h>             /* PATH_MAX */
 #include "paths_decl.h"         /* path_basename */
 #endif
 
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-/* declaration */
-#include "should_repivot_decl.h"
-;
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if ( ! defined(REPIVOT_SRC_FILE_HERE)) || (LIBMEDIAN_TEST_CODE == 0)
+extern char repivot_src_file[];
+extern char repivot_src_file_initialized;
+#else
 /* not static; referenced by inline functions */
 char repivot_src_file[PATH_MAX];
 char repivot_src_file_initialized=0;
@@ -137,13 +134,7 @@ char repivot_src_file_initialized=0;
    appropriate pivot selection method: 
       0U or QUICKSELECT_RESTRICT_RANK
 */
-QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
-#include "should_repivot_decl.h"
-/*
-unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
-    const size_t samples, int method, unsigned int options,
-    const size_t *pk, int *pn2)
-*/
+QUICKSELECT_SHOULD_REPIVOT
 {
     size_t q, ratio;
     const struct repivot_table_struct *prt;
@@ -152,13 +143,13 @@ unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==repivot_src_file_initialized) {
-        (V)path_basename(__FILE__,repivot_src_file,sizeof(repivot_src_file));
+        (V)path_basename(__FILE__,repivot_src_file,PATH_MAX);
         repivot_src_file_initialized++;
     }
 #endif
-#if (DEBUG_CODE > 1) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, "
@@ -213,7 +204,7 @@ unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
     q=nmemb-n;
     A(0UL<q);
     if (n<=q) { /* ratio 0; return w/o incurring division cost */
-#if (DEBUG_CODE > 1) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu"
@@ -225,7 +216,7 @@ unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
     }
     ratio=n/q;
     for (i=0; samples>=prt[i+1].min_samples; i++) ; /* index for table entry */
-#if (DEBUG_CODE > 1) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: i=%d, "
@@ -235,7 +226,7 @@ unsigned int SHOULD_REPIVOT_FUNCTION_NAME(const size_t nmemb, const size_t n,
 #endif
     if ((ratio>=prt[i].factor1)
     || ((ratio>=prt[i].factor2)&&(++*pn2>=2))) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, "

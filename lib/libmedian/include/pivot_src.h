@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    pivot_src.h copyright 2017-2018 Bruce Lilly.   \ pivot_src.h $
+* $Id: ~|^` @(#)    pivot_src.h copyright 2017-2019 Bruce Lilly.   \ pivot_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is pivot_src.h version 1.22 dated 2018-08-02T14:05:56Z. \ $ */
+/* $Id: ~|^` @(#)   This is pivot_src.h version 1.25 dated 2019-03-16T14:44:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.pivot_src.h */
@@ -108,10 +108,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: pivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "pivot_src.h"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2018-08-02T14:05:56Z"
+#define MODULE_VERSION "1.25"
+#define MODULE_DATE "2019-03-16T14:44:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "exchange.h"           /* EXCHANGE_SWAP */
@@ -138,6 +138,7 @@
                                    [N1570 K3.6]) */
 # endif /* N1570 */
 #endif /* C99 or later */
+#include <stdio.h>              /* stderr fprintf */
 
 #if __STDC_WANT_LIB_EXT1__
 /* Preliminary support for 9899:201x draft N1570 qsort_s w/ "context".
@@ -207,56 +208,9 @@
 */
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
-/* fmed3 is called by remedian and select_pivot; remedian is also called by
-   select_pivot. select_pivot is called by quickselect_loop[_s], introsort,
-   mbmqsort, sqsort, wqsort.
-*/
-/* Median of sets of 3 elements:
-   Optimized ternary median-of-3: 1-3 comparisons.
-   Minimum number of comparisons (because in the qsort model (external function
-   for comparison), comparisons are expensive).  If any two elements (of the 3)
-   compare equal, either can be chosen for the median (the value is the median
-   of the 3, regardless of the value of the third element).  Likewise, the
-   median may be determined by the first two comparisons, e.g. a < b and b < c.
-   In the worst case, 3 comparisons are required.  Return value is biased to pb,
-   then pa.  The function does not modify the pointers or the data array
-   elements to which they point.  However, they are not declared with the
-   "const" qualifier as that would inevitably lead to a cacsade of spurious
-   "discarding const qualifier" warnings (or worse, spurious "errors"). Median
-   of 3 is used for pivot selection, and the pivot element (as well as other
-   elements) are rearranged, and that rearrangement precludes "const" as the
-   element pointed to has its data replaced (usually swapped with) data from
-   another element.
-*/
-static QUICKSELECT_INLINE
-char * FMED3_FUNCTION_NAME (char *pa, char *pb, char *pc, COMPAR_DECL)
-{
-    register int c;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-    if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-        (V)fprintf(stderr, "/* %s: pa=%p, pb=%p, pc=%p */\n",
-        __func__,(void *)pa,(void *)pb,(void *)pc);
-    }
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "fmed3_src.h"
 #endif
-    c=COMPAR(pa,pb);
-    if (0!=c) {
-        register int d=COMPAR(pb,pc);
-        if (0!=d) {
-            if ((0<d)&&(0>c)) {
-                if (0>COMPAR(pa,pc)) return pc; else return pa;
-            } else if ((0>d)&&(0<c)) {
-                if (0<COMPAR(pa,pc)) return pc; else return pa;
-            }
-        }
-    }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
-    if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-        (V)fprintf(stderr, "/* %s: pb=%p */\n",
-        __func__,(void *)pb);
-    }
-#endif
-    return pb;
-}
 
 /* Remedian (base 3) of samples, recursive implementation.
    The function does not modify the value pointed to by middle, but it is not
@@ -270,14 +224,37 @@ char * FMED3_FUNCTION_NAME (char *pa, char *pb, char *pc, COMPAR_DECL)
       determining when to end the recursion
    Uniform sample spacing is maintained, recursively.
 */
-static QUICKSELECT_INLINE
-char *REMEDIAN_FUNCTION_NAME(char *middle, size_t row_spacing,
+static
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+inline
+#endif
+char *
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_remedian_s
+# else
+            d_remedian
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            remedian_s
+# else
+            remedian
+# endif
+#endif
+    (char *middle, size_t row_spacing,
     register size_t sample_spacing, register size_t size,
-    register unsigned int idx, COMPAR_DECL, unsigned int options)
+    register unsigned int idx, 
+#if __STDC_WANT_LIB_EXT1__
+    int(*compar)(const void *,const void *,const void *),const void *context,
+#else
+    int(*compar)(const void *,const void *),
+#endif
+    unsigned int options)
 {
     register char *pa, *pb, *pc;
     register size_t o;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,"/* %s: middle=%p, row_spacing=%lu, sample_spacing="
             "%lu, idx=%u */\n",__func__,(void *)middle,
@@ -289,32 +266,185 @@ char *REMEDIAN_FUNCTION_NAME(char *middle, size_t row_spacing,
         register size_t s=sample_spacing/3UL;
 
         o=s*size;
-        pa=REMEDIAN_FUNCTION_NAME(middle-o,row_spacing,s,size,idx,COMPAR_ARGS,
+        pa=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_remedian_s
+# else
+            d_remedian
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            remedian_s
+# else
+            remedian
+# endif
+#endif
+	    (middle-o,row_spacing,s,size,idx,
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+	    compar,
+#endif
             options);
-        pb=REMEDIAN_FUNCTION_NAME(middle,row_spacing,s,size,idx,COMPAR_ARGS,
+        pb=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_remedian_s
+# else
+            d_remedian
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            remedian_s
+# else
+            remedian
+# endif
+#endif
+	    (middle,row_spacing,s,size,idx,
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+	    compar,
+#endif
             options);
-        pc=REMEDIAN_FUNCTION_NAME(middle+o,row_spacing,s,size,idx,COMPAR_ARGS,
+        pc=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_remedian_s
+# else
+            d_remedian
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            remedian_s
+# else
+            remedian
+# endif
+#endif
+	    (middle+o,row_spacing,s,size,idx,
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+	    compar,
+#endif
             options);
         if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-            char *pr= FMED3_FUNCTION_NAME(*((char **)pa),
-                *((char **)pb), *((char **)pc),COMPAR_ARGS);
+            char *pr= 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                d_fmed3_s
+# else
+                d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                fmed3_s
+# else
+                fmed3
+# endif
+#endif
+		(*((char **)pa),
+                *((char **)pb), *((char **)pc),
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+	    compar,
+#endif
+	    options
+#if LIBMEDIAN_TEST_CODE
+            , middle, size
+#endif
+	    );
             if (pr==*((char **)pa)) return pa;
             if (pr==*((char **)pc)) return pc;
             return pb;
         } else
-            return FMED3_FUNCTION_NAME(pa,pb,pc,COMPAR_ARGS);
+            return 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                d_fmed3_s
+# else
+                d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                fmed3_s
+# else
+                fmed3
+# endif
+#endif
+		    (pa,pb,pc,
+	#if __STDC_WANT_LIB_EXT1__
+	            compar,context,
+	#else
+		    compar,
+	#endif
+		    options
+#if LIBMEDIAN_TEST_CODE
+                , middle, size
+#endif
+		);
     }
     o=row_spacing*size;
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
         char *pr;
         pa=middle-o, pc=middle+o;
-        pr = FMED3_FUNCTION_NAME(*((char **)pa),*((char **)middle),
-            *((char **)pc),COMPAR_ARGS);
+        pr = 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                d_fmed3_s
+# else
+                d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                fmed3_s
+# else
+                fmed3
+# endif
+#endif
+            (*((char **)pa),*((char **)middle),
+            *((char **)pc),
+#if __STDC_WANT_LIB_EXT1__
+	    compar,context,
+#else
+	    compar,
+#endif
+	    options
+#if LIBMEDIAN_TEST_CODE
+             , middle, size
+#endif
+	    );
         if (pr==*((char **)pa)) return pa;
         if (pr==*((char **)pc)) return pc;
         return middle;
     } else
-        return FMED3_FUNCTION_NAME(middle-o,middle,middle+o,COMPAR_ARGS);
+        return 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                d_fmed3_s
+# else
+                d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                fmed3_s
+# else
+                fmed3
+# endif
+#endif
+		(middle-o,middle,middle+o,
+	#if __STDC_WANT_LIB_EXT1__
+		 compar,context,
+	#else
+		 compar,
+	#endif
+		 options
+#if LIBMEDIAN_TEST_CODE
+                 , middle, size
+#endif
+		 );
 }
 
 /* Remedian-based fast pivot selection includes single sample and median of
@@ -325,8 +455,17 @@ char *REMEDIAN_FUNCTION_NAME(char *middle, size_t row_spacing,
    (8/9 s ~ 0.889 s), 32/3 comparisons for 9 samples (32/27 s ~ 1.185 s), 104/3
    comparisons for 27 samples (104/81 s ~ 1.284 s), etc.).
 */
-static QUICKSELECT_INLINE char *remedian_pivot_selection(char *base,
-    size_t first, size_t beyond, size_t size, COMPAR_DECL,
+static
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+inline
+#endif
+char *remedian_pivot_selection(char *base,
+    size_t first, size_t beyond, size_t size,
+#if __STDC_WANT_LIB_EXT1__
+    int(*compar)(const void *,const void *,const void *),const void *context,
+#else
+    int(*compar)(const void *,const void *),
+#endif
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
     unsigned int table_index, const size_t *pk, size_t cachesz, size_t pbeyond,
     unsigned int options, char **ppc, char **ppd, char **ppe, char **ppf,
@@ -337,7 +476,7 @@ static QUICKSELECT_INLINE char *remedian_pivot_selection(char *base,
     pivot=base+size*(first+(nmemb>>1));     /* [upper-]middle element */
     if (0U<table_index) {       /* 3 or more samples */
         register size_t r=nmemb/3UL;     /* 1/3 #elements */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         /* before pivot selection */
         if (aqcmp==compar) {
             /* freeze low-address samples which will be used for pivot selection */
@@ -352,10 +491,30 @@ static QUICKSELECT_INLINE char *remedian_pivot_selection(char *base,
         }
 #endif
         A(base+first*size<=pivot);A(pivot<base+beyond*size);
-        pivot=REMEDIAN_FUNCTION_NAME(pivot,r,r,size,table_index,
-            COMPAR_ARGS,options);
+        pivot=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_remedian_s
+# else
+            d_remedian
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            remedian_s
+# else
+            remedian
+# endif
+#endif
+            (pivot,r,r,size,table_index,
+            
+#if __STDC_WANT_LIB_EXT1__
+	     compar,context
+#else
+	     compar
+#endif
+	     ,options);
     } else { /* offset single sample (middle bad for bitonic input) */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (aqcmp==compar) nfrozen=0UL, pivot_minrank=1UL;
 #endif
         switch (nmemb) {
@@ -377,7 +536,7 @@ static QUICKSELECT_INLINE char *remedian_pivot_selection(char *base,
                 pivot+=size*((nmemb-1UL)/8); /* 1/2+1/8=5/8 */
             break;
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (aqcmp==compar) (V)freeze(aqindex(pivot,base,size));
 #endif
     }
@@ -385,14 +544,30 @@ static QUICKSELECT_INLINE char *remedian_pivot_selection(char *base,
     return pivot;
 }
 
+#if 0
 /* functions in sampling_table_src.h */
-extern QUICKSELECT_INLINE int pivot_method(size_t *, size_t, size_t, size_t, unsigned int, size_t, unsigned int);
-extern QUICKSELECT_INLINE size_t samples(size_t nmemb, int method, unsigned int distribution, unsigned int options);
-extern QUICKSELECT_INLINE size_t floor_log3(register size_t n);
-extern QUICKSELECT_INLINE size_t size_t_sqrt(size_t n);
+extern QUICKSELECT_INLINE int 
+#if LIBMEDIAN_TEST_CODE
+                              d_pivot_method
+#else
+                              pivot_method
+#endif
+                                          (size_t *, size_t, size_t, size_t, unsigned int, size_t, unsigned int);
+extern QUICKSELECT_INLINE size_t 
+#if LIBMEDIAN_TEST_CODE
+                                 d_samples
+#else
+                                 samples
+#endif
+                                        (size_t nmemb, int method, unsigned int distribution, unsigned int options);
+#endif
 
 /* floor of base 2 logarithm of size_t argument */
-static QUICKSELECT_INLINE size_t floor_log2(register size_t n)
+static
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+inline
+#endif
+size_t floor_log2(register size_t n)
 {
     switch (n) {
         default :
@@ -437,41 +612,47 @@ static QUICKSELECT_INLINE size_t floor_log2(register size_t n)
     }
 }
 
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
-
 /* Pivot selection: select_pivot (or some such name) */
-static QUICKSELECT_INLINE
-char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
-    size_t size, COMPAR_DECL, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio,
-    unsigned int distribution, const size_t *pk,
-    size_t firstk, size_t beyondk,
-    size_t cachesz, size_t pbeyond, unsigned int options, char **ppc,
-    char **ppd, char **ppe, char **ppf, int *pmethod, size_t *psamples)
+#if __STDC_WANT_LIB_EXT1__
+QUICKSELECT_SELECT_PIVOT_S
+#else
+QUICKSELECT_SELECT_PIVOT
+#endif
 {
     size_t karray[1], firsts, beyonds, nmemb=beyond-first;
     register size_t mid, n, o, q, r;
     register char *pa, *pb, *pc, *pivot, *pm;
     int method;
-    QUICKSELECT_RETURN_TYPE ret=0;
+#if __STDC_WANT_LIB_EXT1__
+    errno_t
+#else
+    int
+#endif
+        ret=0;
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(PIVOT_SELECTION_DEBUG))
         (V)fprintf(stderr,
             "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
             "compar=%s, options=0x%x */\n",__func__,__LINE__,nmemb,first,beyond,
             comparator_name(compar),options);
-#endif /* DEBUG DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
     /* pivot selection method */
-    method=pivot_method(pk,nmemb,firstk,beyondk,distribution,size_ratio,options);
+    method=
+#if LIBMEDIAN_TEST_CODE
+           d_pivot_method
+#else
+           pivot_method
+#endif
+                       (pk,nmemb,firstk,beyondk,distribution,size_ratio,options);
     /* determine number of samples (medians for median of medians) */
-    n=samples(nmemb,method,distribution,options);
+    n=
+#if LIBMEDIAN_TEST_CODE
+       d_samples
+#else
+       samples
+#endif
+             (nmemb,method,distribution,options);
     if ((QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method)&&(5UL>n)) {
         method=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* no offset 3 samples */
     }
@@ -482,13 +663,19 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
         /*FALLTHROUGH*//* to remedian */
         case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
             /* table index as a surrogate for division by 3 in remedian */
-            r=floor_log3(n); /* table index */
-            pivot=remedian_pivot_selection(base,first,beyond,size,COMPAR_ARGS,
+            r= floor_log3(n); /* table index */
+            pivot=remedian_pivot_selection(base,first,beyond,size,
+		#if __STDC_WANT_LIB_EXT1__
+			    compar,context
+		#else
+			    compar
+		#endif
+			    ,
                 swapf,alignsize,size_ratio,r,pk,cachesz,pbeyond,options,ppc,ppd,
                 ppe,ppf,nmemb);
         break;
         case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (aqcmp==compar) {
                 nfrozen=0UL, pivot_minrank=n;
                 if (0UL==(n&0x01UL)) pivot_minrank++;
@@ -505,7 +692,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                    sorted and the other with 1/3 of its elements frozen.
                 */
             }
-#endif /* DEBUG DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
             A(NULL!=base);A(NULL!=compar);
             A(8UL<nmemb); /* at least 9 elements (3 sets of 3) */
             A(NULL!=ppc);A(NULL!=ppd);A(NULL!=ppe);A(NULL!=ppf);
@@ -532,15 +719,39 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                 pb=pa+r; /* middle element */
                 A(pb+r<base+beyond*size);
                 if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (aqcmp==compar) {
                         /* XXX not sure if indirection is needed here */
                         (V)freeze(aqindex(pa,base,size));
                         (V)freeze(aqindex(pb+r,base,size));
                     }
-#endif /* DEBUG DEBUGGING */
-                    pm=FMED3_FUNCTION_NAME(*((char **)pb),*((char **)pa),
-                        *((char **)(pb+r)),COMPAR_ARGS);
+#endif /* LIBMEDIAN_TEST_CODE */
+                    pm=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                        d_fmed3_s
+# else
+                        d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                        fmed3_s
+# else
+                        fmed3
+# endif
+#endif
+                        (*((char **)pb),*((char **)pa),
+                        *((char **)(pb+r)),
+	#if __STDC_WANT_LIB_EXT1__
+			compar,context,
+	#else
+			compar,
+	#endif
+			options
+#if LIBMEDIAN_TEST_CODE
+                        , base, size
+#endif
+			);
                     /* medians start at 1/3 of sub-array */
                     /*compare returned data pointer,swap indirect pointers*/
                     if (pm!=*((char **)pa)) {
@@ -552,14 +763,38 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                                 size_ratio,SWAP_COUNT_STATEMENT);
                     }
                 } else {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (aqcmp==compar) {
                         (V)freeze(aqindex(pa,base,size));
                         (V)freeze(aqindex(pb+r,base,size));
                     }
-#endif /* DEBUG DEBUGGING */
-                    if ((pa!=(pm=(char *)FMED3_FUNCTION_NAME(pb,pa,pb+r,
-                                       COMPAR_ARGS))) /*bias to pa*/
+#endif /* LIBMEDIAN_TEST_CODE */
+                    if ((pa!=(pm=(char *)
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                        d_fmed3_s
+# else
+                        d_fmed3
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                        fmed3_s
+# else
+                        fmed3
+# endif
+#endif
+                                       (pb,pa,pb+r,
+                                       
+			#if __STDC_WANT_LIB_EXT1__
+					compar,context,
+			#else
+					compar,
+			#endif
+					options
+#if LIBMEDIAN_TEST_CODE
+                        , base, size
+#endif
+					))) /*bias to pa*/
                     ) { /* place medians in first row of sub-array */
                         EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,
                             SWAP_COUNT_STATEMENT);
@@ -581,7 +816,27 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                current table_index is probably a good starting point
             */
             A(0==ret);
-            ret=QUICKSELECT_LOOP(base,first,first+n,size,COMPAR_ARGS,
+            ret=
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+                d_quickselect_loop_s
+# else
+                d_quickselect_loop
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+                quickselect_loop_s
+# else
+                quickselect_loop
+# endif
+#endif
+                (base,first,first+n,size,
+		#if __STDC_WANT_LIB_EXT1__
+			    compar,context
+		#else
+			    compar
+		#endif
+			    ,
                 karray,0UL,1UL,swapf,alignsize,size_ratio,cachesz,pbeyond,
                 options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,ppe);
             A(0==ret);if(0!=ret) return NULL;
@@ -603,7 +858,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                     beyond,options);
                 A((NULL!=ppd)&&(NULL!=ppe));
                 A((NULL!=*ppd)&&(NULL!=*ppe));
-# if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (d<l) l=d;
                     print_some_array(base,l-1UL,l+1UL,"/* "," */",options);
                     print_some_array(base,d-1UL,d+1UL,"/* "," */",options);
@@ -630,14 +885,14 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             /* upper-middle element is one of the samples */
             mid=first+(nmemb>>1); /* index of upper-middle element */
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PIVOT_SELECTION_DEBUG))
                 (V)fprintf(stderr,
                     "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
                     "compar=%s, options=0x%x, n=%lu, mid=%lu */\n",
                     __func__,__LINE__,nmemb,first,beyond,
                     comparator_name(compar),options,n,mid);
-#endif /* DEBUG DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
             if (nmemb<=n) {
                 fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, "
                     "nmemb=%lu, n=%lu */\n",__func__,__LINE__,
@@ -657,7 +912,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             && (5UL<=n) /* cannot offset 1 or 3 samples */
             ) { /* maybe offset rank for selection */
                 size_t t, u, v, w;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(PIVOT_SELECTION_DEBUG)
                 || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                     fprintf(stderr,"/* %s line %d: nmemb=%lu, distribution=%d, "
@@ -706,7 +961,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                 */
                 u=(nmemb>>2); /* nmemb/4 */
                 v=nmemb/n; /* see comments below re. overflow */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(PIVOT_SELECTION_DEBUG)
                 || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                     fprintf(stderr,"/* %s line %d: distribution=%d, "
@@ -740,7 +995,12 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                             o=1UL+(q>>1); /* 1+n/4 */
                         } else {
                             o=1UL+
-                            size_t_sqrt((q>>1)*floor_log2(nmemb)); /* Sibeyn delta/2 */
+#if LIBMEDIAN_TEST_CODE
+                            d_size_t_sqrt
+#else
+                            size_t_sqrt
+#endif
+                            ((q>>1)*floor_log2(nmemb)); /* Sibeyn delta/2 */
                         }
                     break;
                 }
@@ -880,17 +1140,17 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                     if (1UL>u) u++; /* avoid extreme value */
                 }
                 karray[0]=firsts+u;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (aqcmp==compar) nfrozen=0UL, pivot_minrank=nmemb-u;
 #endif
             } else {
                 firsts=first, beyonds=first+n;
                 karray[0]=firsts+q;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (aqcmp==compar) nfrozen=0UL, pivot_minrank=nmemb-q;
 #endif
             }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             /* pivot rank sanity check */
             if ((karray[0]<firsts)||(karray[0]>=beyonds)) {
                 (V)fprintf(stderr,"/* %s line %d: distribution=%d,"
@@ -910,7 +1170,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             *ppc=base+firsts*size, *ppf=base+beyonds*size;
 
             /* move samples to one end for selection */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                 (V)fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, "
                     "nmemb=%lu, n(samples)=%lu, firsts=%lu, mid=%lu, "
@@ -928,7 +1188,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                 pa+=o,pc+=size
                 ) {
                     if (pa!=pc) {
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                             fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
                                 "%lu */\n",__func__,__LINE__,(pa-base)/size,
@@ -944,7 +1204,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                 pb-=o,pc-=size
                 ) {
                     if (pb!=pc) {
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                             fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
                                 "%lu */\n",__func__,__LINE__,(pb-base)/size,
@@ -956,7 +1216,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                     }
                 }
             }
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (aqcmp==compar) { /* adversary */
                 for (pa=base+firsts*size,pb=base+beyonds*size; pa<pb; pa+=size) {
                         (V)freeze(aqindex(pa,base,size));
@@ -970,7 +1230,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             *ppd=*ppe=NULL; /* clear to avoid random values */
 # endif
             /* select median (or other rank) of samples; partitions samples */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PIVOT_SELECTION_DEBUG)
             || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                 fprintf(stderr,"/* %s line %d: nmemb=%lu (samples moved, before "
@@ -981,11 +1241,31 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             }
 #endif
             A(0==ret);
-            ret=QUICKSELECT_LOOP(base,firsts,beyonds,size,COMPAR_ARGS,karray,
+            ret=
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+                d_quickselect_loop_s
+# else
+                d_quickselect_loop
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+                quickselect_loop_s
+# else
+                quickselect_loop
+# endif
+#endif
+                (base,firsts,beyonds,size,
+		#if __STDC_WANT_LIB_EXT1__
+			    compar,context
+		#else
+			    compar
+		#endif
+			    ,karray,
                 0UL,1UL,swapf,alignsize,size_ratio,cachesz,pbeyond,
                 options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,ppe);
             A(0==ret);if(0!=ret) return NULL;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PIVOT_SELECTION_DEBUG)
             || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: line %d: nmemb=%lu (after selecting "
@@ -1014,7 +1294,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
                     beyond,options);
                 A((NULL!=ppd)&&(NULL!=ppe));
                 A((NULL!=*ppd)&&(NULL!=*ppe));
-# if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (d<l) l=d;
                     print_some_array(base,l-1UL,l+1UL,"/* "," */",options);
                     print_some_array(base,d-1UL,d+1UL,"/* "," */",options);
@@ -1038,7 +1318,7 @@ char * SELECT_PIVOT_FUNCTION_NAME (char *base, size_t first, size_t beyond,
             (void *)ppd,NULL!=ppd?(void *)(*ppd):NULL,d,
             (void *)ppe,NULL!=ppe?(void *)(*ppe):NULL,e,
             beyond,options);
-# if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (d<l) l=d;
         if (e<first+nmemb) e++;
         print_some_array(base,l,e-1UL,"/* "," */",options);

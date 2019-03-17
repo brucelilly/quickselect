@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    get_ips.h copyright 2010-2017 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    get_ips.h copyright 2010-2019 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is get_ips.h version 1.7 2017-09-01T02:01:09Z. \ $ */
+/* $Id: ~|^` @(#)   This is get_ips.h version 1.8 2019-03-15T20:48:37Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "get_ips" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libid/include/s.get_ips.h */
 
 /* version-controlled header file version information */
-#define GET_IPS_H_VERSION "get_ips.h 1.7 2017-09-01T02:01:09Z"
+#define GET_IPS_H_VERSION "get_ips.h 1.8 2019-03-15T20:48:37Z"
 
 /* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
@@ -78,6 +78,7 @@
                                    NetBSD: _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 520 || _NETBSD_SOURCE,
                                    Solaris: _XPG4_2 (_XOPEN_SOURCE >= 500) || _XPG6 (_XOPEN_SOURCE >= 600) || __EXTENSIONS__
                                 */
+#include <netinet/in.h>         /* struct sockaddr_in */
 
 /* get_ips.c function declarations */
 #if defined(__cplusplus)

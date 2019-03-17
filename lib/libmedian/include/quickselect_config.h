@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_config.h copyright 2017-2018 Bruce Lilly.   \ quickselect_config.h $
+* $Id: ~|^` @(#)    quickselect_config.h copyright 2017-2019 Bruce Lilly.   \ quickselect_config.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.21 dated 2018-07-27T04:31:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.23 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.21 2018-07-27T04:31:10Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.23 2019-03-16T15:37:11Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -269,11 +269,27 @@
 # endif
 #endif
 
-#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
-# define QUICKSELECT_INLINE inline
-#else
-# define QUICKSELECT_INLINE /**/
-#endif /* C99 */
+#ifndef QUICKSELECT_INLINE
+# if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+#  define QUICKSELECT_INLINE inline
+# else
+#  define QUICKSELECT_INLINE /**/
+# endif /* C99 */
+#endif
+
+#ifndef QUICKSELECT_STATIC
+# define QUICKSELECT_STATIC static
+#endif
+
+/* special case for fmed3 and variants which are inline when building for speed
+   and externally visible in separate object files otherwise.
+*/
+#if (( ! defined(QUICKSELECT_FMED3_VISIBLE_HERE)) || ( ! QUICKSELECT_FMED3_VISIBLE_HERE )) && ( QUICKSELECT_BUILD_FOR_SPEED )
+# define QUICKSELECT_FMED3_STATIC static
+# if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+#  define QUICKSELECT_FMED3_INLINE inline
+# endif
+#endif
 
 /* need defined names for qsort and qsort_s implementations */
 /* also provides declarations for quickselect and quickselect_s */
@@ -284,32 +300,8 @@
 # include "quickselect.h"
 #endif
 
-#ifndef QUICKSELECT_VISIBILITY
-# define QUICKSELECT_VISIBILITY static
-#endif
-
-#ifndef KLIMITS_FUNCTION_NAME
-# define KLIMITS_FUNCTION_NAME klimits
-#endif
-
-#ifndef SHOULD_REPIVOT_FUNCTION_NAME
-# define SHOULD_REPIVOT_FUNCTION_NAME should_repivot
-#endif
-
-#ifndef SAMPLE_INDEX_FUNCTION_NAME
-# define SAMPLE_INDEX_FUNCTION_NAME sample_index
-#endif
-
-#ifndef SAMPLING_TABLE_FUNCTION_NAME
-# define SAMPLING_TABLE_FUNCTION_NAME sampling_table
-#endif
-
 /* regular vs. _s variations: */
 #if __STDC_WANT_LIB_EXT1__
-/* Return type variation */
-# define QSORT_RETURN_TYPE errno_t
-# define QUICKSELECT_RETURN_TYPE errno_t
-# define DEDICATED_SORT_RETURN_TYPE errno_t
 /* function name variation */
 # define FUNCTION_NAME QSORT_S_FUNCTION_NAME
 /* nmemb,size argument type variation */
@@ -325,43 +317,7 @@
 /* comparison function call variation */
 # define COMPAR(ma,mb) compar((ma),(mb),context)
 /* support functions */
-# ifndef DEDICATED_SORT
-#  define DEDICATED_SORT dedicated_sort_s /* this is a mere macro (text substitution), not a declaration */
-# endif
-# ifndef FIND_MINMAX_FUNCTION_NAME
-#  define FIND_MINMAX_FUNCTION_NAME find_minmax_s
-# endif
-# ifndef FMED3_FUNCTION_NAME
-#  define FMED3_FUNCTION_NAME fmed3_s
-# endif
-# ifndef PARTITION_FUNCTION_NAME
-#  define PARTITION_FUNCTION_NAME partition_s
-# endif
-# ifndef REMEDIAN_FUNCTION_NAME
-#  define REMEDIAN_FUNCTION_NAME remedian_s
-# endif
-# ifndef SELECT_MAX_FUNCTION_NAME
-#  define SELECT_MAX_FUNCTION_NAME select_max_s
-# endif
-# ifndef SELECT_MIN_FUNCTION_NAME
-#  define SELECT_MIN_FUNCTION_NAME select_min_s
-# endif
-# ifndef SELECT_MINMAX_FUNCTION_NAME
-#  define SELECT_MINMAX_FUNCTION_NAME select_minmax_s
-# endif
-# ifndef SELECT_PIVOT_FUNCTION_NAME
-#  define SELECT_PIVOT_FUNCTION_NAME select_pivot_s
-# endif
-# ifndef QUICKSELECT_FUNCTION_NAME
-#  define QUICKSELECT_FUNCTION_NAME quickselect_s
-# endif
-# ifndef QUICKSELECT_LOOP
-#  define QUICKSELECT_LOOP quickselect_loop_s /* this is a mere macro (text substitution), not a declaration */
-# endif
 #else /* ! __STDC_WANT_LIB_EXT1__ */
-# define QSORT_RETURN_TYPE void
-# define QUICKSELECT_RETURN_TYPE int
-# define DEDICATED_SORT_RETURN_TYPE int
 # define FUNCTION_NAME QSORT_FUNCTION_NAME
 # define NMEMB_SIZE_TYPE size_t
 # ifndef COMPAR_DECL
@@ -371,44 +327,13 @@
 #  define COMPAR_ARGS compar
 # endif
 # define COMPAR(ma,mb) compar((ma),(mb))
-# ifndef DEDICATED_SORT
-#  define DEDICATED_SORT dedicated_sort
-# endif
-# ifndef FMED3_FUNCTION_NAME
-#  define FMED3_FUNCTION_NAME fmed3
-# endif
-# ifndef FIND_MINMAX_FUNCTION_NAME
-#  define FIND_MINMAX_FUNCTION_NAME find_minmax
-# endif
-# ifndef PARTITION_FUNCTION_NAME
-#  define PARTITION_FUNCTION_NAME partition
-# endif
-# ifndef REMEDIAN_FUNCTION_NAME
-#  define REMEDIAN_FUNCTION_NAME remedian
-# endif
-# ifndef SELECT_MAX_FUNCTION_NAME
-#  define SELECT_MAX_FUNCTION_NAME select_max
-# endif
-# ifndef SELECT_MIN_FUNCTION_NAME
-#  define SELECT_MIN_FUNCTION_NAME select_min
-# endif
-# ifndef SELECT_MINMAX_FUNCTION_NAME
-#  define SELECT_MINMAX_FUNCTION_NAME select_minmax
-# endif
-# ifndef SELECT_PIVOT_FUNCTION_NAME
-#  define SELECT_PIVOT_FUNCTION_NAME select_pivot
-# endif
-# ifndef QUICKSELECT_FUNCTION_NAME
-#  define QUICKSELECT_FUNCTION_NAME quickselect
-# endif
-# ifndef QUICKSELECT_LOOP
-#  define QUICKSELECT_LOOP quickselect_loop
-# endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* macros */
-#ifndef SWAP_COUNT_STATEMENT
-# define SWAP_COUNT_STATEMENT /**/
+#if ! LIBMEDIAN_TEST_CODE
+# ifndef SWAP_COUNT_STATEMENT
+#  define SWAP_COUNT_STATEMENT /**/
+# endif
 #endif
 
 /* watch the moving qualifiers */
@@ -431,20 +356,6 @@
 #endif
 
 #define CX(ma,mb) COMPARE_EXCHANGE((ma),(mb),options,size,swapf,alignsize,size_ratio)
-
-/* defined values for pivot_method */
-  /* no data movement */
-#define QUICKSELECT_PIVOT_REMEDIAN_SAMPLES  0
-#define QUICKSELECT_PIVOT_REMEDIAN_FULL     1
-  /* alters data order (cannot be used for stable sort/selection) */
-#define QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS 2
-#define QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES 3
-
-/* defined values for partition_method */
-  /* partial order not preserved (cannot be used for stable sort/selection) */
-#define QUICKSELECT_PARTITION_FAST   0
-  /* partial order preserved */
-#define QUICKSELECT_PARTITION_STABLE 1
 
 /* system header files required */
 #include <assert.h>             /* assert */
@@ -511,7 +422,7 @@ size_t cache_size(void)
     l=sysconf(_SC_LEVEL1_DCACHE_SIZE);
     if (l>(long)c) {
         c=(size_t)l;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: cache size based on %s = %lu bytes */\n",
@@ -530,14 +441,14 @@ size_t cache_size(void)
         l,errno,strerror(errno));
 # endif /* DEBUG_CODE */
 # ifdef _SC_LEVEL1_DCACHE_LINESIZE
-#  if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#  if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CACHE_DEBUG)) {
         l=sysconf(_SC_LEVEL1_DCACHE_LINESIZE);
         (V)fprintf(stderr,
             "/* %s: cache linesize based on %s = %ld bytes */\n",
             __func__, "_SC_LEVEL1_DCACHE_LINESIZE", l);
     }
-#endif
+#  endif
 # endif /* _SC_LEVEL1_DCACHE_LINESIZE */
 #endif /* _SC_LEVEL1_DCACHE_SIZE */
 #if 0 /* 0: use only L1 or generic data cache */
@@ -547,7 +458,7 @@ size_t cache_size(void)
     /* Use only 1/2 of unified cache */
     if (l>(long)(c<<1)) {
         c=(size_t)(l>>1);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
@@ -573,7 +484,7 @@ size_t cache_size(void)
     /* Use only 1/2 of unified cache */
     if (l>(long)(c<<1)) {
         c=(size_t)(l>>1);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
@@ -600,7 +511,7 @@ size_t cache_size(void)
     /* Use only 1/2 of unified cache */
     if (l>(long)(c<<1)) {
         c=(size_t)(l>>1);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: cache size based on %s (%ld) = %lu bytes */\n",
@@ -626,7 +537,7 @@ size_t cache_size(void)
     l=sysconf(_SC_DCACHE_SZ);
     if (l>(long)c) {
         c=(size_t)l;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: cache size based on %s = %lu bytes */\n",
@@ -648,7 +559,7 @@ size_t cache_size(void)
 #endif /* fixed default size only */
     if (0UL==c) {
         c= QUICKSELECT_DEFAULT_CACHE_SIZE ;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CACHE_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: Assuming default cache size = %lu bytes */\n",
@@ -657,7 +568,7 @@ size_t cache_size(void)
         }
 #endif
     }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CACHE_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: cache size = %lu bytes */\n",

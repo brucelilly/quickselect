@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    correctness.c copyright 2016-2018 Bruce Lilly.   \ correctness.c $
+* $Id: ~|^` @(#)    correctness.c copyright 2016-2019 Bruce Lilly.   \ correctness.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.37 dated 2018-06-26T00:37:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.41 dated 2019-03-16T14:44:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.37"
-#define MODULE_DATE "2018-06-26T00:37:40Z"
+#define MODULE_VERSION "1.41"
+#define MODULE_DATE "2019-03-16T14:44:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 /* header files needed */
 #include "median_test_config.h" /* configuration */
@@ -76,7 +76,11 @@ size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size,
     debug=0U;
     for (i=l; i<u; i++) {
         for (j=i+1UL; j<=u; j++) {
-            c = OPT_COMPAR(pv+i*size, pv+j*size,options);
+            if (0U==(options&(QUICKSELECT_INDIRECT))) {
+                c=compar(pv+i*size,pv+j*size);
+            } else {
+                c=compar(*((char *const *)(pv+i*size)),*((char *const *)(pv+j*size)));
+            }
             if (0 == c) {
                 if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed distinctness comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)j);
                 debug=odebug;
@@ -89,127 +93,6 @@ size_t test_array_distinctness(const char *pv, size_t l, size_t u, size_t size,
 }
 #endif /* GENERATOR_TEST */
 #endif /* DEBUG_CODE + ASSERT_CODE */
-
-/* Array pv should be partitioned such that elements at indices < pl are
-      not larger than element at pl, elements at indices > pu are not smaller
-      than element at index pu, and elements from index pl through pu compare
-      as equal.
-   l <= pl <= pu <= u
-   If tests hold for all indices between l and u inclusive, return pl.
-   If arguments are not valid, return >= u+1UL.
-   On the first failed test, return the index of the item failing the test.
-*/
-
-size_t test_array_partition(const char *pv, size_t l, size_t pl,
-    size_t pu, size_t u, size_t size,
-    int(*icompar)(const void *, const void *), unsigned int options,
-    void(*f)(int, void *, const char *, ...), void *log_arg)
-{
-    int c;
-    size_t i, n, lim;
-    const char *p, *pe;
-    unsigned int odebug=debug;
-    int (*compar)(const void *,const void *)=uninstrumented_comparator(icompar);
-
-    if ((char)0==file_initialized) initialize_file(__FILE__);
-    if (l > pl) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: l (%lu) > pl (%lu)", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
-        else fprintf(stderr, "/* %s: %s line %d: l (%lu) > pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)pl);
-        return u+1UL;
-    }
-    if (pu > u) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) > u (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
-        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) > u (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)u);
-        return u+2UL;
-    }
-    if (pu < pl) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: pu (%lu) < pl (%lu)", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
-        else fprintf(stderr, "/* %s: %s line %d: pu (%lu) < pl (%lu) */\n", __func__, source_file, __LINE__, (unsigned long)pu, (unsigned long)pl);
-        return u+3UL;
-    }
-    if (NULL == pv) {
-        if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: NULL pv", __func__, source_file, __LINE__);
-        else fprintf(stderr, "/* %s: %s line %d: NULL pv */\n", __func__, source_file, __LINE__);
-        return u+4UL;
-    }
-    debug=0U;
-    pe=pv+pl*size;
-    if (pl >= l+1UL)
-        for (i=pl-1UL; ; i--) {
-            p=pv+i*size;
-            c = OPT_COMPAR(p,pe,options);
-            if (0 < c) {
-                if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
-                else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pl);
-                debug=odebug;
-                return i;
-            }
-            if (i < l+1UL) break;
-        }
-    for (i=pl+1UL; i<=pu; i++) {
-        p=pv+i*size;
-        c = OPT_COMPAR(p,pe,options);
-        if (0 != c) {
-            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
-            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)pl, (unsigned long)i);
-            debug=odebug;
-            return i;
-        }
-    }
-    n = (u + 1UL - l);
-    lim = l + n - 1UL;
-    for (i=pu+1UL; i<=lim; i++) {
-        p=pv+i*size;
-        c = OPT_COMPAR(p,pe,options);
-        if (0 > c) {
-            if (NULL != f) f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at indices %lu, %lu", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
-            else fprintf(stderr, "/* %s: %s line %d: failed comparison at indices %lu, %lu */\n", __func__, source_file, __LINE__, (unsigned long)i, (unsigned long)pu);
-            debug=odebug;
-            return i;
-        }
-    }
-    debug=odebug;
-    return pl;
-}
-
-/* Test array for sorting correctness */
-size_t test_array_sort(const char *pv, size_t l, size_t u, size_t size,
-    int(*icompar)(const void *, const void *), unsigned int options,
-    unsigned int distinct, void(*f)(int, void *, const char *, ...),
-    void *log_arg)
-{
-    int c;
-    size_t i;
-    unsigned int odebug=debug;
-    int (*compar)(const void *,const void *)=uninstrumented_comparator(icompar);
-
-    if ((char)0==file_initialized) initialize_file(__FILE__);
-    if (l > u) {
-        if (NULL != f)
-            f(LOG_ERR, log_arg, "%s: %s line %d: l (%lu) > u (%lu)", __func__, source_file, __LINE__, (unsigned long)l, (unsigned long)u);
-        return u+1UL;
-    }
-    if (NULL == pv) {
-        if (NULL != f)
-            f(LOG_ERR, log_arg, "%s: %s line %d: NULL pv", __func__, source_file, __LINE__);
-        return u+2UL;
-    }
-#if 0
-    debug=0U;
-#endif
-    for (i=l; i<u; i++) {
-        c = OPT_COMPAR(pv+i*size, pv+(i+1UL)*size,options);
-        if (0 <= c) {
-            if ((0U==distinct)&&(0==c)) continue; /* uniqueness not required */
-            if (NULL != f)
-                f(LOG_ERR, log_arg, "%s: %s line %d: failed comparison at index %lu", __func__, source_file, __LINE__, (unsigned long)i);
-            debug=odebug;
-            return i;
-        }
-    }
-    debug=odebug;
-    return u;
-}
 
 unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
     unsigned int types, unsigned int options, const char *prog, size_t n,
@@ -234,7 +117,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
     int (*compar_s)(const void *,const void *,void *);
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stderr,"/* %s(sequences=0x%x,functions=0x%x,types=0x%x,"
             "options=0x%x,prog=%s,n=%lu,ratio=%lu,count=%lu,col=%d,timeout=%.3f"
@@ -246,13 +129,13 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
 #endif
     for (sequence=ls_bit_number(ss=sequences); sequence<32U; sequence=ls_bit_number(ss)) {
         ss &= ~(0x01<<sequence);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: sequence=%u, ss=0x%x */\n",__func__,
                 sequence,ss);
 #endif
         ptest = sequence_name(sequence);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: ptest=%s */\n",__func__,ptest);
 #endif
@@ -352,7 +235,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                 if (fp==stderr) fp=NULL;
                 sleep(BELL_PAUSE_TIME);
             }
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
             else if (DEBUGGING(MEMORY_DEBUG))
                 (V)fprintf(stderr,
                     "/* %s: %s: test data for ratio %lu requires %lu bytes <= "
@@ -405,7 +288,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
             }
             for (function=ls_bit_number(ff=functions); function<32U; function=ls_bit_number(ff)) {
                 ff &= ~(0x01<<function);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,"/* %s: function=%u, ff=0x%x */\n",
                         __func__,function,ff);
@@ -413,7 +296,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                 pcc=function_name(function);
                 if (NULL == pcc) return ++errs;
                 else {
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: pcc=%s */\n",__func__,pcc);
 #endif
@@ -422,7 +305,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     if (NULL == pfunc) return ++errs;
                     factor = test_factor(tests, n);
                     psize = test_size(tests);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: pcc=%s, pfunc=%s, factor=%.3f"
                             ", psize=%s, tests=0x%x */\n",__func__,pcc,pfunc,
@@ -435,14 +318,14 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     case FUNCTION_QSELECT :
                         if ((1UL==selection_nk)&&(flags['m']=='m')) { /* special-case: 1 or 2 median(s) */
                             nk = 2UL;
-#if DEBUG_CODE > 1
+#if ( DEBUG_CODE > 1 ) && defined(DEBUGGING)
                             if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
                                 "/* %s: %s line %d: allocating karray  %lu ranks */\n",
                                 __func__,source_file,__LINE__,nk);
 #endif
                             karray = malloc(nk*sizeof(size_t));
                             if (NULL==karray) return ++errs;
-#if DEBUG_CODE > 1
+#if ( DEBUG_CODE > 1 ) && defined(DEBUGGING)
                             if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
                                 "/* %s: %s line %d: karray at %p through %p */\n",
                                 __func__,source_file,__LINE__,(void *)karray,
@@ -526,14 +409,14 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                 break;
                             }
                             if (nk>n) nk=n;
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                             if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
                                 "/* %s: %s line %d: allocating karray  %lu ranks */\n",
                                 __func__,source_file,__LINE__,nk);
 #endif
                             karray = malloc(nk*sizeof(size_t));
                             if (NULL==karray) return ++errs;
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                             if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
                                 "/* %s: %s line %d: karray at %p through %p */\n",
                                 __func__,source_file,__LINE__,(void *)karray,
@@ -602,7 +485,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                 break;
                             }
                         }
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                         if (DEBUGGING(SORT_SELECT_DEBUG)) {
                             (V)fprintf(stderr,"/* %s: %s line %d: %lu order statistic rank%s: %lu",
                             __func__,source_file,__LINE__,nk,nk==1?"":"s",karray[0]);
@@ -621,18 +504,23 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                 switch (sequence) {
                     case TEST_SEQUENCE_ADVERSARY :
                         type=ls_bit_number(tt=types); /* types are in descending size order */
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                         if (DEBUGGING(SORT_SELECT_DEBUG))
                             (V)fprintf(stderr,"/* %s: %s line %d: type=%u, tt=0x%x */\n",
                                 __func__,source_file,__LINE__,type,tt);
 #endif
                         typename=type_name(type);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                         if (DEBUGGING(SORT_SELECT_DEBUG))
                             (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                        pv=type_array(type);
-                        size=ratio*type_size(type);
+                        if (0U!=flags[';']) {
+                            pv=global_larray;;
+                            size=sizeof(long);
+                        } else {
+                            pv=type_array(type);
+                            size=ratio*type_size(type);
+                        }
 #if GENERATOR_TEST
                         compar=type_comparator(type,flags); /* for generator tests */
 #endif
@@ -667,7 +555,6 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                     QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
                                 }
                             break;
-#if 1
                             case FUNCTION_QSORT_WRAPPER :
                                 if (FUNCTION_QSORT_WRAPPER!=*plast_adv) {
                                     *plast_adv=FUNCTION_QSORT_WRAPPER;
@@ -677,9 +564,6 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                         nk,options&(QUICKSELECT_USER_OPTIONS_MASK));
                                 }
                             break;
-#else
-                            case FUNCTION_QSORT_WRAPPER :/*FALLTHROUGH*/
-#endif
                             case FUNCTION_SQSORT :       /*FALLTHROUGH*/
                             case FUNCTION_WQSORT :
                                 if (FUNCTION_WQSORT!=*plast_adv) {
@@ -859,20 +743,26 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                 /* types */
                 for (type=ls_bit_number(tt=types); type<32U; type=ls_bit_number(tt)) {
                     tt &= ~(0x01<<type);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: %s line %d: type=%u, tt=0x%x */\n",
                             __func__,source_file,__LINE__,type,tt);
 #endif
                     typename=type_name(type);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: typename=%s */\n",__func__,typename);
 #endif
-                    pv=type_array(type);
-                    size=ratio*type_size(type);
-                    alignsize=type_alignment(type);
-#if DEBUG_CODE
+                    if (0U!=flags[';']) {
+                        pv=global_larray;;
+                        size=sizeof(long);
+                        alignsize=type_alignment(DATA_TYPE_LONG);
+                    } else {
+                        pv=type_array(type);
+                        size=ratio*type_size(type);
+                        alignsize=type_alignment(type);
+                    }
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: pv=%p, size=%lu, "
                             "alignsize=%lu, ratio=%lu */\n",__func__,pv,size,
@@ -888,7 +778,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                     size_ratio=size/alignsize;
                     max_val=type_max(type);
                     compar=type_comparator(type,flags);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: compar=%s */\n",__func__,
                             comparator_name(compar));
@@ -986,7 +876,6 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                 }
                             break;
                             case TEST_SEQUENCE_WORST :
-/* XXX */
                                 if ((1UL<m)&&(NULL!=fp)) {
                                     (V)snul(buf,sizeof(buf),NULL,NULL,m+1UL,10,
                                         ' ',c,f,log_arg);
@@ -1035,7 +924,12 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                         } /* sequence switch */
 do_test:
                         /* copy test sequence to typed array */
-                        duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        if (0U!=flags[';']) {
+                            write_database_files(global_refarray,n,type);
+                            initialize_indices(n);
+                        } else {
+                            duplicate_test_data(global_refarray,pv,type,ratio,0UL,n);
+                        }
                         /* long test data is in long array larray */
                         /* test sequence has been copied to others */
                         /* verify correctness of test sequences */
@@ -1228,7 +1122,7 @@ do_test:
                         if (0U < errs) break;
                         if ((0U == errs) && (TEST_TYPE_PARTITION == (TEST_TYPE_PARTITION & tests))) {
                             if (NULL!=karray) {
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                                     (V)fprintf(stderr, "/* %s: %s line %d, nk=%lu */\n", __func__,source_file,__LINE__,nk);
                                     print_some_array(pv,0UL, u, "/* "," */",options&~(QUICKSELECT_INDIRECT));
@@ -1240,15 +1134,27 @@ do_test:
                                     if (0UL==k) ll=0UL; else ll=karray[k-1UL];
                                     if (k==nk-1UL) ul=u; else ul=karray[k+1UL];
                                     le=ue=karray[k],pc=(char *)pv+ue*size;
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                                     if (DEBUGGING(SORT_SELECT_DEBUG))
                                         (V)fprintf(stderr, "/* %s: %s line %d: karray[%lu]=%lu, ll=%lu, ul=%lu */\n", __func__,source_file,__LINE__,k,le,ll,ul);
 #endif /* DEBUG_CODE */
-                                    for (pa=(char *)pv+ll*size,pb=pc-size;pb>=pa;pb-=size,le--)
-                                        if (0!=OPT_COMPAR(pb,pc,options&~(QUICKSELECT_INDIRECT))) break;
-                                    for (pd=pc+size,pe=(char *)pv+ul*size;pd<pe;pd+=size,ue++)
-                                        if (0!=OPT_COMPAR(pc,pd,options&~(QUICKSELECT_INDIRECT))) break;
-#if DEBUG_CODE
+                                    for (pa=(char *)pv+ll*size,pb=pc-size;pb>=pa;pb-=size,le--) {
+                                        if (0U==(options&(QUICKSELECT_INDIRECT))) {
+                                            c=compar(pb,pc);
+                                        } else {
+                                            c=compar(*((char *const *)(pb)),*((char *const *)(pc)));
+                                        }
+					if (0!=c) break;
+                                    }
+                                    for (pd=pc+size,pe=(char *)pv+ul*size;pd<pe;pd+=size,ue++) {
+                                        if (0U==(options&(QUICKSELECT_INDIRECT))) {
+                                            c=compar(pc,pd);
+                                        } else {
+                                            c=compar(*((char *const *)(pc)),*((char *const *)(pd)));
+                                        }
+					if (0!=c) break;
+                                    }
+#if DEBUG_CODE && defined(DEBUGGING)
                                     if (DEBUGGING(SORT_SELECT_DEBUG))
                                         (V)fprintf(stderr, "/* %s: %s line %d: karray[%lu]=%lu, le=%lu, ue=%lu */\n", __func__,source_file,__LINE__,k,karray[k],le,ue);
 #endif /* DEBUG_CODE */
@@ -1362,7 +1268,7 @@ do_test:
                 /* cleanup */
                 if (NULL!=fp) { fclose(fp); fp=NULL; }
                 if (NULL != karray) {
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
                     if (DEBUGGING(MEMORY_DEBUG)) (V)fprintf(stderr,
                         "/* %s: %s line %d: freeing karray @ %p */\n",
                         __func__,source_file,__LINE__,(void *)karray);

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    wqsort.c copyright 2016-2018 Bruce Lilly.   \ wqsort.c $
+* $Id: ~|^` @(#)    wqsort.c copyright 2016-2019 Bruce Lilly.   \ wqsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.24 dated 2018-07-12T20:59:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.26 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,40 +46,23 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.24"
-#define MODULE_DATE "2018-07-12T20:59:36Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define QUICKSELECT_LOOP d_quickselect_loop
-#define SAMPLING_TABLE_FUNCTION_NAME d_sampling_table
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
-
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
-;
-
-/* sampling_table declaration */
-#include "sampling_table_decl.h"
-;
-
-#include "pivot_src.h"
-
-extern void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk,
-    size_t beyondk, size_t *pfk, size_t *pbk);
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "pivot_src.h"
+#endif
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -138,9 +121,6 @@ static size_t sample_index_lt(size_t nmemb, size_t first, size_t n, size_t x, in
     /* single sample may be offset from mid, positions of larger number of
        samples depends on pivot selection method
     */
-#if 0
-fprintf(stderr,"/* %s line %d: nmemb=%lu, first=%lu, mid=%lu, n=%lu, x=%lu, method=%d */\n",__func__,__LINE__,nmemb,first,mid,n,x,pm);
-#endif
     switch (n) {
         case 1UL :
             switch (nmemb) {
@@ -259,9 +239,6 @@ void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
     int method;
     register long *pb, *pc, *pivot, *pm;
     if (NULL==lswap) lswap=swapn(lsz);
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,__LINE__,first,beyond,nmemb);
-#endif
     switch (nmemb) {
         /* small sub-arrays with no method (using dedicated_sort) */
         case 0UL : return;
@@ -271,9 +248,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,_
                 /* 0 1 */
                 EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
                 /* 1 0 */
-#if 0
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
         return;
         case 3UL :
                 /* 0 1 2 */
@@ -281,9 +255,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,_
                 /* 2 1 0 */
                 EXCHANGE_SWAP(lswap,base+first,base+first+1UL,lsz,lsz,1UL,/**/);
                 /* 1 2 0 */
-#if 0
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
         return;
         case 4UL :
                 /* 0 1 2 3 */
@@ -294,9 +265,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,_
                 EXCHANGE_SWAP(lswap,base+first+2UL,base+first+3UL,lsz,lsz,1UL,
                     /**/);
                 /* 2 0 3 1 */
-#if 0
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
         return;
         case 5UL :
                 /* 0 1 2 3 4 */
@@ -307,16 +275,16 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,_
                 EXCHANGE_SWAP(lswap,base+first+3UL,base+first+4UL,lsz,lsz,1UL,
                     /**/);
                 /* 3 0 2 4 1 */
-#if 0
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,__LINE__,first,beyond,nmemb);
-#endif
         return;
         default:
-            new_distribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,
-                firstk,beyondk,NULL,&pk,nmemb,size_ratio,options);
+            new_distribution=
+#if LIBMEDIAN_TEST_CODE
+                d_sampling_table
+#else
+                sampling_table
+#endif
+                (first,beyond,pk,firstk,beyondk,NULL,&pk,nmemb,size_ratio,
+                options);
             method=pivot_method(NULL,nmemb,0UL,0UL,new_distribution,size_ratio,
                 options);
             n=samples(nmemb,method,new_distribution,options);
@@ -330,9 +298,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu */\n",__func__,_
                 mid=sample_index_lt(nmemb,first,n,first+(nmemb>>1)+1UL,method);
             else
                 mid=sample_index_lt(nmemb,first,n,beyond,method);
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, n=%lu, mid=%lu */\n",__func__,__LINE__,first,nmemb,n,mid);
-#endif
 /* make_adverse line 310: first=3, nmemb=6, mid=0 */
 #endif
             switch (n) {
@@ -363,13 +328,7 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",_
 #endif
                 default :
                     prank=min_rank(nmemb,n,method);
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%d, prank=%lu */\n",__func__,__LINE__,first,beyond,nmemb,n,method,prank);
-#endif
                     /* split will be at pivot (rank prank) */
-#if 0
-                    base[first+prank]=(long)first+(long)prank;
-#endif
                     /* left and right regions should be adverse sequences */
                     /* if ratio is large, large region will use median of
                        medians
@@ -379,8 +338,14 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%
                         if (NULL!=pk) d_klimits(first,first+prank,pk,firstk,
                             beyondk,&lk,&rk);
                         else rk=firstk, lk=beyondk;
-                        new_distribution=SAMPLING_TABLE_FUNCTION_NAME(first,
-                            first+prank,pk,lk,rk,NULL,&pk,prank,size_ratio,options);
+                        new_distribution=
+#if LIBMEDIAN_TEST_CODE
+                            d_sampling_table
+#else
+                            sampling_table
+#endif
+                            (first,first+prank,pk,lk,rk,NULL,&pk,prank,
+                            size_ratio,options);
                         make_adverse(base,first,first+prank,pk,lk,rk,
                             size_ratio,new_distribution,options);
                     }
@@ -388,17 +353,18 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%
                         if (NULL!=pk) d_klimits(first+prank+1UL,beyond,pk,
                             firstk,beyondk,&lk,&rk);
                         else rk=firstk, lk=beyondk;
-                        new_distribution=SAMPLING_TABLE_FUNCTION_NAME(
-                            first+prank+1UL,beyond,pk,lk,rk,NULL,&pk,
+                        new_distribution=
+#if LIBMEDIAN_TEST_CODE
+                            d_sampling_table
+#else
+                            sampling_table
+#endif
+                            (first+prank+1UL,beyond,pk,lk,rk,NULL,&pk,
                             nmemb-prank-1UL,size_ratio,options);
                         make_adverse(base,first+prank+1UL,beyond,pk,lk,
                             rk,size_ratio,new_distribution,options);
                     }
                     o = nmemb / n; /* elements offset between samples */
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%d, mid=%lu, o=%lu, prank=%lu, r=%lu */\n",__func__,__LINE__,first,beyond,nmemb,n,method,mid,o,prank,r);
-                        print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
                     /* Put prank+1 extreme values in positions where they would
                        be prior to partitioning, i.e. in sample positions for
                        remedian, and in the middle of the array for median of
@@ -423,27 +389,18 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, n=%lu, method=%
                                 mid=first+((nmemb-1UL)>>1); /* lower-middle index */
                                 o=sample_index_lt(nmemb,first,n,mid+2UL,method);
                             } else o=mid;
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, prank=%lu, nmemb=%lu, mid=%lu, o=%lu */\n",__func__,__LINE__,first,prank,nmemb,mid,o);
-#endif
                             EXCHANGE_SWAP(lswap,base+first+prank,base+o,lsz,lsz,
                                 1UL,/**/);
                             if (1UL<n) {
                                 for (p=first,q=first+(prank>>1); p<q; p++) {
                                     o=sample_index_lt(nmemb,first,n,o,method);
                                     if (o==p) continue;
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, q=%lu, o=%lu, mid=%lu */\n",__func__,__LINE__,first,p,q,o,mid);
-#endif
                                     EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
                                         /**/);
                                 }
                                 for (o=mid+2UL-(nmemb/3UL),q=first+prank; p<q; p++) {
                                     o=sample_index_lt(nmemb,first,n,o,method);
                                     if (o==p) continue;
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, q=%lu, o=%lu, mid=%lu */\n",__func__,__LINE__,first,p,q,o,mid);
-#endif
                                     EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
                                         /**/);
                                 }
@@ -451,14 +408,8 @@ fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, q=%lu, o=%lu, mid=%lu */\n",__f
                         break;
                         case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
                         case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, n=%lu (pre-de-partition) */\n",__func__,__LINE__,first,nmemb,mid,n);
-#endif
                             q=(n>>1);
                             for (p=first,o=mid-q; o<=mid; p++,o++) {
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, o=%lu, p=%lu (de-partition) */\n",__func__,__LINE__,first,nmemb,mid,o,p);
-#endif
                                 EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,1UL,
                                     /**/);
                             }
@@ -537,7 +488,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, o=%lu, p=%lu (de-p
 #endif
                         switch (method) {
                             case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
-/* XXX */
                                 /* For median of medians, 
                                 */
                             break;
@@ -547,9 +497,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, nmemb=%lu, mid=%lu, o=%lu, p=%lu (de-p
                                 for (o=beyond; r<=p; p--) {
                                     o=sample_index_lt(nmemb,first,n,o,method);
                                     if (p==o) continue;
-#if 0
-fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, o=%lu, q=%lu, r=%lu, mid=%lu (undo pivot selection) */\n",__func__,__LINE__,first,p,o,q,r,mid);
-#endif
                                     EXCHANGE_SWAP(lswap,base+p,base+o,lsz,lsz,
                                         1UL,/**/);
                                 }
@@ -572,9 +519,6 @@ fprintf(stderr,"/* %s line %d: first=%lu, p=%lu, o=%lu, q=%lu, r=%lu, mid=%lu (u
                         }
                     }
 
-#if 0
-                        print_some_array(base,first,beyond-1UL,"/* "," */",options);
-#endif
                 break;
             }
         return;
@@ -596,7 +540,7 @@ char *low_remedian(register char *middle, register size_t row_spacing,
 {
     register size_t o;
     if (aqcmp!=compar) return NULL;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: middle=%p[%lu], row_spacing=%lu, "
             "sample_spacing=%lu, idx=%u */\n",__func__,source_file,__LINE__,
@@ -642,7 +586,7 @@ char *freeze_some_samples(register char *base, register size_t first,
     m=(nmemb>>1)+first, pivot=base+size*m;      /* [upper-]middle element */
     pl=base+size*first, pu=base+size*beyond;
     A((SAMPLING_TABLE_SIZE)>table_index);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
             "options=0x%x */\n",__func__,source_file,__LINE__,
@@ -668,7 +612,7 @@ char *freeze_some_samples(register char *base, register size_t first,
 #endif /* QUICKSELECT_STABLE */
         default : /* remedian of samples */
             nfrozen=0UL, pivot_minrank=minimum_remedian_rank(table_index);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
                     "options=0x%x, pivot_minrank=%lu */\n",
@@ -705,7 +649,7 @@ char *freeze_some_samples(register char *base, register size_t first,
             t=0UL;
             pivot_sample_rank(pivot,r,r,size,table_index,pivot,&t,base);
             q=pivot_rank(base,first,beyond,size,pivot);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
                     "options=0x%x, pivot_minrank=%lu: "
@@ -722,7 +666,7 @@ char *freeze_some_samples(register char *base, register size_t first,
             if (0UL<w) {
                 for (o=(s>>1)*w,x=m-r-o,u=m-r+o; x<=u; x+=w) {
                     if (nfrozen<pivot_minrank) {
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(WQSORT_DEBUG))
                             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
                                 "beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, "
@@ -738,7 +682,7 @@ char *freeze_some_samples(register char *base, register size_t first,
                 /* middle row, left */
                 for (x=m-o; x<m; x+=w) {
                     if (nfrozen<pivot_minrank) {
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(WQSORT_DEBUG))
                             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, "
                                 "beyond=%lu, nfrozen=%lu, pivot_minrank=%lu, x="
@@ -753,12 +697,10 @@ char *freeze_some_samples(register char *base, register size_t first,
                 }
             }
             /* if necessary to increase pivot rank, freeze more elements */
-#if 1
             for (pc=pl; (nfrozen<pivot_minrank)&&(pc+size<pu); pc+=size) {
                 if (pc==pivot) continue; /* don't freeze middle pivot sample */
                 (V)freeze(aqindex(pc,base,size)); /* freeze element @ pc */
             }
-#endif
             /* freeze middle pivot selection sample */
             (V)freeze(aqindex(pivot,base,size));
             p=count_frozen(base,first,beyond,size);
@@ -766,7 +708,7 @@ char *freeze_some_samples(register char *base, register size_t first,
             x=m-r-o,u=m+r+o+1UL;
             t=0UL;
             pivot_sample_rank(pivot,r,r,size,table_index,pivot,&t,base);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
                     "options=0x%x, pivot_minrank=%lu: post-"
@@ -781,7 +723,7 @@ char *freeze_some_samples(register char *base, register size_t first,
             if (0UL==(r&0x01UL)) pivot_minrank++;
             p=count_frozen(base,first,beyond,size);
             q=pivot_rank(base,first,beyond,size,pivot);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(WQSORT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
                     "options=0x%x, pivot_minrank=%lu: pre-"
@@ -819,7 +761,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
     struct sampling_table_struct *psts;
         
     for (;;) {
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(WQSORT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, firstk"
                 "=%lu, beyondk=%lu */\n",__func__,source_file,__LINE__,first,
@@ -831,26 +773,38 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
             if ((nmemb<=quickselect_small_array_cutoff)
             && (nmemb<5UL) /* must avoid indirection */
             ) {
-                (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,
+                (V)d_quickselect_loop(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,
                     0UL,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                     options,NULL,NULL);
                 return;
             }
         } else return;
-        distribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,firstk,beyondk,NULL,
+        distribution=
+#if LIBMEDIAN_TEST_CODE
+            d_sampling_table
+#else
+            sampling_table
+#endif
+            (first,beyond,pk,firstk,beyondk,NULL,
             &pk,nmemb,size_ratio,options);
 
         /* normal pivot selection (for comparison and swap counts) */
-        pivot=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
+        pivot=
+#if LIBMEDIAN_TEST_CODE
+            d_select_pivot
+#else
+            select_pivot
+#endif
+            (base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,distribution,NULL,0UL,0UL,quickselect_cache_size,pbeyond,options,
             &pc,&pd,&pe,&pf,NULL,&samples);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         t=pivot_minrank;
 #endif
         /* XXX no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
             alignsize,size_ratio,quickselect_cache_size,options,&p,&q);
-#if DEBUG_CODE
+#if DEBUG_CODE && defined(DEBUGGING)
         if (p+1UL!=q) {
             (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, first=%lu, p=%lu, "
                 "q=%lu, beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), "
@@ -866,7 +820,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
         } else { /* < region is larger, or regions are the same size */
             ratio=s/(nmemb-s);
         }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(WQSORT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: p=%lu, q=%lu, pivot rank=s="
                 "%lu, r=%lu, ratio=%lu */\n",
@@ -876,7 +830,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
         else rk=firstk, lk=beyondk;
         /* < region indices [first,p), order statistics [firstk,lk) */
         /* > region indices [q,beyond), order statistics [rk,beyondk) */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(WQSORT_DEBUG)) {
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, p=%lu, q=%lu, "
                 "beyond=%lu, samples=%lu, pivot_minrank=%lu(%lu), nfrozen=%lu, "

@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    dedicated_sort_src.h copyright 2017-2018 Bruce Lilly.   \ dedicated_sort_src.h $
+* $Id: ~|^` @(#)    dedicated_sort_src.h copyright 2017-2019 Bruce Lilly.   \ dedicated_sort_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.19 dated 2018-08-16T01:59:15Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.21 dated 2019-03-15T14:07:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,14 +96,15 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.19"
-#define MODULE_DATE "2018-08-16T01:59:15Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2019-03-15T14:07:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
+#include "median_test_config.h" /* test_array_sort comparator_name */
 #include "quickselect_config.h" /* QUICKSELECT_INLINE */
-#include "exchange.h"           /* irotate protate EXCHANGE_SWAP */
+#include "exchange.h"           /* irotate EXCHANGE_SWAP */
 #include "indirect.h"           /* inplace_merge pointer_mergesort
                                    rearrange_array
                                 */
@@ -144,32 +145,23 @@
 #endif
 
 /* shared data */
-#if __STDC_WANT_LIB_EXT1__
-# ifndef QUICKSELECT_LOOP
-#  define QUICKSELECT_LOOP quickselect_loop_s
-# endif
-#else
-# ifndef QUICKSELECT_LOOP
-#  define QUICKSELECT_LOOP quickselect_loop
-# endif
-#endif /* __STDC_WANT_LIB_EXT1__ */
-
-#ifndef DEDICATED_SORT_SRC_FILE_HERE
+#if ( ! defined(DEDICATED_SORT_SRC_FILE_HERE)) || (LIBMEDIAN_TEST_CODE == 0)
 extern char dedicated_sort_src_file[];
 extern char dedicated_sort_src_file_initialized;
 #else
-/* not static; referenced by inline functions */
 char dedicated_sort_src_file[PATH_MAX];
 char dedicated_sort_src_file_initialized=0;
 #endif
 
-/* static data */
-static const size_t pointer_and_a_half = sizeof(char *)+(sizeof(char *)>>1);
+#include "quickselect_constants.h"      /* pointer_and_a_half */
 
 /* quickselect_loop declaration */
 #if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
+# if  __STDC_WANT_LIB_EXT1__
+QUICKSELECT_DEDICATED_SORT_S
+# else
+QUICKSELECT_DEDICATED_SORT
+# endif
 ;
 # define QUICKSELECT_LOOP_DECLARED 1
 #endif /* QUICKSELECT_LOOP_DECLARED */
@@ -195,7 +187,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
     || (0UL==size)
     || (NULL==compar)
     ) {
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: ERROR: size=%lu, base=%p, compar=%s */\n",
@@ -205,7 +197,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
 #endif
         r=errno=EINVAL;
     } else {
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
@@ -240,7 +232,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                 _Alignas((QUICKSELECT_DEFAULT_ALIGNMENT))
 #endif /* C11 */
                 char *pointers[npointers];
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
@@ -257,7 +249,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                 /* mergesort using indirection; pointers moved, not data */
                 pointer_mergesort(pointers,0UL,base,nmemb,nmemb,COMPAR_ARGS,
                     cache_sz,options|(QUICKSELECT_INDIRECT));
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
                     print_some_array(pointers,0UL,nmemb-1UL,"/* pointers: ",
                         " */",options|(QUICKSELECT_INDIRECT));
@@ -268,7 +260,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                 indices=convert_pointers_to_indices(base,nmemb,size,pointers,
                     nmemb,(size_t *)pointers,first,beyond);
                 A(NULL!=indices);
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 npiconversions+=nmemb;
 #endif
                 /* Rearrange the data elements according to sorted order using
@@ -279,7 +271,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
                 n=rearrange_array(base,nmemb,size,indices,nmemb,first,beyond,
                     alignsize);
                 if (n>npointers) r=errno;
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 nmoves+=n;
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(MEMORY_DEBUG)) 
                     print_some_array(base,first,beyond-1UL,
@@ -288,7 +280,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
             }
         }
     }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -332,15 +324,10 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
        If partial order stability is required, the stable unrolled merge sort is
        used; otherwise the slightly faster decision tree is used.
     */
-#if 1
-    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))
-#else
-    if (1
-#endif
-    ) {
-        /* simplified merge for 3 elements */
+    if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS|QUICKSELECT_STABLE))) {
+        /* simplified merge for 3 elements; 2-3 comparisons, 0-3 swaps */
         /* split */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -353,7 +340,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
             EXCHANGE_SWAP(swapf,pa,pb,size,alignsize,size_ratio,SWAP_COUNT_STATEMENT);
             CX(pb,pc);
         }
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         nmerges++; /* this was a merge */
 #endif
     } else {
@@ -376,7 +363,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
            lower overhead, same average comparisons, same average data movement.
         */
         register int c, d;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: non-stable decision tree: first=%lu, beyond"
@@ -416,7 +403,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
     A(0>=OPT_COMPAR(pa,pb,options));
     A(0>=OPT_COMPAR(pb,pc,options));
 #endif
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -440,7 +427,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
     register char *pa, *pb, *pc, *pd;
 
     A(first+4UL==beyond);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
@@ -456,7 +443,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
         /* Optimal sorting network is always better than divide-and-conquer:
            lower overhead, same average comparisons, same average data movement.
         */
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -477,7 +464,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
     /* unrolled in-place merge sort */
     /* simplified in-place merge sort for 4 elements */
     /* split */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -492,7 +479,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
     inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
 check4:
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -515,7 +502,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     register int ret=0;
     register char *pa, *pb;
     A(first+5UL==beyond);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
@@ -532,7 +519,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         /* non-stable, not optimized for expensive comparisons */
         /* 9 comparisons with 4 parallelizable groups */
         register char *pc, *pd, *pe;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -557,7 +544,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
 #endif
     }
     /* Simplified merge for 5 elements; average 7.233 comparisons. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -574,7 +561,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     inplace_merge(base,first,first+2UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
 check5:
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -596,7 +583,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
 {
     register int ret=0;
     A(first+6UL==beyond);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
@@ -613,7 +600,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
         /* non-stable, not optimized for expensive comparisons */
         /* 12 comparisons with 6 parallelizable groups */
         register char *pa, *pb, *pc, *pd, *pe, *pf;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -639,7 +626,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
 #endif
     }
     /* Simplified merge for 6 elements; average 9.924 comparisons. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -656,7 +643,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
     inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
 check6:
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -678,7 +665,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
 {
     register int ret=0;
     A(first+7UL==beyond);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
@@ -705,7 +692,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
         /* non-stable, not optimized for expensive comparisons */
         /* 16 comparisons with 6 parallelizable groups; average 6.196 swaps */
         register char *pa, *pb, *pc, *pd, *pe, *pf, *pg;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -732,7 +719,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
 #endif
     }
     /* Simplified merge for 7 elements; average 12.823 comparisons and 8.474 swap equivalents. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -749,7 +736,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
     inplace_merge(base,first,first+3UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
 check7:
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -771,7 +758,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
 {
     register int ret=0;
     A(first+8UL==beyond);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, size_ratio=%lu */\n",
@@ -794,7 +781,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
         /* non-stable, not optimized for expensive comparisons */
         /* 19 comparisons with 6 parallelizable groups; 8.295 average swaps */
         register char *pa, *pb, *pc, *pd, *pe, *pf, *pg, *ph;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -820,7 +807,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
 #endif
     }
     /* Simplified merge for 8 elements; average 15.909 comparisons and 11.075 swap equivalents. */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -837,7 +824,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
     inplace_merge(base,first,first+4UL,beyond,size,COMPAR_ARGS,
         swapf,alignsize,size_ratio,options);
 check8:
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -852,6 +839,14 @@ check8:
     return ret;
 }
 
+/* forward declaration */
+#if  __STDC_WANT_LIB_EXT1__
+QUICKSELECT_DEDICATED_SORT_S
+#else
+QUICKSELECT_DEDICATED_SORT
+#endif
+;
+
 /* In-place top-down merge sort.  The in-place merge uses rotations to
    maintain displaced elements in sorted order; the rotations can be
    expensive for large arrays.
@@ -864,7 +859,7 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
 {
     register int ret=0;
     register size_t mid, na;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, size_ratio=%lu, "
             "pbeyond=%lu, options=0x%x */\n",__func__,dedicated_sort_src_file,__LINE__,
@@ -877,23 +872,49 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     /* No median-of-medians for sub-arrays (if divide-and-conquer is used) */
     options&=~(QUICKSELECT_RESTRICT_RANK);
     /* Sorting pieces could proceed in parallel.  */
-    ret= DEDICATED_SORT(base,first,mid,size,COMPAR_ARGS,swapf,alignsize,
+    ret= 
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+        d_dedicated_sort_s
+# else
+        d_dedicated_sort
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+        dedicated_sort_s
+# else
+        dedicated_sort
+# endif
+#endif
+        (base,first,mid,size,COMPAR_ARGS,swapf,alignsize,
         size_ratio,cache_sz,pbeyond,options);
-#if ((DEBUG_CODE)>0) || ((ASSERT_CODE)>0)
+#if LIBMEDIAN_TEST_CODE
     if (EAGAIN==ret) {
         (V)fprintf(stderr,"/* %s line %d: EAGAIN: first=%lu, mid=%lu, size_ratio=%lu, options=0x%x */\n",__func__,__LINE__,first,mid,size_ratio,options);
         abort();
     }
 #endif
-    ret= DEDICATED_SORT(base,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
+    ret= 
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+        d_dedicated_sort_s
+# else
+        d_dedicated_sort
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+        dedicated_sort_s
+# else
+        dedicated_sort
+# endif
+#endif
+        (base,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
         size_ratio,cache_sz,pbeyond,options);
-#if ((DEBUG_CODE)>0) || ((ASSERT_CODE)>0)
+#if LIBMEDIAN_TEST_CODE
     if (EAGAIN==ret) {
         (V)fprintf(stderr,"/* %s line %d: EAGAIN: mid=%lu, beyond=%lu, size_ratio=%lu, options=0x%x */\n",__func__,__LINE__,mid,beyond,size_ratio,options);
         abort();
     }
-#endif
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         nmemb=test_array_sort(base,first,mid-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -916,7 +937,7 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     /* merge pieces */
     inplace_merge(base,first,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
         size_ratio,options);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(CORRECTNESS_DEBUG)) {
         nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
@@ -937,25 +958,48 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
    Return EINVAL for caller error (shouldn't happen for internal calls).
 */
 /*
-DEDICATED_SORT_RETURN_TYPE DEDICATED_SORT(char *base, size_t first,
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+int
+#endif
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+    d_dedicated_sort_s
+# else
+    d_dedicated_sort
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+    dedicated_sort_s
+# else
+    dedicated_sort
+# endif
+#endif
+   (char *base, size_t first,
     size_t beyond, size_t size, COMPAR_DECL,
     void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio,
     size_t cache_sz, size_t pbeyond, unsigned int options)
 */
 /* definition */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static
-QUICKSELECT_INLINE
+#if  __STDC_WANT_LIB_EXT1__
+QUICKSELECT_DEDICATED_SORT_S
+#else
+QUICKSELECT_DEDICATED_SORT
 #endif
-# include "dedicated_sort_decl.h"
 {
-    DEDICATED_SORT_RETURN_TYPE ret=0;
+#if __STDC_WANT_LIB_EXT1__
+    errno_t
+#else
+    int
+#endif
+        ret=0;
     size_t nmemb;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==dedicated_sort_src_file_initialized) {
         (V)path_basename(__FILE__,dedicated_sort_src_file,PATH_MAX);
         dedicated_sort_src_file_initialized++;
@@ -963,7 +1007,7 @@ QUICKSELECT_INLINE
 #endif
     A(256UL<=cache_sz); A(beyond>first);
     if (beyond<=first+1UL) { /* nmemb <= 1UL */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         (V)fprintf(stderr,
             "/* %s: %s line %d: ERROR: first=%lu >= beyond=%lu */\n",
             __func__,dedicated_sort_src_file,__LINE__,(unsigned long)first,
@@ -987,7 +1031,7 @@ QUICKSELECT_INLINE
             case 2UL : /* 1 comparison, <=1 swap; low overhead; stable */
                 pa=base+first*size;
                 pb=pa+size;
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: compare-exchange nmemb=%lu, first="
@@ -1028,7 +1072,7 @@ QUICKSELECT_INLINE
 #if QUICKSELECT_MAX_NETWORK > 8
                     /* 25 comparisons in 9 parallel groups; average 12.811 swaps. */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1065,7 +1109,7 @@ QUICKSELECT_INLINE
                 /* simplified in-place merge sort for 9 elements */
                 /* split 4-5 using ded_sort4 and ded_sort5 */
                 /* average 20.326 comparisons and 14.58 swap equivalents */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1088,7 +1132,7 @@ QUICKSELECT_INLINE
                 )) {
 #if QUICKSELECT_MAX_NETWORK > 9
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1125,7 +1169,7 @@ QUICKSELECT_INLINE
                 }
                 /* simplified in-place merge sort for 10 elements */
                 /* split 5-5 using ded_sort5 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1147,7 +1191,7 @@ QUICKSELECT_INLINE
                 )) {
 #if QUICKSELECT_MAX_NETWORK > 10
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1182,7 +1226,7 @@ QUICKSELECT_INLINE
                 }
                 /* simplified in-place merge sort for 11 elements */
                 /* split 5-6 using ded_sort5 and ded_sort6 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1204,7 +1248,7 @@ QUICKSELECT_INLINE
                 )) {
 #if QUICKSELECT_MAX_NETWORK > 11
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1241,7 +1285,7 @@ QUICKSELECT_INLINE
                 }
                 /* simplified in-place merge sort for 12 elements */
                 /* split 6-6 using ded_sort6 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1266,7 +1310,7 @@ QUICKSELECT_INLINE
                     /* http://www.angelfire.com/blog/ronz/Articles/999SortingNetworksReferen.html */
                     /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1307,7 +1351,7 @@ QUICKSELECT_INLINE
                 }
                 /* simplified in-place merge sort for 13 elements */
                 /* split 6-7 using ded_sort6 and ded_sort7 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1333,7 +1377,7 @@ QUICKSELECT_INLINE
                     /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn,
                         *po;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1383,7 +1427,7 @@ QUICKSELECT_INLINE
                 } else {
                     /* simplified in-place merge sort for 13 elements */
                     /* split 7-7 using ded_sort7 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1410,7 +1454,7 @@ QUICKSELECT_INLINE
                     /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
                          *pn, *po, *pp;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1461,7 +1505,7 @@ QUICKSELECT_INLINE
                 } else {
                     /* simplified in-place merge sort for 13 elements */
                     /* split 7-8 using ded_sort7 and ded_sort8 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1488,7 +1532,7 @@ QUICKSELECT_INLINE
                     /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
                          *pn, *po, *pp, *pq;
-# if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
@@ -1539,7 +1583,7 @@ QUICKSELECT_INLINE
                 } else {
                     /* simplified in-place merge sort for 13 elements */
                     /* split 8-8 using ded_sort8 */
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
@@ -1593,7 +1637,20 @@ QUICKSELECT_INLINE
                                         size_ratio,cache_sz,pbeyond,
                                         options);
                                 else if (25UL<nmemb)
-                                    isort_bs(base,first,beyond,size,COMPAR_ARGS,
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+                                    d_isort_bs_s
+# else
+                                    d_isort_bs
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+                                    isort_bs_s
+# else
+                                    isort_bs
+# endif
+#endif
+                                    (base,first,beyond,size,COMPAR_ARGS,
                                         swapf,alignsize,size_ratio,options);
                                 else
                                     ret=inplace_mergesort(base,first,beyond,
@@ -1686,7 +1743,7 @@ QUICKSELECT_INLINE
                 }
             break;
         }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
 # if ASSERT_CODE < 2
         if ((ret!=EAGAIN)&&(DEBUGGING(CORRECTNESS_DEBUG))) {
 # endif

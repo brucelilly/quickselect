@@ -1,4 +1,5 @@
 /*INDENT OFF*/
+#error "obsolete file"
 
 /* Description: C source code for selection-related development */
 /******************************************************************************
@@ -9,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    minmax.c copyright 2016-2018 Bruce Lilly.   \ minmax.c $
+* $Id: ~|^` @(#)    minmax.c copyright 2016-2019 Bruce Lilly.   \ minmax.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is minmax.c version 1.9 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is minmax.c version 1.11 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.minmax.c */
@@ -36,6 +37,7 @@
 /********************** Long description and rationale: ***********************
 * starting point for select/median implementation
 ******************************************************************************/
+#error "obsolete file"
 
 /* ID_STRING_PREFIX file name and COPYRIGHT_DATE are constant, other components are version control fields */
 #undef ID_STRING_PREFIX
@@ -46,22 +48,27 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: minmax.c ~|^` @(#)"
 #define SOURCE_MODULE "minmax.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
+#define LIBMEDIAN_TEST_CODE 1
+#define __STDC_WANT_LIB_EXT1__ 0
+
+#error "obsolete file"
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
+#error "obsolete file"
 void find_minmax(char *base, size_t first, size_t beyond, size_t size,
     int(*compar)(const void *,const void *), unsigned int options,
     char **pmn, char **pmx)
 {
     if ((char)0==file_initialized) initialize_file(__FILE__);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
@@ -90,7 +97,7 @@ __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
                 a=base+first*size,z=a+size;
                 if (0<OPT_COMPAR(a,z,options)) mn=z,mx=a; else mn=a,mx=z; /* stable */
             }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu, min=%lu, max=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,
@@ -111,7 +118,7 @@ void select_minmax(char *base,size_t first,size_t beyond,size_t size,
     char *mn, *mx, *a, *z;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
@@ -120,7 +127,7 @@ __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
     /* first and last elements */
     a=base+first*size,z=base+(beyond-1UL)*size;
     find_minmax(base,first,beyond,size,compar,options,&mn,&mx);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu, min=%lu, max=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond,
@@ -162,7 +169,7 @@ print_some_array(base,first,beyond-1UL,"/* "," */",options);
 #endif /* QUICKSELECT_STABLE */
         }
     }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(SORT_SELECT_DEBUG)) { (V)fprintf(stderr,
 "/* %s: %s line %d: first=%lu, beyond=%lu */\n",
 __func__,source_file,__LINE__,(unsigned long)first,(unsigned long)beyond);
@@ -170,3 +177,4 @@ print_some_array(base,first,beyond-1UL,"/* "," */",options);
 }
 #endif
 }
+#error "obsolete file"

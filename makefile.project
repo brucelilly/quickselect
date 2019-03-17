@@ -98,7 +98,8 @@ CONFLIB = -lconfuse # for old radioclkd
 #PROJECT_LIBS = $(MATHLIB) -lrt -pthread
 #PROJECT_LIBS = $(MATHLIB) $(FAMLIB) $(CONFLIB) -lrt -pthread
 ######### N.B. !!!!!! -pthread causes SunStudio ld to puke !!!!!!!! ##########
-PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -lresolv -lpthread
+PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -lpthread
+#PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -lresolv -lpthread
 #PROJECT_LIBS = $(MATHLIB) $(FAMLIB) -lrt -pthread -lresolv -lnsl
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += PROJECT_LIBS

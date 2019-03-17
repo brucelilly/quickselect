@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    mergesort.c copyright 2016-2018 Bruce Lilly.   \ mergesort.c $
+* $Id: ~|^` @(#)    mergesort.c copyright 2016-2019 Bruce Lilly.   \ mergesort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mergesort.c version 1.22 dated 2018-06-06T04:31:56Z. \ $ */
+/* $Id: ~|^` @(#)   This is mergesort.c version 1.24 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mergesort.c */
@@ -46,19 +46,19 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "mergesort.c"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2018-06-06T04:31:56Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 /* configuration */
 /* no useless "context" crap */
 #undef __STDC_WANT_LIB_EXT1__
+#define __STDC_WANT_LIB_EXT1__ 0
 /* dedicated_sort and quickselect_loop may be called by pointer_mergesort
    (in indirect.h)
 */
-#define DEDICATED_SORT d_dedicated_sort
-#define QUICKSELECT_LOOP d_quickselect_loop
+#define LIBMEDIAN_TEST_CODE 1
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
 #define COMPAR_DECL int(*compar)(const void*,const void*)
 #define COMPAR_ARGS compar
@@ -87,7 +87,7 @@ void mergesort_internal(char *base, size_t first, size_t beyond,
     /* If nmemb > 1, split into two pieces, sort the two pieces (recursively),
        then merge the two sorted pieces.
     */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, nmemb=%lu, size=%lu, "
             "options=0x%x */\n",__func__,source_file,__LINE__,(void *)base,
@@ -306,7 +306,7 @@ void mergesort_internal(char *base, size_t first, size_t beyond,
                     register size_t mid, na;
                     /* split */
                     na=(nmemb>>1); mid=first+na;
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG))
                         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, na=%lu, "
                             "pb=%p */\n",__func__,source_file,__LINE__,
@@ -328,7 +328,7 @@ void mergesort_internal(char *base, size_t first, size_t beyond,
                         size_ratio,cachesz,pbeyond,options);
                     mergesort_internal(base,mid,beyond,size,compar,swapf,alignsize,
                         size_ratio,cachesz,pbeyond,options);
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,"/* %s: %s line %d: concatenated "
                             "sorted halves: base=%p, na=%lu, pb=%p[%lu] */\n",
@@ -343,7 +343,7 @@ void mergesort_internal(char *base, size_t first, size_t beyond,
             break;
         }
     }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, nmemb=%lu */\n",
             __func__,source_file,__LINE__,(void *)base,nmemb);
@@ -366,7 +366,7 @@ void xmergesort(char *base, size_t nmemb,
     /* If nmemb > 1, split into two pieces, sort the two pieces (recursively),
        then merge the two sorted pieces.
     */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
         "/* %s: %s line %d: nmemb=%lu, size=%lu */\n",
         __func__,source_file,__LINE__,nmemb,size);
@@ -388,7 +388,7 @@ void xmergesort(char *base, size_t nmemb,
             } else {
                 size_t n;
                 if (p!=pointers) pointers=p;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: pointer index:pointer"
                         "->base index:\n",__func__,source_file,__LINE__);
@@ -411,7 +411,7 @@ void xmergesort(char *base, size_t nmemb,
                 mergesort_internal((char *)pointers,0UL,nmemb,sizeof(char *),
                     compar,pswapf,sizeof(char *),1UL,quickselect_cache_size,0UL,
                     options);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: pointer index:pointer"
                         "->base index:\n",__func__,source_file,__LINE__);
@@ -427,7 +427,7 @@ void xmergesort(char *base, size_t nmemb,
                 indices=convert_pointers_to_indices(base,nmemb,size,pointers,
                     nmemb,indices,0UL,nmemb);
                 A(NULL!=indices);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: indices:",
                         __func__,source_file,__LINE__);
@@ -453,7 +453,7 @@ no_ind:             options&=~(QUICKSELECT_INDIRECT);
                         alignsize,size_ratio,quickselect_cache_size,0UL,options);
                 } else if (0UL!=n) {
                     nmoves+=n*size_ratio;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,"/* %s: %s line %d: rearrange_array "
                             "moved %lu elements */\n",__func__,source_file,
@@ -488,7 +488,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
             /* Determine cache size once on first call. */
             if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
 
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                 (V)fprintf(stderr,
                     "/* %s: %s line %d: nmemb=%lu, size=%lu, compar=%s, "
@@ -504,7 +504,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
                 char **p; size_t *indices, n, alignsize, size_ratio;
                 alignsize=alignment_size(base,size);
                 size_ratio=size/alignsize;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: base=%p, nmemb=%lu, "
                         "nptrs=%lu */\n",__func__,source_file,__LINE__,
@@ -522,7 +522,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
                 /* mergesort using indirection; pointers moved, not data */
                 pointer_mergesort(pointers,0UL,base,nmemb,nmemb,compar,
                     quickselect_cache_size,options|QUICKSELECT_INDIRECT);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: pointers:",
                         __func__,source_file,__LINE__);
@@ -550,7 +550,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
                     nmemb,(size_t *)pointers,0UL,nmemb);
                 A(NULL!=indices);
                 npiconversions+=nmemb;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: indices:",
                         __func__,source_file,__LINE__);
@@ -570,7 +570,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
                     alignsize);
                 if (n>nptrs) r=errno;
                 nmoves+=n;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,"/* %s: %s line %d: base=%p, nmemb=%lu "
                         "*/\n",__func__,source_file,__LINE__,(void*)base,nmemb);
@@ -614,7 +614,7 @@ size_t extend_run(char *base, size_t first, size_t current, const size_t size,
     register int c;
     register size_t f;
 
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
         "/* %s: %s line %d: first=%lu, current=%lu, size=%lu, runtype=%d */\n",
         __func__,source_file,__LINE__,first,current,size,runtype);
@@ -625,7 +625,7 @@ size_t extend_run(char *base, size_t first, size_t current, const size_t size,
     A((f>0UL)||(pa<pl));
     for (; pa>=pl; f--,pb=pa,pa-=size) {
         c=binary_value(COMPAR(pa,pb));
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V) fprintf(stderr,
                 "/* %s: %s line %d: compared pa=%p[%lu] to pb=%p[%lu] -> c=%d, "
@@ -636,7 +636,7 @@ size_t extend_run(char *base, size_t first, size_t current, const size_t size,
 # endif
         if (c!=runtype) break;
     }
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V) fprintf(stderr,
             "/* %s: %s line %d: run: first=%lu, f=%lu, current=%lu */\n",
@@ -670,7 +670,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
     int runtype;
     size_t b1, b2, f1, f2, len1, len2, b3, f3, len3;
 
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
         "/* %s: %s line %d: first=%lu, beyond=%lu, size=%lu */\n",
         __func__,source_file,__LINE__,first,beyond,size);
@@ -681,7 +681,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
     /* find upper run; length is at least 2 elements */
     len1=0UL,len2=2UL, pb=pu-size,pa=pb-size,b2=beyond,f2=b2-2UL;
     runtype=binary_value(COMPAR(pa,pb));
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V) fprintf(stderr,
             "/* %s: %s line %d: compared pa=%p[%lu] to pb=%p[%lu] -> "
@@ -698,7 +698,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
             options);
         A(f2>=first);A(f2<b2);A(b2==beyond);
         reverse(base,f2,b2,size,swapf,alignsize,size_ratio);
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)) {
             print_some_array(base,first,beyond-1UL,
                     "/* upper run reversed: "," */",options);
@@ -730,7 +730,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
                 if (-1==runtype) {
                     reverse(base,f1,b1,size,swapf,alignsize,size_ratio);
                     /* if reversed, try to extend */
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         print_some_array(base,first,beyond-1UL,
                             "/* lower run reversed: "," */",options);
@@ -762,7 +762,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
             inplace_merge(base,f3,f2,b2,size,COMPAR_ARGS,swapf,alignsize,
                 size_ratio,options);
             b1=f2=f3, len2=b2-f2, len1=b1-f1;
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)) {
                 (V) fprintf(stderr,
                     "/* %s: %s line %d: merged f3=%lu through b2=%lu, len1=%lu "
@@ -774,7 +774,7 @@ void merge_runs(char *base, size_t first, size_t beyond, const size_t size,
 # endif
         }
     }
-# if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         print_some_array(base,first,beyond-1UL,"/* sorted: "," */",options);
     }
@@ -798,7 +798,7 @@ void runsort(char *base, size_t nmemb, const size_t size,
     /* If nmemb > 1, split into two pieces, sort the two pieces (recursively),
        then merge the two sorted pieces.
     */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V) fprintf(stderr,
         "/* %s: %s line %d: nmemb=%lu, size=%lu */\n",
         __func__,source_file,__LINE__,nmemb,size);

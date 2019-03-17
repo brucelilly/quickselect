@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    partition.c copyright 2016-2018 Bruce Lilly.   \ partition.c $
+* $Id: ~|^` @(#)    partition.c copyright 2016-2019 Bruce Lilly.   \ partition.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition.c version 1.10 dated 2018-02-14T09:05:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition.c version 1.11 dated 2019-03-15T14:05:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.partition.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition.c ~|^` @(#)"
 #define SOURCE_MODULE "partition.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-02-14T09:05:28Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2019-03-15T14:05:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 /* assertions for validation testing */
 #ifndef ASSERT_CODE
@@ -62,7 +62,14 @@
 #endif
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0
-#define PARTITION_FUNCTION_NAME d_partition
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
+
+#undef QUICKSELECT_STATIC
+#define QUICKSELECT_STATIC /* */
+
+#undef QUICKSELECT_INLINE
+#define QUICKSELECT_INLINE /* */
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */

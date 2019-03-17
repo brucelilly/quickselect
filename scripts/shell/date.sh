@@ -166,11 +166,19 @@ then
 	do=echo
 fi
 
-export YESTERDAY=`date -d yesterday +%Y-%m-%d`
+export YESTERDAY=`date -d yesterday +%Y-%m-%d 2>/dev/null`
+if test -z "${YESTERDAY}"
+then	# FreeBSD variant of date
+	YESTERDAY=`date -v-1d +%Y-%m-%d`
+fi
 export YEAR=`date +%Y`
 export MONTH=`date +%m`
 export DAY=`date +%d`
-export TOMORROW=`date -d tomorrow +%Y-%m-%d`
+export TOMORROW=`date -d tomorrow +%Y-%m-%d 2>/dev/null`
+if test -z "${TOMORROW}"
+then	# FreeBSD variant of date
+	TOMORROW=`date -v+1d +%Y-%m-%d`
+fi
 
 if test ${debug} -gt 0
 then

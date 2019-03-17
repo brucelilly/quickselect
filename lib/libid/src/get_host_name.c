@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    get_host_name.c copyright 2015-2017 Bruce Lilly.   \ get_host_name.c $
+* $Id: ~|^` @(#)    get_host_name.c copyright 2015-2019 Bruce Lilly.   \ get_host_name.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is get_host_name.c version 1.3 dated 2017-09-01T01:59:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is get_host_name.c version 1.5 dated 2019-03-15T20:40:37Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "get_host_name" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libid/src/s.get_host_name.c */
@@ -53,17 +53,17 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: get_host_name.c ~|^` @(#)"
 #define SOURCE_MODULE "get_host_name.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2017-09-01T01:59:40Z"
+#define MODULE_VERSION "1.5"
+#define MODULE_DATE "2019-03-15T20:40:37Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2015-2017"
+#define COPYRIGHT_DATE "2015-2019"
 
 /* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
 #if defined(__STDC__) && ( __STDC_VERSION__ >= 199901L)
 # define MIN_XOPEN_SOURCE_VERSION 600 /* >=600 for illumos */
 #else
-# define MAX_XOPEN_SOURCE_VERSION 500 /* <=500 for illumos */
+# define MAX_XOPEN_SOURCE_VERSION 400 /* <=500 for illumos, <500 for FreeBSD */
 #endif
 
 #ifndef _XOPEN_SOURCE
@@ -84,7 +84,7 @@
 # define _XOPEN_SOURCE MAX_XOPEN_SOURCE_VERSION
 #endif
 
-#define GET_HOST_NAME_C_XOPEN_SOURCE 500
+#define GET_HOST_NAME_C_XOPEN_SOURCE 400
 #if ! defined(_XOPEN_SOURCE) || (GET_HOST_NAME_C_XOPEN_SOURCE > _XOPEN_SOURCE)
 # ifdef _XOPEN_SOURCE
 #  undef _XOPEN_SOURCE

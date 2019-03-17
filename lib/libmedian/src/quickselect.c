@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect.c copyright 2016-2017 Bruce Lilly.   \ quickselect.c $
+* $Id: ~|^` @(#)    quickselect.c copyright 2016-2019 Bruce Lilly.   \ quickselect.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.90 dated 2017-09-08T00:37:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.91 dated 2019-03-15T14:08:53Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect.c */
@@ -81,6 +81,12 @@
  work (e.g. when given two pointers to the same element).  No specialized macros
  are required.
 ******************************************************************************/
+
+#define __STDC_WANT_LIB_EXT1__ 0
+#undef QUICKSELECT_STATIC
+#define QUICKSELECT_STATIC /* */
+#undef QUICKSELECT_INLINE
+#define QUICKSELECT_INLINE /* */
 
 #include "quickselect_config.h"
 

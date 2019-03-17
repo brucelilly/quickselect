@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    isort.c copyright 2016-2018 Bruce Lilly.   \ isort.c $
+* $Id: ~|^` @(#)    isort.c copyright 2016-2019 Bruce Lilly.   \ isort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is isort.c version 1.12 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is isort.c version 1.13 dated 2019-03-15T14:05:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.isort.c */
@@ -46,17 +46,23 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: isort.c ~|^` @(#)"
 #define SOURCE_MODULE "isort.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2019-03-15T14:05:57Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 #define PURE_INSERTION 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
+
+#if ! QUICKSELECT_BUILD_FOR_SPEED
+# define INSERTION_SORT_SRC_FILE_HERE 1
+#endif
 
 #include "insertion_sort_src.h" /* isort_bs */
 
@@ -68,12 +74,6 @@ void isort_internal(char *base, size_t first, size_t beyond, size_t size,
     if (beyond>first) {
         char *pa, *pb;
         register size_t n=beyond-first;
-#if 0
-if (DEBUGGING(SORT_SELECT_DEBUG)) {
-fprintf(stderr, "// %s line %d: base=%p, first=%lu, beyond=%lu\n",__func__,__LINE__,(void *)base,(unsigned long)first,(unsigned long)beyond);
-print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
-}
-#endif
 #if 0 /* one implementation */
         if (1UL<nmemb) {
             char *pc, *pl, *pu;
@@ -124,7 +124,20 @@ print_some_array(base,0UL,nmemb-1UL, "/* "," */",options);
                    longest (preferably central) sorted run of elements. See
                    libmedian insertion_sort.c and insertion.h files.
                 */
-                isort_bs(base,first,beyond,size,compar,swapf,alignsize,
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+                d_isort_bs_s
+# else
+                d_isort_bs
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+                isort_bs_s
+# else
+                isort_bs
+# endif
+#endif
+                (base,first,beyond,size,compar,swapf,alignsize,
                     size_ratio,options);
             break;
         }

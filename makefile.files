@@ -57,10 +57,10 @@ MAKEFILES_READ += makefile.files
 #   to support independent executable builds.
 # median_test is C99 to use inline exchange
 C11OBJS =\
+ median_test.o\
 #
 C99OBJS =\
  make_grap.o\
- median_test.o\
  simple_config.o\
 # 
 OBJS =\
@@ -102,7 +102,7 @@ DEFS += -DRSYNC=\"$(RSYNC)\"
 
 # Object files other than executable main-program files are placed in library archives.
 # Library archive names and archive member object files (leave unused ones empty)
-#  object files are placed in correspponding LIB*OBJDIR, library archives in LIB*DIR
+#  object files are placed in corresponding LIB*OBJDIR, library archives in LIB*DIR
 # C11- and C99-compiled object files are listed separately
 LIB1ARCH = # liblemd.a
 C11LIB1OBJS =\
@@ -283,10 +283,11 @@ LIB8ARCH = libid.a
 C11LIB8OBJS =\
 #
 C99LIB8OBJS =\
+ get_ips.o\
 #
+# get_host_name.c pre-C99 for hstrerror on FreeBSD
 LIB8OBJS =\
  get_host_name.o\
- get_ips.o\
 #
 LIB8HDRS =\
  get_host_name.h\
@@ -428,7 +429,7 @@ LIB15MAN =\
 # Do not change the following line, which is used for debugging via `make macros`.
 MACROS += LIB15ARCH C11LIB15OBJS C99LIB15OBJS LIB15OBJS LIB15HDRS LIB15MAN
 
-LIB16ARCH = # libangle.a
+LIB16ARCH = libangle.a
 C11LIB16OBJS =\
 #
 C99LIB16OBJS =\
@@ -449,11 +450,11 @@ LIB17ARCH = libconfig.a
 C11LIB17OBJS =\
 #
 C99LIB17OBJS =\
+ simple_config.o\
 #
 LIB17OBJS =\
  indent.o\
  re_config.o\
- simple_config.o\
  sorted_array.o\
 #
 LIB17HDRS =\
@@ -524,57 +525,62 @@ LIB20ARCH = libmedian.a
 C11LIB20OBJS =\
  quickselect_lib_s.o\
  quickselect_lib.o\
- indirect.o\
+ dedicated_sort.o\
+ dedicated_sort_s.o\
+ find_minmax_s.o\
+ fmed3_s.o\
+ partition_s.o\
+ pivot_s.o\
+ select_max_s.o\
+ select_min_s.o\
 #
 C99LIB20OBJS =\
+ find_minmax.o\
+ fmed3.o\
  indirect_mergesort.o\
+ klimits.o\
  repeated_median.o\
  options.o\
+ partition.o\
+ pivot.o\
  qsort_s.o\
  quickselect_s.o\
  qsort.o\
  quickselect.o\
  repivot_tables.o\
  sampling_tables.o\
-# selection_table.o\
-# dedicated_sort.o\
-# cutoff_value.o\
-# cutoff_table.o\
-# rearrange.o\
+ select_max.o\
+ select_min.o\
+ select_minmax.o\
+ select_minmax_s.o\
+ should_repivot.o\
+ sampling_table.o\
 #
 LIB20OBJS =\
+ constants.o\
 #
 LIB20HDRS =\
- dedicated_sort_decl.h\
  dedicated_sort_src.h\
+ find_minmax_src.h\
+ fmed3_src.h\
  indirect.h\
  initialize_src.h\
  insertion.h\
  insertion_sort_src.h\
- klimits_decl.h\
  klimits_src.h\
- partition_decl.h\
  partition_src.h\
  pivot_src.h\
  qsort_src.h\
- quickselect_loop_decl.h\
  quickselect_loop_src.h\
  quickselect_src.h\
  quickselect.h\
  quickselect_config.h\
+ quickselect_constants.h\
  repeated_median.h\
  repivot_src.h\
- sample_index_decl.h\
  sampling_table.h\
- sampling_table_decl.h\
  sampling_table_src.h\
- should_repivot_decl.h\
  tables.h\
-# cutoff_table.h\
-# cutoff_value_decl.h\
-# dedicated_sort_s_decl.h\
-# quickselect_loop_s_decl.h\
-# select_pivot_decl.h\
 #
 LIB20MAN =\
  quickselect.3\
@@ -638,9 +644,9 @@ LIB24ARCH = librandom.a
 C11LIB24OBJS =\
 #
 C99LIB24OBJS =\
+ random64n.o\
 #
 LIB24OBJS =\
- random64n.o\
 #
 LIB24HDRS =\
  random64n.h\
@@ -853,10 +859,14 @@ MACROS += LIB38ARCH C11LIB38OBJS C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
 
 LIB39ARCH = libmedian_test.a
 C11LIB39OBJS =\
- dedicated_sort.o\
  partition.o\
+ quickselect_s.o\
+ d_dedicated_sort.o\
+ dedsort.o\
 #
 C99LIB39OBJS =\
+ d_fmed3.o\
+ comparators.o\
  functions.o\
  correctness.o\
  timing.o\
@@ -874,9 +884,11 @@ C99LIB39OBJS =\
  minmaxsort.o\
  netbsd.o\
  plan9.o\
- quickselect_s.o\
  quickselect.o\
- minmax.o\
+ select_max.o\
+ select_min.o\
+ select_minmax.o\
+ d_find_minmax.o\
  selsort.o\
  smoothsort.o\
  sqrtsort.o\
@@ -890,6 +902,9 @@ C99LIB39OBJS =\
  debug.o\
  dual.o\
  duplicate.o\
+ db.o\
+ pivot.o\
+ should_repivot.o\
  sort5.o\
  operations.o\
  compare.o\
@@ -901,12 +916,13 @@ C99LIB39OBJS =\
  is_even.o\
  ulsqrt.o\
  valid.o\
+ sampling_table.o\
+ test_array_partition.o\
+ test_array_sort.o\
  parse.o\
  print.o\
+ klimits.o\
  globals.o\
-# fmed3.o\
-# floor_lg.o\
-# select_pivot.o\
 #
 LIB39OBJS =\
 #

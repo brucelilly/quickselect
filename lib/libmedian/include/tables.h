@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    tables.h 1.8 copyright 2017-2018 Bruce Lilly.   \ tables.h $
+* $Id: ~|^` @(#)    tables.h 1.9 copyright 2017-2019 Bruce Lilly.   \ tables.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is tables.h version 1.8 dated 2018-06-12T18:36:53Z. \ $ */
+/* $Id: ~|^` @(#)   This is tables.h version 1.9 dated 2019-03-15T14:07:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.tables.h */
@@ -84,28 +84,17 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define TABLES_H_VERSION "tables.h 1.8 2018-06-12T18:36:53Z"
+#define TABLES_H_VERSION "tables.h 1.9 2019-03-15T14:07:15Z"
 
 /* system header files */
 #include <stddef.h>             /* size_t */
+
+#include "quickselect.h"        /* struct sampling_table_struct */
 
 /* Nothing to configure below this line. */
 
 /* data structures */
 
-/* To avoid repeatedly calculating the number of samples required for pivot
-   element selection vs. nmemb, which is expensive, a table is used; then
-   determining the number of samples simply requires a search of the (small)
-   table.  As the number of samples in each table entry is a power of 3, the
-   table may also be used to avoid multiplication and/or division by 3.
-   McGeoch & Tygar, in "Optimal Sampling Strategies for Quicksort" also
-   suggest use of a table, and determine the optimal sample size as proportional
-   to the square root of the array size.
-*/
-struct sampling_table_struct {
-    size_t max_nmemb;    /* smallest sub-array for this number of samples */
-    size_t samples;      /* the number of samples used for pivot selection */
-};
 /* N.B.: The remedian-based sampling tables' samples member for
           sampling_table[x] is the x'th power of 3. Several parts of the code
           depend on this. Don't add entries for sample sizes which are not

@@ -31,7 +31,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is insertion.h version 1.5 dated 2018-05-15T02:07:15Z. \ $ */
+/* $Id: ~|^` @(#)   This is insertion.h version 1.6 dated 2019-03-15T14:07:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "insertion" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.insertion.h */
@@ -42,7 +42,7 @@
 ******************************************************************************/
 
 /* version-controlled header file version information */
-#define INSERTION_H_VERSION "insertion.h 1.5 2018-05-15T02:07:15Z"
+#define INSERTION_H_VERSION "insertion.h 1.6 2019-03-15T14:07:13Z"
 
 #ifndef ASSERT_CODE
 # define ASSERT_CODE        0  /* for validity testing; 0 for production code */
@@ -82,7 +82,7 @@ size_t binary_search(char *base, register size_t k, register size_t l,
     register size_t m;
 
     A(l<=h);A((k==l-1UL)||(k==h+1UL));
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, search for insertion "
             "position for k=%lu in [%lu,%lu] */\n"
@@ -128,7 +128,7 @@ size_t binary_search(char *base, register size_t k, register size_t l,
             }
         }
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, insertion position for "
             "k=%lu is l=%lu */\n",__func__,source_file,__LINE__,(void *)base,k,
@@ -157,7 +157,7 @@ size_t linear_search(char *base, register size_t k, register size_t l,
     register size_t m;
 
     A(l<=h);A((k==l-1UL)||(k==h+1UL));
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, search for insertion "
             "position for k=%lu in [%lu,%lu] */\n"
@@ -203,7 +203,7 @@ size_t linear_search(char *base, register size_t k, register size_t l,
             }
         }
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, insertion position for "
             "k=%lu is l=%lu */\n",__func__,source_file,__LINE__,(void *)base,k,
@@ -233,7 +233,7 @@ void insert(char *base, size_t i, size_t j, size_t size,
         QUICKSELECT_COUNT_ROTATIONS(i+1UL-j,size_ratio);
 #endif
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: inserted i=%lu at j=%lu */\n",
             __func__,source_file,__LINE__,i,j);

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    dual.c copyright 2016-2018 Bruce Lilly.   \ dual.c $
+* $Id: ~|^` @(#)    dual.c copyright 2016-2019 Bruce Lilly.   \ dual.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dual.c version 1.21 dated 2018-06-26T00:36:28Z. \ $ */
+/* $Id: ~|^` @(#)   This is dual.c version 1.23 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dual.c */
@@ -46,26 +46,19 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dual.c ~|^` @(#)"
 #define SOURCE_MODULE "dual.c"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-06-26T00:36:28Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define QUICKSELECT_LOOP d_quickselect_loop
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
-
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
 
 /* turn on (or off) debugging code */
 #define DPDEBUG 0
@@ -136,7 +129,7 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
     if (*ppivot2!=pe) {
         EXCHANGE_SWAP(swapf,*ppivot2,pe,size,alignsize,size_ratio,nsw++);
     }
-#if DPDEBUG
+#if DPDEBUG && LIBMEDIAN_TEST_CODE
     if (DEBUGGING(DPQSORT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d) */\n",
@@ -184,7 +177,7 @@ static QUICKSELECT_INLINE void dp_partition(char *base, size_t nmemb,
     pb=blockmove(base,pb,pc,swapf);
     pe=blockmove(pd,pe,pu,swapf);
     *ppivot1=pb,*pmid=pc,*ppivot2=pd,*pgt=pe;
-#if DPDEBUG
+#if DPDEBUG && LIBMEDIAN_TEST_CODE
     if (DEBUGGING(DPQSORT_DEBUG)) {
         /* verify correct partitioning */
         (V)fprintf(stderr,
@@ -292,7 +285,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
 # undef SAMPLE_SELECTION
 # define SAMPLE_SELECTION ADAPTIVE_SAMPLING
 #endif
-#if DPDEBUG
+#if DPDEBUG && LIBMEDIAN_TEST_CODE
     if (DEBUGGING(DPQSORT_DEBUG)) {
         (V)fprintf(stderr,
            "/* %s: %s line %d: %lu elements */\n",
@@ -327,7 +320,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
            than single-choice methods), so it isn't used for nmemb > dp_cutoff.
         */
         if (nmemb<=dp_cutoff) {
-            (V)QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
+            (V)d_quickselect_loop(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
                 swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                 options,NULL,NULL);
     /* <- */    return; /* Done; else continue divide-and-conquer */
@@ -367,7 +360,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
 # endif
         if (q>nmemb) r--,s-=3UL;
         if (s<5UL) r=1UL,s=5UL;
-# if DPDEBUG
+# if DPDEBUG && LIBMEDIAN_TEST_CODE
         if (DEBUGGING(DPQSORT_DEBUG)) {
             (V)fprintf(stderr,"%s: %s line %d: %lu elements, %lu samples, "
                 "r=%lu\n",__func__,source_file,__LINE__,nmemb,s,r);
@@ -395,9 +388,6 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
            (nmemb-s)/s/2 = (nmemb/s-1)/2 = (r-1)/2
         */
         /* XXX maybe swap samples to the middle instead of start */
-#if 0 /* XXX */
-|     ?   s p1 s p2 s    ?     |
-#endif
         r=nmemb/s, q=(r-1UL)>>1, ps=base+q*size;
         for (pa=base,q=0UL; q<s; pa+=size,ps+=r*size,q++) {
             if (pa!=ps) {
@@ -442,7 +432,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         sort5(pa,pivot1,pm,pivot2,ps,size,compar,swapf,alignsize,size_ratio,
             options);
 #endif
-#if DPDEBUG
+#if DPDEBUG && LIBMEDIAN_TEST_CODE
         if (DEBUGGING(DPQSORT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s line %d: pivot1=%p[%lu](%d), pivot2=%p[%lu](%d) */\n",
@@ -462,7 +452,7 @@ static QUICKSELECT_INLINE void dpqsort_internal(char *base, size_t nmemb,
         regions[2].base=ps, regions[2].nmemb=(pu-ps)/size;
         /* sort regions by size (3 regions; use quickselect_loop) */
         /* size 3 dedicated sort always completes sorting (ignore return) */
-        (V)QUICKSELECT_LOOP((char *)regions,0UL,3UL,regionsize,regioncmp,NULL,
+        (V)d_quickselect_loop((char *)regions,0UL,3UL,regionsize,regioncmp,NULL,
             0UL,0UL,regionswap,regionsize,1UL,quickselect_cache_size,0UL,
             options,NULL,NULL);
         A(regions[0].nmemb<=regions[1].nmemb);

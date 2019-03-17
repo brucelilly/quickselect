@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect.c copyright 2016-2018 Bruce Lilly.   \ quickselect.c $
+* $Id: ~|^` @(#)    quickselect.c copyright 2016-2019 Bruce Lilly.   \ quickselect.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.c version 1.25 dated 2018-06-12T02:15:44Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.c version 1.26 dated 2019-03-15T14:05:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect.c */
@@ -46,23 +46,14 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect.c"
-#define MODULE_VERSION "1.25"
-#define MODULE_DATE "2018-06-12T02:15:44Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2019-03-15T14:05:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 1 /* d_dedicated_sort is static */
-#define DEDICATED_SORT d_dedicated_sort /* This is not a F'ing declaration, gcc authors! */
-#define FIND_MINMAX_FUNCTION_NAME d_find_minmax
-#define KLIMITS_FUNCTION_NAME d_klimits
-#define PARTITION_FUNCTION_NAME d_partition
-#define SAMPLE_INDEX_FUNCTION_NAME d_sample_index
-#define SAMPLING_TABLE_FUNCTION_NAME d_sampling_table
-#define SELECT_MIN_FUNCTION_NAME d_select_min
-#define SELECT_MAX_FUNCTION_NAME d_select_max
-#define SELECT_MINMAX_FUNCTION_NAME d_select_minmax
-#define SHOULD_REPIVOT_FUNCTION_NAME d_should_repivot
-#define QUICKSELECT_VISIBILITY extern
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes most other local and system header files required */
@@ -74,8 +65,7 @@
 extern size_t quickselect_cache_size;
 
 #undef QUICKSELECT_BUILD_FOR_SPEED
-#define QUICKSELECT_BUILD_FOR_SPEED 1
-extern /* make it visible */
+#define QUICKSELECT_BUILD_FOR_SPEED 0
 #include "klimits_src.h"
 
 #ifndef SAMPLING_TABLE_SIZE
@@ -85,18 +75,20 @@ extern /* make it visible */
 #endif
 
 /* should_repivot source */
+# define REPIVOT_SRC_FILE_HERE 1
 # include "repivot_src.h"
 
 # undef QUICKSELECT_BUILD_FOR_SPEED
 # define QUICKSELECT_BUILD_FOR_SPEED 0
 # include "quickselect_loop_src.h"
 
-# undef QUICKSELECT_BUILD_FOR_SPEED
-# define QUICKSELECT_BUILD_FOR_SPEED 0
-# include "sampling_table_src.h"
-
 /* quickselect definition (internal interface) */
-int quickselect_internal(char *base, size_t nmemb,
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+int
+#endif
+    quickselect_internal(char *base, size_t nmemb,
     /*const*/ size_t size, int (*compar)(const void *,const void *),
     size_t *pk, size_t nk, unsigned int options, char **ppeq, char **ppgt)
 {
@@ -127,7 +119,7 @@ int quickselect_internal(char *base, size_t nmemb,
     */
     if ((char)0==file_initialized) initialize_file(__FILE__);
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
         "/* %s: %s line %d: nmemb=%lu, size=%lu, pk=%p, nk=%lu, options=0X%X "
         "*/\n",__func__,source_file,__LINE__,nmemb,size,(const void *)pk,nk,
@@ -154,7 +146,7 @@ int quickselect_internal(char *base, size_t nmemb,
        sorting. Ensure consistency between pk and nk. Ensure sorted pk array
        with no duplicated order statistics.
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         if (NULL!=pk)
             (V)fprintf(stderr,
@@ -202,7 +194,7 @@ int quickselect_internal(char *base, size_t nmemb,
                 if (p!=q) { /* indices [p,q) are duplicates */
                     /* CLEARLY not executed if nk==1UL */
                     size_t r=q-p;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(PK_ADJUSTMENT_DEBUG)) { (V)fprintf(stderr,
                             "/* %s: %s line %d: %lu duplicate order statistic%s"
                             " [%lu,%lu): */\n",__func__,source_file,__LINE__,r,
@@ -212,7 +204,7 @@ int quickselect_internal(char *base, size_t nmemb,
 #endif
                     irotate((char *)pk,p,q,nk,sz,sswapf,salignsize,sratio);
                     s=q-p, nk-=s, q=p;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(PK_ADJUSTMENT_DEBUG)) { (V)fprintf(stderr,
                             "/* %s: %s line %d: duplicate order statistic%s "
                             "rotated to end: */\n",__func__,source_file,
@@ -224,7 +216,7 @@ int quickselect_internal(char *base, size_t nmemb,
             }
         }
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if ((DEBUGGING(PK_ADJUSTMENT_DEBUG))&&(nk<onk)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: %lu (of %lu) unique order statistic rank%s, %lu duplicate%s */\n",
@@ -264,7 +256,7 @@ int quickselect_internal(char *base, size_t nmemb,
             options&=~(QUICKSELECT_INDIRECT);
         } else {
             if (p!=pointers) pointers=p;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(MEMORY_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: %s line %d: base=%p pointers=%p */\n",
                     __func__,source_file,__LINE__,base,pointers);
@@ -285,14 +277,14 @@ int quickselect_internal(char *base, size_t nmemb,
         }
     }
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
         "/* %s: %s line %d: size=%lu, alignsize=%lu, size_ratio=%lu */\n",
         __func__,source_file,__LINE__,(unsigned long)size,
         (unsigned long)alignsize,(unsigned long)size_ratio);
 #endif
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         if (NULL!=pk)
             (V)fprintf(stderr,

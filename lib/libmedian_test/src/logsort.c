@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    logsort.c copyright 2016-2018 Bruce Lilly.   \ logsort.c $
+* $Id: ~|^` @(#)    logsort.c copyright 2016-2019 Bruce Lilly.   \ logsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is logsort.c version 1.11 dated 2018-06-09T23:06:17Z. \ $ */
+/* $Id: ~|^` @(#)   This is logsort.c version 1.13 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.logsort.c */
@@ -46,13 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: logsort.c ~|^` @(#)"
 #define SOURCE_MODULE "logsort.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2018-06-09T23:06:17Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define QUICKSELECT_LOOP d_quickselect_loop
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -60,14 +60,6 @@
 #include "initialize_src.h"
 
 #include "indirect.h" /* floor_lg */
-
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -89,7 +81,7 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
         o=first+(s>>1);
         for (k=0UL,p=o; k<xnk; k++,p+=s) {
             xpk[k] = p;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: xpk[%lu]=%lu */\n",
                 __func__,source_file,__LINE__,k,p);
@@ -105,7 +97,7 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
         A(xpk[0]>first);A(xpk[xnk-1UL]<beyond-1UL);
 
         /* efficient stable partition is not supported */
-        (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,xpk,0UL,xnk,
+        (V)d_quickselect_loop(base,first,beyond,size,compar,xpk,0UL,xnk,
             swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
@@ -115,7 +107,7 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
             size_ratio,options);
         for (k=0UL,--xnk; k<xnk; k++) {
             A(xpk[k]+1UL<xpk[k+1UL]);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: xpk[%lu]=%lu, xpk[%lu]=%lu */"
                 "\n",__func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
@@ -129,7 +121,7 @@ void logsort_internal(char *base, size_t first, size_t beyond, size_t size,
             size_ratio,options);
     } else {
         /* Handle divide-and-conquer for <= 8 elements */
-        (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
+        (V)d_quickselect_loop(base,first,beyond,size,compar,NULL,0UL,0UL,
             swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
     }

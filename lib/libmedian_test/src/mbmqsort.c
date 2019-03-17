@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    mbmqsort.c copyright 2016-2018 Bruce Lilly.   \ mbmqsort.c $
+* $Id: ~|^` @(#)    mbmqsort.c copyright 2016-2019 Bruce Lilly.   \ mbmqsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.21 dated 2018-07-27T00:46:22Z. \ $ */
+/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.23 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mbmqsort.c */
@@ -46,45 +46,28 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mbmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "mbmqsort.c"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2018-07-27T00:46:22Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define KLIMITS_FUNCTION_NAME d_klimits
-#define PARTITION_FUNCTION_NAME d_partition
 
-#ifndef SAMPLE_INDEX_FUNCTION_NAME
-# define SAMPLE_INDEX_FUNCTION_NAME d_sample_index
-#endif
+#undef __STDC_WANT_LIB_EXT1__
+#define __STDC_WANT_LIB_EXT1__ 0
+
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-/* dedicated_sort[_s] declaration */
-#if ! defined(DEDICATED_SORT_DECLARED)
-static
-# include "dedicated_sort_decl.h"
-;
-# define DEDICATED_SORT_DECLARED 1
-#endif /* DEDICATED_SORT_DECLARED */
-
 #include "dedicated_sort_src.h"
 
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
-;
-
-#include "pivot_src.h"
-
-#include "insertion_sort_src.h" /* isort_bs */
-
-QUICKSELECT_EXTERN
-#include "partition_decl.h" /* d_partition */
-;
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "pivot_src.h"
+#endif
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -146,7 +129,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
         char *pc, *pd, *pe, *pf, *pm;
         size_t p, q;
 
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,
                "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, size=%lu, "
@@ -173,14 +156,14 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
               )
             )) {
             int ret;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG))
                 (V)fprintf(stderr,
-                   "/* %s: %s line %d: dedicated_sort: first=%lu, beyond=%lu, "
+                   "/* %s: %s line %d: d_dedicated_sort: first=%lu, beyond=%lu, "
                    "size=%lu, options=0x%x */\n",__func__,
                    source_file,__LINE__,first,beyond,size,options);
 #endif
-            ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
+            ret= d_dedicated_sort(base,first,beyond,size,compar,
                 swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                 options);
             switch (ret) {
@@ -191,7 +174,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                     fflush(stderr); fflush(stdout);
                     (V)fprintf(stderr,
                         "/* %s: line %d: EINVAL return %d from "
-                        "dedicated_sort */\n",
+                        "d_dedicated_sort */\n",
                         __func__,__LINE__,ret);
                     A(ret!=EINVAL);
 #endif
@@ -203,7 +186,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                     fflush(stderr); fflush(stdout);
                     (V)fprintf(stderr,
                         "/* %s: line %d: unexpected return %d from "
-                        "dedicated_sort */\n",
+                        "d_dedicated_sort */\n",
                         __func__,__LINE__,ret);
                     A(ret==0);
 #endif
@@ -220,34 +203,44 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                        /* reversed input now same as already-sorted */
 #endif
             {
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,
-                       "/* %s: %s line %d: isort_bs: first=%lu, beyond=%lu, "
+                       "/* %s: %s line %d: d_isort_bs: first=%lu, beyond=%lu, "
                        "size=%lu, options=0x%x */\n",__func__,
                        source_file,__LINE__,first,beyond,size,options);
 #endif
-                isort_bs(base,first,beyond,size,compar,swapf,alignsize,size_ratio,
+#if LIBMEDIAN_TEST_CODE
+                d_isort_bs
+#else
+                isort_bs
+#endif
+                (base,first,beyond,size,compar,swapf,alignsize,size_ratio,
                     options);
                 return; /* done; else continue divide-and-conquer */
             }
         } else if (0U!=(options&(MOD_ISORT_LS))) {
             if (BM_INSERTION_CUTOFF>nmemb) {
                 /* use median-of-3 pivot selection @ size 7 */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,
-                       "/* %s: %s line %d: isort_ls: first=%lu, beyond=%lu, "
+                       "/* %s: %s line %d: d_isort_ls: first=%lu, beyond=%lu, "
                        "size=%lu, options=0x%x */\n",__func__,
                        source_file,__LINE__,first,beyond,size,options);
 #endif
-                isort_ls(base,first,beyond,size,compar,swapf,alignsize,size_ratio,
+#if LIBMEDIAN_TEST_CODE
+                d_isort_ls
+#else
+                isort_ls
+#endif
+                (base,first,beyond,size,compar,swapf,alignsize,size_ratio,
                     options);
                 return; /* done; else continue divide-and-conquer */
             }
         } else if (BM_INSERTION_CUTOFF>nmemb) {
             /* uses median-of-3 pivot selection @ size 7; never single sample */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG))
                 (V)fprintf(stderr,
                    "/* %s: %s line %d: inline waltzing insertion sort: nmemb="
@@ -267,14 +260,20 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
                         nsw++);
             return; /* done; else continue divide-and-conquer */
         }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,
                "/* %s: %s line %d: divide-and-conquer: first=%lu, beyond=%lu, "
                "nmemb=%lu, size=%lu, options=0x%x */\n",
                __func__,source_file,__LINE__,first,beyond,nmemb,size,options);
 #endif
-        pm=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
+        pm=
+#if LIBMEDIAN_TEST_CODE
+            d_select_pivot
+#else
+            select_pivot
+#endif
+            (base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,pbeyond,
             options,&pc,&pd,&pe,&pf,NULL,NULL);
         /* no provision for efficient stable sorting */
@@ -330,7 +329,7 @@ void mbmqsort(void *a, size_t n, size_t es,
     assert(a != NULL || n == 0 || es == 0);
     assert(compar != NULL);
 
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG))
         (V)fprintf(stderr,
            "/* %s: %s line %d: n=%lu, es=%lu, options=0x%x "

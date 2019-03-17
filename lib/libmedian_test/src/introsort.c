@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    introsort.c copyright 2016-2018 Bruce Lilly.   \ introsort.c $
+* $Id: ~|^` @(#)    introsort.c copyright 2016-2019 Bruce Lilly.   \ introsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is introsort.c version 1.20 dated 2018-06-12T18:30:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is introsort.c version 1.22 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.introsort.c */
@@ -46,10 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: introsort.c ~|^` @(#)"
 #define SOURCE_MODULE "introsort.c"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-06-12T18:30:26Z"
+#define MODULE_VERSION "1.22"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
+
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -60,19 +63,9 @@
 
 #include "insertion_sort_src.h" /* inline code: isort_ls */
 
-#include "pivot_src.h"
-
-QUICKSELECT_EXTERN
-#include "partition_decl.h"
-;
-
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "pivot_src.h"
+#endif
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -92,7 +85,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
     A(3UL<introsort_small_array_cutoff);
     while (beyond-first>introsort_small_array_cutoff) {
         if (0UL==depth_limit) {
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG))
                 (V)fprintf(stderr,
                     "/* %s: %s line %d: recursion depth limit reached */\n",
@@ -111,7 +104,13 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
         if (aqcmp==compar)
             (V)freeze_some_samples(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio,table_index,options);
-        pivot=SELECT_PIVOT_FUNCTION_NAME(base,first,beyond,size,compar,swapf,
+        pivot=
+#if LIBMEDIAN_TEST_CODE
+            d_select_pivot
+#else
+            select_pivot
+#endif
+            (base,first,beyond,size,compar,swapf,
             alignsize,size_ratio,0U,NULL,0UL,0UL,cache_sz,pbeyond,
             options,&pc,&pd,&pe,&pf,NULL,NULL);
         pivot_minrank=beyond-first;
@@ -121,7 +120,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
            comparing equal to the pivot.
         */
         /* Stable sorting not supported (heapsort is not stable) */
-        PARTITION_FUNCTION_NAME(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
+        d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
             alignsize,size_ratio,cache_sz,options,&eq,&gt);
         /* This processes the > region recursively, < region iteratively as
            described by Musser.  Could process smaller region recursively,
@@ -154,11 +153,11 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
             shellsort_internal(base,first,beyond,size,compar,swapf,alignsize,
                 size_ratio);
         else if (first+1UL<beyond)
-            /* quickselect_loop (for the small array sizes used here) probably
+            /* d_quickselect_loop (for the small array sizes used here) probably
                calls dedicated_sort, which uses the best sorting method for the
                array size and options.
             */
-            (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,NULL,0UL,0UL,
+            (V)d_quickselect_loop(base,first,beyond,size,compar,NULL,0UL,0UL,
                 swapf,alignsize,size_ratio,cache_sz,pbeyond,options,NULL,NULL);
     }
 }
@@ -197,7 +196,12 @@ void introsort(char *base, size_t nmemb, size_t size,
     introsort_loop(base,0UL,nmemb,size,compar,swapf,alignsize,size_ratio,
         table_index,quickselect_cache_size,depth_limit,0UL,options);
     if (0U!=introsort_final_insertion_sort) {
-        isort_ls(base,0UL,nmemb,size,compar,swapf,alignsize,
+#if LIBMEDIAN_TEST_CODE
+        d_isort_ls
+#else
+        isort_ls
+#endif
+        (base,0UL,nmemb,size,compar,swapf,alignsize,
             size_ratio,options);
     }
 }

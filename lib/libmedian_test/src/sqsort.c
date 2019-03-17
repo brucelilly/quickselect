@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sqsort.c copyright 2016-2018 Bruce Lilly.   \ sqsort.c $
+* $Id: ~|^` @(#)    sqsort.c copyright 2016-2019 Bruce Lilly.   \ sqsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqsort.c version 1.20 dated 2018-07-27T00:47:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqsort.c version 1.22 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "sqsort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqsort.c */
@@ -46,34 +46,21 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "sqsort.c"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2018-07-27T00:47:05Z"
+#define MODULE_VERSION "1.22"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define QUICKSELECT_LOOP d_quickselect_loop
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-/* dedicated_sort[_s] declaration */
-#if ! defined(DEDICATED_SORT_DECLARED)
-static
-# include "dedicated_sort_decl.h"
-;
-# define DEDICATED_SORT_DECLARED 1
-#endif /* DEDICATED_SORT_DECLARED */
-
 #include "dedicated_sort_src.h"
-
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
-;
-
-#include "pivot_src.h"
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -99,7 +86,7 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
         cache_limit=quickselect_cache_size/pointer_and_a_half; /* 1.5 pointers within cache */
     for (;;) {
         nmemb=beyond-first;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb="
                 "%lu */\n",__func__,source_file,__LINE__,first,
@@ -125,7 +112,13 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
               (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
               )
             )) {
-                int ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
+                int ret= 
+#if LIBMEDIAN_TEST_CODE
+                    d_dedicated_sort
+#else
+                    dedicated_sort
+#endif
+                    (base,first,beyond,size,COMPAR_ARGS,
                     swapf,alignsize,size_ratio,
                     quickselect_cache_size,0UL,options);
                 switch (ret) {
@@ -136,7 +129,7 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
                         fflush(stderr); fflush(stdout);
                         (V)fprintf(stderr,
                             "/* %s: line %d: EINVAL return %d from "
-                            "dedicated_sort */\n",
+                            "d_dedicated_sort */\n",
                             __func__,__LINE__,ret);
                         A(ret!=EINVAL);
 #endif
@@ -148,7 +141,7 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
                         fflush(stderr); fflush(stdout);
                         (V)fprintf(stderr,
                             "/* %s: line %d: unexpected return %d from "
-                            "dedicated_sort */\n",
+                            "d_dedicated_sort */\n",
                             __func__,__LINE__,ret);
                         A(ret==0);
 #endif
@@ -156,7 +149,13 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
                 }
             }
         } else return; /* Done because a single element is a sorted array. */
-        pivot=d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
+        pivot=
+#if LIBMEDIAN_TEST_CODE
+            d_select_pivot
+#else
+            select_pivot
+#endif
+            (base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,pbeyond,
             options,&pc,&pd,&pe,&pf,NULL,NULL);
         /* no support for efficient stable sorting */

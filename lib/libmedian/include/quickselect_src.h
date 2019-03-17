@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_src.h copyright 2017-2018 Bruce Lilly.   \ quickselect_src.h $
+* $Id: ~|^` @(#)    quickselect_src.h copyright 2017-2019 Bruce Lilly.   \ quickselect_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.23 dated 2018-07-27T18:19:26Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.24 dated 2019-03-15T14:07:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_src.h */
@@ -133,10 +133,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_src.h"
-#define MODULE_VERSION "1.23"
-#define MODULE_DATE "2018-07-27T18:19:26Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2019-03-15T14:07:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -147,22 +147,9 @@
 /* local header files needed */
 #include "quickselect_config.h"
 #include "compare.h"            /* size_tcmp */
-#include "exchange.h"           /* alignment_size blockmove reverse rotate
-                                   swapn */
+#include "exchange.h"           /* alignment_size irotate swapn */
 #include "indirect.h"           /* set_array_pointers rearrange_array */
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-/* if building a _s variant, declare dedicated_sort_s and quickselect_loop_s */
-#if __STDC_WANT_LIB_EXT1__
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-/* quickselect_loop declaration */
-# if ! QUICKSELECT_BUILD_FOR_SPEED
-QUICKSELECT_EXTERN
-# endif /* QUICKSELECT_BUILD_FOR_SPEED */
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
-#endif /* __STDC_WANT_LIB_EXT1__ */
 #include "initialize_src.h"     /* last local header file */
 
 /* for assert.h */
@@ -299,48 +286,51 @@ static constraint_handler_t get_constraint_handler_s(void)
 # undef QUICKSELECT_HANDLER_PROVIDED
 # define QUICKSELECT_HANDLER_PROVIDED 1
 # endif /* QUICKSELECT_PROVIDE_HANDLER */
-# if 0
-static constraint_handler_t set_constraint_handler_s(
-    constraint_handler_t handler)
-{
-    constraint_handler_t old_handler=the_handler;
-    if (NULL==handler) the_handler=default_handler; else the_handler=handler;
-    return old_handler;
-}
-# endif
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* This file also needs a declaration for quickselect_loop if using
    quickselect_loop_s
 */
 #if __STDC_WANT_LIB_EXT1__
-# undef QUICKSELECT_RETURN_TYPE
-# define QUICKSELECT_RETURN_TYPE void
-# undef QUICKSELECT_LOOP
-# define QUICKSELECT_LOOP quickselect_loop
 # undef COMPAR_DECL
 # define COMPAR_DECL int(*compar)(const void *,const void *)
 # undef NMEMB_SIZE_TYPE
 # define NMEMB_SIZE_TYPE size_t
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# undef QUICKSELECT_RETURN_TYPE
-# define QUICKSELECT_RETURN_TYPE errno_t
-# undef QUICKSELECT_LOOP
-# define QUICKSELECT_LOOP quickselect_loop_s
 # undef COMPAR_DECL
 # define COMPAR_DECL int(*compar)(const void*,const void*,void*),void*context
 # undef NMEMB_SIZE_TYPE
 # define NMEMB_SIZE_TYPE rsize_t
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
-QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nmemb,
-    /*const*/ NMEMB_SIZE_TYPE size, COMPAR_DECL,
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+int
+#endif
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_s
+# else
+            d_quickselect
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_s
+# else
+            quickselect
+# endif
+#endif
+    (void *base, NMEMB_SIZE_TYPE nmemb, /*const*/ NMEMB_SIZE_TYPE size,
+    COMPAR_DECL,
     size_t *pk, size_t nk, unsigned int options)
 {
 #if __STDC_WANT_LIB_EXT1__
-    QUICKSELECT_RETURN_TYPE ret=0;
+#if __STDC_WANT_LIB_EXT1__
+    errno_t
+#else
+    int
+#endif
+        ret=0;
 #else
     int ret=0;
 #endif /* __STDC_WANT_LIB_EXT1__ */
@@ -482,7 +472,21 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
 
     /* Special-case selection and sorting are handled in quickselect_loop. */
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-        ret= QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
+        ret= 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_loop_s
+# else
+            d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_loop_s
+# else
+            quickselect_loop
+# endif
+#endif
+            ((char *)pointers,0UL,nmemb,sizeof(char *),
             COMPAR_ARGS,pk,0UL,nk,pointerswap,alignsize,size_ratio,
             quickselect_cache_size,0UL,options,NULL,NULL);
         if (NULL==indices) indices=(size_t *)pointers;
@@ -498,12 +502,40 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_FUNCTION_NAME(void *base, NMEMB_SIZE_TYPE nm
             alignsize=alignment_size(base,size);
             size_ratio=size/alignsize;
             swapf=swapn(alignsize);
-            ret= QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
+            ret= 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                d_quickselect_loop_s
+# else
+                d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                quickselect_loop_s
+# else
+                quickselect_loop
+# endif
+#endif
+                (base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
                 nk,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
                 options,NULL,NULL);
         }
     } else
-        ret= QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
+        ret= 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_loop_s
+# else
+            d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_loop_s
+# else
+            quickselect_loop
+# endif
+#endif
+            (base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
             swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             options,NULL,NULL);
 

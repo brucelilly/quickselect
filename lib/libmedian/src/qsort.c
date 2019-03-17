@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    qsort.c copyright 2017 Bruce Lilly.   \ qsort.c $
+* $Id: ~|^` @(#)    qsort.c copyright 2017-2019 Bruce Lilly.   \ qsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is qsort.c version 1.2 dated 2017-12-22T04:14:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is qsort.c version 1.3 dated 2019-03-15T14:08:53Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.qsort.c */
@@ -50,6 +50,8 @@
 ******************************************************************************/
 
 /* Nothing to configure below this line. */
+
+#define __STDC_WANT_LIB_EXT1__ 0
 
 #include "quickselect_config.h"
 

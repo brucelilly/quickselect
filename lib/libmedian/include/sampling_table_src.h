@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sampling_table_src.h copyright 2017-2018 Bruce Lilly.   \ sampling_table_src.h $
+* $Id: ~|^` @(#)    sampling_table_src.h copyright 2017-2019 Bruce Lilly.   \ sampling_table_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.15 dated 2018-08-13T20:57:01Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.16 dated 2019-03-15T14:07:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,10 +97,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-08-13T20:57:01Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2019-03-15T14:07:15Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "quickselect_config.h" /* quickselect QSORT_FUNCTION_NAME */
@@ -120,31 +120,23 @@
 #include <math.h>               /* pow */
 #include <stddef.h>             /* size_t NULL */
 
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if LIBMEDIAN_TEST_CODE
 /* not static; referenced by inline functions */
 char sampling_table_src_file[PATH_MAX];
 char sampling_table_src_file_initialized=0;
 #endif
 
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-/* klimits declaration */
-#include "klimits_decl.h"
-;
-
-/* declaration */
-#include "sample_index_decl.h"
-;
+/* klimits */
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "klimits_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
 /* sample_index: return index into sampling table psts for nmemb
 */
 /* called from sampling_table and quicksort */
-#if QUICKSELECT_BUILD_FOR_SPEED
-QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "sample_index_decl.h"
+QUICKSELECT_SAMPLE_INDEX
 {
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==sampling_table_src_file_initialized) {
         (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
         sampling_table_src_file_initialized++;
@@ -162,7 +154,7 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
         while ((0U<idx)&&(nmemb<=psts[idx-1U].max_nmemb)) idx--;
     }
     A((SAMPLING_TABLE_SIZE)>idx);
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: idx=%u, nmemb=%lu, max_nmemb=%lu, samples=%lu */\n",
@@ -171,26 +163,23 @@ QUICKSELECT_VISIBILITY QUICKSELECT_INLINE
     return idx;
 }
 
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-/* declaration */
-#include "sampling_table_decl.h"
-;
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-
 /* size_t floor of square root of size_t argument */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif
-size_t size_t_sqrt(size_t n)
+QUICKSELECT_SIZE_T_SQRT
 {
     if (1UL<n) {                /* else sqrt(1)=1, sqrt(0)=0 */
         size_t q, r, s, t;
 
         q=(n>>2);               /* q=n/4 */
-        r=size_t_sqrt(q);       /* r=sqrt(n/4) ~ sqrt(n)/2 */
+        r=
+#if LIBMEDIAN_TEST_CODE
+          d_size_t_sqrt
+#else
+          size_t_sqrt
+#endif
+          (q);                  /* r=sqrt(n/4) ~ sqrt(n)/2 */
         s=(r<<1);               /* s=2r ~ sqrt(n) */
         t=s+1UL;                /* t=s+1 */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,
                 "/* %s line %d: n=%lu, q=%lu, r=%lu, s=%lu, t=%lu t*t=%lu */\n",
@@ -202,15 +191,13 @@ size_t size_t_sqrt(size_t n)
     return n;                   /* sqrt(1)=1, sqrt(0)=0 */
 }
 
+#if ( ! defined(LIBMEDIAN_TEST_CODE)) || (LIBMEDIAN_TEST_CODE == 0) || (__STDC_WANT_LIB_EXT1__ > 0)
 /* floor of base 3 logarithm of size_t argument */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif
-size_t floor_log3(register size_t n)
+QUICKSELECT_FLOOR_LOG3
 {
     switch (n) {
         default :
-            { register size_t l, m, x=floor_log3(SIZE_MAX);
+            { register size_t l, m, x= floor_log3(SIZE_MAX);
                 /* n not an exact power of 3
                    n < SIZE_MAX
                    stop when l==x to avoid overflow of m
@@ -280,37 +267,34 @@ size_t floor_log3(register size_t n)
         case 0UL                    : return 0UL;
     }
 }
+#endif
 
-#if ! __STDC_WANT_LIB_EXT1__ && ! defined(DEBUGGING)
-double mos_middle_power = 0.810;
-double mos_ends_power = 0.810;
-#else
+#if ( ! defined(LIBMEDIAN_TEST_CODE)) || (LIBMEDIAN_TEST_CODE == 0) || (__STDC_WANT_LIB_EXT1__ > 0)
 extern double mos_middle_power;
 extern double mos_ends_power;
+#else
+double mos_middle_power = 0.810;
+double mos_ends_power = 0.810;
 #endif
 static double mos_middle_multiplier = 0.0;
 static double mos_ends_multiplier = 0.0;
 
 /* determine the number of samples to use for pivot selection */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif
-size_t samples(size_t nmemb, int method, unsigned int distribution,
-    unsigned int options)
+QUICKSELECT_SAMPLES
 {
     register size_t n, r;
     struct sampling_table_struct *pst;
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
             "/* %s line %d: nmemb=%lu, method=%d, distribution=%u, "
             "options=0x%x */\n",
-            __func__,__LINE__,nmemb,method,distribution,options);
+                __func__,__LINE__,nmemb,method,distribution,options);
 #endif
     switch (method) {
         case QUICKSELECT_PIVOT_REMEDIAN_FULL :
-            n=floor_log3(n);
+            n= floor_log3(n);
         break;
         case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
             /* sampling table and initial estimate (binary search) of index */
@@ -374,7 +358,13 @@ size_t samples(size_t nmemb, int method, unsigned int distribution,
                 break;
             }
             /* refine index (linear search) */
-            r=(size_t)SAMPLE_INDEX_FUNCTION_NAME(pst,(unsigned int)r,nmemb);
+            r=(size_t)
+#if LIBMEDIAN_TEST_CODE
+                d_sample_index
+#else
+                sample_index
+#endif
+               (pst,(unsigned int)r,nmemb);
             /* # samples from table */
             n=pst[r].samples;
         break;
@@ -432,7 +422,7 @@ size_t samples(size_t nmemb, int method, unsigned int distribution,
                             =(double)
                             ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
                             /pow(0.5*(double)n,mos_middle_power);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(SAMPLING_DEBUG))
                             (V)fprintf(stderr,
                                 "/* %s line %d: mos_middle_power=%.3f, "
@@ -456,7 +446,7 @@ size_t samples(size_t nmemb, int method, unsigned int distribution,
                             =(double)
                             ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
                             /pow(0.5*(double)n,mos_ends_power);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                         if (DEBUGGING(SAMPLING_DEBUG))
                             (V)fprintf(stderr,
                                 "/* %s line %d: mos_ends_power=%.3f, "
@@ -483,19 +473,43 @@ size_t samples(size_t nmemb, int method, unsigned int distribution,
                        ones using the table values).
                     */
                     if (1340000UL>nmemb) { /* < 651 samples */
-                        n = ((size_t_sqrt(nmemb/12UL))<<1) + 1UL; /* sqrt(nmemb/3) [2*beta*ln(2) = 3 for beta=2.16404] */
+                        n = ((
+#if LIBMEDIAN_TEST_CODE
+                              d_size_t_sqrt
+#else
+                              size_t_sqrt
+#endif
+                                         (nmemb/12UL))<<1) + 1UL; /* sqrt(nmemb/3) [2*beta*ln(2) = 3 for beta=2.16404] */
                     } else if (44011800UL>nmemb) { /* ~4201 samples */
-                        n = ((size_t_sqrt(nmemb/11UL))<<1) + 1UL; /* beta ~ 1.98 */
+                        n = ((
+#if LIBMEDIAN_TEST_CODE
+                              d_size_t_sqrt
+#else
+                              size_t_sqrt
+#endif
+                                         (nmemb/11UL))<<1) + 1UL; /* beta ~ 1.98 */
                     } else if (22460000000UL>nmemb) { /* ~100001 samples */
-                        n = ((size_t_sqrt(nmemb/10UL))<<1) + 1UL; /* beta ~ 1.8 */
+                        n = ((
+#if LIBMEDIAN_TEST_CODE
+                              d_size_t_sqrt
+#else
+                              size_t_sqrt
+#endif
+                                         (nmemb/10UL))<<1) + 1UL; /* beta ~ 1.8 */
                     } else {
-                        n = ((size_t_sqrt(nmemb/9UL))<<1) + 1UL; /* beta ~ 1.62 */
+                        n = ((
+#if LIBMEDIAN_TEST_CODE
+                              d_size_t_sqrt
+#else
+                              size_t_sqrt
+#endif
+                                         (nmemb/9UL))<<1) + 1UL; /* beta ~ 1.62 */
                     }
                 }
             }
         break;
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
             "/* %s line %d: nmemb=%lu, n=%lu, r=%lu, method=%d, options=0x%x */\n",
@@ -505,13 +519,9 @@ size_t samples(size_t nmemb, int method, unsigned int distribution,
 }
 
 /* Determine a suitable method for pivot selection. */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif
-int pivot_method(size_t *pk, size_t nmemb, size_t firstk, size_t beyondk,
-    unsigned int raw_distribution, size_t size_ratio, unsigned int options)
+QUICKSELECT_PIVOT_METHOD
 {
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==sampling_table_src_file_initialized) {
         (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
         sampling_table_src_file_initialized++;
@@ -592,22 +602,25 @@ size_t kgroups(size_t *pk, size_t firstk, size_t beyondk)
 /* called from select_pivot, quickselect_loop and quickselect public wrapper
    function
 */
-#if QUICKSELECT_BUILD_FOR_SPEED
-static QUICKSELECT_INLINE
-#endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#include "sampling_table_decl.h"
 /*
-unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
-    size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq,
-    const size_t **ppk, size_t nmemb, size_t size_ratio, unsigned int options)
+unsigned int 
+#if LIBMEDIAN_TEST_CODE
+            d_sampling_table
+#else
+            sampling_table
+#endif
+    (size_t first, size_t beyond, const size_t *pk, size_t firstk,
+    size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb,
+    size_t size_ratio, unsigned int options)
 */
+QUICKSELECT_SAMPLING_TABLE
 {
     unsigned int raw=0U, sort=1U;
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==sampling_table_src_file_initialized) {
         (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
         sampling_table_src_file_initialized++;
@@ -666,7 +679,7 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
            for nmemb=4, x=0; should be 1 starting at nmemb=7
         */
         A(nmemb>2UL);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (nmemb<3UL) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, nk=%lu, first=%lu, "
@@ -682,7 +695,7 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
         }
 #endif
         x=(((nmemb+1UL)>>2)-1UL);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SAMPLING_DEBUG)
         ||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(REPIVOT_DEBUG)
@@ -699,10 +712,15 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
                 (unsigned long)pk[beyondk-1UL]);
 #endif
         /* desired ranks in left region [first,m1-x) */
-        KLIMITS_FUNCTION_NAME(first,m1-x,pk,firstk,beyondk,&fk,&bk);
+#if LIBMEDIAN_TEST_CODE
+        d_klimits
+#else
+        klimits
+#endif
+        (first,m1-x,pk,firstk,beyondk,&fk,&bk);
         nl = ((bk>fk)?bk-fk:0UL); /* ranks in left region */
         if (0UL!=nl) raw|=4U; /* there are ranks in the left region */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SAMPLING_DEBUG)
         ||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(REPIVOT_DEBUG)
@@ -713,10 +731,15 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
 #endif
         if (nl<nk) {
             /* desired ranks in right region [m2+x+1UL,beyond) */
-            KLIMITS_FUNCTION_NAME(m2+x+1UL,beyond,pk,firstk,beyondk,&fk,&bk);
+#if LIBMEDIAN_TEST_CODE
+            d_klimits
+#else
+            klimits
+#endif
+            (m2+x+1UL,beyond,pk,firstk,beyondk,&fk,&bk);
             nr = ((bk>fk)?bk-fk:0UL); /* ranks in right region */
             if (0UL!=nr) raw|=1U; /* there are ranks in the right region */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SAMPLING_DEBUG)
             ||DEBUGGING(REPARTITION_DEBUG)
             ||DEBUGGING(REPIVOT_DEBUG)
@@ -727,7 +750,7 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
 #endif
             if (nl+nr<nk) raw|=2U; /* there are ranks in the middle */
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SAMPLING_DEBUG)
         ||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(REPIVOT_DEBUG)
@@ -760,7 +783,13 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
                 sort=0U;
             else {
                 /* preliminary pivot selection method based on selection */
-                int m=pivot_method(pk,nmemb,firstk,beyondk,raw,size_ratio,options);
+                int m=
+#if LIBMEDIAN_TEST_CODE
+                      d_pivot_method
+#else
+                      pivot_method
+#endif
+                                  (pk,nmemb,firstk,beyondk,raw,size_ratio,options);
                 switch (m) {
                     case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
                         if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) {
@@ -810,7 +839,7 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
                necessarily the desired order statistic rank element.
             */
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SAMPLING_DEBUG)
         ||DEBUGGING(REPARTITION_DEBUG)
         ||DEBUGGING(REPIVOT_DEBUG)
@@ -821,7 +850,7 @@ unsigned int SAMPLING_TABLE_FUNCTION_NAME(size_t first,
                 raw);
 #endif
     } /* else sorting */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG)
     ||DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(REPIVOT_DEBUG)

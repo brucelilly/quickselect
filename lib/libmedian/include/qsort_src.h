@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    qsort_src.h copyright 2017-2018 Bruce Lilly.   \ qsort_src.h $
+* $Id: ~|^` @(#)    qsort_src.h copyright 2017-2019 Bruce Lilly.   \ qsort_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is qsort_src.h version 1.17 dated 2018-06-10T01:03:38Z. \ $ */
+/* $Id: ~|^` @(#)   This is qsort_src.h version 1.18 dated 2019-03-15T14:07:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.qsort_src.h */
@@ -100,15 +100,17 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: qsort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "qsort_src.h"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-06-10T01:03:38Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2019-03-15T14:07:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "quickselect_config.h"
-#include "exchange.h"           /* alignment_size blockmove reverse rotate swapn */
-#include "indirect.h"           /* set_array_pointers */
+#include "exchange.h"           /* alignment_size swapn */
+#if 0
+#include "indirect.h"           /* */
+#endif
 #include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
 #include "initialize_src.h"     /* last local header file */
 
@@ -233,14 +235,6 @@ static void default_handler(const char * restrict msg, void * restrict ptr,
     errno=error;
 }
 static constraint_handler_t the_handler = default_handler;
-#if 0
-static constraint_handler_t set_constraint_handler_s(constraint_handler_t handler)
-{
-    constraint_handler_t old_handler=the_handler;
-    if (NULL==handler) the_handler=default_handler; else the_handler=handler;
-    return old_handler;
-}
-#endif
 /* Partial workaround for the poorly-defined constraint handler issue... */
 static constraint_handler_t get_constraint_handler_s(void)
 {
@@ -263,8 +257,13 @@ static constraint_handler_t get_constraint_handler_s(void)
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* public interface */
-/* calls: alignment_size, swapn, QUICKSELECT_LOOP */
-QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
+/* calls: alignment_size, swapn, quickselect_loop */
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+void
+#endif
+    FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
     /*const*/ NMEMB_SIZE_TYPE size,
     COMPAR_DECL)
 {
@@ -352,7 +351,21 @@ QSORT_RETURN_TYPE FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
         swapf=swapn(alignsize);
 
         /* Special-case sorting is handled in quickselect_loop. */
-        PREFIX QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
+        PREFIX 
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_quickselect_loop_s
+# else
+            d_quickselect_loop
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            quickselect_loop_s
+# else
+            quickselect_loop
+# endif
+#endif
+            (base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
             swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
             0U,NULL,NULL);
     }

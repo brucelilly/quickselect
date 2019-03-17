@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    illumos.c modifications copyright 2018 Bruce Lilly.   \ illumos.c $
+* $Id: ~|^` @(#)    illumos.c modifications copyright 2019 Bruce Lilly.   \ illumos.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is illumos.c version 1.9 dated 2018-07-27T00:44:55Z. \ $ */
+/* $Id: ~|^` @(#)   This is illumos.c version 1.10 dated 2019-03-15T14:05:57Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.illumos.c */
@@ -46,38 +46,27 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: illumos.c ~|^` @(#)"
 #define SOURCE_MODULE "illumos.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-07-27T00:44:55Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2019-03-15T14:05:57Z"
 #define COPYRIGHT_HOLDER "Sun Microsystems, Inc"
 #define COPYRIGHT_DATE "2008"
 
 /********** BL **********/
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
+
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
 
-/* dedicated_sort[_s] declaration */
-#if ! defined(DEDICATED_SORT_DECLARED)
-static
-# include "dedicated_sort_decl.h"
-;
-# define DEDICATED_SORT_DECLARED 1
-#endif /* DEDICATED_SORT_DECLARED */
-
 #include "dedicated_sort_src.h"
 
-QUICKSELECT_EXTERN
-#include "sample_index_decl.h" /* d_sample_index */
-;
-
-#include "pivot_src.h"
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "pivot_src.h"
+#endif
 
 #include "insertion_sort_src.h" /* isort_bs */
-
-QUICKSELECT_EXTERN
-#include "partition_decl.h" /* d_partition */
-;
 
 extern size_t quickselect_cache_size; /* BL */
 /********** ** **********/
@@ -108,7 +97,7 @@ extern size_t quickselect_cache_size; /* BL */
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)illumos.c	1.9	2018-07-27 SMI"
+#pragma ident	"@(#)illumos.c	1.10	2019-03-15 SMI"
 
 #if !defined(_KERNEL) && !defined(_KMDB)
 # if 0 /* non-standard header file excluded BL */
@@ -157,7 +146,7 @@ extern size_t quickselect_cache_size; /* BL */
 #ifndef	_QSORT_H
 #define	_QSORT_H
 
-#pragma ident	"@(#)illumos.c	1.9	2018-07-27 SMI"
+#pragma ident	"@(#)illumos.c	1.10	2019-03-15 SMI"
 
 /*
  * Declarations for qsort().
@@ -391,7 +380,13 @@ yields (BL)
                       )
                     ) {
                         int ret;
-                        ret= DEDICATED_SORT(basep,(b_lim-(char*)basep)/rsiz,
+                        ret= 
+#if LIBMEDIAN_TEST_CODE
+                            d_dedicated_sort
+#else
+                            dedicated_sort
+#endif
+                            (basep,(b_lim-(char*)basep)/rsiz,
                             (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,
                             swapf,alignsize,size_ratio,
                             quickselect_cache_size,0UL,options);
@@ -400,14 +395,14 @@ yields (BL)
                 /* <- */    continue; /* Done; */
                             case EINVAL : /* error */
                                 fprintf(stderr,
-                                    "%s: %s line %d: EINVAL from dedicated_sort\n",
+                                    "%s: %s line %d: EINVAL from d_dedicated_sort\n",
                                     __func__,source_file,__LINE__);
                             return ;
                             case EAGAIN : /* continue with divide-and-conquer */
                             break;
                             default : /* ? */
                                 fprintf(stderr,
-                                    "%s: %s line %d: %d from dedicated_sort\n",
+                                    "%s: %s line %d: %d from d_dedicated_sort\n",
                                     __func__,source_file,__LINE__,ret);
                             return ;
                         }
@@ -416,7 +411,12 @@ yields (BL)
                     if (7UL>nrec) /* same cutoff but median-of-3 @ size 7 */
                                /* reversed input now same as already-sorted */
                     {
-                        isort_bs(basep,(b_lim-(char*)basep)/rsiz,
+#if LIBMEDIAN_TEST_CODE
+                        d_isort_bs
+#else
+                        isort_bs
+#endif
+                        (basep,(b_lim-(char*)basep)/rsiz,
                             (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,
                             alignsize,size_ratio,options);
                         continue; /* done; else continue divide-and-conquer */
@@ -424,7 +424,12 @@ yields (BL)
                 } else if (0U!=(options&(MOD_ISORT_LS))) {
                     if (7UL>nrec) {
                         /* use median-of-3 pivot selection @ size 7 */
-                        isort_ls(basep,(b_lim-(char*)basep)/rsiz,
+#if LIBMEDIAN_TEST_CODE
+                        d_isort_ls
+#else
+                        isort_ls
+#endif
+                        (basep,(b_lim-(char*)basep)/rsiz,
                             (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,
                             alignsize,size_ratio,options);
                         continue; /* done; else continue divide-and-conquer */
@@ -544,7 +549,13 @@ yields (BL)
                     }
 		} else if (MOD_SAMPLE_QUANTITY==(options&(MOD_SAMPLE_QUANTITY))) {
                     /* implies also TERNARY and SAMPLE_QUALITY */
-                    m2=d_select_pivot(basep,(b_lim-(char*)basep)/rsiz,
+                    m2=
+#if LIBMEDIAN_TEST_CODE
+                        d_select_pivot
+#else
+                        select_pivot
+#endif
+                        (basep,(b_lim-(char*)basep)/rsiz,
                         (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,alignsize,
                         size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,
                         0UL,options,&m1,&m1,&m3,&m3,NULL,NULL);
@@ -555,9 +566,9 @@ yields (BL)
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
                                 mid = b_lim + i;
                                 offset = (nrec / 3) * rsiz;
-			        m2 = FMED3_FUNCTION_NAME(mid - offset, mid, mid + offset, cmp);
+			        m2 = d_fmed3(mid - offset, mid, mid + offset, cmp,options,basep,rsiz);
                             } else {
-			        m2 = FMED3_FUNCTION_NAME(b_lim, b_lim + i, b_lim + 2 * i, cmp);
+			        m2 = d_fmed3(b_lim, b_lim + i, b_lim + 2 * i, cmp,options,basep,rsiz);
                             }
                         } else {
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
@@ -575,16 +586,16 @@ yields (BL)
                                 mid = b_lim + ((nrec - 1) / 2) * rsiz;
                                 offset = (nrec / 3) * rsiz;
                                 i = (nrec / 9) * rsiz;
-			        m1 = FMED3_FUNCTION_NAME(mid - offset - i, mid - i, mid + offset - i, cmp);
-			        m2 = FMED3_FUNCTION_NAME(mid - offset, mid, mid + offset, cmp);
-			        m3 = FMED3_FUNCTION_NAME(mid - offset + i, mid + i, mid + offset + i, cmp);
-			        m2 = FMED3_FUNCTION_NAME(m1, m2, m3, cmp);
+			        m1 = d_fmed3(mid - offset - i, mid - i, mid + offset - i, cmp,options,basep,rsiz);
+			        m2 = d_fmed3(mid - offset, mid, mid + offset, cmp,options,basep,rsiz);
+			        m3 = d_fmed3(mid - offset + i, mid + i, mid + offset + i, cmp,options,basep,rsiz);
+			        m2 = d_fmed3(m1, m2, m3, cmp,options,basep,rsiz);
                             } else {
 			        i = ((nrec - 1) / 8) * rsiz;
-			        m1 = FMED3_FUNCTION_NAME(b_lim, b_lim +  i, b_lim + 2 * i, cmp);
-			        m2 = FMED3_FUNCTION_NAME(b_lim + 3 * i, b_lim + 4 * i, b_lim + 5 * i, cmp);
-			        m3 = FMED3_FUNCTION_NAME(b_lim + 6 * i, b_lim + 7 * i, b_lim + 8 * i, cmp);
-			        m2 = FMED3_FUNCTION_NAME(m1, m2, m3, cmp);
+			        m1 = d_fmed3(b_lim, b_lim +  i, b_lim + 2 * i, cmp,options,basep,rsiz);
+			        m2 = d_fmed3(b_lim + 3 * i, b_lim + 4 * i, b_lim + 5 * i, cmp,options,basep,rsiz);
+			        m3 = d_fmed3(b_lim + 6 * i, b_lim + 7 * i, b_lim + 8 * i, cmp,options,basep,rsiz);
+			        m2 = d_fmed3(m1, m2, m3, cmp,options,basep,rsiz);
                             }
                         } else {
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {

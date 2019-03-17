@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.17 dated 2018-06-10T01:09:10Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort.c version 1.18 dated 2018-12-28T19:00:35Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.dedicated_sort.c */
@@ -48,8 +48,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort.c ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort.c"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2018-06-10T01:09:10Z"
+#define MODULE_VERSION "1.18"
+#define MODULE_DATE "2018-12-28T19:00:35Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -60,8 +60,10 @@
 #else
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* make d_dedicated_sort() visible to other callers in libmedian_test.a */
 #endif
+#if 0
 #define COMPAR_DECL int(*compar)(const void*,const void*)
 #define COMPAR_ARGS compar
+#endif
 /* "We have normality.  Anything you still can't cope with is therefore your
     own problem." -- Douglas Adams, The Hitchhiker's Guide to the Galaxy
 */
@@ -92,8 +94,11 @@ extern size_t quickselect_cache_size;
    calls quickselect_loop) is essentially equivalent to qsort.
 */
 /* wrapper */
-void dedsort(char *base, size_t nmemb, size_t size, COMPAR_DECL,
-    unsigned int options)
+/*
+    int(*compar)(const void *, const void *), unsigned int options)
+*/
+void dedsort(char *base, size_t nmemb, size_t size,
+    COMPAR_DECL, unsigned int options)
 {
     if ((char)0==file_initialized) initialize_file(__FILE__);
     /* Determine cache size once on first call. */

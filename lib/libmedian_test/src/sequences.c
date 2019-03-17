@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sequences.c copyright 2016-2018 Bruce Lilly.   \ sequences.c $
+* $Id: ~|^` @(#)    sequences.c copyright 2016-2019 Bruce Lilly.   \ sequences.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sequences.c version 1.13 dated 2018-07-18T16:25:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is sequences.c version 1.14 dated 2019-03-15T14:05:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sequences.c */
@@ -46,10 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sequences.c ~|^` @(#)"
 #define SOURCE_MODULE "sequences.c"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-07-18T16:25:52Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2019-03-15T14:05:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
+
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */

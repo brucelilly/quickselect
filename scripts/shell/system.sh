@@ -318,7 +318,17 @@ case ${os} in
 		esac
 	;;
 	*bsd)
-		export DISTRIBUTION=`head -1 /etc/release | tr -d " "`
+		if test -f /etc/release
+		then
+			export DISTRIBUTION=`head -1 /etc/release | tr -d " "`
+		fi
+		if test -z "${DISTRIBUTION}"
+		then
+			if test -f /COPYRIGHT
+			then
+				DISTRIBUTION=`grep -i copyright /COPYRIGHT | tr " " \\\\n | uniq | grep -i bsd`
+			fi
+		fi
 		export OS=${os}
 		export OSVERSION=`uname -r | tr "[A-Z]" "[a-z]"`
 		processor=`uname -p | tr "[A-Z]" "[a-z]"`

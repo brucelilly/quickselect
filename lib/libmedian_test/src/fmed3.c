@@ -1,3 +1,4 @@
+#error "obsolete file"
 /*INDENT OFF*/
 
 /* Description: C source code for selection-related development */
@@ -56,6 +57,8 @@
 
 #include "initialize_src.h"
 
+#error "obsolete file"
+
 /* Ternary median-of-3, biased toward middle element if possible, else first element. */
 /* Average 8/3 comparisons for 3 elements (distinct values) = 0.889 comparisons/element */
 /* fmed3 does not change values referenced by pointers, but these are not
@@ -78,6 +81,7 @@
          application.
       C) it is not backwards-compatible with earlier C standards
 */
+#error "obsolete file"
 char *fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc,
     int(*compar)(const void *,const void *), unsigned int options, char *base, size_t size)
 {
@@ -108,3 +112,4 @@ if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
 #endif
     return pb;
 }
+#error "obsolete file"

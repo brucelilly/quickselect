@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_loop_src.h copyright 2017-2018 Bruce Lilly.   \ quickselect_loop_src.h $
+* $Id: ~|^` @(#)    quickselect_loop_src.h copyright 2017-2019 Bruce Lilly.   \ quickselect_loop_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.30 dated 2018-09-20T01:28:58Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.31 dated 2019-03-15T14:07:14Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,10 +134,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.30"
-#define MODULE_DATE "2018-09-20T01:28:58Z"
+#define MODULE_VERSION "1.31"
+#define MODULE_DATE "2019-03-15T14:07:14Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* Although the implementation is different, several concepts are adapted from:
    qsort -- qsort interface implemented by faster quicksort.
@@ -145,11 +145,17 @@
    Copyright 1993, John Wiley.
 */
 
+#define QUICKSELECT_FMED3_STATIC static
+#if defined(__STDC__) && ( __STDC__ == 1) && defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L)
+# define QUICKSELECT_FMED3_INLINE inline
+#endif
+
 /* local header files needed */
 #include "quickselect_config.h" /* QUICKSELECT_INLINE */
-#include "quickselect.h"        /* quickselect QSORT_FUNCTION_NAME */
-#include "exchange.h"           /* EXCHANGE_SWAP protate */
-#include "tables.h"             /* sampling_table_struct SAMPLING_TABLE_SIZE */
+#include "quickselect.h"        /* sampling_table_struct quickselect QSORT_FUNCTION_NAME */
+#include "quickselect_constants.h"      /* pointer_and_a_half */
+#include "exchange.h"           /* EXCHANGE_SWAP */
+#include "tables.h"             /* SAMPLING_TABLE_SIZE */
 #if ! QUICKSELECT_BUILD_FOR_SPEED
 #include "initialize_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
@@ -178,47 +184,30 @@
 # include <stdio.h>
 #endif
 
-#if  __STDC_WANT_LIB_EXT1__
-extern char quickselect_loop_src_file[];
-extern char quickselect_loop_src_file_initialized;
-#else
-# if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
-/* not static; referenced by inline functions */
-char quickselect_loop_src_file[PATH_MAX];
-char quickselect_loop_src_file_initialized=0;
+#if  ! __STDC_WANT_LIB_EXT1__
+# if ! defined(LIBMEDIAN_TEST_CODE) || (LIBMEDIAN_TEST_CODE == 0)
 # define DEDICATED_SORT_SRC_FILE_HERE 1
 # define INSERTION_SORT_SRC_FILE_HERE 1
+# define QUICKSELECT_LOOP_SRC_FILE_HERE 1
+# define REPIVOT_SRC_FILE_HERE 1
 # endif
 #endif
 
-/* dedicated_sort[_s] declaration */
-#if ! defined(DEDICATED_SORT_DECLARED)
-# if ! QUICKSELECT_BUILD_FOR_SPEED
-QUICKSELECT_EXTERN
+#ifndef QUICKSELECT_LOOP_SRC_FILE_HERE
+extern char quickselect_loop_src_file[];
+extern char quickselect_loop_src_file_initialized;
 #else
-static
-# endif /* QUICKSELECT_BUILD_FOR_SPEED */
-# include "dedicated_sort_decl.h"
-;
-# define DEDICATED_SORT_DECLARED 1
-#endif /* DEDICATED_SORT_DECLARED */
+char quickselect_loop_src_file[PATH_MAX];
+char quickselect_loop_src_file_initialized=0;
+#endif
 
-#if ! QUICKSELECT_BUILD_FOR_SPEED
-/* klimits declaration */
-#include "klimits_decl.h"
-;
-/* partition declaration */
-#include "partition_decl.h"
-;
-/* sample_index declaration */
-#include "sample_index_decl.h"
-;
-/* sampling_table declaration */
-#include "sampling_table_decl.h"
-;
-/* should_repivot declaration */
-#include "should_repivot_decl.h"
-;
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "dedicated_sort_src.h"
+# include "repivot_src.h"
+# include "select_max_src.h"
+# include "select_min_src.h"
+# include "find_minmax_src.h"
+# include "select_minmax_src.h"
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 
 /* structures */
@@ -236,306 +225,18 @@ struct region_struct {
     int c;                      /* repivot factor2 counter */
 };
 
-#include "dedicated_sort_src.h"
-
+/* select_pivot may call quickselect_loop (for median of medians or median of samples pivot selection); it is included here */
 #include "pivot_src.h"
-
-/* Special-case selection of minimum, maximum, or both. */
-/* called from quickselect_loop */
-/* Keeps track of (and relocates if necessary) elements comparing equal to the
-   desired (minimum or maximum) element if ppeq,ppgt are not NULL.
-*/
-static QUICKSELECT_INLINE
-void SELECT_MIN_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
-    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
-{
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-    if (DEBUGGING(SORT_SELECT_DEBUG)
-    ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
-    )
-        (V) fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p, "
-            "ppgt=%p, options=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,
-            (unsigned long)first,(unsigned long)beyond,(void *)ppeq,
-            (void *)ppgt,options);
-#endif
-    if (beyond>first+1UL) {
-        char *mn, *p, *q, *r;
-        mn=p=base+first*size,q=p+size,r=base+beyond*size;
-        /* both ppeq and ppgt are NULL, or both are non-NULL */
-        A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
-        if (NULL==ppeq) { /* non-partitioning */
-            /* separate indirect/direct versions of loop to avoid repeated
-               option testing in loop, cache dereferenced mn
-            */
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                char *x=*((char **)mn);
-                for (; q<r; q+=size)
-                    if (0<COMPAR(x,*((char **)q))) x=*((char **)(mn=q));
-            } else
-                for (; q<r; q+=size)
-                    if (0<COMPAR(mn,q)) mn=q;
-            if (mn!=p) {
-#if QUICKSELECT_STABLE
-                /* stability requires rotation rather than swaps */
-                if (0U==((QUICKSELECT_STABLE)&options)) {
-#endif /* QUICKSELECT_STABLE */
-                    EXCHANGE_SWAP(swapf,p,mn,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-#if QUICKSELECT_STABLE
-                } else {
-                    /* |p     mn      | */
-                    protate(p,mn,mn+size,size,swapf,alignsize,size_ratio);
-                }
-#endif /* QUICKSELECT_STABLE */
-            }
-        } else { /* partitioning for median-of-medians */
-            /* sorting stability is not an issue if median-of-medians is used */
-            /* separate indirect/direct versions of loop to avoid repeated
-               option testing in loop, cache dereferenced mn
-            */
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                char *x=*((char **)mn);
-                for (; q<r; q+=size) {
-                    int c=COMPAR(x,*((char **)q));
-                    if (0>c) continue;
-                    if (0==c) {
-                        mn+=size;
-                        if (q==mn) continue;
-                    } else /* 0<c */ mn=p;
-                    A(mn!=q);
-                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                    x=*((char **)mn); /* new min */
-                }
-            } else {
-                for (; q<r; q+=size) {
-                    int c=COMPAR(mn,q);
-                    if (0>c) continue;
-                    if (0==c) {
-                        mn+=size;
-                        if (q==mn) continue;
-                    } else /* 0<c */ mn=p; /* new min */
-                    A(mn!=q);
-                    EXCHANGE_SWAP(swapf,mn,q,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                }
-            }
-            if (NULL!=ppeq) *ppeq=p; /* leftmost min */
-            if (NULL!=ppgt) *ppgt=mn+size; /* beyond rightmost min */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(SORT_SELECT_DEBUG)
-            ||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(REPIVOT_DEBUG)
-            ) {
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "ppeq=%p@%lu, ppgt=%p@%lu */\n",__func__,quickselect_loop_src_file,
-                    __LINE__,(unsigned long)first,(unsigned long)beyond,
-                    (void *)ppeq,(p-base)/size,(void *)ppgt,
-                    (mn+size-base)/size);
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-            }
-#endif
-        }
-    } else { /* beyond==first+1UL; 1 element */
-        if (NULL!=ppeq) *ppeq=base+first*size;
-        if (NULL!=ppgt) *ppgt=base+beyond*size;
-    }
-}
-
-static QUICKSELECT_INLINE
-void SELECT_MAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
-    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
-{
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-    if (DEBUGGING(SORT_SELECT_DEBUG)
-    ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
-    )
-        (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p, "
-            "ppgt=%p, options=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,
-            (unsigned long)first,(unsigned long)beyond,(void *)ppeq,
-            (void *)ppgt,options);
-#endif
-    if (beyond>first+1UL) {
-        char *mx, *p, *r;
-        p=base+first*size,mx=r=base+(beyond-1UL)*size;
-        /* both ppeq and ppgt are NULL, or both are non-NULL */
-        A(((NULL==ppeq)&&(NULL==ppgt))||((NULL!=ppeq)&&(NULL!=ppgt)));
-        if ((NULL==ppeq)/*&&(NULL==ppgt)*/) { /* non-partitioning */
-            /* separate indirect/direct versions of loop to avoid repeated
-               option testing in loop, cache dereferenced mx
-            */
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                char *x=*((char **)mx);
-                for (; p<r; p+=size)
-                    if (0>COMPAR(x,*((char **)p))) x=*((char **)(mx=p));
-            } else
-                for (; p<r; p+=size)
-                    if (0>COMPAR(mx,p)) mx=p;
-            if (mx!=r) {
-#if QUICKSELECT_STABLE
-                /* stability requires rotation rather than swaps */
-                if (0U==((QUICKSELECT_STABLE)&options)) {
-#endif /* QUICKSELECT_STABLE */
-                    EXCHANGE_SWAP(swapf,r,mx,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-#if QUICKSELECT_STABLE
-                } else {
-                    /* |      mx     r| */
-                    protate(mx,mx+size,r+size,size,swapf,alignsize,size_ratio);
-                }
-#endif /* QUICKSELECT_STABLE */
-            }
-        } else { /* partitioning for median-of-medians */
-            /* sorting stability is not an issue if median-of-medians is used */
-            char *q;
-            /* separate indirect/direct versions of loop to avoid repeated
-               option testing in loop, cache dereferenced mx
-            */
-            if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-                char *x=*((char **)mx);
-                for (q=r-size; q>=p; q-=size) {
-                    int c=COMPAR(x,*((char **)q));
-                    if (0<c) continue;
-                    if (0==c) {
-                        mx-=size;
-                        if (q==mx) continue;
-                    } else /* 0>c */ mx=r;
-                    A(mx!=q);
-                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                    x=*((char **)mx); /* new max */
-                }
-            } else {
-                for (q=r-size; q>=p; q-=size) {
-                    int c=COMPAR(mx,q);
-                    if (0<c) continue;
-                    if (0==c) {
-                        mx-=size;
-                        if (q==mx) continue;
-                    } else /* 0>c */ mx=r; /* new max */
-                    A(mx!=q);
-                    EXCHANGE_SWAP(swapf,mx,q,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                }
-            }
-            if (NULL!=ppeq) *ppeq=mx; /* leftmost max */
-            if (NULL!=ppgt) *ppgt=r+size; /* beyond rightmost max */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-            if (DEBUGGING(SORT_SELECT_DEBUG)
-            ||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(REPIVOT_DEBUG)
-            ) {
-                (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
-                    "ppeq=%p@%lu, ppgt=%p@%lu */\n",__func__,quickselect_loop_src_file,
-                    __LINE__,(unsigned long)first,(unsigned long)beyond,
-                    (void *)ppeq,(mx-base)/size,(void *)ppgt,
-                    (r+size-base)/size);
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-            }
-#endif
-        }
-    } else { /* beyond==first+1UL; 1 element */
-        if (NULL!=ppeq) *ppeq=base+first*size;
-        if (NULL!=ppgt) *ppgt=base+beyond*size;
-    }
-}
 
 /* Recursive divide-and-conquer method to find both minimum and maximum.
    Split into two parts; (recursively) find minimum and maximum of each part.
    Overall minimum is the smaller of the two minima; overall maximum is the
    larger of the two maxima.
 */
-static QUICKSELECT_INLINE
-void FIND_MINMAX_FUNCTION_NAME(char *base, size_t first, size_t beyond,
-    size_t size, COMPAR_DECL, unsigned int options, char **pmn, char **pmx)
-{
-    A(beyond>first);
-    {
-        size_t nmemb=beyond-first;
-        if (1UL<nmemb) {
-            char *mn, *mx;
-            if (2UL<nmemb) {
-                /* split; divide-and-conquer saves comparisons */
-                size_t na=(nmemb>>1);
-                char *mna, *mnb, *mxa, *mxb;
-                /* find min and max of both parts */
-                FIND_MINMAX_FUNCTION_NAME(base,first,first+na,size,COMPAR_ARGS,
-                    options,&mna,&mxa);
-                FIND_MINMAX_FUNCTION_NAME(base,first+na,beyond,size,COMPAR_ARGS,
-                    options,&mnb,&mxb);
-                /* overall min is smaller of *mna, *mnb; similarly for max */
-                /* stability requires choosing mna if mna compares equal to mnb */
-                if (0<OPT_COMPAR(mna,mnb,options)) mn=mnb; else mn=mna;
-                /* stability requires choosing mxb if mxa compares equal to mxb */
-                if (0<OPT_COMPAR(mxa,mxb,options)) mx=mxa; else mx=mxb;
-            } else { /* nmemb==2UL */
-                char *a, *z;
-                /* first and last (i.e. second) elements */
-                a=base+first*size,z=a+size;
-                if (0<OPT_COMPAR(a,z,options)) mn=z,mx=a; else mn=a,mx=z; /* stable */
-            }
-            *pmn=mn, *pmx=mx;
-        } else /* 1 element; min==max */
-            *pmn=*pmx=base+first*size;
-    }
-}
-
-/* Selection of both minimum and maximum using recursive find_minmax. */
-static QUICKSELECT_INLINE
-void SELECT_MINMAX_FUNCTION_NAME(char *base,size_t first,size_t beyond,size_t size,
-    COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
-    size_t size_ratio, unsigned int options)
-{
-    char *mn, *mx, *a, *z;
-    A(beyond>first);
-    /* first and last elements */
-    a=base+first*size,z=base+(beyond-1UL)*size;
-    FIND_MINMAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,options,&mn,&mx);
-    /* put min and max in place with at most 2 swaps */
-    /* stability requires rotation rather than swaps */
-    /* +----------------------------------+ */
-    /* |                                  | */
-    /* +----------------------------------+ */
-    /* +a         x               n      z+ */
-    /* nothing to do if mx and mn are in place, i.e. mn==a and mx==z */
-    if ((mn!=a)||(mx!=z)) {
-        /* special case: mx==a and mn==z */
-        if ((mx==a)&&(mn==z)) {
-            EXCHANGE_SWAP(swapf,a,z,size,alignsize,size_ratio,
-                SWAP_COUNT_STATEMENT);
-        } else { /* rotations required to preserve stability */
-#if QUICKSELECT_STABLE
-            if (0U!=((QUICKSELECT_STABLE)&options)) {
-                if (a!=mn) {
-                    protate(a,mn,mn+size,size,swapf,alignsize,size_ratio);
-                    if (mx<mn) mx+=size; /* mx was moved by rotation */
-                }
-                if (z!=mx)
-                    protate(mx,mx+size,z+size,size,swapf,alignsize,size_ratio);
-            } else {
-#endif /* QUICKSELECT_STABLE */
-                if (a!=mn) {
-                    EXCHANGE_SWAP(swapf,a,mn,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                }
-                if (z!=mx) { /* beware case where a was mx before above swap! */
-                    EXCHANGE_SWAP(swapf,z,a==mx?mn:mx,size,alignsize,size_ratio,
-                        SWAP_COUNT_STATEMENT);
-                }
-#if QUICKSELECT_STABLE
-            }
-#endif /* QUICKSELECT_STABLE */
-        }
-    }
-}
-
 /* function to consolidate logic and calls to special-case selection functions */
 /* also sets sampling table, determines whether to sort */
-static QUICKSELECT_INLINE
+static
+QUICKSELECT_INLINE
 int special_cases(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, size_t nmemb, const size_t *pk, size_t firstk,
@@ -566,11 +267,47 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
         switch (nk) {
             case 1UL : /* smallest or largest */
                 if (fk==first) {
-                    SELECT_MIN_FUNCTION_NAME(base,first,beyond,size,
-                        COMPAR_ARGS,swapf,alignsize,size_ratio,options,ppeq,ppgt);
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                    d_select_min_s
+# else
+                    d_select_min
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                    select_min_s
+# else
+                    select_min
+# endif
+#endif
+                    (base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+                        compar,context,
+#else
+                        compar,
+#endif
+                        swapf,alignsize,size_ratio,options,ppeq,ppgt);
                     return 0 ;
                 } else if (ek==lp) {
-                    SELECT_MAX_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                    d_select_max_s
+# else
+                    d_select_max
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                    select_max_s
+# else
+                    select_max
+# endif
+#endif
+                    (base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+                        compar,context,
+#else
+                        compar,
+#endif
                         swapf,alignsize,size_ratio,options,ppeq,ppgt);
                     return 0 ;
                 }
@@ -578,20 +315,44 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
             case 2UL : /* smallest & largest */
                 A(NULL==ppeq);
                 if ((fk==first)&&(ek==lp)) { /* smallest & largest */
-                    SELECT_MINMAX_FUNCTION_NAME(base,first,beyond,size,
-                        COMPAR_ARGS,swapf,alignsize,size_ratio,options);
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                    d_select_minmax_s
+# else
+                    d_select_minmax
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+                    select_minmax_s
+# else
+                    select_minmax
+# endif
+#endif
+                    (base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+                        compar,context,
+#else
+                        compar,
+#endif
+                        swapf,alignsize,size_ratio,options);
                     return 0 ;
                 }
             break;
         }
     }
-    *pdistribution=SAMPLING_TABLE_FUNCTION_NAME(first,beyond,pk,firstk,beyondk,
-        ppeq,ppk,nmemb,size_ratio,options);
+    *pdistribution=
+#if LIBMEDIAN_TEST_CODE
+            d_sampling_table
+#else
+            sampling_table
+#endif
+       (first,beyond,pk,firstk,beyondk,ppeq,ppk,nmemb,size_ratio,options);
     return ret;
 }
 
 /* Update order statistic ranks array limits. */
-static QUICKSELECT_INLINE
+static
+QUICKSELECT_INLINE
 void rank_tests(char *base, size_t first, size_t p, size_t q,
     size_t beyond, size_t size, const size_t *pk, size_t firstk,
     size_t beyondk, size_t *plk, size_t *prk, char **ppeq, char **ppgt)
@@ -599,7 +360,12 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
     /* revised range of order statistic ranks (always) */
     /* < region indices [first,p), order statistics [firstk,lk) */
     /* > region indices [q,beyond), order statistics [rk,beyondk) */
-    KLIMITS_FUNCTION_NAME(p,q,pk,firstk,beyondk,plk,prk);
+#if LIBMEDIAN_TEST_CODE
+     d_klimits
+#else
+     klimits
+#endif
+    (p,q,pk,firstk,beyondk,plk,prk);
     /* Special-case below only for median-of-medians w/ region extents for
        avoidance of recomparisons after median selection.
     */
@@ -625,7 +391,7 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
            be (and will not be) further partitioned.  Otherwise, only the region
            containing the median's (of medians) rank will be processed.
         */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
             (V) fprintf(stderr,
                 "/* %s: %s line %d: first=%lu, beyond=%lu, p=%lu, q=%lu, r=%lu */\n",
@@ -724,19 +490,18 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #endif /* __STDC_WANT_LIB_EXT1__ */
 
 /* definition */
-#if QUICKSELECT_BUILD_FOR_SPEED
- QUICKSELECT_INLINE
+#if __STDC_WANT_LIB_EXT1__
+QUICKSELECT_QUICKSELECT_LOOP_S
+#else
+QUICKSELECT_QUICKSELECT_LOOP
 #endif
-# include "quickselect_loop_decl.h"
-/*
-QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
-    size_t beyond, const size_t size, COMPAR_DECL, const size_t *pk,
-    size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t),
-    size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond,
-    unsigned int options, char **ppeq, char **ppgt)
-*/
 {
-    QUICKSELECT_RETURN_TYPE ret=0;
+#if __STDC_WANT_LIB_EXT1__
+    errno_t
+#else
+    int
+#endif
+        ret=0;
     auto int c=0; /* repivot factor2 count for iterative operation */
     auto unsigned int distribution=0U; /* sorting */
     auto size_t lneq=0UL, lnne=0UL;
@@ -757,13 +522,13 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
-#if (ASSERT_CODE > 0) || ((DEBUG_CODE > 0) && defined(DEBUGGING))
+#if (ASSERT_CODE > 0) || LIBMEDIAN_TEST_CODE
     if ((char)0==quickselect_loop_src_file_initialized) {
         (V)path_basename(__FILE__,quickselect_loop_src_file,PATH_MAX);
         quickselect_loop_src_file_initialized++;
     }
 #endif
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
         if (NULL!=pk)
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, pk=%p,"
@@ -784,13 +549,14 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
     if (size>sizeof(char*)) /* direct sorting in data cache */
         cache_limit=(cachesz<<1)/size/3UL; /* 1.5*size within cache */
     else /* indirect mergesort */
+        /* pointer_and_a_half is a compile-time constant */
         cache_limit=cachesz/pointer_and_a_half; /* 1.5 pointers within cache */
     for (nel=nmemb; 2UL<=nmemb;) { /* loop until done */
         char *pc, *pd, *pe, *pf, *pivot;
         struct region_struct lt_region, gt_region, *ps_region, *pl_region;
 
         if (NULL!=pk) { /* selection only */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
                 (V) fprintf(stderr,
                     "/* %s: %s line %d: first=%lu, beyond=%lu, firstk=%lu, "
@@ -800,9 +566,14 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                     pk[beyondk-1UL]);
 #endif
             /* Check for special-case selection: 1-2 order statistic ranks */
-            if (0==special_cases(base,first,beyond,size,COMPAR_ARGS,swapf,
-                alignsize,size_ratio,nmemb,pk,firstk,beyondk,cachesz,pbeyond,
-                options,ppeq,ppgt,&distribution,&pk))
+            if (0==special_cases(base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+                compar,context,
+#else
+                compar,
+#endif
+                swapf,alignsize,size_ratio,nmemb,pk,firstk,beyondk,cachesz,
+                pbeyond,options,ppeq,ppgt,&distribution,&pk))
                 goto pop_stack ; /* selection in this region is complete */
         }
 
@@ -821,10 +592,29 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
               )
             ) {
                 /* small array or not 1st sub-array and not M-ary input */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (nmemb<=quickselect_small_array_cutoff) {
 #endif
-                    ret= DEDICATED_SORT(base,first,beyond,size,COMPAR_ARGS,
+                    ret= 
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+                        d_dedicated_sort_s
+# else
+                        d_dedicated_sort
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+                        dedicated_sort_s
+# else
+                        dedicated_sort
+# endif
+#endif
+			(base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+                        compar,context,
+#else
+                        compar,
+#endif
                         swapf,alignsize,size_ratio,cachesz,pbeyond,options);
                     switch (ret) {
                         case 0 : /* sorting (of this region) is complete */
@@ -853,11 +643,11 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #endif
                         return ret ;
                     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 }
 #endif
             }
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             else
                 if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
                     (V)fprintf(stderr,
@@ -879,7 +669,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 
         /* Divide-and-conquer. */
 
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         /* count repivots */
         if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
 #if 1 /* 0 count or 1 don't count repivoting for median-of-medians */
@@ -887,7 +677,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #endif
         ) {
             nrepivot++;
-# if (DEBUG_CODE > 0)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(SHOULD_REPIVOT_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: repivoting region "
                     "first=%lu, beyond=%lu, firstk=%lu, beyondk=%lu, "
@@ -898,12 +688,31 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #endif
 
         /* select a pivot element, update method and samples */
-        pivot=SELECT_PIVOT_FUNCTION_NAME(base,first,beyond,size,COMPAR_ARGS,
+        pivot=
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+            d_select_pivot_s
+# else
+            d_select_pivot
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+            select_pivot_s
+# else
+            select_pivot
+# endif
+#endif
+	    (base,first,beyond,size,
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+            compar,
+#endif
             swapf,alignsize,size_ratio,distribution,pk,firstk,beyondk,cachesz,
             pbeyond,options,&pc,&pd,&pe,&pf,&method,&samples);
         A(NULL!=pivot);
         if (NULL==pivot) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             fprintf(stderr,"/* %s: line %d: NULL pivot */\n",__func__,__LINE__);
             abort();
 #endif
@@ -919,7 +728,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
 #endif /* ASSERT_CODE */
         A(NULL!=pivot);A(base+first*size<=pivot);A(pivot<base+beyond*size);
         A(pc<=pd);A(pd<pe);A(pe<=pf);A(pd<=pivot);A(pivot<pe);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(PIVOT_SELECTION_DEBUG)) {
             size_t x=(pivot-base)/size;
             (V)fprintf(stderr, "/* %s line %d: pivot=%p[%lu], pc@%lu, pd@%lu, pe@%lu, "
@@ -942,8 +751,26 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         */
         lt_region.pk=gt_region.pk=pk;
         lt_region.first=first, gt_region.beyond=beyond;
-        PARTITION_FUNCTION_NAME(base,first,beyond,pc,pd,pivot,pe,pf,size,
-            COMPAR_ARGS,swapf,alignsize,size_ratio,cachesz,options,
+#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+        d_partition_s
+# else
+        d_partition
+# endif
+#else
+# if __STDC_WANT_LIB_EXT1__
+        partition_s
+# else
+        partition
+# endif
+#endif
+        (base,first,beyond,pc,pd,pivot,pe,pf,size,
+#if __STDC_WANT_LIB_EXT1__
+            compar,context,
+#else
+            compar,
+#endif
+            swapf,alignsize,size_ratio,cachesz,options,
             &(lt_region.beyond),&(gt_region.first));
         lt_region.neq=gt_region.neq=lneq=gt_region.first-lt_region.beyond;
         lt_region.nne=gt_region.nne=lnne=nmemb-lneq;
@@ -953,7 +780,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         A(lt_region.beyond<gt_region.first);A(lt_region.beyond<=beyond);
         A(lt_region.first<=lt_region.beyond);
         A(gt_region.first<=gt_region.beyond);A(first<=gt_region.first);
-#if ((DEBUG_CODE)>0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(CORRECTNESS_DEBUG)) {
             size_t x;
             x=test_array_partition(base,first,lt_region.beyond,
@@ -975,7 +802,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                 ppgt);
             lt_region.firstk=firstk, gt_region.beyondk=beyondk;
         }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         else /* sorting */
             /* for graphing ratios during sorting */
             lt_region.firstk=lt_region.beyondk=gt_region.firstk=gt_region.beyondk=0UL;
@@ -1021,7 +848,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         ps_region->c=0;
 
         /* Process less-than and/or greater-than regions by relative size. */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(PARTITION_DEBUG)) {
             (V)fprintf(stderr,"/* %s: %s line %d: small region from partition "
                 "of nmemb=%lu, s=%lu, e=%lu, t=%lu, pk=%p, small region "
@@ -1073,20 +900,23 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                repivoting.
             */
             if (0U==(options&(QUICKSELECT_NO_REPIVOT)))
-                pl_region->options|=SHOULD_REPIVOT_FUNCTION_NAME(nmemb,
-                    pl_region->beyond-pl_region->first,samples,method,options,
-                    pk,&c);
+                pl_region->options|=
+#if LIBMEDIAN_TEST_CODE
+                    d_should_repivot
+#else
+                    should_repivot
+#endif
+                    (nmemb,pl_region->beyond-pl_region->first,samples,method,
+                    options,pk,&c);
             pl_region->c=c;
             if (0U!=ps_region->process) { /* Iterate on small region (below). */
-#if (DEBUG_CODE > 0)
-#if defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu"
                         ", nmemb=%lu, both regions [%lu,%lu), [%lu,%lu) */\n",
                         __func__,quickselect_loop_src_file,__LINE__,first,
                         beyond,nmemb,ps_region->first,ps_region->beyond,
                         pl_region->first,pl_region->beyond);
-#endif /* DEBUGGING */
                 if (NULL!=pk) {
                     if ((pk[ps_region->beyondk-1UL]<ps_region->first)
                        ||(pk[ps_region->firstk]<ps_region->first)
@@ -1117,11 +947,11 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                         abort();
                     }
                 }
-#endif /* DEBUG_CODE > 0 */
+#endif /* LIBMEDIAN_TEST_CODE */
                  /* Push large region onto stack for later processing. */
                 if (0U<stack_top) {
                     stack[--stack_top]=*pl_region; /* structure copy */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                     if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         unsigned char x;
                         for (x=stack_top; x<QUICKSELECT_MAX_STACK; x++)
@@ -1132,20 +962,20 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
                                 stack[x].first,stack[x].beyond,stack[x].firstk,
                                 stack[x].beyondk,stack[x].options);
                     }
-#endif /* DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
                  }
             } else { /* Large region only; iterate now. */
                 first=pl_region->first, beyond=pl_region->beyond,
                     firstk=pl_region->firstk, beyondk=pl_region->beyondk,
                     options=pl_region->options;
                 nmemb=beyond-first; /* update nmemb after should_repivot call */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG))
                     (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu"
                         ", nmemb=%lu, large region */\n",
                         __func__,quickselect_loop_src_file,__LINE__,first,
                         beyond,nmemb);
-#endif /* DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
                 continue;
             }
         }
@@ -1159,7 +989,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
             first=ps_region->first, beyond=ps_region->beyond,
                 firstk=ps_region->firstk, beyondk=ps_region->beyondk,
                 options=ps_region->options, c=0;
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: small region: first=%lu, "
                     "beyond=%lu, firstk=%lu, beyondk=%lu: %s */\n",__func__,
@@ -1171,7 +1001,7 @@ QUICKSELECT_RETURN_TYPE QUICKSELECT_LOOP(char *base, size_t first,
         } else {
             /* not processing small region (nor large region) */
 pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     unsigned char x;
                     for (x=stack_top; x<QUICKSELECT_MAX_STACK; x++)
@@ -1182,7 +1012,7 @@ pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
                             stack[x].first,stack[x].beyond,stack[x].firstk,
                             stack[x].beyondk,stack[x].options);
                 }
-#endif /* DEBUGGING */
+#endif /* LIBMEDIAN_TEST_CODE */
                 first=stack[stack_top].first,
                     beyond=stack[stack_top].beyond,
                     /* restore saved pk, as special_cases may have set pk to NULL */
@@ -1195,7 +1025,7 @@ pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
                     c=stack[stack_top].c;
                 stack_top++;
                 nmemb=beyond-first; /* update nmemb after should_repivot call */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(REPARTITION_DEBUG))
                     (V)fprintf(stderr,"/* %s: %s line %d: popped region: first=%lu, "
                         "beyond=%lu, firstk=%lu, beyondk=%lu: %s */\n",__func__,
@@ -1204,13 +1034,13 @@ pop_stack:  if (QUICKSELECT_MAX_STACK>stack_top) {
 #endif
                 continue;
             }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(REPARTITION_DEBUG))
                 (V)fprintf(stderr,"/* %s: %s line %d: %s */\n",__func__,
                     quickselect_loop_src_file,__LINE__,"done");
 #endif
             if (NULL!=ppeq) { A(NULL!=*ppeq); A(NULL!=*ppgt); }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
             if ((NULL!=ppeq)&&(1UL==beyondk-firstk)) {
                 /* *ppeq must be within sub-array */
                 if ((*ppeq<base+first*size)||(*ppeq>=base+beyond*size)) {

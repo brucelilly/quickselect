@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sort5.c copyright 2016-2018 Bruce Lilly.   \ sort5.c $
+* $Id: ~|^` @(#)    sort5.c copyright 2016-2019 Bruce Lilly.   \ sort5.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sort5.c version 1.6 dated 2018-04-23T05:16:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is sort5.c version 1.7 dated 2019-03-15T14:05:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sort5.c */
@@ -46,10 +46,13 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sort5.c ~|^` @(#)"
 #define SOURCE_MODULE "sort5.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-04-23T05:16:06Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2019-03-15T14:05:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
+
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */

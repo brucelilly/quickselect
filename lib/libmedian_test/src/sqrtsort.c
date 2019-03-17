@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sqrtsort.c copyright 2016-2018 Bruce Lilly.   \ sqrtsort.c $
+* $Id: ~|^` @(#)    sqrtsort.c copyright 2016-2019 Bruce Lilly.   \ sqrtsort.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.13 dated 2018-06-09T23:06:46Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqrtsort.c version 1.14 dated 2019-03-15T14:05:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqrtsort.c */
@@ -46,26 +46,19 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sqrtsort.c ~|^` @(#)"
 #define SOURCE_MODULE "sqrtsort.c"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-06-09T23:06:46Z"
+#define MODULE_VERSION "1.14"
+#define MODULE_DATE "2019-03-15T14:05:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define QUICKSELECT_BUILD_FOR_SPEED 0 /* d_dedicated_sort is extern */
-#define QUICKSELECT_LOOP d_quickselect_loop
+#define __STDC_WANT_LIB_EXT1__ 0
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
 
 #include "initialize_src.h"
-
-/* quickselect_loop declaration */
-#if ! defined(QUICKSELECT_LOOP_DECLARED)
-QUICKSELECT_EXTERN
-# include "quickselect_loop_decl.h"
-;
-# define QUICKSELECT_LOOP_DECLARED 1
-#endif /* QUICKSELECT_LOOP_DECLARED */
 
 /* Data cache size (bytes), initialized on first run */
 extern size_t quickselect_cache_size;
@@ -110,7 +103,7 @@ __func__,source_file,__LINE__,first,beyond,xnk,o,xpk[0],xnk-1UL,xpk[xnk-1UL]);
         A(xpk[0]>first);A(xpk[xnk-1UL]<beyond-1UL);
 
         /* no support for efficient stable sorting */
-        (V)QUICKSELECT_LOOP(base,first,beyond,size,compar,xpk,0UL,xnk,swapf,
+        (V)d_quickselect_loop(base,first,beyond,size,compar,xpk,0UL,xnk,swapf,
             alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,NULL);
         /* xnk+1 regions partitioned by xpk ranks; recursively sort them. */
 
@@ -131,7 +124,7 @@ __func__,source_file,__LINE__,k,xpk[k],k+1UL,xpk[k+1UL]);
             size_ratio,options);
     } else {
         /* Handle divide-and-conquer for <= 8 elements */
-        (V)QUICKSELECT_LOOP(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
+        (V)d_quickselect_loop(base,first,beyond,size,COMPAR_ARGS,NULL,0UL,0UL,
             swapf,alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,
             NULL);
     }

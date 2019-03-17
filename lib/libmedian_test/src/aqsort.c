@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.13 dated 2018-05-10T02:34:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.15 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,18 +15,17 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.13"
-#define MODULE_DATE "2018-05-10T02:34:57Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
+
+#define LIBMEDIAN_TEST_CODE 1
 
 /* header files needed */
 #include "median_test_config.h" /* configuration */
 
 #include "initialize_src.h"
-
-extern unsigned int d_sample_index(struct sampling_table_struct *psts,
-    unsigned int idx, size_t nmemb);
 
 /* ***** code copied from M.D.McIlroy "A Killer Adversary for Quicksort" ******* */
 /* Copyright 1998, M. Douglas McIlroy
@@ -109,7 +108,7 @@ void set_freeze_direction(void) /* BL */
            antiqsort_dir = -1; /* BL */
         else
            antiqsort_dir = 1; /* BL */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(AQCMP_DEBUG)) {
             if ((char)0==file_initialized) initialize_file(__FILE__);
             (V)fprintf(stderr,
@@ -138,7 +137,7 @@ long freeze(long z)
         else /* BL */
             antiqsort_base[z] = l = antiqsort_hsolid--; /* BL */
         antiqsort_nsolid++;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(AQCMP_DEBUG))
             (V)fprintf(stderr,
                 "/* %s: %s line %d: %s(%ld)->%ld */\n",
@@ -161,7 +160,7 @@ long freeze(long z)
                     __func__,source_file,__LINE__,buf2,buf,
                     antiqsort_nsolid*100UL/antiqsort_n,__func__,c,z,c,l
                 );
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
                 if (DEBUGGING(AQCMP_DEBUG))
                     (V)fprintf(fp,"\n");
 #endif
@@ -169,7 +168,7 @@ long freeze(long z)
             }
         }
     }
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     else if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: z=%ld, l=%ld */\n",
@@ -257,7 +256,7 @@ long aqindex(const void *pv, void *base, size_t size)
     /* v is guaranteed to have been assigned in the above switch statement,
        whether or not (:-/) gcc's authors realize it...
     */
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG)&&(NULL!=base)&&(0UL<size))
         (V)fprintf(stderr,"/* %s: %s line %d: %s(%p[%lu])=%ld */\n",
             __func__,source_file,__LINE__,__func__,base,
@@ -287,7 +286,7 @@ size_t pivot_rank(char *base,size_t first,size_t beyond,size_t size,char *pivot)
 
     v=antiqsort_base[aqindex(pivot,base,size)];
     for (n=0UL,pa=base+size*first; first<beyond; pa+=size,first++) {
-#if DEBUG_CODE > 1
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: v=%ld, index=%lu */\n",
             __func__,source_file,__LINE__,v,first);
@@ -295,7 +294,7 @@ size_t pivot_rank(char *base,size_t first,size_t beyond,size_t size,char *pivot)
         if (pa==pivot) continue;
         l=antiqsort_base[aqindex(pa,base,size)];
         if (l<v) n++;
-#if DEBUG_CODE > 1
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: v=%ld, index=%lu, value=%ld, n=%lu */\n",
@@ -317,7 +316,7 @@ void pivot_sample_rank(register char *middle, register size_t row_spacing,
 {
     register size_t o;
     long l, v;
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: middle=%p[%lu], row_spacing=%lu, sample_spacing"
@@ -338,7 +337,7 @@ void pivot_sample_rank(register char *middle, register size_t row_spacing,
     }
     o=row_spacing*size;
     v=antiqsort_base[aqindex(pivot,base,size)];
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: pivot=%p[%lu], value=%ld */\n",
@@ -347,7 +346,7 @@ void pivot_sample_rank(register char *middle, register size_t row_spacing,
 }
 #endif
     l=antiqsort_base[aqindex(middle-o,base,size)];
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: middle-o=%p[%lu], value=%ld */\n",
@@ -357,7 +356,7 @@ void pivot_sample_rank(register char *middle, register size_t row_spacing,
 #endif
     if (l<v) (*prank)++;
     l=antiqsort_base[aqindex(middle,base,size)];
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: middle=%p[%lu], value=%ld */\n",
@@ -367,7 +366,7 @@ void pivot_sample_rank(register char *middle, register size_t row_spacing,
 #endif
     if (l<v) (*prank)++;
     l=antiqsort_base[aqindex(middle+o,base,size)];
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(WQSORT_DEBUG)||DEBUGGING(REMEDIAN_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: middle+o=%p[%lu], value=%ld */\n",
@@ -399,7 +398,7 @@ int aqcmp(const void *px, const void *py) /* per C standard */
     A(0L<=x);A(x<antiqsort_n);A(0L<=y);A(y<antiqsort_n);
     a=antiqsort_base[x];
     b=antiqsort_base[y];
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: x=%ld, y=%ld, a=%ld, b=%ld */\n",
@@ -464,7 +463,7 @@ cmp(const void *px, const void *py)  /* per C standard */
         return val[x] - val[y];
 }
 #endif
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: x=%ld, y=%ld, a=%ld, b=%ld, pivot_candidate=%ld"
@@ -493,7 +492,7 @@ void initialize_antiqsort(size_t n, char *pv, int type, size_t ratio, const size
     if (NULL != fp) (V) setvbuf(fp, NULL, (int)_IONBF, 0);
     nfrozen=0UL, pivot_minrank=n;
     if (4UL>n) antiqsort_gas=n-1UL; else antiqsort_gas=(n>>1);
-#if DEBUG_CODE
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: n=%lu, pv=%p, type=%d, sz=%lu, alt=%p, gas=%ld,"

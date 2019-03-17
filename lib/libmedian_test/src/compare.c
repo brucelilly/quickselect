@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is compare.c version 1.9 dated 2018-07-27T18:21:36Z. \ $ */
+/* $Id: ~|^` @(#)   This is compare.c version 1.10 dated 2019-03-16T15:37:11Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.compare.c */
@@ -46,10 +46,12 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: compare.c ~|^` @(#)"
 #define SOURCE_MODULE "compare.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-07-27T18:21:36Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2019-03-16T15:37:11Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
+
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -93,7 +95,7 @@ int ilongcmp(const void *p1, const void *p2)
     /* longcmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(COMPARE_DEBUG))
         (V)fprintf(stderr,"/* %s: compared %p(%ld),%p(%ld) -> %d */\n",__func__,
             p1,*((long *)p1),p2,*((long *)p2),r);
@@ -128,7 +130,7 @@ fprintf(stderr, "// %s line %d: p1=%p(%d), p2=%p(%d)\n",__func__,__LINE__,(void 
     /* intcmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(COMPARE_DEBUG))
         (V)fprintf(stderr,"/* %s: compared %p(%d),%p(%d) -> %d */\n",__func__,
             p1,*((int *)p1),p2,*((int *)p2),r);
@@ -160,7 +162,7 @@ int ishortcmp(const void *p1, const void *p2)
     /* shortcmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(COMPARE_DEBUG))
         (V)fprintf(stderr,"/* %s: compared %p(%hd),%p(%hd) -> %d */\n",__func__,
             p1,*((short *)p1),p2,*((short *)p2),r);
@@ -192,7 +194,7 @@ int idoublecmp(const void *p1, const void *p2)
     /* doublecmp (in compare.h) always returns one of -1, 0, 1; update counts
        without favoring execution time for any distribution of results
     */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(COMPARE_DEBUG))
         (V)fprintf(stderr,"/* %s: compared %p(%E),%p(%E) -> %d */\n",__func__,
             p1,*((double *)p1),p2,*((double *)p2),r);
@@ -226,7 +228,7 @@ int data_struct_strcmp(const void *p1, const void *p2)
             *pb = (const struct data_struct *)p2;
 
         c = strcmp(pa->string, pb->string);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(COMPARE_DEBUG))
             (V)fprintf(stderr,
                 "/* %s: compared string \"%s\" vs. \"%s\" -> %d */\n",
@@ -269,7 +271,7 @@ int timecmp(const void *p1, const void *p2)
             *pb = (const struct data_struct *)p2;
         int i;
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(COMPARE_DEBUG)) {
             (V)fprintf(stderr,"/* %s: comparing "
                 "%s %04d-%02d-%02dT%02d:%02d:%02d.%d%d%d%d%d%d%d%d%d%d%d%d vs. "
@@ -328,7 +330,7 @@ int timecmp(const void *p1, const void *p2)
 int itimecmp(const void *p1, const void *p2)
 {
     int c = timecmp(p1, p2);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(COMPARE_DEBUG))
         (V)fprintf(stderr,"/* %s: compared %p,%p -> %d */\n",__func__,p1,p2,c);
 #endif

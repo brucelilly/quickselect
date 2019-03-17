@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_s.c copyright 2016-2018 Bruce Lilly.   \ quickselect_s.c $
+* $Id: ~|^` @(#)    quickselect_s.c copyright 2016-2019 Bruce Lilly.   \ quickselect_s.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_s.c version 1.15 dated 2018-04-16T05:48:23Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_s.c version 1.16 dated 2019-03-15T14:05:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect_s.c */
@@ -48,33 +48,18 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_s.c ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_s.c"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2018-04-16T05:48:23Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2019-03-15T14:05:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 /* configuration for C11 _s variant w/ debugging */
 # define QUICKSELECT_BUILD_FOR_SPEED 1 /* make d_dedicated_sort_s() static */
 #define __STDC_WANT_LIB_EXT1__ 1
 
 #define COMPAR_DECL int(*compar)(const void*,const void*,void*),void *context
-#define COMPAR_ARGS compar,context
-#define DEDICATED_SORT d_dedicated_sort_s
-#define FMED3_FUNCTION_NAME fmed3_s
-#define REMEDIAN_FUNCTION_NAME remedian_s
-#define SELECT_PIVOT_FUNCTION_NAME select_pivot_s
-#define QUICKSELECT_LOOP d_quickselect_loop_s
 
-#define FIND_MINMAX_FUNCTION_NAME d_find_minmax
-#define KLIMITS_FUNCTION_NAME d_klimits
-#define PARTITION_FUNCTION_NAME partition_s
-#define SAMPLING_TABLE_FUNCTION_NAME d_sampling_table
-#define SELECT_MIN_FUNCTION_NAME d_select_min
-#define SELECT_MAX_FUNCTION_NAME d_select_max
-#define SELECT_MINMAX_FUNCTION_NAME d_select_minmax
-#define SHOULD_REPIVOT_FUNCTION_NAME d_should_repivot
-#define QUICKSELECT_VISIBILITY extern
-
+#define LIBMEDIAN_TEST_CODE 1
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes most other local and system header files required */
@@ -130,21 +115,21 @@ static constraint_handler_t set_constraint_handler_s(constraint_handler_t handle
 /* One source for dedicated_sort and partition variants. */
 #include "partition_src.h"
 
-#undef QUICKSELECT_BUILD_FOR_SPEED
-#define QUICKSELECT_BUILD_FOR_SPEED 1
-
 #ifndef SAMPLING_TABLE_SIZE
 # error "SAMPLING_TABLE_SIZE is not defined"
 #elsif ! SAMPLING_TABLE_SIZE
 # error "SAMPLING_TABLE_SIZE is 0"
 #endif
 
-# undef QUICKSELECT_BUILD_FOR_SPEED
-# define QUICKSELECT_BUILD_FOR_SPEED 0
-# include "quickselect_loop_src.h"
+#include "quickselect_loop_src.h"
 
 /* public interfaces for N1570 draft extensions */
-QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size,
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+int
+#endif
+    quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size,
     COMPAR_DECL, size_t *pk, size_t nk, unsigned int options)
 {
     errno_t ret=0;
@@ -269,10 +254,10 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
         }
     }
 
-    /* Special-case selection and sorting are handled in quickselect_loop. */
+    /* Special-case selection and sorting are handled in quickselect_loop_s. */
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-        ret=QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
-            COMPAR_ARGS,pk,0UL,nk,pswapf,alignsize,1UL,quickselect_cache_size,0UL,
+        ret=d_quickselect_loop_s((char *)pointers,0UL,nmemb,sizeof(char *),
+            compar,context,pk,0UL,nk,pswapf,alignsize,1UL/*,table_index*/,quickselect_cache_size,0UL,
             options,NULL,NULL);
         if (NULL==indices) indices=(size_t *)pointers;
         indices=convert_pointers_to_indices(base,nmemb,size,pointers,
@@ -288,14 +273,14 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
             size_ratio=size/alignsize;
             if (0U==instrumented) swapf=swapn(alignsize);
             else swapf=iswapn(alignsize);
-            ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,
-                nk,swapf,alignsize,size_ratio,quickselect_cache_size,0UL,options,NULL,
+            ret=d_quickselect_loop_s(base,0UL,nmemb,size,compar,context,pk,0UL,
+                nk,swapf,alignsize,size_ratio/*,table_index*/,quickselect_cache_size,0UL,options,NULL,
                 NULL);
         } else if (0UL!=alignsize)
             nmoves+=alignsize*size_ratio;
     } else
-        ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,pk,0UL,nk,
-            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
+        ret=d_quickselect_loop_s(base,0UL,nmemb,size,compar,context,pk,0UL,nk,
+            swapf,alignsize,size_ratio/*,table_index*/,quickselect_cache_size,0UL,
             options,NULL,NULL);
 
     /* Restore pk to full sorted (non-unique) order for caller convenience. */
@@ -308,10 +293,20 @@ QUICKSELECT_RETURN_TYPE quickselect_s_internal(void *base, rsize_t nmemb, /*cons
     return ret;
 }
 
-QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
+#if __STDC_WANT_LIB_EXT1__
+errno_t
+#else
+int
+#endif
+    qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
     COMPAR_DECL)
 {
-    QSORT_RETURN_TYPE ret=0;
+#if __STDC_WANT_LIB_EXT1__
+    errno_t
+#else
+    int
+#endif
+        ret=0;
     unsigned int options=0U;
     size_t alignsize, size_ratio;
     void (*swapf)(char *, char *, size_t);
@@ -399,9 +394,9 @@ QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t s
 
         if (0U!=(options&(QUICKSELECT_INDIRECT))) {
             size_t *indices=(size_t *)pointers;
-            ret=QUICKSELECT_LOOP((char *)pointers,0UL,nmemb,sizeof(char *),
-                COMPAR_ARGS,NULL,0UL,0UL,pswapf,alignsize,1UL,
-                quickselect_cache_size,0UL,options,NULL,NULL);
+            ret=d_quickselect_loop_s((char *)pointers,0UL,nmemb,sizeof(char *),
+                compar,context,NULL,0UL,0UL,pswapf,alignsize,1UL,
+                /*table_index,*/quickselect_cache_size,0UL,options,NULL,NULL);
             indices=convert_pointers_to_indices(base,nmemb,size,pointers,
                 nmemb,indices,0UL,nmemb);
             A(NULL!=indices);
@@ -414,14 +409,14 @@ QSORT_RETURN_TYPE qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t s
                 size_ratio=size/alignsize;
                 if (0U==instrumented) swapf=swapn(alignsize);
                 else swapf=iswapn(alignsize);
-                ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,
-                    0UL,swapf,alignsize,size_ratio,
+                ret=d_quickselect_loop_s(base,0UL,nmemb,size,compar,context,NULL,0UL,
+                    0UL,swapf,alignsize,size_ratio,/*table_index,*/
                     quickselect_cache_size,0UL,options,NULL,NULL);
                 } else if (0UL!=alignsize)
                 nmoves+=alignsize*size_ratio;
         } else
-            ret=QUICKSELECT_LOOP(base,0UL,nmemb,size,COMPAR_ARGS,NULL,
-                0UL,0UL,swapf,alignsize,size_ratio,
+            ret=d_quickselect_loop_s(base,0UL,nmemb,size,compar,context,NULL,
+                0UL,0UL,swapf,alignsize,size_ratio,/*table_index,*/
                 quickselect_cache_size,0UL,options,NULL,NULL);
     }
     A(0==ret); /* shouldn't get an error for internal calls! */

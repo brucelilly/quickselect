@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_lib_s.c copyright 2017-2018 Bruce Lilly.   \ qsort_s.c $
+* $Id: ~|^` @(#)   quickselect_lib_s.c copyright 2017-2019 Bruce Lilly.   \ quickselect_lib_s.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_lib_s.c version 1.7 dated 2018-03-07T04:26:55Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_lib_s.c version 1.10 dated 2019-03-15T14:08:53Z. \ quickselect_lib_s.c $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.quickselect_lib_s.c */
@@ -92,7 +92,8 @@
 #include "tables.h"
 
 /* source to be compiled into the library object file */
-#include "sampling_table_src.h"
-#include "repivot_src.h"
+#if QUICKSELECT_BUILD_FOR_SPEED
+# include "sampling_table_src.h"
+#endif
 #include "partition_src.h"
 #include "quickselect_loop_src.h"

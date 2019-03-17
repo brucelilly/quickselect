@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is indirect_mergesort.c version 1.18 dated 2018-06-09T23:03:50Z. \ $ */
+/* $Id: ~|^` @(#)   This is indirect_mergesort.c version 1.19 dated 2018-12-28T19:01:24Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "indirect_mergesort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.indirect_mergesort.c */
@@ -95,8 +95,8 @@ rearranging the pointers, then rearranges array elements and cleans up.
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: indirect_mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "indirect_mergesort.c"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2018-06-09T23:03:50Z"
+#define MODULE_VERSION "1.19"
+#define MODULE_DATE "2018-12-28T19:01:24Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2018"
 
@@ -158,7 +158,7 @@ static INDIRECT_INLINE void initialize_indirect(void)
 extern size_t quickselect_cache_size;
 
 int indirect_mergesort(char *base, size_t nmemb, size_t size,
-    int (*compar)(const void *, const void *))
+    COMPAR_DECL)
 {
     int r=0;
     if ((NULL==base)
@@ -179,7 +179,7 @@ int indirect_mergesort(char *base, size_t nmemb, size_t size,
                 char **p; size_t *indices, n;
                 if ((char)0 == indirect_initialized) initialize_indirect();
                 /* mergesort using indirection; pointers moved, not data */
-                pointer_mergesort(pointers,0UL,base,nmemb,nmemb,compar,
+                pointer_mergesort(pointers,0UL,base,nmemb,nmemb,COMPAR_ARGS,
                     quickselect_cache_size,QUICKSELECT_INDIRECT);
                 /* discard extra pointers */
                 /* C11 defines aligned_alloc, but no aligned versions of

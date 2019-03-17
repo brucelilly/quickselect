@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    insertion_sort_src.h copyright 2017-2018 Bruce Lilly.   \ insertion_sort_src.h $
+* $Id: ~|^` @(#)    insertion_sort_src.h copyright 2017-2019 Bruce Lilly.   \ insertion_sort_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.7 dated 2018-05-15T02:08:19Z. \ $ */
+/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.8 dated 2019-03-15T14:07:13Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.insertion_sort_src.h */
@@ -90,10 +90,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: insertion_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "insertion_sort_src.h"
-#define MODULE_VERSION "1.7"
-#define MODULE_DATE "2018-05-15T02:08:19Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2019-03-15T14:07:13Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 #ifndef ASSERT_CODE
 # define ASSERT_CODE        0  /* for validity testing; 0 for production code */
@@ -101,7 +101,7 @@
 
 /* local header files needed */
 #include "quickselect_config.h" /* BS_MID_L BS_MID_H QUICKSELECT_INLINE */
-#include "exchange.h"           /* irotate protate reverse */
+#include "exchange.h"           /* irotate reverse */
 
 /* for assert.h */
 #if ! ASSERT_CODE
@@ -116,15 +116,13 @@
 #endif
 
 /* macros */
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
-# ifndef INSERTION_SORT_SRC_FILE_HERE
+#if ( ! defined(INSERTION_SORT_SRC_FILE_HERE))
 extern char insertion_sort_src_file[];
 extern char insertion_sort_src_file_initialized;
-# else
+#else
 /* not static; referenced by inline functions */
 char insertion_sort_src_file[PATH_MAX];
 char insertion_sort_src_file_initialized=0;
-# endif
 #endif
 
 #ifndef SWAP_COUNT_STATEMENT
@@ -207,11 +205,11 @@ size_t in_order_run(char *base, size_t first, size_t beyond, size_t size,
             }
         }
     }
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: base=%p, first=%lu, beyond=%lu, "
             "longest in-order run starts at index %lu, has length %lu (end at "
-            "%lu) */\n",__func__,source_file,__LINE__,(void *)base,first,beyond,
+            "%lu) */\n",__func__,insertion_sort_src_file,__LINE__,(void *)base,first,beyond,
             *s,len,*s+len-1UL);
         print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
@@ -228,7 +226,21 @@ size_t in_order_run(char *base, size_t first, size_t beyond, size_t size,
 */
 static
 QUICKSELECT_INLINE
-void isort_ls(char *base, size_t first, size_t beyond, size_t size,
+void 
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+    d_isort_ls_s
+# else
+    d_isort_ls
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+    isort_ls_s
+# else
+    isort_ls
+# endif
+#endif
+    (char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL,
     void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
     unsigned int options)
@@ -302,7 +314,21 @@ void isort_ls(char *base, size_t first, size_t beyond, size_t size,
    dedicated_sort and isort_ls), and isort.
 */
 static QUICKSELECT_INLINE
-void isort_bs(char *base, size_t first, size_t beyond, size_t size,
+void 
+#if LIBMEDIAN_TEST_CODE
+# if  __STDC_WANT_LIB_EXT1__
+    d_isort_bs_s
+# else
+    d_isort_bs
+# endif
+#else
+# if  __STDC_WANT_LIB_EXT1__
+    isort_bs_s
+# else
+    isort_bs
+# endif
+#endif
+   (char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL,
     void (*swapf)(char *,char *,size_t), size_t alignsize, size_t size_ratio,
     unsigned int options)
@@ -310,7 +336,7 @@ void isort_bs(char *base, size_t first, size_t beyond, size_t size,
     auto size_t len; /* auto because address is required */
     register size_t l, m, n, h;
 
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
     if ((char)0==insertion_sort_src_file_initialized) {
         (V)path_basename(__FILE__,insertion_sort_src_file,PATH_MAX);
         insertion_sort_src_file_initialized++;
@@ -329,7 +355,7 @@ void isort_bs(char *base, size_t first, size_t beyond, size_t size,
     A(0UL!=m);
     if (1UL==m) { /* reversed input */
         reverse(base,first,beyond,size,swapf,alignsize,size_ratio);
-#if (DEBUG_CODE > 0) && defined(DEBUGGING)
+#if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             print_some_array(base,first,beyond-1UL,"/* reversed: "," */",
                 options);
