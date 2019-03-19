@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.8 dated 2019-03-15T14:07:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is insertion_sort_src.h version 1.9 dated 2019-03-18T11:00:49Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.insertion_sort_src.h */
@@ -90,8 +90,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: insertion_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "insertion_sort_src.h"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2019-03-15T14:07:13Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2019-03-18T11:00:49Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -341,7 +341,7 @@ void
         (V)path_basename(__FILE__,insertion_sort_src_file,PATH_MAX);
         insertion_sort_src_file_initialized++;
     }
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: first=%lu, beyond=%lu, "
             "size=%lu, size_ratio=%lu, compar=%s, options=0x%x"

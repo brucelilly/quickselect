@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is pivot_src.h version 1.25 dated 2019-03-16T14:44:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is pivot_src.h version 1.26 dated 2019-03-18T11:02:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.pivot_src.h */
@@ -108,8 +108,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: pivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "pivot_src.h"
-#define MODULE_VERSION "1.25"
-#define MODULE_DATE "2019-03-16T14:44:14Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2019-03-18T11:02:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -653,9 +653,20 @@ QUICKSELECT_SELECT_PIVOT
        samples
 #endif
              (nmemb,method,distribution,options);
+    if ((QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS==method)&&(9UL>n)) {
+        method=QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES; /* insufficient medians */
+    }
     if ((QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method)&&(5UL>n)) {
         method=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* no offset 3 samples */
     }
+#if LIBMEDIAN_TEST_CODE
+    if (DEBUGGING(PIVOT_METHOD_DEBUG))
+        (V)fprintf(stderr,
+            "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
+            "compar=%s, options=0x%x, method=%s, %d samples */\n",__func__,
+	    __LINE__,nmemb,first,beyond,comparator_name(compar),options,
+	    pivot_name(method),n);
+#endif
     if (NULL!=pmethod) *pmethod=method;
     if (NULL!=psamples) *psamples=n;
     switch (method) {

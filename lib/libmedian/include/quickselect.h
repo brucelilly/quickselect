@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.26 dated 2019-03-15T14:07:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.27 dated 2019-03-18T11:05:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.26 2019-03-15T14:07:14Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.27 2019-03-18T11:05:41Z"
 
 /* FreeBSD requires feature test macros to properly define type errno_t */
 #ifndef __STDC_WANT_LIB_EXT1__
@@ -154,11 +154,11 @@
 
 /* defined values for pivot_method */
   /* no data movement */
-#define QUICKSELECT_PIVOT_REMEDIAN_SAMPLES  0
-#define QUICKSELECT_PIVOT_REMEDIAN_FULL     1
+#define QUICKSELECT_PIVOT_REMEDIAN_SAMPLES  1
+#define QUICKSELECT_PIVOT_REMEDIAN_FULL     2
   /* alters data order (cannot be used for stable sort/selection) */
-#define QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS 2
-#define QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES 3
+#define QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS 3
+#define QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES 4
 
 /* defined values for partition_method */
   /* partial order not preserved (cannot be used for stable sort/selection) */

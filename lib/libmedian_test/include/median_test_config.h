@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.38 dated 2019-03-16T15:34:48Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.39 dated 2019-03-18T10:55:52Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -166,7 +166,7 @@ extern size_t nrotations[];
 #define DPQSORT_DEBUG            0x00080000U
 #define CACHE_DEBUG              0x00100000U
 #define MEMORY_DEBUG             0x00200000U
-#define METHOD_DEBUG             0x00400000U
+#define PIVOT_METHOD_DEBUG       0x00400000U
 #define CORRECTNESS_DEBUG        0x00800000U
 
 #define DEBUG_VALUE_COUNT 24
@@ -189,6 +189,7 @@ extern unsigned int instrumented;
 extern size_t nlt, neq, ngt, nmoves; /* nsw already declared */
 extern size_t nmerges, npartitions, nrecursions, nrepivot;
 extern size_t npcopies, npderefs, npiconversions;
+extern int forced_pivot_selection_method;
     /* print.c */
 extern void print_some_array(char *target, size_t l, size_t u, const char *prefix, const char *suffix,unsigned int options);
 
@@ -533,7 +534,6 @@ extern int use_networks;
 extern int use_shell;
 extern unsigned int do_histogram;
 extern unsigned int introsort_final_insertion_sort;
-extern unsigned int network_mask; /* obsolete */
 extern unsigned int save_partial;
 extern unsigned int mbm_options;
 #if defined(__STDC__) && (__STDC__ == 1) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L)
@@ -644,6 +644,7 @@ extern void write_database_files(long *p, size_t n, unsigned int data_type);
 
 /* debug.c */
 extern const char *debug_name(unsigned int value);
+extern const char *pivot_name(int method);
 
 /* dual.c */
 extern void dpqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options);

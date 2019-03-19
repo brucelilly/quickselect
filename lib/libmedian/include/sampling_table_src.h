@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.16 dated 2019-03-15T14:07:15Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.17 dated 2019-03-18T11:08:31Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.16"
-#define MODULE_DATE "2019-03-15T14:07:15Z"
+#define MODULE_VERSION "1.17"
+#define MODULE_DATE "2019-03-18T11:08:31Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -288,7 +288,7 @@ QUICKSELECT_SAMPLES
 #if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
-            "/* %s line %d: nmemb=%lu, method=%d, distribution=%u, "
+            "/* %s line %d: nmemb=%lu, pivot selection method=%d, distribution=%u, "
             "options=0x%x */\n",
                 __func__,__LINE__,nmemb,method,distribution,options);
 #endif
@@ -379,131 +379,135 @@ QUICKSELECT_SAMPLES
 #else   /*FALLTHROUGH*/
 #endif /* ASSERT_CODE + DEBUG_CODE */
         case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
-            switch (distribution) {
-                case 3U : /*FALLTHROUGH*/ case 6U : /*FALLTHROUGH*/ /* cases 3 and 6 use middle table */
-                case 2U :
-                    pst=mos_middle_sampling_table;
-                break;
-                case 1U : /*FALLTHROUGH*/ case 4U :
-                    pst=mos_ends_sampling_table;
-                break;
-                case 5U : /*FALLTHROUGH*/ /* case 5 uses sorting table */
-                /* case 5 uses remedian except for size_ratio 1 */
-                case 7U : /*FALLTHROUGH*/ /* case 7 uses sorting table */
-                default : /* 000 sorting */
-                    pst=mos_sorting_sampling_table;
-                break;
-            }
-            if (pst[SAMPLING_TABLE_SIZE-1].max_nmemb>=nmemb) {
-                /* sample sizes differ for small nmemb */
-                for (r=0UL; r<SAMPLING_TABLE_SIZE; r++) {
-                    if (nmemb<=pst[r].max_nmemb) {
-                        n=pst[r].samples;
-                        break;
-                    }
+            if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
+                n = (nmemb / 3UL) << 1; /* 2/3 nmemb */
+            } else {
+                switch (distribution) {
+                    case 3U : /*FALLTHROUGH*/ case 6U : /*FALLTHROUGH*/ /* cases 3 and 6 use middle table */
+                    case 2U :
+                        pst=mos_middle_sampling_table;
+                    break;
+                    case 1U : /*FALLTHROUGH*/ case 4U :
+                        pst=mos_ends_sampling_table;
+                    break;
+                    case 5U : /*FALLTHROUGH*/ /* case 5 uses sorting table */
+                    /* case 5 uses remedian except for size_ratio 1 */
+                    case 7U : /*FALLTHROUGH*/ /* case 7 uses sorting table */
+                    default : /* 000 sorting */
+                        pst=mos_sorting_sampling_table;
+                    break;
                 }
-            } else { /* compute number of samples for nmemb */
-                /* odd # samples 2*k+1 for k proportional to sqrt(nmemb) */
-                if (pst==mos_middle_sampling_table) {
-                    /* Martinez & Roura found optimum samples for median pivot
-                       selection to be 1+2*sqrt(nmemb/4/Beta), where Beta is the
-                       scaled number of comparisons for median selection.  So,
-                       for 2.25N selection cost, use 1+2*sqrt(nmemb/9).  For 2N,
-                       use 1+2*sqrt(nmemb/8); for 1.75N, use 1+2*sqrt(nmemb/7);
-                       for 1.5N, use 1+2*sqrt(nmemb/6).
-                       However, empirical testing shows that the optimum number
-                       of samples is much greater for large arrays.
-                    */
-                    if (0.0==mos_middle_multiplier) {
-                        /* Match multiplier to top end of table values. */
-                        n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
-                            +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
-                        mos_middle_multiplier
-                            =(double)
-                            ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
-                            /pow(0.5*(double)n,mos_middle_power);
-#if LIBMEDIAN_TEST_CODE
-                        if (DEBUGGING(SAMPLING_DEBUG))
-                            (V)fprintf(stderr,
-                                "/* %s line %d: mos_middle_power=%.3f, "
-                                "mos_middle_multiplier=%.5f */\n",
-                                __func__,__LINE__,mos_middle_power,
-                                mos_middle_multiplier);
-#endif
+                if (pst[SAMPLING_TABLE_SIZE-1].max_nmemb>=nmemb) {
+                    /* sample sizes differ for small nmemb */
+                    for (r=0UL; r<SAMPLING_TABLE_SIZE; r++) {
+                        if (nmemb<=pst[r].max_nmemb) {
+                            n=pst[r].samples;
+                            break;
+                        }
                     }
-                    n = 1UL +
-                        (((size_t)(pow((double)nmemb,mos_middle_power)
-                        *mos_middle_multiplier))<<1);
-                } else if (pst==mos_ends_sampling_table) {
-                    /* Pivot selection for pivot rank near an array end uses
-                       about twice as many samples as for a median pivot.
-                    */
-                    if (0.0==mos_ends_multiplier) {
-                        /* Match multiplier to top end of table values. */
-                        n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
-                            +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
-                        mos_ends_multiplier
-                            =(double)
-                            ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
-                            /pow(0.5*(double)n,mos_ends_power);
+                } else { /* compute number of samples for nmemb */
+                    /* odd # samples 2*k+1 for k proportional to sqrt(nmemb) */
+                    if (pst==mos_middle_sampling_table) {
+                        /* Martinez & Roura found optimum samples for median pivot
+                           selection to be 1+2*sqrt(nmemb/4/Beta), where Beta is the
+                           scaled number of comparisons for median selection.  So,
+                           for 2.25N selection cost, use 1+2*sqrt(nmemb/9).  For 2N,
+                           use 1+2*sqrt(nmemb/8); for 1.75N, use 1+2*sqrt(nmemb/7);
+                           for 1.5N, use 1+2*sqrt(nmemb/6).
+                           However, empirical testing shows that the optimum number
+                           of samples is much greater for large arrays.
+                        */
+                        if (0.0==mos_middle_multiplier) {
+                            /* Match multiplier to top end of table values. */
+                            n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
+                                +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
+                            mos_middle_multiplier
+                                =(double)
+                                ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
+                                /pow(0.5*(double)n,mos_middle_power);
 #if LIBMEDIAN_TEST_CODE
-                        if (DEBUGGING(SAMPLING_DEBUG))
-                            (V)fprintf(stderr,
-                                "/* %s line %d: mos_ends_power=%.3f, "
-                                "mos_ends_multiplier=%.5f */\n",
-                                __func__,__LINE__,mos_ends_power,
-                                mos_ends_multiplier);
+                            if (DEBUGGING(SAMPLING_DEBUG))
+                                (V)fprintf(stderr,
+                                    "/* %s line %d: mos_middle_power=%.3f, "
+                                    "mos_middle_multiplier=%.5f */\n",
+                                    __func__,__LINE__,mos_middle_power,
+                                    mos_middle_multiplier);
 #endif
-                    }
-                    n = 1UL +
-                        (((size_t)(pow((double)nmemb,mos_ends_power)
-                        *mos_ends_multiplier))<<1);
-                } else { /* mos_sorting_sampling_table */
-                    /* n (the number of samples to use for sorting) depends on
-                       Beta (the cost of selecting the median of samples), which
-                       varies with n.  A table is used for small nmemb, which
-                       uses small n (where Beta varies from 1 to about 2.2).
-                       For n roughly from 40 to 256, Beta is a maximum at about
-                       2.2, and the corresponding range for nmemb is 4800 to
-                       196608 elements.  Beta is ~ 1.98 at n ~ 1800, ~ 1.8 at
-                       n ~ 8000, ~ 1.62 at n ~ 60000, and asymptotically
-                       approaches 1.5.  Because nmemb increases with the square
-                       of the number of samples, the computation using Beta~2.16
-                       is used for all but very large arrays (and very small
-                       ones using the table values).
-                    */
-                    if (1340000UL>nmemb) { /* < 651 samples */
-                        n = ((
+                        }
+                        n = 1UL +
+                            (((size_t)(pow((double)nmemb,mos_middle_power)
+                            *mos_middle_multiplier))<<1);
+                    } else if (pst==mos_ends_sampling_table) {
+                        /* Pivot selection for pivot rank near an array end uses
+                           about twice as many samples as for a median pivot.
+                        */
+                        if (0.0==mos_ends_multiplier) {
+                            /* Match multiplier to top end of table values. */
+                            n=pst[SAMPLING_TABLE_SIZE-2].max_nmemb
+                                +pst[SAMPLING_TABLE_SIZE-1].max_nmemb;
+                            mos_ends_multiplier
+                                =(double)
+                                ((pst[SAMPLING_TABLE_SIZE-1].samples-1UL)>>1)
+                                /pow(0.5*(double)n,mos_ends_power);
 #if LIBMEDIAN_TEST_CODE
-                              d_size_t_sqrt
+                            if (DEBUGGING(SAMPLING_DEBUG))
+                                (V)fprintf(stderr,
+                                    "/* %s line %d: mos_ends_power=%.3f, "
+                                    "mos_ends_multiplier=%.5f */\n",
+                                    __func__,__LINE__,mos_ends_power,
+                                    mos_ends_multiplier);
+#endif
+                        }
+                        n = 1UL +
+                            (((size_t)(pow((double)nmemb,mos_ends_power)
+                            *mos_ends_multiplier))<<1);
+                    } else { /* mos_sorting_sampling_table */
+                        /* n (the number of samples to use for sorting) depends on
+                           Beta (the cost of selecting the median of samples), which
+                           varies with n.  A table is used for small nmemb, which
+                           uses small n (where Beta varies from 1 to about 2.2).
+                           For n roughly from 40 to 256, Beta is a maximum at about
+                           2.2, and the corresponding range for nmemb is 4800 to
+                           196608 elements.  Beta is ~ 1.98 at n ~ 1800, ~ 1.8 at
+                           n ~ 8000, ~ 1.62 at n ~ 60000, and asymptotically
+                           approaches 1.5.  Because nmemb increases with the square
+                           of the number of samples, the computation using Beta~2.16
+                           is used for all but very large arrays (and very small
+                           ones using the table values).
+                        */
+                        if (1340000UL>nmemb) { /* < 651 samples */
+                            n = ((
+#if LIBMEDIAN_TEST_CODE
+                                  d_size_t_sqrt
 #else
-                              size_t_sqrt
+                                  size_t_sqrt
 #endif
-                                         (nmemb/12UL))<<1) + 1UL; /* sqrt(nmemb/3) [2*beta*ln(2) = 3 for beta=2.16404] */
-                    } else if (44011800UL>nmemb) { /* ~4201 samples */
-                        n = ((
+                                             (nmemb/12UL))<<1) + 1UL; /* sqrt(nmemb/3) [2*beta*ln(2) = 3 for beta=2.16404] */
+                        } else if (44011800UL>nmemb) { /* ~4201 samples */
+                            n = ((
 #if LIBMEDIAN_TEST_CODE
-                              d_size_t_sqrt
+                                  d_size_t_sqrt
 #else
-                              size_t_sqrt
+                                  size_t_sqrt
 #endif
-                                         (nmemb/11UL))<<1) + 1UL; /* beta ~ 1.98 */
-                    } else if (22460000000UL>nmemb) { /* ~100001 samples */
-                        n = ((
+                                             (nmemb/11UL))<<1) + 1UL; /* beta ~ 1.98 */
+                        } else if (22460000000UL>nmemb) { /* ~100001 samples */
+                            n = ((
 #if LIBMEDIAN_TEST_CODE
-                              d_size_t_sqrt
+                                  d_size_t_sqrt
 #else
-                              size_t_sqrt
+                                  size_t_sqrt
 #endif
-                                         (nmemb/10UL))<<1) + 1UL; /* beta ~ 1.8 */
-                    } else {
-                        n = ((
+                                             (nmemb/10UL))<<1) + 1UL; /* beta ~ 1.8 */
+                        } else {
+                            n = ((
 #if LIBMEDIAN_TEST_CODE
-                              d_size_t_sqrt
+                                  d_size_t_sqrt
 #else
-                              size_t_sqrt
+                                  size_t_sqrt
 #endif
-                                         (nmemb/9UL))<<1) + 1UL; /* beta ~ 1.62 */
+                                             (nmemb/9UL))<<1) + 1UL; /* beta ~ 1.62 */
+                        }
                     }
                 }
             }
@@ -526,6 +530,7 @@ QUICKSELECT_PIVOT_METHOD
         (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
         sampling_table_src_file_initialized++;
     }
+    if (0!=forced_pivot_selection_method) return forced_pivot_selection_method;
     if (DEBUGGING(PIVOT_SELECTION_DEBUG))
         (V)fprintf(stderr,
             "/* %s: %s line %d: pk=%p, distribution=%u, size_ratio=%lu, options"
@@ -545,9 +550,11 @@ QUICKSELECT_PIVOT_METHOD
     /* Pivot selection requiring restricted rank (break-glass) uses
        median-of-medians or full remedian (for stable sorting/selection).
     */
-    if (0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
+    if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
+        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))&&(23UL>size_ratio))
+            return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
         return QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS ;
-    else {
+    } else {
         /* Might use "median" of samples with offset rank or true median of
            samples. In either case, sample data movement is relatively costly;
            it can introduce disorder into already-sorted input (which will

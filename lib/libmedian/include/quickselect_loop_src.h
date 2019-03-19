@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.31 dated 2019-03-15T14:07:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.32 dated 2019-03-18T11:04:34Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.31"
-#define MODULE_DATE "2019-03-15T14:07:14Z"
+#define MODULE_VERSION "1.32"
+#define MODULE_DATE "2019-03-18T11:04:34Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -518,6 +518,9 @@ QUICKSELECT_QUICKSELECT_LOOP
     unsigned char stack_top=(unsigned char)(QUICKSELECT_MAX_STACK);
     int method;
     size_t cache_limit, nel, nmemb, samples;
+#if LIBMEDIAN_TEST_CODE
+    size_t onlt, oneq, ongt, onsw, onmoves;
+#endif
 
 #if ! QUICKSELECT_BUILD_FOR_SPEED
     if ((char)0==file_initialized) initialize_file(__FILE__);
@@ -649,7 +652,7 @@ QUICKSELECT_QUICKSELECT_LOOP
             }
 #if LIBMEDIAN_TEST_CODE
             else
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
                         "nel=%lu, size=%lu, lneq=%lu, lnne=%lu, size_ratio=%lu,"
@@ -670,6 +673,8 @@ QUICKSELECT_QUICKSELECT_LOOP
         /* Divide-and-conquer. */
 
 #if LIBMEDIAN_TEST_CODE
+        if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
+            onlt=nlt, oneq=neq, ongt=ngt, onsw=nsw, onmoves=nmoves;
         /* count repivots */
         if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
 #if 1 /* 0 count or 1 don't count repivoting for median-of-medians */
@@ -740,6 +745,14 @@ QUICKSELECT_QUICKSELECT_LOOP
             if (nmemb<=MAX_ARRAY_PRINT)
                 print_some_array(base,first,beyond-1UL, "/* "," */",options);
         }
+        if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
+            (V)fprintf(stderr,
+                "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
+                "compar=%s, options=0x%x, method=%s, "
+		"pivot selection %lu comparisons, %lu swaps, %lu moves */\n",
+		__func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
+		options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,nsw-onsw,
+		nmoves-onmoves);
 #endif
 
         /* Partition the array around the pivot element into less-than,
@@ -794,6 +807,14 @@ QUICKSELECT_QUICKSELECT_LOOP
                 abort();
             }
         }
+        if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
+            (V)fprintf(stderr,
+                "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
+                "compar=%s, options=0x%x, method=%s, "
+		"pivot+partition %lu comparisons, %lu swaps, %lu moves */\n",
+		__func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
+		options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,nsw-onsw,
+	       	nmoves-onmoves);
 #endif
 
         if (NULL!=pk) { /* selection only; desired ranks for regions */

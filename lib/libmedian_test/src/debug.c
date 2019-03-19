@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    debug.c copyright 2016-2018 Bruce Lilly.   \ debug.c $
+* $Id: ~|^` @(#)    debug.c copyright 2016-2019 Bruce Lilly.   \ debug.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is debug.c version 1.10 dated 2018-07-12T20:58:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is debug.c version 1.11 dated 2019-03-18T10:57:06Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.debug.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: debug.c ~|^` @(#)"
 #define SOURCE_MODULE "debug.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-07-12T20:58:16Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2019-03-18T10:57:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 /* local header files needed */
 #include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
@@ -105,11 +105,32 @@ const char *debug_name(unsigned int value)
         return "cache";
         case MEMORY_DEBUG :
         return "memory";
-        case METHOD_DEBUG :
-        return "method";
+        case PIVOT_METHOD_DEBUG :
+        return "pivot_method";
         case CORRECTNESS_DEBUG :
         return "correctness";
     }
     (V)snul(buf, sizeof(buf), "unknown value 0x", NULL, value, 16, '0', 8, NULL, NULL);
     return buf;
 }
+
+const char *pivot_name(int method)
+{
+    static char buf[256];
+
+    switch (method) {
+        case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
+        return "QUICKSELECT_PIVOT_REMEDIAN_SAMPLES" ;
+        case QUICKSELECT_PIVOT_REMEDIAN_FULL :
+        return "QUICKSELECT_PIVOT_REMEDIAN_FULL" ;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
+        return "QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS" ;
+        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
+        return "QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES" ;
+        default:
+            (V)snl(buf,sizeof(buf),"unknown method ",NULL,(long)method,10,' ',1,NULL,NULL);
+        break;
+    }
+    return (const char *)buf;
+}
+

@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.21 dated 2019-03-15T14:07:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.22 dated 2019-03-18T10:59:50Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2019-03-15T14:07:13Z"
+#define MODULE_VERSION "1.22"
+#define MODULE_DATE "2019-03-18T10:59:50Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -198,7 +198,7 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
         r=errno=EINVAL;
     } else {
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
                 "size=%lu, size_ratio=%lu, pbeyond=%lu, compar=%s, options=0x%x"
@@ -328,7 +328,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
         /* simplified merge for 3 elements; 2-3 comparisons, 0-3 swaps */
         /* split */
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "options=0x%x */\n",__func__,
@@ -364,7 +364,7 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
         */
         register int c, d;
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: non-stable decision tree: first=%lu, beyond"
                 "=%lu, size_ratio=%lu */\n",
@@ -444,7 +444,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
            lower overhead, same average comparisons, same average data movement.
         */
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "first=%lu, beyond=%lu, options=0x%x */\n",__func__,
@@ -465,7 +465,7 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
     /* simplified in-place merge sort for 4 elements */
     /* split */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
             "nmemb=%lu */\n",
@@ -520,7 +520,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         /* 9 comparisons with 4 parallelizable groups */
         register char *pc, *pd, *pe;
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "options=0x%x */\n",__func__,
@@ -545,7 +545,7 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
     }
     /* Simplified merge for 5 elements; average 7.233 comparisons. */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
             "nmemb=%lu */\n",
@@ -601,7 +601,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
         /* 12 comparisons with 6 parallelizable groups */
         register char *pa, *pb, *pc, *pd, *pe, *pf;
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "options=0x%x */\n",__func__,
@@ -627,7 +627,7 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
     }
     /* Simplified merge for 6 elements; average 9.924 comparisons. */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
             "nmemb=%lu */\n",
@@ -693,7 +693,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
         /* 16 comparisons with 6 parallelizable groups; average 6.196 swaps */
         register char *pa, *pb, *pc, *pd, *pe, *pf, *pg;
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "options=0x%x */\n",__func__,
@@ -720,7 +720,7 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
     }
     /* Simplified merge for 7 elements; average 12.823 comparisons and 8.474 swap equivalents. */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
             "nmemb=%lu */\n",
@@ -782,7 +782,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
         /* 19 comparisons with 6 parallelizable groups; 8.295 average swaps */
         register char *pa, *pb, *pc, *pd, *pe, *pf, *pg, *ph;
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+        if (DEBUGGING(SORT_SELECT_DEBUG)) {
             (V)fprintf(stderr,
                 "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                 "options=0x%x */\n",__func__,
@@ -808,7 +808,7 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
     }
     /* Simplified merge for 8 elements; average 15.909 comparisons and 11.075 swap equivalents. */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: unrolled in-place mergesort "
             "nmemb=%lu */\n",
@@ -860,7 +860,7 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     register int ret=0;
     register size_t mid, na;
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, size_ratio=%lu, "
             "pbeyond=%lu, options=0x%x */\n",__func__,dedicated_sort_src_file,__LINE__,
             (unsigned long)nmemb,(unsigned long)size_ratio,
@@ -1032,7 +1032,7 @@ QUICKSELECT_DEDICATED_SORT
                 pa=base+first*size;
                 pb=pa+size;
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: compare-exchange nmemb=%lu, first="
                         "%lu */\n",__func__,dedicated_sort_src_file,__LINE__,
@@ -1073,7 +1073,7 @@ QUICKSELECT_DEDICATED_SORT
                     /* 25 comparisons in 9 parallel groups; average 12.811 swaps. */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1110,7 +1110,7 @@ QUICKSELECT_DEDICATED_SORT
                 /* split 4-5 using ded_sort4 and ded_sort5 */
                 /* average 20.326 comparisons and 14.58 swap equivalents */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
                         "nmemb=%lu */\n",
@@ -1133,7 +1133,7 @@ QUICKSELECT_DEDICATED_SORT
 #if QUICKSELECT_MAX_NETWORK > 9
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1170,7 +1170,7 @@ QUICKSELECT_DEDICATED_SORT
                 /* simplified in-place merge sort for 10 elements */
                 /* split 5-5 using ded_sort5 */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
                         "nmemb=%lu */\n",
@@ -1192,7 +1192,7 @@ QUICKSELECT_DEDICATED_SORT
 #if QUICKSELECT_MAX_NETWORK > 10
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1227,7 +1227,7 @@ QUICKSELECT_DEDICATED_SORT
                 /* simplified in-place merge sort for 11 elements */
                 /* split 5-6 using ded_sort5 and ded_sort6 */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
                         "nmemb=%lu */\n",
@@ -1249,7 +1249,7 @@ QUICKSELECT_DEDICATED_SORT
 #if QUICKSELECT_MAX_NETWORK > 11
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1286,7 +1286,7 @@ QUICKSELECT_DEDICATED_SORT
                 /* simplified in-place merge sort for 12 elements */
                 /* split 6-6 using ded_sort6 */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
                         "nmemb=%lu */\n",
@@ -1311,7 +1311,7 @@ QUICKSELECT_DEDICATED_SORT
                     /* http://www.cs.brandeis.edu/~hugues/sorting_networks.html */
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1352,7 +1352,7 @@ QUICKSELECT_DEDICATED_SORT
                 /* simplified in-place merge sort for 13 elements */
                 /* split 6-7 using ded_sort6 and ded_sort7 */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: unrolled in-place mergesort "
                         "nmemb=%lu */\n",
@@ -1378,7 +1378,7 @@ QUICKSELECT_DEDICATED_SORT
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm, *pn,
                         *po;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1428,7 +1428,7 @@ QUICKSELECT_DEDICATED_SORT
                     /* simplified in-place merge sort for 13 elements */
                     /* split 7-7 using ded_sort7 */
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
                             "nmemb=%lu */\n",
@@ -1455,7 +1455,7 @@ QUICKSELECT_DEDICATED_SORT
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
                          *pn, *po, *pp;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1506,7 +1506,7 @@ QUICKSELECT_DEDICATED_SORT
                     /* simplified in-place merge sort for 13 elements */
                     /* split 7-8 using ded_sort7 and ded_sort8 */
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
                             "nmemb=%lu */\n",
@@ -1533,7 +1533,7 @@ QUICKSELECT_DEDICATED_SORT
                     char *pc, *pd, *pe, *pf,  *pg, *ph, *pj, *pk, *pl, *pm,
                          *pn, *po, *pp, *pq;
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: SORTING NETWORK nmemb=%lu, "
                             "options=0x%x */\n",__func__,
@@ -1584,7 +1584,7 @@ QUICKSELECT_DEDICATED_SORT
                     /* simplified in-place merge sort for 13 elements */
                     /* split 8-8 using ded_sort8 */
 #if LIBMEDIAN_TEST_CODE
-                    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+                    if (DEBUGGING(SORT_SELECT_DEBUG)) {
                         (V)fprintf(stderr,
                             "/* %s: %s line %d: unrolled in-place mergesort "
                             "nmemb=%lu */\n",

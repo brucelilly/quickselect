@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mergesort.c version 1.24 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is mergesort.c version 1.25 dated 2019-03-18T10:59:04Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mergesort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mergesort.c ~|^` @(#)"
 #define SOURCE_MODULE "mergesort.c"
-#define MODULE_VERSION "1.24"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.25"
+#define MODULE_DATE "2019-03-18T10:59:04Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -489,7 +489,7 @@ int d_indirect_mergesort(char *base, size_t nmemb, size_t size,
             if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
 
 #if LIBMEDIAN_TEST_CODE
-            if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(METHOD_DEBUG)) {
+            if (DEBUGGING(SORT_SELECT_DEBUG)) {
                 (V)fprintf(stderr,
                     "/* %s: %s line %d: nmemb=%lu, size=%lu, compar=%s, "
                     "options=0x%x */\n",__func__,source_file,__LINE__,

@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    median_test.c copyright 2016-2018 Bruce Lilly.   \ median_test.c $
+* $Id: ~|^` @(#)    median_test.c copyright 2016-2019 Bruce Lilly.   \ median_test.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.39 dated 2018-12-18T13:19:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.40 dated 2019-03-18T11:09:37Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.39"
-#define MODULE_DATE "2018-12-18T13:19:52Z"
+#define MODULE_VERSION "1.40"
+#define MODULE_DATE "2019-03-18T11:09:37Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2018"
+#define COPYRIGHT_DATE "2016-2019"
 
 #define  __STDC_WANT_LIB_EXT1__ 1 /* for qsort_s_wrapper */
 
@@ -68,7 +68,7 @@ extern double mos_ends_power;
 /* getopt treats ? and : specially (: may be used as a magic silence flag) */
 /* available characters: 012678(){}\'"`  plus control characters and whitespace */
 #define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>];"
-#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ n] [-;] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
+#define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ pivot_method] [-;] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
 -a [opts]\ttest illumos qsort, possibly with modifications\n\
 -A\talphabetic (string) data type tests\n\
 -b [0]\ttest Bentley&McIlroy qsort optionally w/o instrumentation\n\
@@ -133,7 +133,7 @@ extern double mos_ends_power;
 -,\ttest in-place merge sort\n\
 -.\ttest dedicated sort\n\
 -| n\tpartition_method\n\
--/ n\tnetwork_map (obsolete)\n\
+-/\tpivot_method\n\
 -~\tperform sorting stability test on structured data\n\
 -_\ttest system mergesort\n\
 -<\toptimize quickselect for minimum comparisons\n\
@@ -160,26 +160,6 @@ static const char *sampling_table_name(struct sampling_table_struct *psts)
     if (psts==mos_middle_sampling_table) return "mos_middle";
     if (psts==mos_ends_sampling_table) return "mos_ends";
     return "unknown";
-}
-
-static const char *pivot_name(int method)
-{
-    static char buf[256];
-
-    switch (method) {
-        case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
-        return "QUICKSELECT_PIVOT_REMEDIAN_SAMPLES" ;
-        case QUICKSELECT_PIVOT_REMEDIAN_FULL :
-        return "QUICKSELECT_PIVOT_REMEDIAN_FULL" ;
-        case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
-        return "QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS" ;
-        case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
-        return "QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES" ;
-        default:
-            (V)snl(buf,sizeof(buf),"unknown method ",NULL,(long)method,10,' ',1,NULL,NULL);
-        break;
-    }
-    return (const char *)buf;
 }
 
 static const char *partition_name(int method)
@@ -1745,43 +1725,11 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     }
                     if ((QUICKSELECT_PARTITION_STABLE)==method_partition) {
                         options |= (QUICKSELECT_STABLE);
-                        network_mask &= 0x078U;
-                        options &= (network_mask|0x07U);
                     } else {
                         options &= ~(QUICKSELECT_STABLE);
                     }
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
-                    pcc--;
-                break;
-                case '/' : /* for obsolete network mask */
-                    flags[c] = 1U;
-                    if ('\0' == *(++pcc))
-                        pcc = argv[++optind];
-                    network_mask = (unsigned int)strtoul(pcc, &endptr, 0);
-                    options &= 0x07U;
-                    if (0U!=(0x01F8U&network_mask)) {
-                        /* cannot have stable sort with networks >= size 7 */
-                        if (0U!=(options&(QUICKSELECT_STABLE))) {
-                            (V)fprintf(stderr,
-                               "%s: %s line %d: WARNING: network mask 0x%x overrides QUICKSELECT_STABLE\n",
-                               __func__,source_file,__LINE__,
-                               network_mask);
-                            options &= ~(QUICKSELECT_STABLE);
-                        }
-                    }
-                    if (0U!=(0x01FF0U&network_mask)) {
-                        /* network sort size > 3 incompatible with optimized comparisons (in-place merge sort) */
-                        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) {
-                            (V)fprintf(stderr,
-                               "%s: %s line %d: WARNING: network mask 0x%x overrides QUICKSELECT_OPTIMIZE_COMPARISONS\n",
-                               __func__,source_file,__LINE__,
-                               network_mask);
-                            options &= ~(QUICKSELECT_OPTIMIZE_COMPARISONS);
-                        }
-                    }
-                    /* pass over arg to satisfy loop conditions */
-                    for (pcc=endptr; '\0' != *pcc; pcc++) ;
                     pcc--;
                 break;
                 case '_' :
@@ -1799,7 +1747,6 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 case '&' :
                     flags[c] = 1U;
                     options |= (QUICKSELECT_INDIRECT);
-                    network_mask &= 0x01FF8U;
                 break;
                 case '*' :
                     flags[c] = 1U;
@@ -1894,6 +1841,65 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                         regfree(&re);
                     } else {
                         functions |= strtoul(pcc, &endptr, 0);
+                        pcc=endptr;
+                    }
+                    /* pass over arg to satisfy loop conditions */
+                    for (; '\0' != *pcc; pcc++) ;
+                    pcc--;
+                break;
+                case '/' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc))
+                        pcc = argv[++optind];
+                    if ((isalpha(*pcc))||(ispunct(*pcc))||(isspace(*pcc))) {
+                        c = regcomp(&re, pcc, cflags);
+                        if (0 != c) {
+                            (V)regerror(c, &re, buf, sizeof(buf));
+                            f(LOG_ERR, log_arg,
+                                "%s: %s line %d: regcomp: %s",
+                                __func__, source_file, __LINE__,
+                                buf);
+                        } else {
+                            for (i=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; i<=QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES; i++) {
+                                pcc2 = pivot_name(i);
+                                c = regexec(&re, pcc2, 1UL, match, eflags);
+                                if (REG_NOMATCH == c) {
+                                    f(LOG_DEBUG, log_arg,
+                                        "%s: %s line %d: no match %s in %s",
+                                        __func__,source_file,__LINE__,pcc,pcc2);
+                                } else if (0 == c) {
+                                    if (match[0].rm_so != -1) {
+                                        n = (match[0].rm_eo - match[0].rm_so);
+                                        if (0UL < n) {
+                                            f(LOG_DEBUG, log_arg,
+                                                "%s: %s line %d: match: \"%s\": offset %d through %d: \"%*.*s\"",
+                                                __func__, source_file, __LINE__,
+                                                pcc2,
+                                                match[0].rm_so,match[0].rm_eo-1,
+                                                n,n,pcc2+match[0].rm_so);
+                                            forced_pivot_selection_method=i;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            if (0==forced_pivot_selection_method) {
+                                f(LOG_ERR, log_arg,
+                                    "%s: %s line %d: no pivot selection method matches for \"%s\"",
+                                    __func__, source_file, __LINE__, pcc);
+                                (V)fprintf(stderr, "pivot selection methods:\n");
+                                for (i=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; i<=QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES; i++) {
+                                    (V)snl(buf, sizeof(buf), NULL, NULL, (long)i, 10,
+                                        ' ', 1, logger, log_arg);
+                                    (V)fprintf(stderr,"%s %s\n",buf,pivot_name(i));
+                                }
+                                errs++;
+                            }
+                        }
+                        regfree(&re);
+                    } else {
+                        i = (int)strtol(pcc, &endptr, 0);
+                        forced_pivot_selection_method=i;
                         pcc=endptr;
                     }
                     /* pass over arg to satisfy loop conditions */
