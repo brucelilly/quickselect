@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is select_max_src.h version 1.1 dated 2019-03-15T20:53:43Z. \ select_max_src.h $ */
+/* $Id: ~|^` @(#)   This is select_max_src.h version 1.2 dated 2019-03-26T20:43:06Z. \ select_max_src.h $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.select_max_src.h */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: select_max_src.h ~|^` @(#)"
 #define SOURCE_MODULE "select_max_src.h"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2019-03-15T20:53:43Z"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2019-03-26T20:43:06Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2019"
 
@@ -66,7 +66,6 @@ QUICKSELECT_SELECT_MAX
 #if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SORT_SELECT_DEBUG)
     ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
     )
         (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, ppeq=%p, "
             "ppgt=%p, options=0x%x */\n",__func__,source_file,__LINE__,
@@ -141,7 +140,6 @@ QUICKSELECT_SELECT_MAX
 #if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)
             ||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(REPIVOT_DEBUG)
             ) {
                 (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, "
                     "ppeq=%p@%lu, ppgt=%p@%lu */\n",__func__,source_file,

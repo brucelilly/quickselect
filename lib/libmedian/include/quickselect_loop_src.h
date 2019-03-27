@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.32 dated 2019-03-18T11:04:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.35 dated 2019-03-27T00:11:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.32"
-#define MODULE_DATE "2019-03-18T11:04:34Z"
+#define MODULE_VERSION "1.35"
+#define MODULE_DATE "2019-03-27T00:11:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -532,7 +532,7 @@ QUICKSELECT_QUICKSELECT_LOOP
     }
 #endif
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(REPIVOT_DEBUG)) {
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
         if (NULL!=pk)
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, pk=%p,"
                 " firstk=%lu, beyondk=%lu, pk[%lu]=%lu, pk[%lu]=%lu, ppeq=%p, "
@@ -612,7 +612,7 @@ QUICKSELECT_QUICKSELECT_LOOP
                         dedicated_sort
 # endif
 #endif
-			(base,first,beyond,size,
+                        (base,first,beyond,size,
 #if __STDC_WANT_LIB_EXT1__
                         compar,context,
 #else
@@ -673,8 +673,6 @@ QUICKSELECT_QUICKSELECT_LOOP
         /* Divide-and-conquer. */
 
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
-            onlt=nlt, oneq=neq, ongt=ngt, onsw=nsw, onmoves=nmoves;
         /* count repivots */
         if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
 #if 1 /* 0 count or 1 don't count repivoting for median-of-medians */
@@ -689,6 +687,16 @@ QUICKSELECT_QUICKSELECT_LOOP
                     "options=0x%x */\n",__func__,quickselect_loop_src_file,__LINE__,first,
                     beyond,firstk,beyondk,options);
 # endif
+        }
+        if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented)) {
+            onlt=nlt, oneq=neq, ongt=ngt, onsw=nsw, onmoves=nmoves;
+            (V)fprintf(stderr,
+                "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
+                "compar=%s, options=0x%x, method=%s, "
+                "%lu = %lu comparisons, %lu = %lu swaps, %lu = %lu moves */\n",
+                __func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
+                options,pivot_name(method),nlt+neq+ngt,onlt+oneq+ongt,nsw,onsw,
+                nmoves,onmoves);
         }
 #endif
 
@@ -707,7 +715,7 @@ QUICKSELECT_QUICKSELECT_LOOP
             select_pivot
 # endif
 #endif
-	    (base,first,beyond,size,
+            (base,first,beyond,size,
 #if __STDC_WANT_LIB_EXT1__
             compar,context,
 #else
@@ -734,7 +742,7 @@ QUICKSELECT_QUICKSELECT_LOOP
         A(NULL!=pivot);A(base+first*size<=pivot);A(pivot<base+beyond*size);
         A(pc<=pd);A(pd<pe);A(pe<=pf);A(pd<=pivot);A(pivot<pe);
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(PIVOT_SELECTION_DEBUG)) {
+        if (DEBUGGING(PIVOT_SELECTION_DEBUG)) {
             size_t x=(pivot-base)/size;
             (V)fprintf(stderr, "/* %s line %d: pivot=%p[%lu], pc@%lu, pd@%lu, pe@%lu, "
                 "pf@%lu */\n", __func__,__LINE__,(void *)pivot,x,(pc-base)/size,
@@ -748,11 +756,11 @@ QUICKSELECT_QUICKSELECT_LOOP
         if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
             (V)fprintf(stderr,
                 "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
-                "compar=%s, options=0x%x, method=%s, "
-		"pivot selection %lu comparisons, %lu swaps, %lu moves */\n",
-		__func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
-		options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,nsw-onsw,
-		nmoves-onmoves);
+                "compar=%s, samples=%lu, options=0x%x, method=%s, "
+                "pivot selection %lu comparisons, %lu swaps, %lu moves */\n",
+                __func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
+                samples,options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,
+                nsw-onsw, nmoves-onmoves);
 #endif
 
         /* Partition the array around the pivot element into less-than,
@@ -764,27 +772,31 @@ QUICKSELECT_QUICKSELECT_LOOP
         */
         lt_region.pk=gt_region.pk=pk;
         lt_region.first=first, gt_region.beyond=beyond;
+        if (nmemb==samples) { /* already partitioned */
+            lt_region.beyond=(pd-base)/size, gt_region.first=(pe-base)/size;
+        } else {
 #if LIBMEDIAN_TEST_CODE
 # if __STDC_WANT_LIB_EXT1__
-        d_partition_s
+            d_partition_s
 # else
-        d_partition
+            d_partition
 # endif
 #else
 # if __STDC_WANT_LIB_EXT1__
-        partition_s
+            partition_s
 # else
-        partition
+            partition
 # endif
 #endif
-        (base,first,beyond,pc,pd,pivot,pe,pf,size,
+            (base,first,beyond,pc,pd,pivot,pe,pf,size,
 #if __STDC_WANT_LIB_EXT1__
-            compar,context,
+                compar,context,
 #else
-            compar,
+                compar,
 #endif
-            swapf,alignsize,size_ratio,cachesz,options,
-            &(lt_region.beyond),&(gt_region.first));
+                swapf,alignsize,size_ratio,cachesz,options,
+                &(lt_region.beyond),&(gt_region.first));
+        }
         lt_region.neq=gt_region.neq=lneq=gt_region.first-lt_region.beyond;
         lt_region.nne=gt_region.nne=lnne=nmemb-lneq;
         /* regions: < [first,lt_region.beyond)
@@ -794,7 +806,8 @@ QUICKSELECT_QUICKSELECT_LOOP
         A(lt_region.first<=lt_region.beyond);
         A(gt_region.first<=gt_region.beyond);A(first<=gt_region.first);
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(CORRECTNESS_DEBUG)) {
+        /* test_array_partition calls compar; trouble if it's aqcmp */
+        if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
             size_t x;
             x=test_array_partition(base,first,lt_region.beyond,
                 gt_region.first-1UL,beyond-1UL,size,compar,options,NULL,NULL);
@@ -810,11 +823,11 @@ QUICKSELECT_QUICKSELECT_LOOP
         if (DEBUGGING(PIVOT_METHOD_DEBUG) && (0U!=instrumented))
             (V)fprintf(stderr,
                 "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
-                "compar=%s, options=0x%x, method=%s, "
-		"pivot+partition %lu comparisons, %lu swaps, %lu moves */\n",
-		__func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
-		options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,nsw-onsw,
-	       	nmoves-onmoves);
+                "compar=%s, samples=%lu, options=0x%x, method=%s, "
+                "pivot+partition %lu comparisons, %lu swaps, %lu moves */\n",
+                __func__, __LINE__,nmemb,first,beyond,comparator_name(compar),
+                samples,options,pivot_name(method),nlt-onlt+neq-oneq+ngt-ongt,
+                nsw-onsw,nmoves-onmoves);
 #endif
 
         if (NULL!=pk) { /* selection only; desired ranks for regions */
@@ -888,13 +901,13 @@ QUICKSELECT_QUICKSELECT_LOOP
             r = n/(nmemb-n);
             (V)fprintf(stderr,"/* %s: %s line %d: regions from partition of nme"
                 "mb=%lu, s=%lu, e=%lu, t=%lu, distribution=%u, size_ratio=%lu, "
-                "method=%d, samples=%lu, pk=%p, ppeq=%p, large region "
+                "method=%s(%d), samples=%lu, pk=%p, ppeq=%p, large region "
                 "firstk=%lu, beyondk=%lu, count=%d, ratio=%lu, options=0x%x%s "
                 "*/\n",__func__,
                 quickselect_loop_src_file,__LINE__,nmemb,
                 ps_region->beyond-ps_region->first,
                 gt_region.first-lt_region.beyond,n,distribution,size_ratio,
-                method,samples,(const void *)pk,(void *)ppeq,
+                pivot_name(method),method,samples,(const void *)pk,(void *)ppeq,
                 pl_region->firstk,pl_region->beyondk,
                 c,r,options,(0U==pl_region->process)?" (ignored)":"");
             if (DEBUGGING(PARTITION_DEBUG))

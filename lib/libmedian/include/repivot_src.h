@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_src.h version 1.18 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_src.h version 1.20 dated 2019-03-26T20:43:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.repivot_src.h */
@@ -95,8 +95,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "repivot_src.h"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.20"
+#define MODULE_DATE "2019-03-26T20:43:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -150,12 +150,14 @@ QUICKSELECT_SHOULD_REPIVOT
     }
 #endif
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
+    if (DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: nmemb=%lu, n=%lu, samples=%lu, "
             "method=%d, options=0x%x, pk=%p */\n",__func__,repivot_src_file,
             __LINE__,nmemb,n,samples,method,options,(const void *)pk);
 #endif
+    if ((options&(QUICKSELECT_RESTRICT_RANK))==(QUICKSELECT_RESTRICT_RANK))
+        return (options & ~(QUICKSELECT_RESTRICT_RANK)); /* not again */
     options &= ~(QUICKSELECT_RESTRICT_RANK); /* clean slate */
     /* no repivot unless >= 3 medians-of-3 */
     if (SELECTION_MIN_REPIVOT>n) return options; /* too small to repivot */
@@ -166,8 +168,10 @@ QUICKSELECT_SHOULD_REPIVOT
             case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
                prt=ros_sorting_repivot_table;
             break;
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
             case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
             return options; /* never repivot if already repivoted */
+#endif
             case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
                prt=mos_sorting_repivot_table;
             break;
@@ -186,8 +190,10 @@ QUICKSELECT_SHOULD_REPIVOT
             case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
                prt=ros_selection_repivot_table;
             break;
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
             case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
             return options; /* never repivot if already repivoted */
+#endif
             case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
                prt=mos_selection_repivot_table;
             break;
@@ -217,7 +223,7 @@ QUICKSELECT_SHOULD_REPIVOT
     ratio=n/q;
     for (i=0; samples>=prt[i+1].min_samples; i++) ; /* index for table entry */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(REPARTITION_DEBUG)
+    if (DEBUGGING(REPARTITION_DEBUG)
     ||DEBUGGING(SHOULD_REPIVOT_DEBUG))
         (V)fprintf(stderr,"/* %s: %s line %d: i=%d, "
             "samples=%lu>=%lu */\n",

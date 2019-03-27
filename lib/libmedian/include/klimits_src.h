@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is klimits_src.h version 1.8 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is klimits_src.h version 1.9 dated 2019-03-26T20:41:26Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.klimits_src.h */
@@ -101,8 +101,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: klimits_src.h ~|^` @(#)"
 #define SOURCE_MODULE "klimits_src.h"
-#define MODULE_VERSION "1.8"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.9"
+#define MODULE_DATE "2019-03-26T20:41:26Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -165,10 +165,7 @@ QUICKSELECT_KLIMITS
     if ((char)0==klimits_initialized) initialize_klimits();
 #endif /* QUICKSELECT_BUILD_FOR_SPEED */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SAMPLING_DEBUG)
-    ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
-    ) {
+    if (DEBUGGING(REPARTITION_DEBUG)) {
         (V)fprintf(stderr,
             "/* %s: %s line %d: firstk=%lu, pk[%lu]=%lu, beyondk=%lu, "
             "pk[%lu]=%lu, first=%lu, beyond=%lu */\n",
@@ -193,10 +190,7 @@ QUICKSELECT_KLIMITS
     A((lk==beyondk)||(pk[lk]>=first));A((rk==beyondk)||(pk[rk]>=beyond));
     *pfk=lk, *pbk=rk;
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SAMPLING_DEBUG)
-    ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
-    ) {
+    if (DEBUGGING(REPARTITION_DEBUG)) {
         if (rk>lk) (V)fprintf(stderr,
             "/* %s: %s line %d: firstk=%lu, lk=%lu, pk[%lu]=%lu, rk=%lu, "
             "pk[%lu]=%lu, beyondk=%lu, first=%lu, beyond=%lu */\n",

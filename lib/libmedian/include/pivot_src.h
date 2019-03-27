@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is pivot_src.h version 1.26 dated 2019-03-18T11:02:34Z. \ $ */
+/* $Id: ~|^` @(#)   This is pivot_src.h version 1.30 dated 2019-03-27T00:08:49Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.pivot_src.h */
@@ -108,8 +108,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: pivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "pivot_src.h"
-#define MODULE_VERSION "1.26"
-#define MODULE_DATE "2019-03-18T11:02:34Z"
+#define MODULE_VERSION "1.30"
+#define MODULE_DATE "2019-03-27T00:08:49Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -280,11 +280,11 @@ char *
             remedian
 # endif
 #endif
-	    (middle-o,row_spacing,s,size,idx,
+            (middle-o,row_spacing,s,size,idx,
 #if __STDC_WANT_LIB_EXT1__
             compar,context,
 #else
-	    compar,
+            compar,
 #endif
             options);
         pb=
@@ -301,11 +301,11 @@ char *
             remedian
 # endif
 #endif
-	    (middle,row_spacing,s,size,idx,
+            (middle,row_spacing,s,size,idx,
 #if __STDC_WANT_LIB_EXT1__
             compar,context,
 #else
-	    compar,
+            compar,
 #endif
             options);
         pc=
@@ -322,11 +322,11 @@ char *
             remedian
 # endif
 #endif
-	    (middle+o,row_spacing,s,size,idx,
+            (middle+o,row_spacing,s,size,idx,
 #if __STDC_WANT_LIB_EXT1__
             compar,context,
 #else
-	    compar,
+            compar,
 #endif
             options);
         if (0U!=(options&(QUICKSELECT_INDIRECT))) {
@@ -344,18 +344,18 @@ char *
                 fmed3
 # endif
 #endif
-		(*((char **)pa),
+                (*((char **)pa),
                 *((char **)pb), *((char **)pc),
 #if __STDC_WANT_LIB_EXT1__
             compar,context,
 #else
-	    compar,
+            compar,
 #endif
-	    options
+            options
 #if LIBMEDIAN_TEST_CODE
             , middle, size
 #endif
-	    );
+            );
             if (pr==*((char **)pa)) return pa;
             if (pr==*((char **)pc)) return pc;
             return pb;
@@ -374,17 +374,17 @@ char *
                 fmed3
 # endif
 #endif
-		    (pa,pb,pc,
-	#if __STDC_WANT_LIB_EXT1__
-	            compar,context,
-	#else
-		    compar,
-	#endif
-		    options
+                    (pa,pb,pc,
+#if __STDC_WANT_LIB_EXT1__
+                    compar,context,
+#else
+                    compar,
+#endif
+                    options
 #if LIBMEDIAN_TEST_CODE
                 , middle, size
 #endif
-		);
+                );
     }
     o=row_spacing*size;
     if (0U!=(options&(QUICKSELECT_INDIRECT))) {
@@ -407,15 +407,15 @@ char *
             (*((char **)pa),*((char **)middle),
             *((char **)pc),
 #if __STDC_WANT_LIB_EXT1__
-	    compar,context,
+            compar,context,
 #else
-	    compar,
+            compar,
 #endif
-	    options
+            options
 #if LIBMEDIAN_TEST_CODE
              , middle, size
 #endif
-	    );
+            );
         if (pr==*((char **)pa)) return pa;
         if (pr==*((char **)pc)) return pc;
         return middle;
@@ -434,17 +434,17 @@ char *
                 fmed3
 # endif
 #endif
-		(middle-o,middle,middle+o,
-	#if __STDC_WANT_LIB_EXT1__
-		 compar,context,
-	#else
-		 compar,
-	#endif
-		 options
+                (middle-o,middle,middle+o,
+#if __STDC_WANT_LIB_EXT1__
+                 compar,context,
+#else
+                 compar,
+#endif
+                 options
 #if LIBMEDIAN_TEST_CODE
                  , middle, size
 #endif
-		 );
+                 );
 }
 
 /* Remedian-based fast pivot selection includes single sample and median of
@@ -508,11 +508,11 @@ char *remedian_pivot_selection(char *base,
             (pivot,r,r,size,table_index,
             
 #if __STDC_WANT_LIB_EXT1__
-	     compar,context
+             compar,context
 #else
-	     compar
+             compar
 #endif
-	     ,options);
+             ,options);
     } else { /* offset single sample (middle bad for bitonic input) */
 #if LIBMEDIAN_TEST_CODE
         if (aqcmp==compar) nfrozen=0UL, pivot_minrank=1UL;
@@ -620,7 +620,7 @@ QUICKSELECT_SELECT_PIVOT
 #endif
 {
     size_t karray[1], firsts, beyonds, nmemb=beyond-first;
-    register size_t mid, n, o, q, r;
+    register size_t mid, n, o, q, r, u;
     register char *pa, *pb, *pc, *pivot, *pm;
     int method;
 #if __STDC_WANT_LIB_EXT1__
@@ -653,9 +653,11 @@ QUICKSELECT_SELECT_PIVOT
        samples
 #endif
              (nmemb,method,distribution,options);
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
     if ((QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS==method)&&(9UL>n)) {
         method=QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES; /* insufficient medians */
     }
+#endif
     if ((QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method)&&(5UL>n)) {
         method=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* no offset 3 samples */
     }
@@ -664,8 +666,8 @@ QUICKSELECT_SELECT_PIVOT
         (V)fprintf(stderr,
             "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
             "compar=%s, options=0x%x, method=%s, %d samples */\n",__func__,
-	    __LINE__,nmemb,first,beyond,comparator_name(compar),options,
-	    pivot_name(method),n);
+            __LINE__,nmemb,first,beyond,comparator_name(compar),options,
+            pivot_name(method),n);
 #endif
     if (NULL!=pmethod) *pmethod=method;
     if (NULL!=psamples) *psamples=n;
@@ -676,17 +678,18 @@ QUICKSELECT_SELECT_PIVOT
             /* table index as a surrogate for division by 3 in remedian */
             r= floor_log3(n); /* table index */
             pivot=remedian_pivot_selection(base,first,beyond,size,
-		#if __STDC_WANT_LIB_EXT1__
-			    compar,context
-		#else
-			    compar
-		#endif
-			    ,
+#if __STDC_WANT_LIB_EXT1__
+                            compar,context
+#else
+                            compar
+#endif
+                            ,
                 swapf,alignsize,size_ratio,r,pk,cachesz,pbeyond,options,ppc,ppd,
                 ppe,ppf,nmemb);
         break;
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
         case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
-#if LIBMEDIAN_TEST_CODE
+# if LIBMEDIAN_TEST_CODE
             if (aqcmp==compar) {
                 nfrozen=0UL, pivot_minrank=n;
                 if (0UL==(n&0x01UL)) pivot_minrank++;
@@ -703,7 +706,7 @@ QUICKSELECT_SELECT_PIVOT
                    sorted and the other with 1/3 of its elements frozen.
                 */
             }
-#endif /* LIBMEDIAN_TEST_CODE */
+# endif /* LIBMEDIAN_TEST_CODE */
             A(NULL!=base);A(NULL!=compar);
             A(8UL<nmemb); /* at least 9 elements (3 sets of 3) */
             A(NULL!=ppc);A(NULL!=ppd);A(NULL!=ppe);A(NULL!=ppf);
@@ -730,39 +733,39 @@ QUICKSELECT_SELECT_PIVOT
                 pb=pa+r; /* middle element */
                 A(pb+r<base+beyond*size);
                 if (0U!=(options&(QUICKSELECT_INDIRECT))) {
-#if LIBMEDIAN_TEST_CODE
+# if LIBMEDIAN_TEST_CODE
                     if (aqcmp==compar) {
                         /* XXX not sure if indirection is needed here */
                         (V)freeze(aqindex(pa,base,size));
                         (V)freeze(aqindex(pb+r,base,size));
                     }
-#endif /* LIBMEDIAN_TEST_CODE */
+# endif /* LIBMEDIAN_TEST_CODE */
                     pm=
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
+# if LIBMEDIAN_TEST_CODE
+#  if __STDC_WANT_LIB_EXT1__
                         d_fmed3_s
-# else
+#  else
                         d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
-                        fmed3_s
+#  endif
 # else
+#  if __STDC_WANT_LIB_EXT1__
+                        fmed3_s
+#  else
                         fmed3
+#  endif
 # endif
-#endif
                         (*((char **)pb),*((char **)pa),
                         *((char **)(pb+r)),
-	#if __STDC_WANT_LIB_EXT1__
-			compar,context,
-	#else
-			compar,
-	#endif
-			options
-#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                        compar,context,
+# else
+                        compar,
+# endif
+                        options
+# if LIBMEDIAN_TEST_CODE
                         , base, size
-#endif
-			);
+# endif
+                        );
                     /* medians start at 1/3 of sub-array */
                     /*compare returned data pointer,swap indirect pointers*/
                     if (pm!=*((char **)pa)) {
@@ -774,38 +777,38 @@ QUICKSELECT_SELECT_PIVOT
                                 size_ratio,SWAP_COUNT_STATEMENT);
                     }
                 } else {
-#if LIBMEDIAN_TEST_CODE
+# if LIBMEDIAN_TEST_CODE
                     if (aqcmp==compar) {
                         (V)freeze(aqindex(pa,base,size));
                         (V)freeze(aqindex(pb+r,base,size));
                     }
-#endif /* LIBMEDIAN_TEST_CODE */
+# endif /* LIBMEDIAN_TEST_CODE */
                     if ((pa!=(pm=(char *)
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
+# if LIBMEDIAN_TEST_CODE
+#  if __STDC_WANT_LIB_EXT1__
                         d_fmed3_s
-# else
+#  else
                         d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
-                        fmed3_s
+#  endif
 # else
+#  if __STDC_WANT_LIB_EXT1__
+                        fmed3_s
+#  else
                         fmed3
+#  endif
 # endif
-#endif
                                        (pb,pa,pb+r,
                                        
-			#if __STDC_WANT_LIB_EXT1__
-					compar,context,
-			#else
-					compar,
-			#endif
-					options
-#if LIBMEDIAN_TEST_CODE
+# if __STDC_WANT_LIB_EXT1__
+                                        compar,context,
+# else
+                                        compar,
+# endif
+                                        options
+# if LIBMEDIAN_TEST_CODE
                         , base, size
-#endif
-					))) /*bias to pa*/
+# endif
+                                        ))) /*bias to pa*/
                     ) { /* place medians in first row of sub-array */
                         EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,
                             SWAP_COUNT_STATEMENT);
@@ -828,32 +831,32 @@ QUICKSELECT_SELECT_PIVOT
             */
             A(0==ret);
             ret=
-#if LIBMEDIAN_TEST_CODE
-# if  __STDC_WANT_LIB_EXT1__
+# if LIBMEDIAN_TEST_CODE
+#  if  __STDC_WANT_LIB_EXT1__
                 d_quickselect_loop_s
-# else
+#  else
                 d_quickselect_loop
-# endif
-#else
-# if  __STDC_WANT_LIB_EXT1__
-                quickselect_loop_s
+#  endif
 # else
+#  if  __STDC_WANT_LIB_EXT1__
+                quickselect_loop_s
+#  else
                 quickselect_loop
+#  endif
 # endif
-#endif
                 (base,first,first+n,size,
-		#if __STDC_WANT_LIB_EXT1__
-			    compar,context
-		#else
-			    compar
-		#endif
-			    ,
+# if __STDC_WANT_LIB_EXT1__
+                            compar,context
+# else
+                            compar
+# endif
+                            ,
                 karray,0UL,1UL,swapf,alignsize,size_ratio,cachesz,pbeyond,
                 options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,ppe);
             A(0==ret);if(0!=ret) return NULL;
             pivot=base+karray[0]*size; /* pointer to median of medians */
             /* Left third of array (medians) is partitioned. */
-#if ASSERT_CODE + DEBUG_CODE
+# if ASSERT_CODE + DEBUG_CODE
             if ((*ppe<=pivot||(*ppd>pivot)))  {
                 size_t d, e, l;
                 l=(pivot-base)/size;
@@ -869,15 +872,16 @@ QUICKSELECT_SELECT_PIVOT
                     beyond,options);
                 A((NULL!=ppd)&&(NULL!=ppe));
                 A((NULL!=*ppd)&&(NULL!=*ppe));
-#if LIBMEDIAN_TEST_CODE
+#  if LIBMEDIAN_TEST_CODE
                 if (d<l) l=d;
                     print_some_array(base,l-1UL,l+1UL,"/* "," */",options);
                     print_some_array(base,d-1UL,d+1UL,"/* "," */",options);
                     print_some_array(base,e-1UL,e+1UL,"/* "," */",options);
-# endif
+#  endif
             }
-#endif
+# endif
         break;
+#endif
         case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
             /* Moving samples (for median selection) saves recomparisons during
                partitioning but costs extra swaps.  In particular, if the input
@@ -886,7 +890,7 @@ QUICKSELECT_SELECT_PIVOT
                extra swaps are especially expensive for large data elements
                (size_ratio>1).  Use this method for sorting only if
                QUICKSELECT_OPTIMIZE_COMPARISONS is specified, and/or only for
-               small size_ratio.  For a small number of samples, the saving in
+               small size_ratio.  For a small number of samples, the savings in
                comparisons is very small; avoid this method for sorting 3 or
                fewer samples.  However, for order statistic selection, this
                method can use a pivot at a position other than the sample
@@ -897,16 +901,16 @@ QUICKSELECT_SELECT_PIVOT
             mid=first+(nmemb>>1); /* index of upper-middle element */
 
 #if LIBMEDIAN_TEST_CODE
-            if (DEBUGGING(PIVOT_SELECTION_DEBUG))
+            if (DEBUGGING(PIVOT_SELECTION_DEBUG)||DEBUGGING(SAMPLING_DEBUG))
                 (V)fprintf(stderr,
                     "/* %s line %d: nmemb=%lu, first=%lu, beyond=%lu, "
-                    "compar=%s, options=0x%x, n=%lu, mid=%lu */\n",
+                    "compar=%s, options=0x%x, n(samples)=%lu, mid=%lu */\n",
                     __func__,__LINE__,nmemb,first,beyond,
                     comparator_name(compar),options,n,mid);
 #endif /* LIBMEDIAN_TEST_CODE */
-            if (nmemb<=n) {
-                fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, "
-                    "nmemb=%lu, n=%lu */\n",__func__,__LINE__,
+            if (nmemb<n) {
+                (V)fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, "
+                    "nmemb=%lu, n(samples)=%lu */\n",__func__,__LINE__,
                     first,beyond,nmemb,n);
                 abort();
             }
@@ -918,15 +922,15 @@ QUICKSELECT_SELECT_PIVOT
                are at one end of the sub-array, offset the desired rank
                of the samples to eliminate most of the sub-array.
             */
-            if ((NULL!=pk)&&(beyondk>firstk)
+            if ((NULL!=pk)&&(beyondk>firstk) /* selection */
             && (5U!=distribution) /* counterproductive e.g. 2 min.+2 max. */
             && (5UL<=n) /* cannot offset 1 or 3 samples */
             ) { /* maybe offset rank for selection */
-                size_t t, u, v, w;
+                size_t t, v, w;
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(PIVOT_SELECTION_DEBUG)
-                || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-                    fprintf(stderr,"/* %s line %d: nmemb=%lu, distribution=%d, "
+                if (DEBUGGING(PIVOT_SELECTION_DEBUG) || DEBUGGING(SAMPLING_DEBUG)
+                || DEBUGGING(MEDIAN_DEBUG)) {
+                    (V)fprintf(stderr,"/* %s line %d: nmemb=%lu, distribution=%d, "
                         "firstk=%lu, beyondk=%lu, mid=%lu, first=%lu, "
                         "beyond=%lu, pk[firstk]=%lu, pk[beyondk-1]=%lu */\n",
                         __func__,__LINE__,nmemb,distribution,firstk,beyondk,mid,
@@ -973,9 +977,9 @@ QUICKSELECT_SELECT_PIVOT
                 u=(nmemb>>2); /* nmemb/4 */
                 v=nmemb/n; /* see comments below re. overflow */
 #if LIBMEDIAN_TEST_CODE
-                if (DEBUGGING(PIVOT_SELECTION_DEBUG)
-                || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-                    fprintf(stderr,"/* %s line %d: distribution=%d, "
+                if (DEBUGGING(PIVOT_SELECTION_DEBUG) || DEBUGGING(SAMPLING_DEBUG)
+                || DEBUGGING(MEDIAN_DEBUG)) {
+                    (V)fprintf(stderr,"/* %s line %d: distribution=%d, "
                         "firstk=%lu, beyondk=%lu, mid=%lu, first=%lu, "
                         "beyond=%lu, pk[firstk]=%lu, pk[beyondk-1]=%lu, "
                         "nmemb=%lu, q=%lu, t=%lu, u=%lu, v=%lu */\n",
@@ -1094,7 +1098,7 @@ QUICKSELECT_SELECT_PIVOT
                         */
                         firsts=first, beyonds=firsts+n ;
                     }
-                } else { /* somewhere near middle */
+                } else { /* middle-most desired rank is somewhere near middle */
                     u=q;
                     /* Middle-most desired rank is near the median of
                        the base sub-array.  Try for relative rank
@@ -1105,7 +1109,7 @@ QUICKSELECT_SELECT_PIVOT
                        with a desired rank near one end of one region
                        for the next iteration.  Want u/n ~ t/nmemb,
                        v=nmemb/n and u=t/v (see comments in the above
-                       section regaing overflow).  For distributions 3
+                       section regarding overflow).  For distributions 3
                        (011) and 6 (110) with the middle-most rank an
                        extreme rank, offset the sample rank slightly to
                        increase the chance of keeping all of the desired
@@ -1119,7 +1123,7 @@ QUICKSELECT_SELECT_PIVOT
                        be tiny (if it would be tiny, use no offset).
                     */
                     if (o>(q>>2)) o=0UL; /* offset too large */
-                    if (t<mid-first) { /* below middle */
+                    if (t<mid-first) { /* middle-most rank below middle */
                         u=t/v;
                         if (6U==distribution)
                             u+=o;
@@ -1131,7 +1135,7 @@ QUICKSELECT_SELECT_PIVOT
                            smaller < region of samples is moved prior to
                            partitioning.
                         */
-                        beyonds=beyond, firsts=beyond-n;
+                        beyonds=beyond, firsts=beyond-n; /* changed if o==size */
                     } else { /* at or above middle */
                         w=(nmemb-t)/v;
                         if (3U==distribution)
@@ -1146,17 +1150,17 @@ QUICKSELECT_SELECT_PIVOT
                            smaller > region of samples is moved prior to
                            partitioning.
                         */
-                        firsts=first, beyonds=firsts+n ;
+                        firsts=first, beyonds=firsts+n; /* changed if o==size */
                     }
                     if (1UL>u) u++; /* avoid extreme value */
                 }
-                karray[0]=firsts+u;
+                karray[0]=firsts+u; /* changed if o==size */
 #if LIBMEDIAN_TEST_CODE
                 if (aqcmp==compar) nfrozen=0UL, pivot_minrank=nmemb-u;
 #endif
             } else {
-                firsts=first, beyonds=first+n;
-                karray[0]=firsts+q;
+                firsts=first, beyonds=first+n; /* changed if o==size */
+                karray[0]=firsts+q; /* changed if o==size */
 #if LIBMEDIAN_TEST_CODE
                 if (aqcmp==compar) nfrozen=0UL, pivot_minrank=nmemb-q;
 #endif
@@ -1175,14 +1179,9 @@ QUICKSELECT_SELECT_PIVOT
                 abort();
             }
 #endif
-            pivot=base+karray[0]*size;
 
-            /* limits of region occupied by samples */
-            *ppc=base+firsts*size, *ppf=base+beyonds*size;
-
-            /* move samples to one end for selection */
 #if LIBMEDIAN_TEST_CODE
-            if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
+            if (DEBUGGING(MEDIAN_DEBUG)) {
                 (V)fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, "
                     "nmemb=%lu, n(samples)=%lu, firsts=%lu, mid=%lu, "
                     "beyonds=%lu, karray[0]=%lu */\n",__func__,__LINE__,
@@ -1192,41 +1191,62 @@ QUICKSELECT_SELECT_PIVOT
             /* sample spacing */
             o = size*(nmemb/n); /* char spacing for samples */
             pm=base+mid*size; /* [upper-]middle element */
+            /* First sample is originally at pm-q*o; last sample is at pm+q*o */
+            pa=pm-q*o, pb=pm+q*o;
 
-            /* First sample is at pm-q*o; last sample is at pm+q*o */
-            if (firsts==first) { /* samples at left end of array */
-                for (pc=base+firsts*size,pa=pm-q*o,pb=pm+q*o; pa<=pb;
-                pa+=o,pc+=size
-                ) {
-                    if (pa!=pc) {
+            /* move samples to one end for selection unless samples are
+               contiguous (o == size).  Contiguous samples can arise e.g.
+               for repivoting using median of samples with 2*nmemb/3 samples.
+           */
+
+            if (o==size) { /* contiguous samples; don't move them */
+                firsts=mid-q, beyonds=mid+q+1UL;
+                if ((NULL!=pk)&&(beyondk>firstk) /* selection */
+                && (5U!=distribution) /* counterproductive e.g. 2 min.+2 max. */
+                && (5UL<=n) /* cannot offset 1 or 3 samples */
+                ) /* maybe offset rank for selection */
+                    karray[0]=firsts+u;
+                else /* sorting */
+                    karray[0]=mid;
+		if (beyonds>beyond) beyonds=beyond;
+            } else {
+                if ((firsts==first)&&(beyonds!=beyond)) { /* left end */
+                    if (pa<base) pa=base;
+                    for (pc=base+firsts*size; pa<=pb;pa+=o,pc+=size) {
+                        if (pa!=pc) {
 #if LIBMEDIAN_TEST_CODE
-                        if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-                            fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
-                                "%lu */\n",__func__,__LINE__,(pa-base)/size,
-                                (pc-base)/size);
-                        }
+                            if (DEBUGGING(MEDIAN_DEBUG)) {
+                                (V)fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
+                                    "%lu */\n",__func__,__LINE__,(pa-base)/size,
+                                    (pc-base)/size);
+                            }
 #endif
-                        EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,
-                            SWAP_COUNT_STATEMENT);
-                    }
-                }
-            } else { /* samples at right end of array */
-                for (pc=base+(beyonds-1UL)*size,pa=pm-q*o,pb=pm+q*o; pa<=pb;
-                pb-=o,pc-=size
-                ) {
-                    if (pb!=pc) {
-#if LIBMEDIAN_TEST_CODE
-                        if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-                            fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
-                                "%lu */\n",__func__,__LINE__,(pb-base)/size,
-                                (pc-base)/size);
+                            EXCHANGE_SWAP(swapf,pa,pc,size,alignsize,size_ratio,
+                                SWAP_COUNT_STATEMENT);
                         }
+                    }
+                } else if ((beyonds==beyond)&&(firsts!=first)) { /* right end */
+                    /* Because pm is the upper-middle element, ensure that array
+                       bounds are not exceeded.
+                    */
+                    if (mid+q*(nmemb/n) >= beyonds) mid--,pm-=size,pa-=size,pb-=size;
+                    if (pa<base) pa=base;
+                    for (pc=base+(beyonds-1UL)*size;pa<=pb;pb-=o,pc-=size) {
+#if LIBMEDIAN_TEST_CODE
+                            if (DEBUGGING(MEDIAN_DEBUG)) {
+                                (V)fprintf(stderr,"/* %s: line %d: sample@%lu, moved to "
+                                    "%lu */\n",__func__,__LINE__,(pb-base)/size,
+                                    (pc-base)/size);
+                            }
 #endif /* DEBUGGING */
-                        EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
-                            SWAP_COUNT_STATEMENT);
+                            EXCHANGE_SWAP(swapf,pb,pc,size,alignsize,size_ratio,
+                                SWAP_COUNT_STATEMENT);
                     }
                 }
             }
+
+            pivot=base+karray[0]*size;
+
 #if LIBMEDIAN_TEST_CODE
             if (aqcmp==compar) { /* adversary */
                 for (pa=base+firsts*size,pb=base+beyonds*size; pa<pb; pa+=size) {
@@ -1236,6 +1256,9 @@ QUICKSELECT_SELECT_PIVOT
             }
 #endif /* DEBUGGING */
 
+            /* limits of region occupied by samples */
+            *ppc=base+firsts*size, *ppf=base+beyonds*size;
+
 # if ASSERT_CODE
             A((NULL!=ppd)&&(NULL!=ppe));
             *ppd=*ppe=NULL; /* clear to avoid random values */
@@ -1243,8 +1266,8 @@ QUICKSELECT_SELECT_PIVOT
             /* select median (or other rank) of samples; partitions samples */
 #if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PIVOT_SELECTION_DEBUG)
-            || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
-                fprintf(stderr,"/* %s line %d: nmemb=%lu (samples moved, before "
+            || DEBUGGING(MEDIAN_DEBUG)) {
+                (V)fprintf(stderr,"/* %s line %d: nmemb=%lu (samples moved, before "
                     "selection): *ppc@%lu, r(mid)=%lu, *ppf@%lu, q=%lu, "
                     "karray[0]=%lu */\n",
                     __func__,__LINE__,nmemb,((*ppc)-base)/size,r,
@@ -1267,18 +1290,18 @@ QUICKSELECT_SELECT_PIVOT
 # endif
 #endif
                 (base,firsts,beyonds,size,
-		#if __STDC_WANT_LIB_EXT1__
-			    compar,context
-		#else
-			    compar
-		#endif
-			    ,karray,
+#if __STDC_WANT_LIB_EXT1__
+                            compar,context
+#else
+                            compar
+#endif
+                            ,karray,
                 0UL,1UL,swapf,alignsize,size_ratio,cachesz,pbeyond,
                 options&(~(QUICKSELECT_RESTRICT_RANK)),ppd,ppe);
             A(0==ret);if(0!=ret) return NULL;
 #if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(PIVOT_SELECTION_DEBUG)
-            || DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
+            || DEBUGGING(MEDIAN_DEBUG)) {
                 (V)fprintf(stderr,"/* %s: line %d: nmemb=%lu (after selecting "
                     "pivot from samples): *ppd@%lu, firsts=%lu, mid=%lu, "
                     "beyonds=%lu, *ppe@%lu, karray[0]=%lu */\n",

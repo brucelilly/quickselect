@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.17 dated 2019-03-18T11:08:31Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.20 dated 2019-03-27T00:18:16Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.17"
-#define MODULE_DATE "2019-03-18T11:08:31Z"
+#define MODULE_VERSION "1.20"
+#define MODULE_DATE "2019-03-27T00:18:16Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -282,15 +282,15 @@ static double mos_ends_multiplier = 0.0;
 /* determine the number of samples to use for pivot selection */
 QUICKSELECT_SAMPLES
 {
-    register size_t n, r;
+    register size_t n, r=0UL;
     struct sampling_table_struct *pst;
 
 #if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
-            "/* %s line %d: nmemb=%lu, pivot selection method=%d, distribution=%u, "
-            "options=0x%x */\n",
-                __func__,__LINE__,nmemb,method,distribution,options);
+            "/* %s line %d: nmemb=%lu, pivot selection method=%s(%d), "
+            "distribution=%u, options=0x%x */\n", __func__,__LINE__,nmemb,
+            pivot_name(method),method,distribution,options);
 #endif
     switch (method) {
         case QUICKSELECT_PIVOT_REMEDIAN_FULL :
@@ -368,9 +368,11 @@ QUICKSELECT_SAMPLES
             /* # samples from table */
             n=pst[r].samples;
         break;
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
         case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
             n = nmemb/3UL; /* number of medians */
         break;
+#endif
         default :
 #if ASSERT_CODE + DEBUG_CODE
             (V)fprintf(stderr,"%s line %d: unrecognized pivot method %d\n",
@@ -380,7 +382,27 @@ QUICKSELECT_SAMPLES
 #endif /* ASSERT_CODE + DEBUG_CODE */
         case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
             if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
-                n = (nmemb / 3UL) << 1; /* 2/3 nmemb */
+#if 0
+                n = ((nmemb / 3UL) << 1) + 1UL; /* ~ 2/3 nmemb; always odd; 1/3<=rank<=2/3 */
+                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+#else
+# if 0
+                n = ((nmemb / 5UL) << 2) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=rank<=.6 */
+                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+# else
+#  if 0
+                n = ((nmemb / 9UL) << 3) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=rank<=.556 */
+                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+#  else
+#   if 1
+                n = ((nmemb / 17UL) << 4) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=rank<=.53 */
+                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+#   else
+                n = nmemb; /* select pivot as median of subarray */
+#   endif
+#  endif
+# endif
+#endif
             } else {
                 switch (distribution) {
                     case 3U : /*FALLTHROUGH*/ case 6U : /*FALLTHROUGH*/ /* cases 3 and 6 use middle table */
@@ -516,8 +538,9 @@ QUICKSELECT_SAMPLES
 #if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
-            "/* %s line %d: nmemb=%lu, n=%lu, r=%lu, method=%d, options=0x%x */\n",
-            __func__,__LINE__,nmemb,n,r,method,options);
+            "/* %s line %d: nmemb=%lu, n(samples)=%lu, r=%lu, method=%s(%d), "
+            "options=0x%x */\n",__func__,__LINE__,nmemb,n,r,pivot_name(method),
+            method,options);
 #endif
     return n;
 }
@@ -551,9 +574,19 @@ QUICKSELECT_PIVOT_METHOD
        median-of-medians or full remedian (for stable sorting/selection).
     */
     if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
-        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))&&(23UL>size_ratio))
+        /* For cost of median selection comparisons < ~ 2.8 N (for median of N),
+           median of samples is less costly (comparisons and swaps) than median
+           of medians, and provides the same rank guarantee for 2*nmemb/3
+           samples.  With >nmemb/2 samples, samples are contiguous and are not
+           moved prior to selection of median sample.
+        */
+#if QUICKSELECT_NO_MEDIAN_OF_MEDIANS
+        return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+#else
+        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
             return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
         return QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS ;
+#endif
     } else {
         /* Might use "median" of samples with offset rank or true median of
            samples. In either case, sample data movement is relatively costly;
@@ -703,9 +736,7 @@ QUICKSELECT_SAMPLING_TABLE
 #endif
         x=(((nmemb+1UL)>>2)-1UL);
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SAMPLING_DEBUG)
-        ||DEBUGGING(REPARTITION_DEBUG)
-        ||DEBUGGING(REPIVOT_DEBUG)
+        if (DEBUGGING(REPARTITION_DEBUG)
         )
             (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, nk=%lu, x=%lu, first=%lu, "
@@ -728,9 +759,7 @@ QUICKSELECT_SAMPLING_TABLE
         nl = ((bk>fk)?bk-fk:0UL); /* ranks in left region */
         if (0UL!=nl) raw|=4U; /* there are ranks in the left region */
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SAMPLING_DEBUG)
-        ||DEBUGGING(REPARTITION_DEBUG)
-        ||DEBUGGING(REPIVOT_DEBUG)
+        if (DEBUGGING(REPARTITION_DEBUG)
         )
             (V)fprintf(stderr,
                 "/* %s: %s line %d: %lu in left\n",
@@ -747,9 +776,7 @@ QUICKSELECT_SAMPLING_TABLE
             nr = ((bk>fk)?bk-fk:0UL); /* ranks in right region */
             if (0UL!=nr) raw|=1U; /* there are ranks in the right region */
 #if LIBMEDIAN_TEST_CODE
-            if (DEBUGGING(SAMPLING_DEBUG)
-            ||DEBUGGING(REPARTITION_DEBUG)
-            ||DEBUGGING(REPIVOT_DEBUG)
+            if (DEBUGGING(REPARTITION_DEBUG)
             )
                 (V)fprintf(stderr,
                     "/* %s: %s line %d: %lu in right\n",
@@ -758,9 +785,7 @@ QUICKSELECT_SAMPLING_TABLE
             if (nl+nr<nk) raw|=2U; /* there are ranks in the middle */
         }
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SAMPLING_DEBUG)
-        ||DEBUGGING(REPARTITION_DEBUG)
-        ||DEBUGGING(REPIVOT_DEBUG)
+        if (DEBUGGING(REPARTITION_DEBUG)
         )
             (V)fprintf(stderr,
                 "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, raw "
@@ -847,9 +872,7 @@ QUICKSELECT_SAMPLING_TABLE
             */
         }
 #if LIBMEDIAN_TEST_CODE
-        if (DEBUGGING(SAMPLING_DEBUG)
-        ||DEBUGGING(REPARTITION_DEBUG)
-        ||DEBUGGING(REPIVOT_DEBUG)
+        if (DEBUGGING(REPARTITION_DEBUG)
         )
             (V)fprintf(stderr,
                 "/* %s: %s line %d: nmemb=%lu, distribution=%u */\n",
@@ -858,9 +881,7 @@ QUICKSELECT_SAMPLING_TABLE
 #endif
     } /* else sorting */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(SAMPLING_DEBUG)
-    ||DEBUGGING(REPARTITION_DEBUG)
-    ||DEBUGGING(REPIVOT_DEBUG)
+    if (DEBUGGING(REPARTITION_DEBUG)
     )
         (V)fprintf(stderr,
             "/* %s: %s line %d: nmemb=%lu, sort=%u */\n",

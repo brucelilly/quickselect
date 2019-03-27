@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.39 dated 2019-03-18T10:55:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.40 dated 2019-03-20T19:04:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -580,7 +580,7 @@ extern size_t pivot_rank(char *base, size_t first, size_t beyond, size_t size,
 extern void pivot_sample_rank(register char *middle, register size_t row_spacing,
     register size_t sample_spacing, register size_t size,
     register unsigned int idx, char *pivot, size_t *prank, char *base);
-extern void initialize_antiqsort(size_t n, char *pv, int type, size_t ratio, const size_t sz, long *alt);
+extern void initialize_antiqsort(size_t n, char *pv, unsigned int type, size_t ratio, const size_t sz, long *alt);
 extern size_t antiqsort_ncmp; /* number of comparisons */
 extern size_t antiqsort_nsolid; /* number of solid items */
 

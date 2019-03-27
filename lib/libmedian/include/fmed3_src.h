@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is fmed3_src.h version 1.1 dated 2019-03-06T21:27:45Z. \ fmed3_src.h $ */
+/* $Id: ~|^` @(#)   This is fmed3_src.h version 1.2 dated 2019-03-26T20:40:52Z. \ fmed3_src.h $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.fmed3_src.h */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: fmed3_src.h ~|^` @(#)"
 #define SOURCE_MODULE "fmed3_src.h"
-#define MODULE_VERSION "1.1"
-#define MODULE_DATE "2019-03-06T21:27:45Z"
+#define MODULE_VERSION "1.2"
+#define MODULE_DATE "2019-03-26T20:40:52Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -84,7 +84,7 @@ QUICKSELECT_FMED3
 {
     register int c=COMPAR(pa,pb);
 #if LIBMEDIAN_TEST_CODE
-if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
+if (DEBUGGING(MEDIAN_DEBUG)) {
     if ((char)0==file_initialized) initialize_file(__FILE__);
 (V)fprintf(stderr, "/* %s: %s line %d: pa=%p[%lu], pb=%p[%lu], pc=%p[%lu] */\n",__func__,source_file,__LINE__,(void *)pa,(pa-base)/size,(void *)pb,(pb-base)/size,(void *)pc,(pc-base)/size);
 }
@@ -113,7 +113,7 @@ if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
         }
     }
 #if LIBMEDIAN_TEST_CODE
-if (DEBUGGING(REPIVOT_DEBUG)||DEBUGGING(MEDIAN_DEBUG)) {
+if (DEBUGGING(MEDIAN_DEBUG)) {
 (V)fprintf(stderr, "/* %s: %s line %d: pb=%p[%lu] */\n",__func__,source_file,__LINE__,(void *)pb,(pb-base)/size);
 }
 #endif

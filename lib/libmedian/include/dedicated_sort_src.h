@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.22 dated 2019-03-18T10:59:50Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.23 dated 2019-03-22T02:22:30Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2019-03-18T10:59:50Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2019-03-22T02:22:30Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -281,7 +281,8 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
         }
     }
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
@@ -404,12 +405,13 @@ int ded_sort3(char *base, size_t first, size_t beyond, size_t size,
     A(0>=OPT_COMPAR(pb,pc,options));
 #endif
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -480,12 +482,13 @@ int ded_sort4(char *base, size_t first, size_t beyond, size_t size,
         swapf,alignsize,size_ratio,options);
 check4:
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -562,12 +565,13 @@ int ded_sort5(char *base, size_t first, size_t beyond, size_t size,
         swapf,alignsize,size_ratio,options);
 check5:
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -644,12 +648,13 @@ int ded_sort6(char *base, size_t first, size_t beyond, size_t size,
         swapf,alignsize,size_ratio,options);
 check6:
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -737,12 +742,13 @@ int ded_sort7(char *base, size_t first, size_t beyond, size_t size,
         swapf,alignsize,size_ratio,options);
 check7:
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -825,12 +831,13 @@ int ded_sort8(char *base, size_t first, size_t beyond, size_t size,
         swapf,alignsize,size_ratio,options);
 check8:
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         size_t nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: line %d: %s failed to sort: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -915,20 +922,21 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
         (V)fprintf(stderr,"/* %s line %d: EAGAIN: mid=%lu, beyond=%lu, size_ratio=%lu, options=0x%x */\n",__func__,__LINE__,mid,beyond,size_ratio,options);
         abort();
     }
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         nmemb=test_array_sort(base,first,mid-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=mid-1UL) {
-            fprintf(stderr,"/* %s: %s line %d: first=%lu, mid=%lu, options=0x%x */\n",
-                __func__,dedicated_sort_src_file,__LINE__,first,mid,options);
+            (V)fprintf(stderr,"/* %s: %s line %d: %s failed: first=%lu, mid=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,__func__,first,mid,options);
             print_some_array(base,first,mid-1UL,"/* "," */",options);
             abort();
         }
         nmemb=test_array_sort(base,mid,beyond-1UL,size,compar,
             options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: %s line %d: mid=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,dedicated_sort_src_file,__LINE__,mid,beyond,options);
+            (V)fprintf(stderr,"/* %s: %s line %d: %s failed: mid=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,__func__,mid,beyond,options);
             print_some_array(base,mid,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -938,12 +946,13 @@ int inplace_mergesort(char *base, size_t first, size_t beyond, size_t nmemb,
     inplace_merge(base,first,mid,beyond,size,COMPAR_ARGS,swapf,alignsize,
         size_ratio,options);
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(CORRECTNESS_DEBUG)) {
+    /* test_array_sort calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) {
         nmemb=test_array_sort(base,first,beyond-1UL,size,
             compar,options,0U,NULL,NULL);
         if (nmemb!=beyond-1UL) {
-            fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                __func__,dedicated_sort_src_file,__LINE__,first,beyond,options);
+            (V)fprintf(stderr,"/* %s: %s line %d: %s failed: first=%lu, beyond=%lu, options=0x%x */\n",
+                __func__,dedicated_sort_src_file,__LINE__,__func__,first,beyond,options);
             print_some_array(base,first,beyond-1UL,"/* "," */",options);
             abort();
         }
@@ -1744,21 +1753,25 @@ QUICKSELECT_DEDICATED_SORT
             break;
         }
 #if LIBMEDIAN_TEST_CODE
+        /* test_array_sort calls compar; trouble if it's aqcmp */
+        if (compar!=aqcmp) {
 # if ASSERT_CODE < 2
-        if ((ret!=EAGAIN)&&(DEBUGGING(CORRECTNESS_DEBUG))) {
+            if ((ret!=EAGAIN)&&(DEBUGGING(CORRECTNESS_DEBUG))) {
 # endif
-            nmemb=test_array_sort(base,first,beyond-1UL,size,
-                compar,options,0U,NULL,NULL);
-            if (nmemb!=beyond-1UL) {
-                fprintf(stderr,"/* %s: line %d: first=%lu, beyond=%lu, options=0x%x */\n",
-                    __func__,__LINE__,first,beyond,options);
-                print_some_array(base,first,beyond-1UL,"/* "," */",options);
-                A(0==1);
-                abort();
+                /* test_array_sort calls compar; trouble if it's aqcmp */
+                nmemb=test_array_sort(base,first,beyond-1UL,size,
+                    compar,options,0U,NULL,NULL);
+                if (nmemb!=beyond-1UL) {
+                    (V)fprintf(stderr,"/* %s: line %d: %s failed: first=%lu, beyond=%lu, options=0x%x */\n",
+                        __func__,__LINE__,__func__,first,beyond,options);
+                    print_some_array(base,first,beyond-1UL,"/* "," */",options);
+                    A(0==1);
+                    abort();
+                }
+# if ASSERT_CODE < 2
             }
-# if ASSERT_CODE < 2
-        }
 # endif
+        }
 #endif
     }
     return ret ;

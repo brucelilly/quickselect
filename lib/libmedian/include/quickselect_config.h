@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.23 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.24 dated 2019-03-23T21:12:41Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.23 2019-03-16T15:37:11Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.24 2019-03-23T21:12:41Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -224,6 +224,14 @@
    even insertion sort can handle efficiently).
 */
 #define QUICKSELECT_MAX_NETWORK 5
+
+/* When repivoting after a lopsided partition, median-of-medians pivot selection
+   for the large region guarantees the next pivot rank within 1/3 to 2/3 rank in
+   the subarray.  The same guarantee can be obtained by using the median of
+   2/3 of the subarray elements as a sample, with fewer comparisons and swaps.
+*/
+/* 0 include median-of-medians pivot selection; 1 use median of samples */
+#define QUICKSELECT_NO_MEDIAN_OF_MEDIANS 1
 
 /*******************************************************************************
    Nothing to configure below this line. The remainder of this file contains

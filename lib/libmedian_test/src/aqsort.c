@@ -1,7 +1,7 @@
 /*INDENT OFF*/
 
 /* Description: C source code for (modified) McIlroy antiqsort */
-/* $Id: ~|^` @(#)   This is aqsort.c version 1.15 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is aqsort.c version 1.16 dated 2019-03-20T19:06:54Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.aqsort.c */
@@ -15,8 +15,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: aqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "aqsort.c"
-#define MODULE_VERSION "1.15"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.16"
+#define MODULE_DATE "2019-03-20T19:06:54Z"
 #define COPYRIGHT_HOLDER "M. Douglas McIlroy"
 #define COPYRIGHT_DATE "1998"
 
@@ -89,8 +89,11 @@ static size_t pivot_candidate; /* pivot candidate */
 static size_t antiqsort_gas; /* gas value */
 static size_t antiqsort_n;
 /* qsort uses one array, antiqsort another */
+static char *qsort_base;
 static long *antiqsort_base;
-static size_t qsort_type;
+static size_t qsort_sz;
+static size_t qsort_ratio;
+static unsigned int qsort_type;
 static FILE *fp = NULL;
 
 #define CHANGE_DIR_ON_INIT_ONLY 1
@@ -257,10 +260,16 @@ long aqindex(const void *pv, void *base, size_t size)
        whether or not (:-/) gcc's authors realize it...
     */
 #if LIBMEDIAN_TEST_CODE
-    if (DEBUGGING(AQCMP_DEBUG)&&(NULL!=base)&&(0UL<size))
-        (V)fprintf(stderr,"/* %s: %s line %d: %s(%p[%lu])=%ld */\n",
-            __func__,source_file,__LINE__,__func__,base,
-            ((const char *)pv-(char *)base)/size,v);
+    if (DEBUGGING(AQCMP_DEBUG)) {
+        if ((NULL!=base)&&(0UL<size))
+            (V)fprintf(stderr,"/* %s: %s line %d: %s(%p[%lu])=%ld */\n",
+                __func__,source_file,__LINE__,__func__,base,
+                ((const char *)pv-(char *)base)/size,v);
+        else
+            (V)fprintf(stderr,"/* %s: %s line %d: pv=0x%lx, qsort_type=%s, v=%ld */\n",
+                __func__,source_file,__LINE__,__func__,(unsigned long)pv,
+		type_name(qsort_type),v);
+    }
 #endif
     return v;
 }
@@ -385,8 +394,8 @@ int aqcmp(const void *px, const void *py) /* per C standard */
     long a, b, x, y;
 
     antiqsort_ncmp++;
-    x = aqindex(px,NULL,0UL);
-    y = aqindex(py,NULL,0UL);
+    x = aqindex(px,qsort_base,qsort_sz);
+    y = aqindex(py,qsort_base,qsort_sz);
     if ((0L>x)||(x>=antiqsort_n))
         (V)fprintf(stderr,
             "/* %s: %s line %d: x (%ld) is out of range 0<=x<%ld */\n",__func__,
@@ -473,13 +482,16 @@ cmp(const void *px, const void *py)  /* per C standard */
 }
 /* ********** modified into a separate function for intitalization ************ */
 /* added args: pv points to array of type "type" elements each having size sz used by qsort, alt to array used by antiqsort */
-void initialize_antiqsort(size_t n, char *pv, int type, size_t ratio, const size_t sz, long *alt)
+void initialize_antiqsort(size_t n, char *pv, unsigned int type, size_t ratio, const size_t sz, long *alt)
 {
     size_t i;
 
     if ((char)0==file_initialized) initialize_file(__FILE__);
     A(NULL!=pv);A(NULL!=alt);A(pv!=(char *)alt);
+    qsort_base = pv;
     qsort_type = type;
+    qsort_sz = sz;
+    qsort_ratio = ratio;
     antiqsort_n = n;
     antiqsort_base = alt;
     antiqsort_lsolid=0UL; /* BL */
@@ -495,11 +507,12 @@ void initialize_antiqsort(size_t n, char *pv, int type, size_t ratio, const size
 #if LIBMEDIAN_TEST_CODE
     if (DEBUGGING(AQCMP_DEBUG))
         (V)fprintf(stderr,
-            "/* %s: %s line %d: n=%lu, pv=%p, type=%d, sz=%lu, alt=%p, gas=%ld,"
-            " lsolid=%lu, hsolid=%lu, sampling table index=%lu, pivot_minrank="
-            "%lu */\n",__func__,source_file,__LINE__,(unsigned long)n,
-            (void *)pv,type,(const unsigned long)sz,(void *)alt,antiqsort_gas,
-            antiqsort_lsolid,antiqsort_hsolid,i,pivot_minrank);
+            "/* %s: %s line %d: n=%lu, pv=%p, type=%s(%d), ratio=%lu, sz=%lu, "
+	    "alt=%p, gas=%ld, lsolid=%lu, hsolid=%lu, sampling table index=%lu"
+	    ", pivot_minrank=%lu */\n",__func__,source_file,__LINE__,
+	    (unsigned long)n, (void *)pv,type_name((unsigned int)type),type,
+	    (const unsigned long)ratio,(const unsigned long)sz,(void *)alt,
+	    antiqsort_gas,antiqsort_lsolid,antiqsort_hsolid,i,pivot_minrank);
 #endif
     /* Initialize in two passes:
          1st pass: initialize antiqsort_base to long integers [0,n-1]

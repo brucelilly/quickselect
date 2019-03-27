@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is partition_src.h version 1.24 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_src.h version 1.26 dated 2019-03-25T00:20:15Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.partition_src.h */
@@ -133,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: partition_src.h ~|^` @(#)"
 #define SOURCE_MODULE "partition_src.h"
-#define MODULE_VERSION "1.24"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2019-03-25T00:20:15Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -973,7 +973,8 @@ QUICKSELECT_PARTITION
             (pivot-base)/size,(pe-base)/size,(pf-base)/size,beyond,options);
         print_some_array(base,first,beyond-1UL, "/* "," */",options);
     }
-    if (DEBUGGING(CORRECTNESS_DEBUG)) { /* test partition pc-pd-pe-pf */
+    /* test_array_partition calls compar; trouble if it's aqcmp */
+    if (DEBUGGING(CORRECTNESS_DEBUG)&&(compar!=aqcmp)) { /* test partition pc-pd-pe-pf */
         size_t x;
         x=test_array_partition(base,(pc-base)/size,(pd-base)/size,
             (pe-base)/size-1UL,(pf-base)/size-1UL,size,compar,options,NULL,NULL);
@@ -1003,8 +1004,10 @@ QUICKSELECT_PARTITION
         default:
             pl=base+first*size, pu=base+beyond*size;
             /* The already-partitioned regions are at one end of the array,
-               except in the case of remedian, which produces only a pivot
-               element that can be any element.
+               except (1) in the case of remedian, which produces only a pivot
+               element that can be any element and (2) median of samples with
+               a large number of samples, in which case the already-partitioned
+               region is centered.
             */
             /* McGeoch & Tygar suggest that partial partition information
                from median-of-medians or median-of-samples might be used to
