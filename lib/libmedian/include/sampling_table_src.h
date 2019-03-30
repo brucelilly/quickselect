@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.20 dated 2019-03-27T00:18:16Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.21 dated 2019-03-30T00:52:05Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.20"
-#define MODULE_DATE "2019-03-27T00:18:16Z"
+#define MODULE_VERSION "1.21"
+#define MODULE_DATE "2019-03-30T00:52:05Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -384,19 +384,23 @@ QUICKSELECT_SAMPLES
             if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
 #if 0
                 n = ((nmemb / 3UL) << 1) + 1UL; /* ~ 2/3 nmemb; always odd; 1/3<=rank<=2/3 */
-                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
 #else
 # if 0
                 n = ((nmemb / 5UL) << 2) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=rank<=.6 */
-                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
 # else
 #  if 0
                 n = ((nmemb / 9UL) << 3) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=rank<=.556 */
-                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
 #  else
 #   if 1
                 n = ((nmemb / 17UL) << 4) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=rank<=.53 */
-                if (n > nmemb) n -= 2UL; /* still odd, but no greater than nmemb */
+                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
 #   else
                 n = nmemb; /* select pivot as median of subarray */
 #   endif

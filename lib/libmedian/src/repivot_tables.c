@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    repivot_tables.c copyright 2017-2018 Bruce Lilly.   \ repivot_tables.c $
+* $Id: ~|^` @(#)    repivot_tables.c copyright 2017-2019 Bruce Lilly.   \ repivot_tables.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.10 dated 2018-08-16T03:41:21Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.11 dated 2019-03-30T00:58:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repivot_tables.c */
@@ -58,10 +58,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "repivot_tables.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2018-08-16T03:41:21Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2019-03-30T00:58:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "quickselect_config.h" /* SORTING_TABLE_ENTRIES */
@@ -137,11 +137,11 @@ struct repivot_table_struct mos_sorting_repivot_table[] = {
     { (SIZE_MAX),  6U,  6U } /* sentinel */
 };
 struct repivot_table_struct mos_selection_repivot_table[] = {
-    {   1UL,      10U,  9U },
-    {   3UL,      16U,  6U },
-    {   5UL,      16U,  6U },
-    {   7UL,      15U,  6U },
-    {   9UL,      12U,  6U },
+    {   1UL,      10U,  8U },
+    {   3UL,       9U,  6U },
+    {   5UL,      10U,  6U },
+    {   7UL,      10U,  6U },
+    {   9UL,      10U,  6U },
     {  11UL,      10U,  6U },
     {  13UL,      10U,  6U },
     {  17UL,       7U,  6U },
