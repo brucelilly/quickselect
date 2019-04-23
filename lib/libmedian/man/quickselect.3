@@ -1,4 +1,4 @@
-.\" Description: quickselect.3 version 1.13 man page 2019-03-16T13:50:04Z
+.\" Description: quickselect.3 version 1.14 man page 2019-04-23T11:17:08Z
 .\" common man macros to V7, V10, DWB2 (unique ones omitted, differences noted)
 .\" .TH n c x	V7,10	begin page n of chapter c; x is extra commentary
 .\" .TH t s c n	DWB2	beg. pg. t of sect. s; c=extra comment, n=new man. name
@@ -61,13 +61,11 @@ delim $$
 .PP
 .B void partition (char *base, size_t first, size_t beyond, char *pc, char *pd, char *pivot, char *pe, char *pf, size_t size, int(*compar)(const void *,const void *), void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, unsigned int options, size_t *peq, size_t *pgt);
 .PP
-.B int pivot_method (size_t *pk, size_t nmemb, size_t firstk, size_t beyondk, unsigned int raw_distribution, size_t size_ratio, unsigned int options);
-.PP
 .B unsigned int sample_index (const struct sampling_table_struct *psts, unsigned int idx, size_t nmemb);
 .PP
 .B size_t samples (size_t nmemb, int method, unsigned int distribution, unsigned int options);
 .PP
-.B unsigned int sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, unsigned int options);
+.B unsigned int sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, int method, unsigned int options);
 .PP
 .B void select_max (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options, char **ppeq, char **ppgt);
 .PP
@@ -547,7 +545,7 @@ Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 .po
 .lt
 .br
-@(#)quickselect.3 1.13 2019-03-16T13:50:04Z copyright \*(xy Bruce Lilly
+@(#)quickselect.3 1.14 2019-04-23T11:17:08Z copyright \*(xy Bruce Lilly
 .br
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the
