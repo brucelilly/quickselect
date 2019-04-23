@@ -859,10 +859,13 @@ MACROS += LIB38ARCH C11LIB38OBJS C99LIB38OBJS LIB38OBJS LIB38HDRS LIB38MAN
 
 LIB39ARCH = libmedian_test.a
 C11LIB39OBJS =\
+ partition_s.o\
  partition.o\
  quickselect_s.o\
  d_dedicated_sort.o\
  dedsort.o\
+ quickselect_loop_s.o\
+ quickselect_loop.o\
 #
 C99LIB39OBJS =\
  d_fmed3.o\
@@ -903,7 +906,6 @@ C99LIB39OBJS =\
  dual.o\
  duplicate.o\
  db.o\
- pivot.o\
  should_repivot.o\
  sort5.o\
  operations.o\
@@ -922,6 +924,7 @@ C99LIB39OBJS =\
  parse.o\
  print.o\
  klimits.o\
+ qsort.o\
  globals.o\
 #
 LIB39OBJS =\

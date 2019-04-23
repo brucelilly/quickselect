@@ -1,6 +1,6 @@
 /*INDENT OFF*/
 
-/* Description: C source code for selection-related development */
+/* Description: C source code for quickselect_loop */
 /******************************************************************************
 * This software is covered by the zlib/libpng license.
 * The zlib/libpng license is a recognized open source license by
@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_s.c copyright 2016-2019 Bruce Lilly.   \ quickselect_s.c $
+* $Id: ~|^` @(#)    quickselect_loop_s.c copyright 2017-2019 Bruce Lilly.   \ quickselect_loop_s.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,20 +28,29 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_s.c version 1.18 dated 2019-04-17T23:05:17Z. \ $ */
-/* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
+/* $Id: ~|^` @(#)   This is quickselect_loop_s.c version 1.1 dated 2019-04-17T23:40:57Z. \ $ */
+/* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
-/* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect_s.c */
+/* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect_loop_s.c */
 
 /********************** Long description and rationale: ***********************
-* starting point for select/median implementation
+ This file contains source to implement the public internal quickselect_loop_s.
+ Swapping of elements is handled by efficient inline swap functions.  No attempt
+ is made to optimize for specific array element types, but swapping can be
+ performed in units of basic language types.  The swap functions avoid useless
+ work (e.g. when given two pointers to the same element).  No specialized macros
+ are required.
 ******************************************************************************/
 
 /* Nothing to configure below this line. */
 
 #define LIBMEDIAN_TEST_CODE 1
 #define __STDC_WANT_LIB_EXT1__ 1
+#undef QUICKSELECT_STATIC
+#define QUICKSELECT_STATIC /* */
+#undef QUICKSELECT_INLINE
+#define QUICKSELECT_INLINE /* */
 
 #include "median_test_config.h"
 
-#include "quickselect_src.h"          /* contains the actual source code */
+#include "quickselect_loop_src.h" /* contains the actual source code */

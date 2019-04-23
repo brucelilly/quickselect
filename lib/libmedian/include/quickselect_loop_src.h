@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.35 dated 2019-03-27T00:11:47Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.38 dated 2019-04-22T21:23:59Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.35"
-#define MODULE_DATE "2019-03-27T00:11:47Z"
+#define MODULE_VERSION "1.38"
+#define MODULE_DATE "2019-04-22T21:23:59Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -185,8 +185,8 @@
 #endif
 
 #if  ! __STDC_WANT_LIB_EXT1__
-# if ! defined(LIBMEDIAN_TEST_CODE) || (LIBMEDIAN_TEST_CODE == 0)
 # define DEDICATED_SORT_SRC_FILE_HERE 1
+# if ! LIBMEDIAN_TEST_CODE
 # define INSERTION_SORT_SRC_FILE_HERE 1
 # define QUICKSELECT_LOOP_SRC_FILE_HERE 1
 # define REPIVOT_SRC_FILE_HERE 1
@@ -203,7 +203,9 @@ char quickselect_loop_src_file_initialized=0;
 
 #if QUICKSELECT_BUILD_FOR_SPEED
 # include "dedicated_sort_src.h"
+# if  ! __STDC_WANT_LIB_EXT1__
 # include "repivot_src.h"
+# endif
 # include "select_max_src.h"
 # include "select_min_src.h"
 # include "find_minmax_src.h"
@@ -241,7 +243,8 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
     COMPAR_DECL, void (*swapf)(char *, char *, size_t), size_t alignsize,
     size_t size_ratio, size_t nmemb, const size_t *pk, size_t firstk,
     size_t beyondk, size_t cachesz, size_t pbeyond, unsigned int options,
-    char **ppeq, char **ppgt, unsigned int *pdistribution, const size_t **ppk)
+    int *pmethod, char **ppeq, char **ppgt, unsigned int *pdistribution,
+    const size_t **ppk)
 {
     int ret=1; /* caller continues */
     size_t nk=beyondk-firstk;
@@ -346,7 +349,19 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
 #else
             sampling_table
 #endif
-       (first,beyond,pk,firstk,beyondk,ppeq,ppk,nmemb,size_ratio,options);
+       (first,beyond,pk,firstk,beyondk,ppeq,ppk,nmemb,size_ratio,*pmethod,options);
+    switch (*pmethod) {
+        case 0U : /* shouldn't happen here... */
+        /*FALLTHROUGH*/
+        case 7U :
+            if (0U==(options&(QUICKSELECT_RESTRICT_RANK)))
+                *pmethod = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+        break;
+        case 5U :
+            if ((0U==(options&(QUICKSELECT_RESTRICT_RANK)))&&(1UL<size_ratio))
+                *pmethod = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+        break;
+    }
     return ret;
 }
 
@@ -493,7 +508,11 @@ void rank_tests(char *base, size_t first, size_t p, size_t q,
 #if __STDC_WANT_LIB_EXT1__
 QUICKSELECT_QUICKSELECT_LOOP_S
 #else
+# if LIBMEDIAN_TEST_CODE
+QUICKSELECT_D_QUICKSELECT_LOOP
+# else
 QUICKSELECT_QUICKSELECT_LOOP
+# endif
 #endif
 {
 #if __STDC_WANT_LIB_EXT1__
@@ -558,6 +577,28 @@ QUICKSELECT_QUICKSELECT_LOOP
         char *pc, *pd, *pe, *pf, *pivot;
         struct region_struct lt_region, gt_region, *ps_region, *pl_region;
 
+        /* pivot selection method */
+        method =
+#if LIBMEDIAN_TEST_CODE
+            forced_pivot_selection_method
+#else
+            0
+#endif
+            ;
+        if (0==method) {
+            if ((0U==(options&(QUICKSELECT_RESTRICT_RANK)))
+            && ((0U!=(options&(QUICKSELECT_STABLE)))
+#if 0
+                || (nel==nmemb) /* first pass in case constant, binary, ternary */
+#endif
+                || (lneq>=(lnne>>2)) /* constant, binary, ternary */
+               )
+            )
+                method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+            else
+                method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+        }
+
         if (NULL!=pk) { /* selection only */
 #if LIBMEDIAN_TEST_CODE
             if (DEBUGGING(SORT_SELECT_DEBUG)||DEBUGGING(PARTITION_DEBUG))
@@ -576,21 +617,26 @@ QUICKSELECT_QUICKSELECT_LOOP
                 compar,
 #endif
                 swapf,alignsize,size_ratio,nmemb,pk,firstk,beyondk,cachesz,
-                pbeyond,options,ppeq,ppgt,&distribution,&pk))
+                pbeyond,options,&method,ppeq,ppgt,&distribution,&pk))
                 goto pop_stack ; /* selection in this region is complete */
         }
 
         /* Separate test, not else clause; special_cases may change pk. */
         if (NULL==pk) { /* sorting only */
             A(NULL==ppeq);
+            if ((0U==(options&(QUICKSELECT_RESTRICT_RANK)))
+            && (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))))
+                method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
             if ((5UL>nmemb) /* small sub-array; network no worse than best-case D&C */
 /* stable and optimize comparison methods only work within cache limits */
             ||((nmemb<=cache_limit)&&
               ((0U!=(options&(QUICKSELECT_STABLE))) /* stable methods */
               ||(0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) /* minimize comparisons */
               ||(
+#if 1
               (nel>nmemb)&& /* ! 1st partition; D&C in case constant, binary */
               /* can only determine non-constant, non-binary, non-ternary after 1st partition */
+#endif
               (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
               )
             ) {
@@ -674,7 +720,7 @@ QUICKSELECT_QUICKSELECT_LOOP
 
 #if LIBMEDIAN_TEST_CODE
         /* count repivots */
-        if ((0U!=((QUICKSELECT_RESTRICT_RANK)&options))
+        if ((0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
 #if 1 /* 0 count or 1 don't count repivoting for median-of-medians */
         && (NULL==ppeq)
 #endif
@@ -873,10 +919,17 @@ QUICKSELECT_QUICKSELECT_LOOP
             ps_region=&gt_region, pl_region=&lt_region;
         }
 
-        if (0U!=((QUICKSELECT_RESTRICT_RANK)&options))
+        if (0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
             c=0; /* reset factor2 count if pivot was median-of-medians */
-        /* default pivot selection uses array SAMPLES */
-        options &= ~(QUICKSELECT_RESTRICT_RANK);
+        /* default pivot selection uses array SAMPLES; maybe changed below by
+           should_repivot
+        */
+        options &= ~(QUICKSELECT_RESTRICT_RANK
+#if LIBMEDIAN_TEST_CODE
+           |QUICKSELECT_STRICT_SELECTION
+           |QUICKSELECT_NO_REPIVOT
+#endif
+            );
 
         pl_region->options=ps_region->options=options;
         ps_region->c=0;

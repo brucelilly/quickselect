@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sqsort.c version 1.22 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is sqsort.c version 1.25 dated 2019-04-22T18:05:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "sqsort" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "sqsort.c"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.25"
+#define MODULE_DATE "2019-04-22T18:05:29Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -79,13 +79,13 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
     char *pc, *pd, *pe, *pf, *pivot;
     size_t nmemb, p, q, r, s;
     size_t cache_limit, lneq=0UL, lnne=0UL;
+    int method;
 
     if (size>sizeof(char*)) /* direct sorting in data cache */
         cache_limit=(quickselect_cache_size<<1)/size/3UL; /* 1.5*size within cache */
     else /* indirect mergesort */
         cache_limit=quickselect_cache_size/pointer_and_a_half; /* 1.5 pointers within cache */
-    for (;;) {
-        nmemb=beyond-first;
+    for (nmemb=beyond-first; ;) { /* loop until done */
 #if LIBMEDIAN_TEST_CODE
         if (DEBUGGING(SORT_SELECT_DEBUG))
             (V)fprintf(stderr,"/* %s: %s line %d: first=%lu, beyond=%lu, nmemb="
@@ -109,18 +109,12 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
               /* not first partition; D&C 1st time in case constant or binary */
               /* can only determine non-constant, non-binary, non-ternary after first partition */
 #endif
-              (lneq<=(lnne>>2)))) /* not constant, binary, ternary */
+              (lneq<(lnne>>2)))) /* not constant, binary, ternary */
               )
             )) {
-                int ret= 
-#if LIBMEDIAN_TEST_CODE
-                    d_dedicated_sort
-#else
-                    dedicated_sort
-#endif
-                    (base,first,beyond,size,COMPAR_ARGS,
-                    swapf,alignsize,size_ratio,
-                    quickselect_cache_size,0UL,options);
+                int ret= d_dedicated_sort(base,first,beyond,size,COMPAR_ARGS,
+                    swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
+                    options);
                 switch (ret) {
                     case 0 : /* sorting is complete */
     /* <- */        return; /* Done; */
@@ -149,22 +143,38 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
                 }
             }
         } else return; /* Done because a single element is a sorted array. */
-        pivot=
+
+        /* pivot selection method */
+        method =
 #if LIBMEDIAN_TEST_CODE
-            d_select_pivot
+            forced_pivot_selection_method
 #else
-            select_pivot
+            0
 #endif
-            (base,first,beyond,size,compar,swapf,alignsize,
+            ;
+        if (0==method) {
+            if ((0U==(options&(QUICKSELECT_RESTRICT_RANK))) /* should always be true here */
+            && ((0U!=(options&(QUICKSELECT_STABLE))) /* remedian for stable sort */
+                || (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) /* remedian if not optimizing for minimum comparisons */
+                || (lneq>=(lnne>>2)) /* constant, binary, ternary */
+               )
+            )
+                method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+            else
+                method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+        }
+
+        pivot= d_select_pivot(base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,pbeyond,
-            options,&pc,&pd,&pe,&pf,NULL,NULL);
+            options,&pc,&pd,&pe,&pf,&method,NULL);
         /* no support for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pivot,pe,pf,size,compar,swapf,
             alignsize,size_ratio,quickselect_cache_size,options,&q,&p);
         s=q-first;
         if (beyond>p) r=beyond-p; else r=0UL;  /* size of the > region */
         lnne=s+r; lneq=nmemb-lnne;
-        if (s<r) { /* > region is larger */
+        /* recurse on small region, iterate on large region */
+        if (s<r) { /* > region (r) is larger */
             if (1UL<s) {
                 nrecursions++;
                 sqsort_internal(base,first,q,size,compar,swapf,alignsize,
@@ -172,7 +182,7 @@ static void sqsort_internal(void *base, size_t first, size_t beyond, size_t size
             }
             if (2UL>r) return;
             first=p, nmemb=r;
-        } else { /* < region is larger, or regions are the same size */
+        } else { /* < region (s) is larger, or regions are the same size */
             if (1UL<r) {
                 nrecursions++;
                 sqsort_internal(base,p,beyond,size,compar,swapf,alignsize,

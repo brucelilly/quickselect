@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is debug.c version 1.11 dated 2019-03-18T10:57:06Z. \ $ */
+/* $Id: ~|^` @(#)   This is debug.c version 1.12 dated 2019-04-01T01:39:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.debug.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: debug.c ~|^` @(#)"
 #define SOURCE_MODULE "debug.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2019-03-18T10:57:06Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2019-04-01T01:39:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -132,5 +132,25 @@ const char *pivot_name(int method)
         break;
     }
     return (const char *)buf;
+}
+
+const char *sampling_table_name(struct sampling_table_struct *psts)
+{
+    if (psts==sorting_sampling_table) return "ros_sorting";
+    if (psts==middle_sampling_table) return "ros_middle";
+    if (psts==ends_sampling_table) return "ros_ends";
+    if (psts==mos_sorting_sampling_table) return "mos_sorting";
+    if (psts==mos_middle_sampling_table) return "mos_middle";
+    if (psts==mos_ends_sampling_table) return "mos_ends";
+    return "unknown";
+}
+
+const char *repivot_table_name(struct repivot_table_struct *prts)
+{
+    if (prts==ros_sorting_repivot_table) return "ros_sorting";
+    if (prts==ros_selection_repivot_table) return "ros_selection";
+    if (prts==mos_sorting_repivot_table) return "mos_sorting";
+    if (prts==mos_selection_repivot_table) return "mos_selection";
+    return "unknown";
 }
 

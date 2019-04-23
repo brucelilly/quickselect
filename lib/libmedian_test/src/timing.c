@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is timing.c version 1.45 dated 2018-12-18T13:19:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is timing.c version 1.49 dated 2019-04-19T19:48:25Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.timing.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: timing.c ~|^` @(#)"
 #define SOURCE_MODULE "timing.c"
-#define MODULE_VERSION "1.45"
-#define MODULE_DATE "2018-12-18T13:19:52Z"
+#define MODULE_VERSION "1.49"
+#define MODULE_DATE "2019-04-19T19:48:25Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -340,7 +340,7 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
         buf18[256], buf19[256], buf20[256], buf21[256], buf22[256], buf23[256],
         buf24[256];
     const char *comment="", *pcc, *pfunc, *typename, *psize, *ptest;
-    int i, c, odebug;
+    int i, c, method, odebug;
     unsigned int errs=0U, ff, function, inst, ss, sequence, t, tests, type;
     long l;
     float best_s=9.9e9, best_u=9.9e9, best_w=9.9e9, 
@@ -862,22 +862,23 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                     *plast_adv=FUNCTION_QSELECT;
                                     initialize_antiqsort(n,pv,type,ratio,size,
                                         global_refarray);
-                                    QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
+                                    if (0U!=flags['i'])
+                                        D_QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
+                                    else
+                                        QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
                                 }
                             break;
-#if 1
                             case FUNCTION_QSORT_WRAPPER :
                                 if (FUNCTION_QSORT_WRAPPER!=*plast_adv) {
                                     *plast_adv=FUNCTION_QSORT_WRAPPER;
                                     initialize_antiqsort(n,pv,type,ratio,size,
                                         global_refarray);
-                                    quickselect((char *)pv,n,size,aqcmp,karray,
-                                        nk,options&(QUICKSELECT_USER_OPTIONS_MASK));
+                                    if (0U == flags['i'])
+                                        QSORT_FUNCTION_NAME((char *)pv,n,size,aqcmp);
+				    else
+                                        d_qsort((char *)pv,n,size,aqcmp);
                                 }
                             break;
-#else
-                            case FUNCTION_QSORT_WRAPPER :/*FALLTHROUGH*/
-#endif
                             case FUNCTION_SQSORT :       /*FALLTHROUGH*/
                             case FUNCTION_WQSORT :
                                 if (FUNCTION_WQSORT!=*plast_adv) {
@@ -1192,8 +1193,17 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                                     (V)generate_long_test_array(global_refarray,
                                         n,TEST_SEQUENCE_SORTED,1UL,max_val,f,
                                         log_arg);
+	                            if (0==method) {
+                                        if (0U==(options&(QUICKSELECT_RESTRICT_RANK))) {
+                                            if (0U!=(options&(QUICKSELECT_STABLE)))
+                                                method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+                                            else
+                                                method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+                                        } else
+                                            method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+                                    }
                                     make_adverse(global_refarray,0UL,n,karray,
-                                        0UL,nk,ratio*size_ratio,0U,options);
+                                        0UL,nk,ratio*size_ratio,0U,method,options);
                                 }
                             break;
                             default :
@@ -1240,13 +1250,22 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                         (V)clock_gettime(CLOCK_REALTIME,&timespec_start);
                         switch (function) {
                             case FUNCTION_QSELECT_S :
-                                QSEL_S(pv,0UL,u,size,compar_s,karray,0UL,nk,0U);
+                                if (0U!=flags['i'])
+                                    D_QSEL_S(pv,0UL,u,size,compar_s,karray,0UL,nk,0U);
+                                else
+                                    QSEL_S(pv,0UL,u,size,compar_s,karray,0UL,nk,0U);
                             break;
                             case FUNCTION_QSELECT_SORT :
-                                QSEL(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
+                                if (0U!=flags['i'])
+                                    D_QSEL(pv,0UL,u,size,compar,NULL,0UL,nk,0U);
+                                else
+                                    QSEL(pv,0UL,u,size,compar,NULL,0UL,nk,0U);
                             break;
                             case FUNCTION_QSELECT :
-                                QSEL(pv,0UL,u,size,compar,karray,0UL,nk,0U);
+                                if (0U!=flags['i'])
+                                    D_QSEL(pv,0UL,u,size,compar,karray,0UL,nk,0U);
+                                else
+                                    QSEL(pv,0UL,u,size,compar,karray,0UL,nk,0U);
                             break;
                             case FUNCTION_BMQSORT :
                                 BMQSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
@@ -1304,7 +1323,10 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             break;
                             case FUNCTION_QSORT_WRAPPER :
                                 A(1UL<n); A(u+1UL==n);
-                                quickselect((char *)pv,n,size,compar,NULL,0UL,options&(QUICKSELECT_USER_OPTIONS_MASK));
+                                if (0U == flags['i'])
+                                    QSORT_FUNCTION_NAME((char *)pv,n,size,compar);
+				else
+                                    d_qsort((char *)pv,n,size,compar);
                             break;
                             case FUNCTION_RUNSORT :
                                 RUNSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,0U);
@@ -1501,24 +1523,24 @@ unsigned int timing_tests(unsigned int sequences, unsigned int functions,
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
                             x=npartitions,y=nrepivot;
-                            quickselect_internal((void *)global_uarray,*pdn,sizeof(float),
-                                floatcmp,marray,12UL,0U,NULL,NULL);
+                            quickselect((void *)global_uarray,*pdn,sizeof(float),
+                                floatcmp,marray,12UL,0U);
 #if ASSERT_CODE
                             /* With marray in increasing (sorted) order, marray should
                                be the same after quickselect as it was before.
                             */
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
-                            quickselect_internal((void *)global_sarray,*pdn,sizeof(float),
-                                floatcmp,marray,12UL,0U,NULL,NULL);
+                            quickselect((void *)global_sarray,*pdn,sizeof(float),
+                                floatcmp,marray,12UL,0U);
 #if ASSERT_CODE
                             /* With marray in increasing (sorted) order, marray should
                                be the same after quickselect as it was before.
                             */
                             for (w=0UL; w<12UL; w++) A(b[w]==marray[w]);
 #endif /* ASSERT_CODE */
-                            quickselect_internal((void *)global_warray,*pdn,sizeof(float),
-                                floatcmp,marray,12UL,0U,NULL,NULL);
+                            quickselect((void *)global_warray,*pdn,sizeof(float),
+                                floatcmp,marray,12UL,0U);
                             npartitions=x,nrepivot=y;
 #if ASSERT_CODE
                             /* With marray in increasing (sorted) order, marray should

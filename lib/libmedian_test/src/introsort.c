@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is introsort.c version 1.22 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is introsort.c version 1.23 dated 2019-04-18T02:02:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.introsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: introsort.c ~|^` @(#)"
 #define SOURCE_MODULE "introsort.c"
-#define MODULE_VERSION "1.22"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2019-04-18T02:02:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -80,6 +80,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
 {
     size_t eq, gt, s;
     char *pc, *pd, *pe, *pf, *pivot;
+    int method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
 
     A(beyond>first);
     A(3UL<introsort_small_array_cutoff);
@@ -112,7 +113,7 @@ void introsort_loop(char *base, size_t first, size_t beyond, size_t size,
 #endif
             (base,first,beyond,size,compar,swapf,
             alignsize,size_ratio,0U,NULL,0UL,0UL,cache_sz,pbeyond,
-            options,&pc,&pd,&pe,&pf,NULL,NULL);
+            options,&pc,&pd,&pe,&pf,&method,NULL);
         pivot_minrank=beyond-first;
         /* partition is modified Bentley&McIlroy split-end partition returning
            indices of equal-to and greater-than region starts.  This efficient

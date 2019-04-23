@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is illumos.c version 1.10 dated 2019-03-15T14:05:57Z. \ $ */
+/* $Id: ~|^` @(#)   This is illumos.c version 1.11 dated 2019-04-18T02:02:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.illumos.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: illumos.c ~|^` @(#)"
 #define SOURCE_MODULE "illumos.c"
-#define MODULE_VERSION "1.10"
-#define MODULE_DATE "2019-03-15T14:05:57Z"
+#define MODULE_VERSION "1.11"
+#define MODULE_DATE "2019-04-18T02:02:40Z"
 #define COPYRIGHT_HOLDER "Sun Microsystems, Inc"
 #define COPYRIGHT_DATE "2008"
 
@@ -97,7 +97,7 @@ extern size_t quickselect_cache_size; /* BL */
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)illumos.c	1.10	2019-03-15 SMI"
+#pragma ident	"@(#)illumos.c	1.11	2019-04-18 SMI"
 
 #if !defined(_KERNEL) && !defined(_KMDB)
 # if 0 /* non-standard header file excluded BL */
@@ -146,7 +146,7 @@ extern size_t quickselect_cache_size; /* BL */
 #ifndef	_QSORT_H
 #define	_QSORT_H
 
-#pragma ident	"@(#)illumos.c	1.10	2019-03-15 SMI"
+#pragma ident	"@(#)illumos.c	1.11	2019-04-18 SMI"
 
 /*
  * Declarations for qsort().
@@ -267,6 +267,7 @@ illumos_qsort(
 	int		t_nrec;
 	int		cv;		/* results of compare (bottom / top) */
 
+        int             method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* BL */
         char            *mid;           /* BL: middle element for med3 */
         size_t          offset;         /* BL: offset for med3 */
         size_t          alignsize;      /* BL */
@@ -558,7 +559,7 @@ yields (BL)
                         (basep,(b_lim-(char*)basep)/rsiz,
                         (b_lim-(char*)basep)/rsiz+nrec,rsiz,cmp,swapf,alignsize,
                         size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,
-                        0UL,options,&m1,&m1,&m3,&m3,NULL,NULL);
+                        0UL,options,&m1,&m1,&m3,&m3,&method,NULL);
 		} else if (nrec < THRESH_M9) {
 			/* use median of 3 */
 			i = ((nrec - 1) / 2) * rsiz;

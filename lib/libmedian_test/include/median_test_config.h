@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.40 dated 2019-03-20T19:04:41Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.44 dated 2019-04-19T19:46:51Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -360,8 +360,10 @@ extern void print_some_array(char *target, size_t l, size_t u, const char *prefi
 #define NETWORKSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) networksort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define P9QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) p9qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define ILLUMOSQSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) illumos_qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
-#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT),NULL,NULL)
-#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s_internal((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
+#define D_QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) d_quickselect((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
+#define QSEL(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
+#define D_QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) d_quickselect_s((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
+#define QSEL_S(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) quickselect_s((void*)((char*)marray+mts*mstart),mend+1UL-mstart,mts,mcf,NULL,mpk,mku-mkl,options&(QUICKSELECT_USER_OPTIONS_MASK|QUICKSELECT_STRICT_SELECTION|QUICKSELECT_NO_REPIVOT))
 #define QSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) qsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
 #define RUNSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) runsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf,options)
 #define SELSORT(marray,mstart,mend,mts,mcf,mpk,mkl,mku,mdbg) selsort((void *)((char *)marray+mts*mstart),mend+1UL-mstart,mts,mcf)
@@ -645,6 +647,8 @@ extern void write_database_files(long *p, size_t n, unsigned int data_type);
 /* debug.c */
 extern const char *debug_name(unsigned int value);
 extern const char *pivot_name(int method);
+extern const char *repivot_table_name(struct repivot_table_struct *prts);
+extern const char *sampling_table_name(struct sampling_table_struct *psts);
 
 /* dual.c */
 extern void dpqsort(void *base, size_t nmemb, size_t size, int(*compar)(const void *, const void *),unsigned int options);
@@ -754,22 +758,15 @@ extern void close_log(FILE *f);
 #endif /* ASSERT_CODE */
 
 /* quickselect.c */
-extern
-#if __STDC_WANT_LIB_EXT1__
-       errno_t
-#else
-       int
-#endif
-           quickselect_internal(char *base, size_t nmemb,
+extern int d_quickselect(void *base, size_t nmemb,
     /*const*/ size_t size, int (*compar)(const void *,const void *),
-    size_t *pk, size_t nk, unsigned int options,
-    char **ppeq, char **ppgt);
+    size_t *pk, size_t nk, unsigned int options);
 
 /* quickselect_s.c */
-extern errno_t quickselect_s_internal(void *base, rsize_t nmemb, /*const*/ rsize_t size,
+extern errno_t d_quickselect_s(void *base, rsize_t nmemb, /*const*/ rsize_t size,
     int (*compar)(const void *,const void *,void *), void *context,
     size_t *pk, size_t nk, unsigned int options);
-extern errno_t qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
+extern errno_t d_qsort_s_internal (void *base, size_t nmemb, /*const*/ size_t size,
     int (*compar)(const void *,const void *, void *), void *context);
 
 /* selsort.c */
@@ -858,6 +855,9 @@ extern size_t ulsqrt(size_t n);
 extern int valid_test(unsigned int test_type, unsigned int testnum, size_t n);
 
 /* wqsort.c */
+extern void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
+    size_t firstk, size_t beyondk, size_t size_ratio, unsigned int distribution,
+    int method, unsigned int options);
 extern size_t minimum_remedian_rank(unsigned int table_index);
 extern char *freeze_some_samples(register char *base, register size_t first, size_t beyond,
     register size_t size, int (*compar)(const void *, const void*),

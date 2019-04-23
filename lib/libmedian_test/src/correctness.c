@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is correctness.c version 1.41 dated 2019-03-16T14:44:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is correctness.c version 1.45 dated 2019-04-19T19:48:25Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.correctness.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: correctness.c ~|^` @(#)"
 #define SOURCE_MODULE "correctness.c"
-#define MODULE_VERSION "1.41"
-#define MODULE_DATE "2019-03-16T14:44:14Z"
+#define MODULE_VERSION "1.45"
+#define MODULE_DATE "2019-04-19T19:48:25Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -103,7 +103,7 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
 {
     char buf[256], buf1[256], buf2[256];
     const char *comment="", *pcc, *pfunc, *typename, *psize, *ptest;
-    int c, i, odebug;
+    int c, i, method, odebug;
     unsigned int distinct=0U, errs=0U, ff, function, rpt=flags['d'], ss,
         sequence, t, tests, tt, type;
     long l;
@@ -552,7 +552,10 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                     *plast_adv=FUNCTION_QSELECT;
                                     initialize_antiqsort(n,pv,type,ratio,size,
                                         global_refarray);
-                                    QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
+                                    if (0U!=flags['i'])
+                                        D_QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
+                                    else
+                                        QSEL(pv,0UL,u,size,aqcmp,karray,0UL,nk,0U);
                                 }
                             break;
                             case FUNCTION_QSORT_WRAPPER :
@@ -560,8 +563,10 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                     *plast_adv=FUNCTION_QSORT_WRAPPER;
                                     initialize_antiqsort(n,pv,type,ratio,size,
                                         global_refarray);
-                                    quickselect((char *)pv,n,size,aqcmp,karray,
-                                        nk,options&(QUICKSELECT_USER_OPTIONS_MASK));
+                                    if (0U == flags['i'])
+                                        QSORT_FUNCTION_NAME((char *)pv,n,size,aqcmp);
+				    else
+                                        d_qsort((char *)pv,n,size,aqcmp);
                                 }
                             break;
                             case FUNCTION_SQSORT :       /*FALLTHROUGH*/
@@ -885,8 +890,18 @@ unsigned int correctness_tests(unsigned int sequences, unsigned int functions,
                                     (V)generate_long_test_array(global_refarray,
                                         n,TEST_SEQUENCE_SORTED,1UL,max_val,f,
                                         log_arg);
+                                    method = forced_pivot_selection_method ;
+	                            if (0==method) {
+                                        if (0U==(options&(QUICKSELECT_RESTRICT_RANK))) {
+                                            if (0U!=(options&(QUICKSELECT_STABLE)))
+                                                method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+                                            else
+                                                method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+                                        } else
+                                            method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+                                    }
                                     make_adverse(global_refarray,0UL,n,karray,
-                                        0UL,nk,ratio*size_ratio,0U,options);
+                                        0UL,nk,ratio*size_ratio,0U,method,options);
                                 }
                             break;
                             default :
@@ -1014,10 +1029,16 @@ do_test:
                                 QSEL_S(pv,0UL,u,size,compar_s,karray,0UL,nk,rpt);
                             break;
                             case FUNCTION_QSELECT_SORT :
-                                QSEL(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);
+                                if (0U!=flags['i'])
+                                    D_QSEL(pv,0UL,u,size,compar,NULL,0UL,nk,rpt);
+                                else
+                                    QSEL(pv,0UL,u,size,compar,NULL,0UL,nk,rpt);
                             break;
                             case FUNCTION_QSELECT :
-                                QSEL(pv,0UL,u,size,compar,karray,0UL,nk,rpt);
+                                if (0U!=flags['i'])
+                                    D_QSEL(pv,0UL,u,size,compar,karray,0UL,nk,rpt);
+                                else
+                                    QSEL(pv,0UL,u,size,compar,karray,0UL,nk,rpt);
                             break;
                             case FUNCTION_BMQSORT :
                                 BMQSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);
@@ -1075,7 +1096,10 @@ do_test:
                             break;
                             case FUNCTION_QSORT_WRAPPER :
                                 A(1UL<n); A(u+1UL==n);
-                                quickselect((char *)pv,n,size,compar,NULL,0UL,options&(QUICKSELECT_USER_OPTIONS_MASK));
+                                if (0U == flags['i'])
+                                    QSORT_FUNCTION_NAME((char *)pv,n,size,compar);
+				else
+                                    d_qsort((char *)pv,n,size,compar);
                             break;
                             case FUNCTION_RUNSORT :
                                 RUNSORT(pv,0UL,u,size,compar,NULL,0UL,0UL,rpt);

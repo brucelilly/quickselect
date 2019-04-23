@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.28 dated 2019-03-23T21:11:52Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.30 dated 2019-04-19T19:53:35Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.28 2019-03-23T21:11:52Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.30 2019-04-19T19:53:35Z"
 
 /* FreeBSD requires feature test macros to properly define type errno_t */
 #ifndef __STDC_WANT_LIB_EXT1__
@@ -220,10 +220,10 @@ struct sampling_table_struct {
    save space).
 */
 #if LIBMEDIAN_TEST_CODE
-# define QUICKSELECT_QUICKSELECT_LOOP int d_quickselect_loop (char *base, size_t first, size_t beyond, const size_t size, int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond, unsigned int options, char **ppeq, char **ppgt)
-#else
-# define QUICKSELECT_QUICKSELECT_LOOP int quickselect_loop (char *base, size_t first, size_t beyond, const size_t size, int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond, unsigned int options, char **ppeq, char **ppgt)
+# define QUICKSELECT_D_QUICKSELECT_LOOP int d_quickselect_loop (char *base, size_t first, size_t beyond, const size_t size, int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond, unsigned int options, char **ppeq, char **ppgt)
+QUICKSELECT_EXTERN QUICKSELECT_D_QUICKSELECT_LOOP ;
 #endif
+#define QUICKSELECT_QUICKSELECT_LOOP int quickselect_loop (char *base, size_t first, size_t beyond, const size_t size, int(*compar)(const void *,const void *), const size_t *pk, size_t firstk, size_t beyondk, void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, size_t pbeyond, unsigned int options, char **ppeq, char **ppgt)
 QUICKSELECT_EXTERN QUICKSELECT_QUICKSELECT_LOOP ;
 #if __STDC_WANT_LIB_EXT1__
 # if LIBMEDIAN_TEST_CODE
@@ -279,10 +279,9 @@ QUICKSELECT_FMED3_S ;
 # define QUICKSELECT_FIND_MINMAX QUICKSELECT_STATIC QUICKSELECT_INLINE void d_find_minmax (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *), unsigned int options, char **pmn, char **pmx)
 # define QUICKSELECT_KLIMITS QUICKSELECT_STATIC QUICKSELECT_INLINE void d_klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, size_t *pfk, size_t *pbk)
 # define QUICKSELECT_PARTITION QUICKSELECT_STATIC QUICKSELECT_INLINE void d_partition (char *base, size_t first, size_t beyond, char *pc, char *pd, char *pivot, char *pe, char *pf, size_t size, int(*compar)(const void *,const void *), void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, unsigned int options, size_t *peq, size_t *pgt)
-# define  QUICKSELECT_PIVOT_METHOD QUICKSELECT_STATIC QUICKSELECT_INLINE int d_pivot_method (size_t *pk, size_t nmemb, size_t firstk, size_t beyondk, unsigned int raw_distribution, size_t size_ratio, unsigned int options)
 # define QUICKSELECT_SAMPLE_INDEX QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int d_sample_index (const struct sampling_table_struct *psts, unsigned int idx, size_t nmemb)
 # define QUICKSELECT_SAMPLES QUICKSELECT_STATIC QUICKSELECT_INLINE size_t d_samples (size_t nmemb, int method, unsigned int distribution, unsigned int options)
-# define QUICKSELECT_SAMPLING_TABLE QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int d_sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, unsigned int options)
+# define QUICKSELECT_SAMPLING_TABLE QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int d_sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, int method, unsigned int options)
 # define QUICKSELECT_SELECT_MAX QUICKSELECT_STATIC QUICKSELECT_INLINE void d_select_max (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
 # define QUICKSELECT_SELECT_MIN QUICKSELECT_STATIC QUICKSELECT_INLINE void d_select_min (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
 # define QUICKSELECT_SELECT_MINMAX QUICKSELECT_STATIC QUICKSELECT_INLINE void d_select_minmax (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options)
@@ -294,10 +293,9 @@ QUICKSELECT_FMED3_S ;
 # define QUICKSELECT_FIND_MINMAX QUICKSELECT_STATIC QUICKSELECT_INLINE void find_minmax (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *), unsigned int options, char **pmn, char **pmx)
 # define QUICKSELECT_KLIMITS QUICKSELECT_STATIC QUICKSELECT_INLINE void klimits(size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, size_t *pfk, size_t *pbk)
 # define QUICKSELECT_PARTITION QUICKSELECT_STATIC QUICKSELECT_INLINE void partition (char *base, size_t first, size_t beyond, char *pc, char *pd, char *pivot, char *pe, char *pf, size_t size, int(*compar)(const void *,const void *), void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, size_t cachesz, unsigned int options, size_t *peq, size_t *pgt)
-# define  QUICKSELECT_PIVOT_METHOD QUICKSELECT_STATIC QUICKSELECT_INLINE int pivot_method (size_t *pk, size_t nmemb, size_t firstk, size_t beyondk, unsigned int raw_distribution, size_t size_ratio, unsigned int options)
 # define QUICKSELECT_SAMPLE_INDEX QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int sample_index (const struct sampling_table_struct *psts, unsigned int idx, size_t nmemb)
 # define QUICKSELECT_SAMPLES QUICKSELECT_STATIC QUICKSELECT_INLINE size_t samples (size_t nmemb, int method, unsigned int distribution, unsigned int options)
-# define QUICKSELECT_SAMPLING_TABLE QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, unsigned int options)
+# define QUICKSELECT_SAMPLING_TABLE QUICKSELECT_STATIC QUICKSELECT_INLINE unsigned int sampling_table (size_t first, size_t beyond, const size_t *pk, size_t firstk, size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb, size_t size_ratio, int method, unsigned int options)
 # define QUICKSELECT_SELECT_MAX QUICKSELECT_STATIC QUICKSELECT_INLINE void select_max (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
 # define QUICKSELECT_SELECT_MIN QUICKSELECT_STATIC QUICKSELECT_INLINE void select_min (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options, char **ppeq, char **ppgt)
 # define QUICKSELECT_SELECT_MINMAX QUICKSELECT_STATIC QUICKSELECT_INLINE void select_minmax (char *base, size_t first, size_t beyond, size_t size, int(*compar)(const void *,const void *),void (*swapf)(char *, char *, size_t), size_t alignsize, size_t size_ratio, unsigned int options)

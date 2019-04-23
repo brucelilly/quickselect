@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.24 dated 2019-03-23T21:12:41Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_config.h version 1.26 dated 2019-04-17T23:35:24Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_config.h */
@@ -87,7 +87,7 @@
 /* If you edit this file, you might wish to append something to the version
    string to indicate so...
 */
-#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.24 2019-03-23T21:12:41Z"
+#define QUICKSELECT_CONFIG_H_VERSION "quickselect_config.h 1.26 2019-04-17T23:35:24Z"
 
 /* compile-time configuration options */
 /* assertions for validation testing */
@@ -233,6 +233,19 @@
 /* 0 include median-of-medians pivot selection; 1 use median of samples */
 #define QUICKSELECT_NO_MEDIAN_OF_MEDIANS 1
 
+/* [Nearly] full remedian can be used to select a pivot element without data
+   movement, which makes it suitable for break-glass pivot selection for stable
+   sorting and selection.  However, the pivot rank can produce a lopsided
+   partition.  Median of samples with the number of samples > 1/2 of the
+   elements avoids data movement prior to median selection, and if the
+   partitioning method preserves partial order stability stable sorting and
+   selection can be achieved using median of samples for pivot selection with
+   a guaranteed pivot rank.  Therefore, [nearly] full remedian can be
+   eliminated.
+*/
+/* 0 for no full remedian; 1 include [nearly] full remedian pivot selection */
+#define QUICKSELECT_INCLUDE_FULL_REMEDIAN 0
+
 /*******************************************************************************
    Nothing to configure below this line. The remainder of this file contains
    internal definitions excluded from the public header file quickselect.h.
@@ -248,9 +261,13 @@
 #define QUICKSELECT_INDIRECT           0x04U
 
 /* Don't use median-of-medians or "full" remedian if there are fewer than 3 sets
-   of 3 elements available.
+   of 3 elements available. Median of samples is OK down to 5 elements.
 */
-#define SELECTION_MIN_REPIVOT            9UL
+#if ! QUICKSELECT_NO_MEDIAN_OF_MEDIANS
+# define SELECTION_MIN_REPIVOT            9UL
+#else
+# define SELECTION_MIN_REPIVOT            5UL
+#endif
 
 /* for assertions */
 #if ! ASSERT_CODE
@@ -310,8 +327,6 @@
 
 /* regular vs. _s variations: */
 #if __STDC_WANT_LIB_EXT1__
-/* function name variation */
-# define FUNCTION_NAME QSORT_S_FUNCTION_NAME
 /* nmemb,size argument type variation */
 # define NMEMB_SIZE_TYPE rsize_t
 /* comparison argument(s) variation */
@@ -326,7 +341,6 @@
 # define COMPAR(ma,mb) compar((ma),(mb),context)
 /* support functions */
 #else /* ! __STDC_WANT_LIB_EXT1__ */
-# define FUNCTION_NAME QSORT_FUNCTION_NAME
 # define NMEMB_SIZE_TYPE size_t
 # ifndef COMPAR_DECL
 #  define COMPAR_DECL int(*compar)(const void *,const void *)

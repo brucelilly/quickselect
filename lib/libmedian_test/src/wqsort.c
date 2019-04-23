@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is wqsort.c version 1.26 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is wqsort.c version 1.28 dated 2019-04-19T19:49:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.wqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: wqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "wqsort.c"
-#define MODULE_VERSION "1.26"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.28"
+#define MODULE_DATE "2019-04-19T19:49:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -231,12 +231,11 @@ static size_t sample_index_lt(size_t nmemb, size_t first, size_t n, size_t x, in
 */
 void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
     size_t firstk, size_t beyondk, size_t size_ratio,
-    unsigned int distribution, unsigned int options)
+    unsigned int distribution, int method, unsigned int options)
 {
     size_t karray[1], mid, n, nmemb=beyond-first, o, p, q, r, s, t, u, prank;
     auto size_t lk, rk;
     auto unsigned int new_distribution;
-    int method;
     register long *pb, *pc, *pivot, *pm;
     if (NULL==lswap) lswap=swapn(lsz);
     switch (nmemb) {
@@ -284,9 +283,7 @@ void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
                 sampling_table
 #endif
                 (first,beyond,pk,firstk,beyondk,NULL,&pk,nmemb,size_ratio,
-                options);
-            method=pivot_method(NULL,nmemb,0UL,0UL,new_distribution,size_ratio,
-                options);
+                method,options);
             n=samples(nmemb,method,new_distribution,options);
             if ((QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES==method)&&(1UL==n))
                 method=QUICKSELECT_PIVOT_REMEDIAN_SAMPLES; /* pivot offset */
@@ -317,7 +314,7 @@ void make_adverse(long *base, size_t first, size_t beyond, size_t *pk,
                     }
                     /* make sequence for next smaller size */
                     make_adverse(base,first,beyond-1UL,pk,firstk,beyondk,
-                        size_ratio,distribution,options);
+                        size_ratio,distribution,method,options);
                     /* large element is in last position */
                     /* swap extreme element into position */
 fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",__func__,__LINE__,first,beyond,nmemb,mid);
@@ -345,9 +342,9 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",_
                             sampling_table
 #endif
                             (first,first+prank,pk,lk,rk,NULL,&pk,prank,
-                            size_ratio,options);
+                            size_ratio,method,options);
                         make_adverse(base,first,first+prank,pk,lk,rk,
-                            size_ratio,new_distribution,options);
+                            size_ratio,new_distribution,method,options);
                     }
                     if (prank<beyond-1UL) {
                         if (NULL!=pk) d_klimits(first+prank+1UL,beyond,pk,
@@ -360,9 +357,9 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",_
                             sampling_table
 #endif
                             (first+prank+1UL,beyond,pk,lk,rk,NULL,&pk,
-                            nmemb-prank-1UL,size_ratio,options);
+                            nmemb-prank-1UL,size_ratio,method,options);
                         make_adverse(base,first+prank+1UL,beyond,pk,lk,
-                            rk,size_ratio,new_distribution,options);
+                            rk,size_ratio,new_distribution,method,options);
                     }
                     o = nmemb / n; /* elements offset between samples */
                     /* Put prank+1 extreme values in positions where they would
@@ -420,8 +417,7 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",_
                                for median finding, undo that.
                                This works up to nmemb=1917.
                             */
-                            o=samples(n,pivot_method(NULL,nmemb,0UL,0UL,2U,size_ratio,options),
-                                2U,options);
+                            o=samples(n,method,2U,options);
                             switch (o) {
                                 case 1UL : /* median pivot might be offset */
                                     p=mid;
@@ -484,7 +480,7 @@ fprintf(stderr,"/* %s line %d: first=%lu, beyond=%lu, nmemb=%lu, mid=%lu */\n",_
                         size_t karray[1];
                         karray[0]=mid;
                         make_adverse(base,mid-(n>>1),mid+(n>>1),karray,0UL,1UL,
-                            size_ratio,2U,options);
+                            size_ratio,2U,method,options);
 #endif
                         switch (method) {
                             case QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS :
@@ -754,6 +750,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
     unsigned int table_index, size_t pbeyond, unsigned int options, int c)
 {
     char *pc, *pd, *pe, *pf, *pivot;
+    int method;
     size_t nmemb, r, ratio=0, s, samples, t;
     auto size_t lk=firstk, p, q, rk=beyondk;
     auto unsigned int sort;
@@ -779,6 +776,16 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
                 return;
             }
         } else return;
+        method = forced_pivot_selection_method ;
+	if (0==method) {
+            if (0U==(options&(QUICKSELECT_RESTRICT_RANK))) {
+                if (0U!=(options&(QUICKSELECT_STABLE)))
+                    method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
+                else
+                    method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+            } else
+                method = QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
+        }
         distribution=
 #if LIBMEDIAN_TEST_CODE
             d_sampling_table
@@ -786,7 +793,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
             sampling_table
 #endif
             (first,beyond,pk,firstk,beyondk,NULL,
-            &pk,nmemb,size_ratio,options);
+            &pk,nmemb,size_ratio,method,options);
 
         /* normal pivot selection (for comparison and swap counts) */
         pivot=
@@ -797,7 +804,7 @@ static void wqsort_internal(void *base, size_t first, size_t beyond, size_t size
 #endif
             (base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,distribution,NULL,0UL,0UL,quickselect_cache_size,pbeyond,options,
-            &pc,&pd,&pe,&pf,NULL,&samples);
+            &pc,&pd,&pe,&pf,&method,&samples);
 #if LIBMEDIAN_TEST_CODE
         t=pivot_minrank;
 #endif

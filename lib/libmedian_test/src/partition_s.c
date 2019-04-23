@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect_s.c copyright 2016-2019 Bruce Lilly.   \ quickselect_s.c $
+* $Id: ~|^` @(#)    partition_s.c copyright 2019 Bruce Lilly.   \ partition_s.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,20 +28,53 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_s.c version 1.18 dated 2019-04-17T23:05:17Z. \ $ */
+/* $Id: ~|^` @(#)   This is partition_s.c version 1.1 dated 2019-04-17T23:39:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
-/* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.quickselect_s.c */
+/* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.partition_s.c */
 
 /********************** Long description and rationale: ***********************
 * starting point for select/median implementation
 ******************************************************************************/
 
-/* Nothing to configure below this line. */
+/* ID_STRING_PREFIX file name and COPYRIGHT_DATE are constant, other components are version control fields */
+#undef ID_STRING_PREFIX
+#undef SOURCE_MODULE
+#undef MODULE_VERSION
+#undef MODULE_DATE
+#undef COPYRIGHT_HOLDER
+#undef COPYRIGHT_DATE
+#define ID_STRING_PREFIX "$Id: partition_s.c ~|^` @(#)"
+#define SOURCE_MODULE "partition_s.c"
+#define MODULE_VERSION "1.1"
+#define MODULE_DATE "2019-04-17T23:39:40Z"
+#define COPYRIGHT_HOLDER "Bruce Lilly"
+#define COPYRIGHT_DATE "2019"
 
-#define LIBMEDIAN_TEST_CODE 1
+/* assertions for validation testing */
+#ifndef ASSERT_CODE
+# define ASSERT_CODE                     0 /* Adds size & cost to aid debugging.
+                                              0 for tested production code. */
+                                           /* If ASSERT_CODE > 1, assertions
+                                              might also affect the number of
+                                              comparisons used.
+                                           */
+#endif
+
+#define QUICKSELECT_BUILD_FOR_SPEED 0
 #define __STDC_WANT_LIB_EXT1__ 1
+#define LIBMEDIAN_TEST_CODE 1
 
-#include "median_test_config.h"
+#undef QUICKSELECT_STATIC
+#define QUICKSELECT_STATIC /* */
 
-#include "quickselect_src.h"          /* contains the actual source code */
+#undef QUICKSELECT_INLINE
+#define QUICKSELECT_INLINE /* */
+
+/* local header files needed */
+#include "median_test_config.h" /* configuration */ /* includes all other local and system header files required */
+
+#include "initialize_src.h"
+
+/* one source */
+#include "partition_src.h"

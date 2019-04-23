@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.24 dated 2019-03-15T14:07:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_src.h version 1.27 dated 2019-04-21T14:32:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_src.h */
@@ -133,8 +133,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_src.h"
-#define MODULE_VERSION "1.24"
-#define MODULE_DATE "2019-03-15T14:07:14Z"
+#define MODULE_VERSION "1.27"
+#define MODULE_DATE "2019-04-21T14:32:10Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -173,7 +173,7 @@
                                    constraint_handler_t [N1570 K3.6]) */
 
 /* shared data */
-#if ! __STDC_WANT_LIB_EXT1__
+#if ! __STDC_WANT_LIB_EXT1__ && ! LIBMEDIAN_TEST_CODE
 /* swap function for pointers */
 void (*pointerswap)(char *,char *,size_t)=NULL;
 /* Data cache size (bytes), initialized on first run */
@@ -183,7 +183,7 @@ extern size_t quickselect_cache_size;
 #endif
 
 /* size_tcmp for sorting order statistic ranks */
-#if ! __STDC_WANT_LIB_EXT1__
+#if ! __STDC_WANT_LIB_EXT1__ && ! LIBMEDIAN_TEST_CODE
 COMPARE_DEFINITION(SIZE_TCMP,size_t)
 #endif
 
@@ -350,7 +350,13 @@ int
 #if __STDC_WANT_LIB_EXT1__
     || (RSIZE_MAX<nmemb) || (RSIZE_MAX<size) || (RSIZE_MAX<nk)
 #endif /* __STDC_WANT_LIB_EXT1__ */
-    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK)))
+    || (0U!=(options&~(QUICKSELECT_USER_OPTIONS_MASK
+#if LIBMEDIAN_TEST_CODE
+    /* allow QUICKSELECT_NO_REPIVOT in debug-enabled code */
+       |QUICKSELECT_STRICT_SELECTION
+       |QUICKSELECT_NO_REPIVOT
+#endif
+      )))
     ) {
 #if __STDC_WANT_LIB_EXT1__
         constraint_handler_t foo;
@@ -450,7 +456,12 @@ int
     size_ratio=size/alignsize;
 
     /* swap function for direct sorting/selection */
-    if (NULL==swapf) swapf=swapn(alignsize);
+    if (NULL==swapf) {
+#if LIBMEDIAN_TEST_CODE
+        if (0U!=instrumented) swapf=iswapn(alignsize); else
+#endif
+            swapf=swapn(alignsize);
+    }
 
     /* Don't use indirection if size_ratio==1UL (it would be inefficient). */
     if (1UL==size_ratio) options&=~(QUICKSELECT_INDIRECT);
@@ -465,7 +476,12 @@ int
             options&=~(QUICKSELECT_INDIRECT);
         } else {
             alignsize=alignment_size((char *)pointers,sizeof(char *));
-            if (NULL==pointerswap) pointerswap=swapn(alignsize);
+            if (NULL==pointerswap) {
+#if LIBMEDIAN_TEST_CODE
+                if (0U!=instrumented) pointerswap=iswapn(alignsize); else
+#endif
+                pointerswap=swapn(alignsize);
+            }
             A(pointers[0]==base);
         }
     }
@@ -501,6 +517,9 @@ int
             options&=~(QUICKSELECT_INDIRECT);
             alignsize=alignment_size(base,size);
             size_ratio=size/alignsize;
+#if LIBMEDIAN_TEST_CODE
+            if (0U!=instrumented) swapf=iswapn(alignsize); else
+#endif
             swapf=swapn(alignsize);
             ret= 
 #if LIBMEDIAN_TEST_CODE

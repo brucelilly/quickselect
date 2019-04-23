@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.23 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is mbmqsort.c version 1.24 dated 2019-04-18T02:02:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.mbmqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: mbmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "mbmqsort.c"
-#define MODULE_VERSION "1.23"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2019-04-18T02:02:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -119,6 +119,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
     size_t size_ratio, unsigned int table_index, size_t pbeyond,
     unsigned int options)
 {
+    int method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
     size_t nmemb=beyond-first;
     size_t cache_limit, lneq=0UL, lnne=0UL;
     if (size>sizeof(char*)) /* direct sorting in data cache */
@@ -275,7 +276,7 @@ static void mbmqsort_internal(char *base, size_t first, size_t beyond,
 #endif
             (base,first,beyond,size,compar,swapf,alignsize,
             size_ratio,0U,NULL,0UL,0UL,quickselect_cache_size,pbeyond,
-            options,&pc,&pd,&pe,&pf,NULL,NULL);
+            options,&pc,&pd,&pe,&pf,&method,NULL);
         /* no provision for efficient stable sorting */
         d_partition(base,first,beyond,pc,pd,pm,pe,pf,size,compar,swapf,
             alignsize,size_ratio,quickselect_cache_size,options,&q,&p);

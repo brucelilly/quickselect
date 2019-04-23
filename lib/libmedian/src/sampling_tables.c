@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sampling_tables.c copyright 2017-2018 Bruce Lilly.   \ sampling_tables.c $
+* $Id: ~|^` @(#)    sampling_tables.c copyright 2017-2019 Bruce Lilly.   \ sampling_tables.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_tables.c version 1.6 dated 2018-08-13T20:58:02Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_tables.c version 1.7 dated 2019-04-11T02:46:47Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.sampling_tables.c */
@@ -60,13 +60,14 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "sampling_tables.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2018-08-13T20:58:02Z"
+#define MODULE_VERSION "1.7"
+#define MODULE_DATE "2019-04-11T02:46:47Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2018"
+#define COPYRIGHT_DATE "2017-2019"
 
 /* local header files needed */
 #include "tables.h"             /* sampling_table_struct SAMPLING_TABLE_SIZE */
+#include "quickselect_config.h"
 
 /* system header files */
 #if defined(__STDC__) && ( __STDC__ == 1 ) && defined(__STDC_VERSION__) && ( __STDC_VERSION__ >= 199901L )
@@ -317,7 +318,11 @@ struct sampling_table_struct mos_sorting_sampling_table[] = {
 };
 
 struct sampling_table_struct mos_middle_sampling_table[] = {
+#if QUICKSELECT_NO_MEDIAN_OF_MEDIANS
+   {                     5UL,           1UL }, /* mos middle */
+#else
    {                    10UL,           1UL }, /* mos middle */
+#endif
    {                    24UL,           3UL }, /* mos middle */
    {                    48UL,           5UL }, /* mos middle */
    {                    74UL,           7UL }, /* mos middle */
@@ -349,7 +354,11 @@ struct sampling_table_struct mos_middle_sampling_table[] = {
    median is selected.
 */
 struct sampling_table_struct mos_ends_sampling_table[] = {
+#if QUICKSELECT_NO_MEDIAN_OF_MEDIANS
+   {                     5UL,           1UL }, /* mos middle */
+#else
    {                     8UL,           1UL }, /* mos ends */
+#endif
    {                     9UL,           3UL }, /* mos ends */
    {                    23UL,           5UL }, /* mos ends */
    {                    44UL,           7UL }, /* mos ends */

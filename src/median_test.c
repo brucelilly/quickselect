@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.40 dated 2019-03-18T11:09:37Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.45 dated 2019-04-17T23:14:00Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.40"
-#define MODULE_DATE "2019-03-18T11:09:37Z"
+#define MODULE_VERSION "1.45"
+#define MODULE_DATE "2019-04-17T23:14:00Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -101,7 +101,7 @@ extern double mos_ends_power;
 -O n\tset sampling nmemb breakpoints according to Beta value n\n\
 -p n\tpivot_method (only effective for first partition)\n\
 -P\tpointer to structure data type tests\n\
--q [n[,f[,c]]]\ttest quickselect sort with optional small-array sort cutoff, repivot_factor, and repivot_cutoff and lopsided_partition_limit\n\
+-q [n[,f[,c]]]\ttest quickselect sort with optional repivot_factor, repivot_cutoff, and lopsided_partition_limit\n\
 -Q timeout\ttime out tests after timeout seconds\n\
 -r [i[,n[,f]]]\ttest introsort sort with optional final insertion sort flag, small-array sort cutoff and recursion depth factor\n\
 -R\traw timing output (median time (and comparison counts if requested) only)\n\
@@ -119,7 +119,7 @@ extern double mos_ends_power;
 -X\ttest smoothsort\n\
 -Y nm,ne\tset power function exponent for median of samples middle and ends sampling tables\n\
 -y [n]\tYaroslavskiy's dual-pivot sort with optional insertion sort cutoff\n\
--z\tset repeatable random nZumber generator state\n\
+-z\tset repeatable random number generator state\n\
 -Z\tdisable repivoting\n\
 -3 c1[,c2[,...]]\tset remedian sampling table breakpoint sizes\n\
 -4 c\tset small-array sort cutoff to c (disable use of small-array dedicated sort above size c)\n\
@@ -127,7 +127,7 @@ extern double mos_ends_power;
 -9\ttest plan9 qsort\n\
 -!\tcollect and report statistics for small array insertion sort\n\
 -@\tignore sampling breakpoint table\n\
--# n\tsort if nk/nmemb>k\n\
+-# k\tsort if nk/nmemb>k\n\
 -%\tdo not reset factor counter when selecting order statistics\n\
 -+\ttest minmaxsort\n\
 -,\ttest in-place merge sort\n\
@@ -151,17 +151,6 @@ size\tnumber of items in each test (maximum size if start is given) (default 100
 count\tnumber of times to run each test (default 10)"
 
 /* static functions */
-static const char *sampling_table_name(struct sampling_table_struct *psts)
-{
-    if (psts==sorting_sampling_table) return "ros_sorting";
-    if (psts==middle_sampling_table) return "ros_middle";
-    if (psts==ends_sampling_table) return "ros_ends";
-    if (psts==mos_sorting_sampling_table) return "mos_sorting";
-    if (psts==mos_middle_sampling_table) return "mos_middle";
-    if (psts==mos_ends_sampling_table) return "mos_ends";
-    return "unknown";
-}
-
 static const char *partition_name(int method)
 {
     static char buf[256];
@@ -217,7 +206,10 @@ static void decode_options(FILE *fp, unsigned int options, const char *prefix,
         prefix,options,options,buf,suffix);
     /* defaults */
     partition_method = QUICKSELECT_PARTITION_FAST;
-    pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
+    if (0!=forced_pivot_selection_method)
+        pivot_method = forced_pivot_selection_method;
+    else
+        pivot_method = QUICKSELECT_PIVOT_REMEDIAN_SAMPLES;
     for (u=0x01U; 0U!=options; options&=~u,u<<=1) {
         if (0U!=(u&(MOD_OPTIONS))) continue;
         if (0U!=(options&u)) {
@@ -445,8 +437,10 @@ static int stability_test(long *refarray, struct data_struct *data_array,
                     for (w=0UL; w<7UL; w++) {
                         switch (v) {
                             case FUNCTION_QSELECT_SORT :  /*FALLTHROUGH*/
-                                /* quickselect_internal */
-                                QSEL(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
+                                if (0U==instrumented)
+                                    QSEL(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
+				else
+                                    D_QSEL(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);
                             break;
                             case FUNCTION_BMQSORT :
                                 BMQSORT(data_array,0UL,u,sz,compar[w],NULL,0UL,0U,0);

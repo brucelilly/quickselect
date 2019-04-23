@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.23 dated 2019-03-22T02:22:30Z. \ $ */
+/* $Id: ~|^` @(#)   This is dedicated_sort_src.h version 1.24 dated 2019-04-21T14:30:38Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.dedicated_sort_src.h */
@@ -96,8 +96,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: dedicated_sort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "dedicated_sort_src.h"
-#define MODULE_VERSION "1.23"
-#define MODULE_DATE "2019-03-22T02:22:30Z"
+#define MODULE_VERSION "1.24"
+#define MODULE_DATE "2019-04-21T14:30:38Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -209,7 +209,11 @@ int limited_indirect_mergesort(char *base, size_t first, size_t beyond,
         }
 #endif
         if (1UL<nmemb) {
+#if LIBMEDIAN_TEST_CODE
+            if (0U==instrumented) pointerswap=swapn(sizeof(char *)); else pointerswap=iswapn(sizeof(char *));
+#else
             if (NULL==pointerswap) pointerswap=swapn(sizeof(char *));
+#endif
             A(NULL!=pointerswap);
             options&=~(QUICKSELECT_RESTRICT_RANK);
             if ((0UL!=pbeyond) /* initally zero, non-zero in callees */

@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.21 dated 2019-03-30T00:52:05Z. \ $ */
+/* $Id: ~|^` @(#)   This is sampling_table_src.h version 1.23 dated 2019-04-22T21:30:46Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.sampling_table_src.h */
@@ -97,8 +97,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sampling_table_src.h ~|^` @(#)"
 #define SOURCE_MODULE "sampling_table_src.h"
-#define MODULE_VERSION "1.21"
-#define MODULE_DATE "2019-03-30T00:52:05Z"
+#define MODULE_VERSION "1.23"
+#define MODULE_DATE "2019-04-22T21:30:46Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -285,7 +285,7 @@ QUICKSELECT_SAMPLES
     register size_t n, r=0UL;
     struct sampling_table_struct *pst;
 
-#if LIBMEDIAN_TEST_CODE
+#if 0 * LIBMEDIAN_TEST_CODE
     if (DEBUGGING(SAMPLING_DEBUG))
         (V)fprintf(stderr,
             "/* %s line %d: nmemb=%lu, pivot selection method=%s(%d), "
@@ -293,9 +293,11 @@ QUICKSELECT_SAMPLES
             pivot_name(method),method,distribution,options);
 #endif
     switch (method) {
+#if QUICKSELECT_INCLUDE_FULL_REMEDIAN
         case QUICKSELECT_PIVOT_REMEDIAN_FULL :
             n= floor_log3(n);
         break;
+#endif
         case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
             /* sampling table and initial estimate (binary search) of index */
             switch (distribution) {
@@ -382,31 +384,100 @@ QUICKSELECT_SAMPLES
 #endif /* ASSERT_CODE + DEBUG_CODE */
         case QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES :
             if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
+                A(nmemb>=3UL);
+#if ( ! ASSERT_CODE ) && DEBUG_CODE
+		if (nmemb<3UL) { printf("/* %s: line %d: nmemb=%lu < 3 */\n",__func__,__LINE__,nmemb); abort(); }
+#endif /* ! ASSERT_CODE && DEBUG_CODE */
+                /* different fractions for sorting vs. selection (pk unavailable; use distribution) */
+                /* sorting is less sensitive than selection to lopsided partitions */
+                switch (distribution) {
+                    case 1U : /*FALLTHROUGH*/ /* split for this distribution is not critical */
+                    case 4U : /*FALLTHROUGH*/ /* split for this distribution is not critical */
+                    case 5U : /*FALLTHROUGH*/ /* split for this distribution is not critical */
+                    case 7U : /*FALLTHROUGH*/ /* case 7 is like sorting */
+                    case 0U : /* sorting */
 #if 0
-                n = ((nmemb / 3UL) << 1) + 1UL; /* ~ 2/3 nmemb; always odd; 1/3<=rank<=2/3 */
-                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
-                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
+                        n = ((nmemb >> 2) << 1) + 1UL; /* ~ 1/2 nmemb; always odd; 1/4<=median rank<=3/4 */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
 #else
 # if 0
-                n = ((nmemb / 5UL) << 2) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=rank<=.6 */
-                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
-                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
+                        n = ((nmemb / 3UL) << 1) + 1UL; /* ~ 2/3 nmemb; always odd; 1/3<=median rank<=2/3 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
 # else
-#  if 0
-                n = ((nmemb / 9UL) << 3) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=rank<=.556 */
-                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
-                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
+#  if 1
+                        if (20UL > nmemb)
+                            n = (((nmemb << 1) / 5UL) << 1) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=median rank<=.6 */
+                        else
+                            n = ((nmemb / 5UL) << 2) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=median rank<=.6 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
 #  else
-#   if 1
-                n = ((nmemb / 17UL) << 4) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=rank<=.53 */
-                if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
-                if (n > nmemb) n -= 2UL; /* odd, less than nmemb */
+#   if 0
+                        if (72UL > nmemb)
+                            n = (((nmemb << 2) / 9UL) << 1) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=median rank<=.556 */
+                        else
+                            n = ((nmemb / 9UL) << 3) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=median rank<=.556 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
 #   else
-                n = nmemb; /* select pivot as median of subarray */
+#    if 0
+                        if (272UL > nmemb)
+                            n = (((nmemb << 3) / 17UL) << 1) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=median rank<=.53 */
+                        else
+                            n = ((nmemb / 17UL) << 4) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=median rank<=.53 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+#    else
+                        n = nmemb; /* select pivot as median of subarray */
+#    endif
 #   endif
 #  endif
 # endif
 #endif
+                    break;
+                    default : /* selection, not sorting */
+#if 0
+                        n = ((nmemb >> 2) << 1) + 1UL; /* ~ 1/2 nmemb; always odd; 1/4<=median rank<=3/4 */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+#else
+# if 0
+                        n = ((nmemb / 3UL) << 1) + 1UL; /* ~ 2/3 nmemb; always odd; 1/3<=median rank<=2/3 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+# else
+#  if 0
+                        if (20UL > nmemb)
+                            n = ((((nmemb << 1) / 5UL) << 1) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=median rank<=.6 */
+                        else
+                            n = ((nmemb / 5UL) << 2) + 1UL; /* ~ 4/5 nmemb; always odd; .4<=median rank<=.6 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+#  else
+#   if 0
+                        if (72UL > nmemb)
+                            n = (((nmemb << 2) / 9UL) << 1) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=median rank<=.556 */
+                        else
+                            n = ((nmemb / 9UL) << 3) + 1UL; /* ~ 8/9 nmemb; always odd; .445<=median rank<=.556 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+#   else
+#    if 1
+                        if (272UL > nmemb)
+                            n = (((nmemb << 3) / 17UL) << 1) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=median rank<=.53 */
+                        else
+                            n = ((nmemb / 17UL) << 4) + 1UL; /* ~ 16/17 nmemb; always odd; .47<=median rank<=.53 */
+                        if (n <= 1UL) n = ((nmemb >> 1) << 1) - 1UL; /* odd, less than nmemb */
+                        if (n >= nmemb) n -= 2UL; /* odd, less than nmemb */
+#    else
+                        n = nmemb; /* select pivot as median of subarray */
+#    endif
+#   endif
+#  endif
+# endif
+#endif
+                    break;
+                }
             } else {
                 switch (distribution) {
                     case 3U : /*FALLTHROUGH*/ case 6U : /*FALLTHROUGH*/ /* cases 3 and 6 use middle table */
@@ -423,6 +494,7 @@ QUICKSELECT_SAMPLES
                         pst=mos_sorting_sampling_table;
                     break;
                 }
+                /* use table if possible; otherwise compute # samples */
                 if (pst[SAMPLING_TABLE_SIZE-1].max_nmemb>=nmemb) {
                     /* sample sizes differ for small nmemb */
                     for (r=0UL; r<SAMPLING_TABLE_SIZE; r++) {
@@ -549,83 +621,6 @@ QUICKSELECT_SAMPLES
     return n;
 }
 
-/* Determine a suitable method for pivot selection. */
-QUICKSELECT_PIVOT_METHOD
-{
-#if LIBMEDIAN_TEST_CODE
-    if ((char)0==sampling_table_src_file_initialized) {
-        (V)path_basename(__FILE__,sampling_table_src_file,sizeof(sampling_table_src_file));
-        sampling_table_src_file_initialized++;
-    }
-    if (0!=forced_pivot_selection_method) return forced_pivot_selection_method;
-    if (DEBUGGING(PIVOT_SELECTION_DEBUG))
-        (V)fprintf(stderr,
-            "/* %s: %s line %d: pk=%p, distribution=%u, size_ratio=%lu, options"
-            "=0x%x */\n",__func__,sampling_table_src_file,__LINE__,
-            pk,raw_distribution,size_ratio,options);
-#endif /* DEBUG DEBUGGING */
-#if QUICKSELECT_STABLE
-    /* Stable sorting or selection requires preserving partial order during
-       pivot selection. In-place remedian is used.
-    */
-    if (0U!=(options&(QUICKSELECT_STABLE))) {
-        if (0U!=(options&(QUICKSELECT_RESTRICT_RANK)))
-            return QUICKSELECT_PIVOT_REMEDIAN_FULL ;
-        return QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
-    } else
-#endif /* QUICKSELECT_STABLE */
-    /* Pivot selection requiring restricted rank (break-glass) uses
-       median-of-medians or full remedian (for stable sorting/selection).
-    */
-    if (0U!=(options&(QUICKSELECT_RESTRICT_RANK))) {
-        /* For cost of median selection comparisons < ~ 2.8 N (for median of N),
-           median of samples is less costly (comparisons and swaps) than median
-           of medians, and provides the same rank guarantee for 2*nmemb/3
-           samples.  With >nmemb/2 samples, samples are contiguous and are not
-           moved prior to selection of median sample.
-        */
-#if QUICKSELECT_NO_MEDIAN_OF_MEDIANS
-        return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
-#else
-        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
-            return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
-        return QUICKSELECT_PIVOT_MEDIAN_OF_MEDIANS ;
-#endif
-    } else {
-        /* Might use "median" of samples with offset rank or true median of
-           samples. In either case, sample data movement is relatively costly;
-           it can introduce disorder into already-sorted input (which will
-           have to be undone during partitioning and recursion) and data
-           movement for large elements is expensive.  There are a few
-           mitigating cases: if comparisons are very costly, median of samples
-           yields fewer overall comparisons than remedian of samples (but more
-           swaps).  For trivial (basic types) data, the additional data
-           movement costs might be acceptable.  Finally, selection (vs. sorting)
-           for order statistics which are grouped on one side of the sub-array,
-           selection of the pivot from the samples can use a rank other than the
-           median of the samples, to (ideally) eliminate more than half of the
-           sub-array, reducing recursion (actually iteration) depth.
-        */
-        if (0U!=(options&(QUICKSELECT_OPTIMIZE_COMPARISONS)))
-            return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
-        if ((NULL!=pk)&&(beyondk>firstk)) { /* maybe offset rank for selection */
-        /* Suitable distributions for median of samples (based primarily on
-           number of swaps) depends on the partitioning method.
-        */
-            /* independent of size_ratio */
-            if ((1U==raw_distribution)||(4U==raw_distribution))
-                return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
-            /* for basic types (size_ratio==1) because of swaps */
-            if (
-            (5U!=raw_distribution)
-            &&(1UL==size_ratio)
-            )
-                return QUICKSELECT_PIVOT_MEDIAN_OF_SAMPLES ;
-        }
-    }
-    return QUICKSELECT_PIVOT_REMEDIAN_SAMPLES ;
-}
-
 /* kgroups returns the number of groups of contiguous order statistic ranks in
    [pk[firstk],pk[beyondk]).
 */
@@ -655,7 +650,7 @@ unsigned int
 #endif
     (size_t first, size_t beyond, const size_t *pk, size_t firstk,
     size_t beyondk, char **ppeq, const size_t **ppk, size_t nmemb,
-    size_t size_ratio, unsigned int options)
+    size_t size_ratio, int method, unsigned int options)
 */
 QUICKSELECT_SAMPLING_TABLE
 {
@@ -818,15 +813,7 @@ QUICKSELECT_SAMPLING_TABLE
             || (nk<=3UL)) /* only a few order statistics */
                 sort=0U;
             else {
-                /* preliminary pivot selection method based on selection */
-                int m=
-#if LIBMEDIAN_TEST_CODE
-                      d_pivot_method
-#else
-                      pivot_method
-#endif
-                                  (pk,nmemb,firstk,beyondk,raw,size_ratio,options);
-                switch (m) {
+                switch (method) {
                     case QUICKSELECT_PIVOT_REMEDIAN_SAMPLES :
                         if (0U==(options&(QUICKSELECT_OPTIMIZE_COMPARISONS))) {
                             /* run-time */

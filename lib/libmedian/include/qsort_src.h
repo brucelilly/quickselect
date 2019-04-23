@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is qsort_src.h version 1.18 dated 2019-03-15T14:07:14Z. \ $ */
+/* $Id: ~|^` @(#)   This is qsort_src.h version 1.19 dated 2019-04-17T23:46:05Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.qsort_src.h */
@@ -100,8 +100,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: qsort_src.h ~|^` @(#)"
 #define SOURCE_MODULE "qsort_src.h"
-#define MODULE_VERSION "1.18"
-#define MODULE_DATE "2019-03-15T14:07:14Z"
+#define MODULE_VERSION "1.19"
+#define MODULE_DATE "2019-04-17T23:46:05Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -259,13 +259,18 @@ static constraint_handler_t get_constraint_handler_s(void)
 /* public interface */
 /* calls: alignment_size, swapn, quickselect_loop */
 #if __STDC_WANT_LIB_EXT1__
-errno_t
+errno_t QSORT_S_FUNCTION_NAME
 #else
 void
+# if LIBMEDIAN_TEST_CODE
+    d_qsort
+# else
+    QSORT_FUNCTION_NAME
+# endif
 #endif
-    FUNCTION_NAME (void *base, NMEMB_SIZE_TYPE nmemb,
-    /*const*/ NMEMB_SIZE_TYPE size,
-    COMPAR_DECL)
+        (void *base, NMEMB_SIZE_TYPE nmemb,
+        /*const*/ NMEMB_SIZE_TYPE size,
+        COMPAR_DECL)
 {
     size_t alignsize;
     void (*swapf)(char *, char *, size_t);
@@ -330,44 +335,32 @@ void
 #endif /* __STDC_WANT_LIB_EXT1__ */
     }
 
-    if (1UL<nmemb) { /* nothing to do for fewer than 2 elements */
-        /* Initialization of strings is performed here (rather than in
-           quickselect_loop) so that quickselect_loop can be made inline.
-        */
-        size_t size_ratio;
-
-        if ((char)0==file_initialized) initialize_file(__FILE__);
-
-        /* Determine cache size once on first call. */
-        if (0UL==quickselect_cache_size) quickselect_cache_size = cache_size();
-
-        /* base array alignment size and size_ratio */
-        alignsize=alignment_size(base,size);
-        size_ratio=size/alignsize;
-
-        /* no user options: no stable sort */
-
-        /* Assign a swap function based on array element size and alignment. */
-        swapf=swapn(alignsize);
-
-        /* Special-case sorting is handled in quickselect_loop. */
-        PREFIX 
 #if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
-            d_quickselect_loop_s
-# else
-            d_quickselect_loop
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
-            quickselect_loop_s
-# else
-            quickselect_loop
+# if defined(DEBUGGING)
+    if (DEBUGGING(SORT_SELECT_DEBUG)) {
+        (V) fprintf(stderr,
+            "/* %s: %s line %d: nmemb=%lu, size=%lu, compar=%s */\n",
+            __func__,"qsort_src.h",__LINE__,nmemb,size,comparator_name(compar));
+    }
 # endif
 #endif
-            (base,0UL,nmemb,size,COMPAR_ARGS,NULL,0UL,0UL,
-            swapf,alignsize,size_ratio,quickselect_cache_size,0UL,
-            0U,NULL,NULL);
+
+    if (1UL<nmemb) { /* nothing to do for fewer than 2 elements */
+        PREFIX 
+# if LIBMEDIAN_TEST_CODE
+#  if __STDC_WANT_LIB_EXT1__
+            d_quickselect_s
+#  else
+            d_quickselect
+#  endif
+# else
+#  if __STDC_WANT_LIB_EXT1__
+            quickselect_s
+#  else
+            quickselect
+#  endif
+# endif
+	        (base,nmemb,size,COMPAR_ARGS,NULL,0UL,0U);
     }
     SUFFIX3
 }
