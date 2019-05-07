@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is bmqsort.c version 1.3 dated 2018-05-06T21:14:15Z. \ $ */
+/* $Id: ~|^` @(#)   This is bmqsort.c version 1.4 dated 2019-04-30T23:18:21Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.bmqsort.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: bmqsort.c ~|^` @(#)"
 #define SOURCE_MODULE "bmqsort.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2018-05-06T21:14:15Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2019-04-30T23:18:21Z"
 #define COPYRIGHT_HOLDER "John Wiley"
 #define COPYRIGHT_DATE "1993"
 
@@ -105,7 +105,8 @@ static char *med3(char *a, char *b, char *c, int (*compar)(const void *, const v
                 : (compar(b, c) > 0 ? b : compar(a, c) > 0 ? c : a);
 }
 
-void bmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void *))
+/* BL main function */
+void bmqsort_internal(char *a, size_t n, size_t es, int (*compar)(const void*,const void *))
 {
         char *pa, *pb, *pc, *pd, *pl, *pm, *pn, *pv;
         int r, swaptype;
@@ -159,8 +160,13 @@ void bmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void 
         /* pd-pc is the number of chars in the > block */
         s = bmmin(pd-pc, pn-pd-es); vecswap(pb, pn-s, s);
 
-        if ((s = pb-pa) > es) bmqsort(a,    s/es, es, compar);
-        if ((s = pd-pc) > es) bmqsort(pn-s, s/es, es, compar);
-        /* BL: added initialization for ID strings */
+        if ((s = pb-pa) > es) bmqsort_internal(a,    s/es, es, compar);
+        if ((s = pd-pc) > es) bmqsort_internal(pn-s, s/es, es, compar);
+}
+
+/* BL wrapper sets ID strings */
+void bmqsort(char *a, size_t n, size_t es, int (*compar)(const void*,const void *))
+{
         if ((char)0==file_initialized) initialize_file(__FILE__);
+        bmqsort_internal(a, n, es, compar);
 }

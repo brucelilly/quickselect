@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.12 dated 2019-04-22T21:37:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is repivot_tables.c version 1.13 dated 2019-05-07T18:54:36Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/src/s.repivot_tables.c */
@@ -58,8 +58,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: repivot_tables.c ~|^` @(#)"
 #define SOURCE_MODULE "repivot_tables.c"
-#define MODULE_VERSION "1.12"
-#define MODULE_DATE "2019-04-22T21:37:40Z"
+#define MODULE_VERSION "1.13"
+#define MODULE_DATE "2019-05-07T18:54:36Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -92,6 +92,10 @@
       selection.  That ratio sets an upper bound on the repivoting factor
       values; always repivot if doing so is less costly that repeated divide-
       and-conquer, at least for repeated occurrences (factor2).
+   The factor1 member for sorting is set to be slightly higher than the largest
+      ratio observed over 1000 runs of sorting randomly ordered input sequences
+      of various sizes (and their corresponding number of samples).  Therefore,
+      the performance penalty for random input is expected to be less than 0.1%.
    The factor2 member is set by finding the worst-case adversarial performance
       for sorting and for selection, and reducing the factor2 value at the
       appropriate max_nmemb entry to eliminate that worst-case performance,
@@ -105,35 +109,46 @@
       further improvement can be obtained using factor2 and factor1, or the
       elimination of a worst-case performance point entails too large of a
       performance penalty for random input sequences.
+   Setting factors for selection is more complicated due to the greater
+      sensitivity of selection performance to lopsided partitions, and the
+      offset of the pivot element depending on the distribution of desired
+      order statistics.
 */
 /* repivot factors are relatively small unsigned integers */
 
 /* for remedian of samples pivot selection (limited rank guarantee) */
 struct repivot_table_struct ros_sorting_repivot_table[] = {
-    {   1UL,      10U,  4U },
-    {   9UL,      10U,  9U },
-    {  27UL,      12U,  8U },
-    {  81UL,      12U,  5U },
-    { (SIZE_MAX),  3U,  2U } /* sentinel */
+    {   1UL,      16U, 10U },
+    {   3UL,      43U, 13U },
+    {   9UL,      30U, 21U },
+    {  27UL,       9U,  8U },
+    {  81UL,       5U,  4U },
+    { (SIZE_MAX),  2U,  2U } /* sentinel */
 };
 struct repivot_table_struct ros_selection_repivot_table[] = {
     {   1UL,       5U,  4U },
     {   3UL,       7U,  3U },
     {   9UL,       6U,  3U },
     {  27UL,       3U,  3U },
-    { (SIZE_MAX),  3U,  2U } /* sentinel */
+    { (SIZE_MAX),  2U,  2U } /* sentinel */
 };
 
 /* for median of samples pivot selection */
 struct repivot_table_struct mos_sorting_repivot_table[] = {
     {   1UL,      14U,  9U },
-    {   5UL,      12U,  9U },
-    {  15UL,      12U, 10U },
-    {  17UL,      12U,  9U },
-    {  21UL,      12U,  8U },
-    {  27UL,      12U,  5U },
-    {  31UL,      12U,  4U },
-    { 101UL,      10U,  3U },
+    {   5UL,      23U,  9U },
+    {   7UL,      21U,  9U },
+    {   9UL,      20U,  9U },
+    {  11UL,      19U, 10U },
+    {  13UL,      16U, 10U },
+    {  15UL,      11U, 10U },
+    {  19UL,       8U,  7U },
+    {  21UL,       7U,  6U },
+    {  23UL,       6U,  5U },
+    {  29UL,       5U,  4U },
+    {  31UL,       4U,  3U },
+    {  43UL,       4U,  3U },
+    {  79UL,       3U,  2U },
     { (SIZE_MAX),  2U,  2U } /* sentinel */
 };
 struct repivot_table_struct mos_selection_repivot_table[] = {

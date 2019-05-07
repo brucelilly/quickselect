@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.38 dated 2019-04-22T21:23:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect_loop_src.h version 1.39 dated 2019-05-04T14:15:40Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect_loop_src.h */
@@ -134,8 +134,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: quickselect_loop_src.h ~|^` @(#)"
 #define SOURCE_MODULE "quickselect_loop_src.h"
-#define MODULE_VERSION "1.38"
-#define MODULE_DATE "2019-04-22T21:23:59Z"
+#define MODULE_VERSION "1.39"
+#define MODULE_DATE "2019-05-04T14:15:40Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2017-2019"
 
@@ -350,7 +350,7 @@ int special_cases(char *base, size_t first, size_t beyond, size_t size,
             sampling_table
 #endif
        (first,beyond,pk,firstk,beyondk,ppeq,ppk,nmemb,size_ratio,*pmethod,options);
-    switch (*pmethod) {
+    switch (*pdistribution) {
         case 0U : /* shouldn't happen here... */
         /*FALLTHROUGH*/
         case 7U :
@@ -522,7 +522,7 @@ QUICKSELECT_QUICKSELECT_LOOP
 #endif
         ret=0;
     auto int c=0; /* repivot factor2 count for iterative operation */
-    auto unsigned int distribution=0U; /* sorting */
+    auto unsigned int distribution;
     auto size_t lneq=0UL, lnne=0UL;
 #if ( SIZE_MAX > 65535 ) /* > 16 bits */
 # if ( SIZE_MAX > 4294967295 ) /* > 32 bits */
@@ -695,9 +695,8 @@ QUICKSELECT_QUICKSELECT_LOOP
 #if LIBMEDIAN_TEST_CODE
                 }
 #endif
-            }
+            } else {
 #if LIBMEDIAN_TEST_CODE
-            else
                 if (DEBUGGING(SORT_SELECT_DEBUG)) {
                     (V)fprintf(stderr,
                         "/* %s: %s line %d: first=%lu, beyond=%lu, nmemb=%lu, "
@@ -714,6 +713,8 @@ QUICKSELECT_QUICKSELECT_LOOP
                         options);
                 }
 #endif
+                distribution=0U; /* sorting */
+            }
         }
 
         /* Divide-and-conquer. */
@@ -924,12 +925,7 @@ QUICKSELECT_QUICKSELECT_LOOP
         /* default pivot selection uses array SAMPLES; maybe changed below by
            should_repivot
         */
-        options &= ~(QUICKSELECT_RESTRICT_RANK
-#if LIBMEDIAN_TEST_CODE
-           |QUICKSELECT_STRICT_SELECTION
-           |QUICKSELECT_NO_REPIVOT
-#endif
-            );
+        options &= ~(QUICKSELECT_RESTRICT_RANK); /* clear RESTRICT_RANK bit */
 
         pl_region->options=ps_region->options=options;
         ps_region->c=0;
