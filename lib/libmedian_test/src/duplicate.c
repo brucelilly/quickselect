@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is duplicate.c version 1.9 dated 2018-04-19T20:38:04Z. \ $ */
+/* $Id: ~|^` @(#)   This is duplicate.c version 1.10 dated 2019-07-25T00:12:24Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.duplicate.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: duplicate.c ~|^` @(#)"
 #define SOURCE_MODULE "duplicate.c"
-#define MODULE_VERSION "1.9"
-#define MODULE_DATE "2018-04-19T20:38:04Z"
+#define MODULE_VERSION "1.10"
+#define MODULE_DATE "2019-07-25T00:12:24Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2018"
 
@@ -56,7 +56,7 @@
 
 #include "initialize_src.h"
 
-/* duplicate (as far as possible) long data in larray to another array */
+/* duplicate (as far as possible) long data in refarray to another array */
 /* n items; source starts at index 0UL, copies at index o, increment by ratio r */
 void duplicate_test_data(long *refarray, char *pv, int type, size_t r, size_t o, size_t n)
 {

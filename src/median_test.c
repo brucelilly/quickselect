@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test.c version 1.45 dated 2019-04-17T23:14:00Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test.c version 1.46 dated 2019-07-25T00:05:37Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/src/s.median_test.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: median_test.c ~|^` @(#)"
 #define SOURCE_MODULE "median_test.c"
-#define MODULE_VERSION "1.45"
-#define MODULE_DATE "2019-04-17T23:14:00Z"
+#define MODULE_VERSION "1.46"
+#define MODULE_DATE "2019-07-25T00:05:37Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -66,8 +66,8 @@ extern double mos_ends_power;
 
 /* shell specials: ;&()|<> \"'#$`~{}*?[ */
 /* getopt treats ? and : specially (: may be used as a magic silence flag) */
-/* available characters: 012678(){}\'"`  plus control characters and whitespace */
-#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>];"
+/* available characters: 012678()}\'"`  plus control characters and whitespace */
+#define OPTSTRING "a:Ab:BcC:d:D:eEfFgGhHiIjJ:k:KlLm:M:nNoO:p:Pq:Q:r:RsSt:T:uU:vVwW:xXY:y:zZ3:4:59!@#:%+,.|:/:~_<*&$[=>];{"
 #define USAGE_STRING     "[-a [opts]] [-A] [-b [0]] [-B] [-c [c1[,c2[,c3[...]]]]] [-C sequences] [-d debug_values] [-D [n]] [-e] [-E] [-f] [-F] [-g] [-G] [-h] [-H] [-i] [-I] [-j] [-J [gap[,gap[,...]]]] [-k col] [-l] [-L] [-m [t[,n[,f[,c[,l]]]]] [-M [opts]] [-n] [-N] [-o] [-O n] [-P] [-q [n[,f[,c[,l]]]]] [-Q timeout] [-r [i[,n[,f]]]] [-R] [-s] [-S] [-t [c1[,c2[,c3[...]]]]] [-T sequences] [-u] [-U n] [-v] [-V] [-w] [-W [f,c[,l]]] [-x] [-X] [-Y n,n] [-y [n]] [-z] [-Z] [-3 [c1[,c2[,c3[...]]]]] [-4 c] [-5] [-9] [-!] [-# n] [-+] [-,] [-.] [-| n] [-/ pivot_method] [-;] [-~] [-<] [-*] [-$] [-= functions] [->] ['-] cachesz'] -- [[start incr]] [size [count]]\n\
 -a [opts]\ttest illumos qsort, possibly with modifications\n\
 -A\talphabetic (string) data type tests\n\
@@ -141,7 +141,8 @@ extern double mos_ends_power;
 -*\ttest indirect_mergesort\n\
 -$\tshort integer data type tests\n\
 -[r\tsimulate type size increase by a ratio r\n\
--= names\ttest named functions (rexexp)\n\
+-= names\ttest named functions (regexp)\n\
+-{ names\ttest named data types (regexp)\n\
 ->\ttest sorting small arrays by merging runs\n\
 -] n\tset cache size to n, overriding determination by system\n\
 -;\tsimulate database lookup of data elements\n\
@@ -572,7 +573,7 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
     unsigned int csequences=0U, errs=0U, func, functions=0U, last_adv,
         options=0U, p, tsequences=0U, sequence, tests, types=0U, u, v;
     long *larray=NULL, *refarray=NULL;
-    VOL unsigned long count, count_limit=ULONG_MAX , n, startn=0UL, ul, z;
+    VOL unsigned long count, count_limit=ULONG_MAX , n, startn=0UL, ul, ul2, z;
     size_t ratio=1UL, sz, q, w, x, y;
     size_t marray[12], dn;
     double d, timeout = TEST_TIMEOUT;
@@ -757,6 +758,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
+                break;
+                case 'A' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_STRING );
                 break;
                 case 'b' :
                     flags[c] = 1U;
@@ -976,6 +981,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_SQRTSORT);
                 break;
+                case 'F' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_DOUBLE );
+                break;
                 case 'g' :
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_GLQSORT);
@@ -986,6 +995,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 break;
                 case 'i' :
                     flags[c] = instrumented = 1U;
+                break;
+                case 'I' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_INT );
                 break;
                 case 'j' :
                     flags[c] = 1U;
@@ -1031,6 +1044,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                 case 'l' :
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_QSORT);
+                break;
+                case 'L' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_LONG );
                 break;
                 case 'm' :
                     flags[c] = 'm'; /* middle for default median(s) */
@@ -1239,6 +1256,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
                 break;
+                case 'P' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_POINTER );
+                break;
                 case 'q' :
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_QSELECT_SORT);
@@ -1305,6 +1326,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     /* pass over arg to satisfy loop conditions */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
+                break;
+                case 'S' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_STRUCT );
                 break;
                 case 't' :
                     flags[c] = 1U;
@@ -1624,6 +1649,10 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     flags[c] = 1U;
                     functions |= (0x01U<<FUNCTION_P9QSORT);
                 break;
+                case '$' :
+                    flags[c] = 1U;
+                    types|= (0x01U << DATA_TYPE_SHORT );
+                break;
                 case '@' :
                     flags[c] = 1U;
                     options|=QUICKSELECT_STRICT_SELECTION;
@@ -1841,6 +1870,81 @@ int main(int argc, char *argv[]) /* XPG (see exec()) */
                     for (; '\0' != *pcc; pcc++) ;
                     pcc--;
                 break;
+                case '{' :
+                    flags[c] = 1U;
+                    if ('\0' == *(++pcc))
+                        pcc = argv[++optind];
+                    if ((isalpha(*pcc))||(ispunct(*pcc))||(isspace(*pcc))) {
+                        c = regcomp(&re, pcc, cflags);
+                        if (0 != c) {
+                            (V)regerror(c, &re, buf, sizeof(buf));
+                            f(LOG_ERR, log_arg,
+                                "%s: %s line %d: regcomp: %s",
+                                __func__, source_file, __LINE__,
+                                buf);
+                        } else {
+                            p=1U+strccount(pcc,'|'); /* # alternatives in arg */
+                            for (tests=v=0U; v<DATA_TYPE_COUNT; v++) {
+                                pcc2 = type_name(v);
+                                c = regexec(&re, pcc2, 1UL, match, eflags);
+                                if (REG_NOMATCH == c) {
+                                    f(LOG_DEBUG, log_arg,
+                                        "%s: %s line %d: no match %s in %s",
+                                        __func__,source_file,__LINE__,pcc,pcc2);
+                                } else if (0 == c) {
+                                    if (match[0].rm_so != -1) {
+                                        n = (match[0].rm_eo - match[0].rm_so);
+                                        if (0UL < n) {
+                                            f(LOG_DEBUG, log_arg,
+                                                "%s: %s line %d: match: \"%s\": offset %d through %d: \"%*.*s\"",
+                                                __func__, source_file, __LINE__,
+                                                pcc2,
+                                                match[0].rm_so,match[0].rm_eo-1,
+                                                n,n,pcc2+match[0].rm_so);
+                                            tests|=0x01U<<v;
+                                        }
+                                    }
+                                }
+                            }
+                            types |= tests;
+                            if (0x0U==tests) {
+                                f(LOG_ERR, log_arg,
+                                    "%s: %s line %d: no data type matches for \"%s\"",
+                                    __func__, source_file, __LINE__, pcc);
+                                (V)fprintf(stderr, "data types:\n");
+                                for (tests=0U; tests<DATA_TYPE_COUNT; tests++) {
+                                    (V)snul(buf, sizeof(buf), "0x", NULL, 0x01U<<tests, 16,
+                                        '0', (FUNCTION_COUNT+3)/4+1, logger, log_arg);
+                                    (V)fprintf(stderr,"%s %s\n",buf,type_name(tests));
+                                }
+                                errs++;
+                            } else {
+                                q=bitcount(tests);
+                                if (q<p) {
+                                    f(LOG_ERR, log_arg,
+                                        "%s: %s line %d: %u alternatives in "
+                                        "\"%s\", %u type%s matched: 0x%x",
+                                        __func__,source_file,__LINE__,p,pcc,q,
+                                        q==1U?"":"s",tests);
+                                    (V)fprintf(stderr, "data types:\n");
+                                    for (tests=0U; tests<DATA_TYPE_COUNT; tests++) {
+                                        (V)snul(buf, sizeof(buf), "0x", NULL, 0x01U<<tests, 16,
+                                            '0', (DATA_TYPE_COUNT+3)/4+1, logger, log_arg);
+                                        (V)fprintf(stderr,"%s %s\n",buf,type_name(tests));
+                                    }
+                                    errs++;
+                                }
+                            }
+                        }
+                        regfree(&re);
+                    } else {
+                        types |= strtoul(pcc, &endptr, 0);
+                        pcc=endptr;
+                    }
+                    /* pass over arg to satisfy loop conditions */
+                    for (; '\0' != *pcc; pcc++) ;
+                    pcc--;
+                break;
                 case '/' :
                     flags[c] = 1U;
                     if ('\0' == *(++pcc))
@@ -1984,6 +2088,129 @@ usage:
             errs++;
         }
     }
+
+    /* data types */
+    /* Test all data types if none specified. */
+    if (0x0U==types) {
+        flags['A']=
+        flags['F']=
+        flags['I']=
+        flags['L']=
+        flags['P']=
+        flags['S']=
+        flags['$']=
+        1U;
+        if (0U!=flags['$']) types|= (0x01U << DATA_TYPE_SHORT );
+        if (0U!=flags['I']) types|= (0x01U << DATA_TYPE_INT );
+        if (0U!=flags['L']) types|= (0x01U << DATA_TYPE_LONG );
+        if (0U!=flags['F']) types|= (0x01U << DATA_TYPE_DOUBLE );
+        if (0U!=flags['S']) types|= (0x01U << DATA_TYPE_STRUCT );
+        if (0U!=flags['A']) types|= (0x01U << DATA_TYPE_STRING );
+        if (0U!=flags['P']) types|= (0x01U << DATA_TYPE_POINTER );
+    }
+
+    /* test functions */
+    /* Test correctness and timing if neither specified. */
+    if ((0U==flags['C']) && (0U==flags['T'])) {
+        flags['C']=flags['T']=1U;
+        /* initialize default sequences if none specified */
+        for (v=1U; v<TEST_SEQUENCE_COUNT; v++) {
+            tests=0x01U<<v;
+            /* default is all valid test sequences except stdin */
+            /* assume adequate size */
+            if (0!=valid_test(TEST_TYPE_CORRECTNESS, v, startn))
+                csequences |= tests;
+            if (0!=valid_test(TEST_TYPE_TIMING, v, startn))
+                tsequences |= tests;
+        }
+    } else if ((0U==flags['C'])&&(0U!=flags['T'])) csequences=0U;
+    else if ((0U!=flags['C'])&&(0U==flags['T'])) tsequences=0U;
+
+#if DEBUG_CODE
+if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
+         "%s: %s line %d: argc=%d, optind=%d\n",__func__,source_file,__LINE__,
+         argc,optind);
+#endif
+    if (argc > optind+2) {
+        startn =
+            (size_t)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,log_arg);
+        if (2UL > startn) startn = 2UL;
+        incr = argv[optind++];
+        if (0U==flags['h'])
+            (V)fprintf(stdout,
+                "%sstartn = %lu, incr = %s\n",
+                comment, startn, incr);
+    }
+
+    if (optind >= argc) {
+        ul = 0UL;
+    } else {
+        ul = (size_t)snlround(parse_expr(1.0,argv[optind++], &endptr, 10),f,log_arg);
+        if (0U==flags['h']) (V)fprintf(stdout, "%sul = %lu\n", comment, ul);
+    }
+    if (1UL > ul) ul = 10000UL;
+    if (2UL > ul) ul = 2UL;
+#if DEBUG_CODE
+    if (DEBUGGING(SORT_SELECT_DEBUG))
+        (V)fprintf(stdout,
+            "%s line %d: ul = %lu, startn = %lu, incr = %s\n",
+             __func__, __LINE__, ul, startn, incr);
+#endif
+    if ((ul<startn)||(0UL==startn)) startn = ul;
+#if DEBUG_CODE
+    if (DEBUGGING(SORT_SELECT_DEBUG))
+        (V)fprintf(stdout,
+            "%s line %d: startn = %lu, incr = %s\n",
+             __func__, __LINE__, startn, incr);
+#endif
+
+    if (optind >= argc) {
+        count = 0UL;
+    } else {
+        /* parse count and counting options */
+        count=(unsigned long)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,
+            log_arg);
+        while ('\0'!=*(pcc=endptr)) {
+            switch (*pcc) {
+                case 'r' : /*FALLTHROUGH*/
+                case 'R' : /*FALLTHROUGH*/
+                case 's' : /*FALLTHROUGH*/
+                case 'S' :
+                    var_count = *pcc;
+                    endptr= ++pcc;
+                break;
+                case '<' :
+                      count_limit=(unsigned long)snlround(parse_expr(1.0,++pcc,
+                          &endptr,10),f,log_arg);
+                break;
+                default:
+                    (V)fprintf(stderr,
+                        "%s: %s line %d: unexpected character '%c' "
+                        "in \"%s\" from \"%s\"\n",
+                        __func__,source_file,__LINE__,*pcc,pcc,argv[optind-1]);
+                    endptr="";
+                    errs++;
+                break;
+            }
+        }
+        if (0U==flags['h'])
+            (V)fprintf(stdout,
+                "%scount = %lu, var_count = %c, count_limit=%lu\n",
+                comment, count, var_count, count_limit);
+    }
+    if (1UL > count)
+        count = 10UL;
+
+#if DEBUG_CODE
+    if (DEBUGGING(SORT_SELECT_DEBUG))
+        (V)fprintf(stdout,
+            "%s line %d: startn = %lu, incr = %s\n",
+            __func__, __LINE__, startn, incr);
+    if (DEBUGGING(SORT_SELECT_DEBUG))
+        if ((0U==flags['h'])&&(NULL!=f))
+            f(LOG_INFO, log_arg, "%s%s: args processed", comment, prog);
+#endif
+
     /* print configured parameters in header */
     if (0U==flags['h']) {
         if (0U!=flags['H']) {
@@ -2001,10 +2228,10 @@ usage:
         pcc2=strchr(pcc,'\\');
         if (NULL==pcc2) x=strlen(pcc); else x=pcc2-pcc;
         (V)fprintf(stdout, "%s%.*s\n", comment, (int)x, pcc);
-        ul=quickselect_options();
-        decode_options(stdout,ul,"compiled option support: ","");
+        ul2=quickselect_options();
+        decode_options(stdout,ul2,"compiled option support: ","");
         /* now output settings made by options */
-        for (q=z=n=0U,ul=sizeof(flags); n<ul; n++) {
+        for (q=z=n=0U,ul2=sizeof(flags); n<ul2; n++) {
             if (0U!=flags[n]) {
                 switch (n) {
                     case 'b' :
@@ -2064,7 +2291,7 @@ usage:
                                 comment, quickselect_small_array_cutoff,
                                 no_aux_repivot, repivot_factor, repivot_cutoff,
                                 lopsided_partition_limit);
-                            if ((DEBUGGING(SORT_SELECT_DEBUG))||(0U==flags['h'])
+                            if ((DEBUGGING(SORT_SELECT_DEBUG))||(0U==errs)
                             ) {
 
                                 pst=sorting_sampling_table;
@@ -2472,157 +2699,13 @@ usage:
                 }
             }
         }
-    }
-
-    if (0U < flags['s']) { /* print type sizes requested */
-        print_sizes(comment,prog);
-    }
-
-    if (0U < flags['o']) { /* operation timing tests requested */
-        op_tests(comment, prog, logger, log_arg); /* 64-bit machines */
-    }
-
-#if DEBUG_CODE
-if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
-         "%s: %s line %d: argc=%d, optind=%d\n",__func__,source_file,__LINE__,
-         argc,optind);
-#endif
-    if (argc > optind+2) {
-        startn =
-            (size_t)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,log_arg);
-        if (2UL > startn) startn = 2UL;
-        incr = argv[optind++];
-        if (0U==flags['h'])
-            (V)fprintf(stdout,
-                "%sstartn = %lu, incr = %s\n",
-                comment, startn, incr);
-    }
-
-    if (optind >= argc) {
-        ul = 0UL;
-    } else {
-        ul = (size_t)snlround(parse_expr(1.0,argv[optind++], &endptr, 10),f,log_arg);
-        if (0U==flags['h']) (V)fprintf(stdout, "%sul = %lu\n", comment, ul);
-    }
-    if (1UL > ul) ul = 10000UL;
-    if (2UL > ul) ul = 2UL;
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG))
-        (V)fprintf(stdout,
-            "%s line %d: ul = %lu, startn = %lu, incr = %s\n",
-             __func__, __LINE__, ul, startn, incr);
-#endif
-    if ((ul<startn)||(0UL==startn)) startn = ul;
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG))
-        (V)fprintf(stdout,
-            "%s line %d: startn = %lu, incr = %s\n",
-             __func__, __LINE__, startn, incr);
-#endif
-
-    if (optind >= argc) {
-        count = 0UL;
-    } else {
-        /* parse count and counting options */
-        count=(unsigned long)snlround(parse_expr(1.0,argv[optind++],&endptr,10),f,
-            log_arg);
-        while ('\0'!=*(pcc=endptr)) {
-            switch (*pcc) {
-                case 'r' : /*FALLTHROUGH*/
-                case 'R' : /*FALLTHROUGH*/
-                case 's' : /*FALLTHROUGH*/
-                case 'S' :
-                    var_count = *pcc;
-                    endptr= ++pcc;
-                break;
-                case '<' :
-                      count_limit=(unsigned long)snlround(parse_expr(1.0,++pcc,
-                          &endptr,10),f,log_arg);
-                break;
-                default:
-                    (V)fprintf(stderr,
-                        "%s: %s line %d: unexpected character '%c' "
-                        "in \"%s\" from \"%s\"\n",
-                        __func__,source_file,__LINE__,*pcc,pcc,argv[optind-1]);
-                    endptr="";
-                    errs++;
-                break;
-            }
-        }
-        if (0U==flags['h'])
-            (V)fprintf(stdout,
-                "%scount = %lu, var_count = %c, count_limit=%lu\n",
-                comment, count, var_count, count_limit);
-    }
-    if (0U<errs) { return errs; }
-    if (1UL > count)
-        count = 10UL;
-
-#if DEBUG_CODE
-    if (DEBUGGING(SORT_SELECT_DEBUG))
-        (V)fprintf(stdout,
-            "%s line %d: startn = %lu, incr = %s\n",
-            __func__, __LINE__, startn, incr);
-    if (DEBUGGING(SORT_SELECT_DEBUG))
-        if ((0U==flags['h'])&&(NULL!=f))
-            f(LOG_INFO, log_arg, "%s%s: args processed", comment, prog);
-#endif
-
-    q=1UL;
-    if (0U==flags['h'])
+        q=1UL;
         (V)fprintf(stdout,
             "%s%s: %s line %d: startn = %lu, incr = %s,"
             " ul = %lu, count = %lu, var_count = %c, count_limit=%lu, ul*count "
             "= %lu, q = %lu\n",
             comment, __func__, source_file, __LINE__, startn, incr,
             ul, count, var_count, count_limit, ul*count, q);
-
-    /* data types */
-    /* Test all data types if none specified. */
-    if (
-        (0U==flags['A'])
-      &&(0U==flags['F'])
-      &&(0U==flags['I'])
-      &&(0U==flags['L'])
-      &&(0U==flags['P'])
-      &&(0U==flags['S'])
-      &&(0U==flags['$'])
-    )
-        flags['A']=
-        flags['F']=
-        flags['I']=
-        flags['L']=
-        flags['P']=
-        flags['S']=
-        flags['$']=
-        1U;
-/* XXX could use some option flag and regex with names to select types... */
-    if (0U!=flags['$']) types|= (0x01U << DATA_TYPE_SHORT );
-    if (0U!=flags['I']) types|= (0x01U << DATA_TYPE_INT );
-    if (0U!=flags['L']) types|= (0x01U << DATA_TYPE_LONG );
-    if (0U!=flags['F']) types|= (0x01U << DATA_TYPE_DOUBLE );
-    if (0U!=flags['S']) types|= (0x01U << DATA_TYPE_STRUCT );
-    if (0U!=flags['A']) types|= (0x01U << DATA_TYPE_STRING );
-    if (0U!=flags['P']) types|= (0x01U << DATA_TYPE_POINTER );
-
-    /* test types */
-    /* Test correctness and timing if neither specified. */
-    if ((0U==flags['C']) && (0U==flags['T'])) {
-        flags['C']=flags['T']=1U;
-        /* initialize default sequences if none specified */
-        for (v=1U; v<TEST_SEQUENCE_COUNT; v++) {
-            tests=0x01U<<v;
-            /* default is all valid test sequences except stdin */
-            /* assume adequate size */
-            if (0!=valid_test(TEST_TYPE_CORRECTNESS, v, startn))
-                csequences |= tests;
-            if (0!=valid_test(TEST_TYPE_TIMING, v, startn))
-                tsequences |= tests;
-        }
-    } else if ((0U==flags['C'])&&(0U!=flags['T'])) csequences=0U;
-    else if ((0U!=flags['C'])&&(0U==flags['T'])) tsequences=0U;
-
-    if (0U==flags['h']) {
         if ((0U!=csequences)||(0U!=tsequences)) {
             (V)fprintf(stdout, "%stest sequences:\n", comment);
             if ((0U!=flags['C'])&&(0U!=csequences)) {
@@ -2665,6 +2748,27 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
             }
             (V)fprintf(stdout, "\n");
         }
+        if (0U!=types) {
+            (V)fprintf(stdout, "%sdata types:\n", comment);
+            for (p=0U,tests=0U; tests<DATA_TYPE_COUNT; tests++) {
+                if (0U != (types & (0x01U << tests))) {
+                    (V)snul(buf, sizeof(buf), 0U==p?"0x":", 0x", NULL,
+                        0x01U<<tests, 16, '0', (DATA_TYPE_COUNT+3)/4,
+                        logger, log_arg);
+                    (V)fprintf(stdout,"%s %s",buf,type_name(tests));
+                    p++;
+                }
+            }
+            (V)fprintf(stdout, "\n");
+        }
+    }
+    if (0U<errs) {
+            logger(LOG_ERR, log_arg,
+                "%s: %s: %s line %d: errs=%u",
+                prog, __func__, source_file, __LINE__,
+                errs
+            );
+        return errs;
     }
 
     /* initialize (seed) random number generator and save state */
@@ -2684,20 +2788,29 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
             errs++;
         }
     }
-    if (0U<errs) { return errs; }
+    if (0U<errs) {
+            logger(LOG_ERR, log_arg,
+                "%s: %s: %s line %d: errs=%u",
+                prog, __func__, source_file, __LINE__,
+                errs
+            );
+        return errs;
+    }
 
     /* allocate test arrays */
     /* Size should be large enough for 1 set of arrays at largest count, except
        when testing with permutations or combinations.
     */
     q = sizeof(long); /* refarray */
-    if (0UL!=flags['I']) q+=sizeof(int);
-    if ((0U!=flags['A'])||(0U!=flags['S'])||(0U!=flags['P']))
+    if (0U!=(types&(0x01U << DATA_TYPE_INT))) q+=sizeof(int);
+    if (0U!=(types&((0x01U << DATA_TYPE_STRING)|(0x01U << DATA_TYPE_STRUCT)
+                    |(0x01U << DATA_TYPE_POINTER))))
         q+=sizeof(struct data_struct);
-    if (0UL!=flags['P']) q+=sizeof(struct data_struct *);
-    if (0UL!=flags['F']) q+=sizeof(double);
-    if (0UL!=flags['L']) q+=sizeof(long);
-    if (0UL!=flags['$']) q+=sizeof(short);
+    if (0U!=(types&(0x01U << DATA_TYPE_POINTER))) q+=sizeof(struct data_struct *);
+    if (0U!=(types&(0x01U << DATA_TYPE_DOUBLE))) q+=sizeof(double);
+    if (0U!=(types&(0x01U << DATA_TYPE_LONG)))
+        q+=sizeof(long);
+    if (0U!=(types&(0x01U << DATA_TYPE_SHORT))) q+=sizeof(short);
     sz=ul;
     if (0U!=flags['[']) {
         sz *= ratio;
@@ -2710,6 +2823,14 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
             "malloc will certainly fail; try again with size <",
             ul);
         return ++errs;
+    }
+
+    if (0U < flags['s']) { /* print type sizes requested */
+        print_sizes(comment,prog);
+    }
+
+    if (0U < flags['o']) { /* operation timing tests requested */
+        op_tests(comment, prog, logger, log_arg); /* 64-bit machines */
     }
 
     if (0U < flags['n']) /* do-nothing flag */
@@ -2731,13 +2852,13 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
             ((char *)refarray)+sizeof(long)*ul);
 #endif /* DEBUG_CODE */
     global_sz=sz;
-    if (0UL!=flags['I']) {
+    if (0U!=(types&(0x01U << DATA_TYPE_INT))) {
         array=malloc(sizeof(int)*sz);
         if (NULL==array) errs++;
         if (0U<errs) {
             logger(LOG_ERR, log_arg,
                 "%s: %s: %s line %d: %m",prog,__func__,source_file,__LINE__);
-            return errs;
+            goto done;
         }
 #if DEBUG_CODE
         if (DEBUGGING(MEMORY_DEBUG))
@@ -2754,8 +2875,9 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 #endif /* DEBUG_CODE */
     }
     v = (0x01U << TEST_SEQUENCE_STDIN);
-    if ((0U!=(csequences&v))||(0U!=(tsequences&v))||(0U!=flags['A'])
-    ||(0U!=flags['S'])||(0U!=flags['P'])
+    if ((0U!=(csequences&v))||(0U!=(tsequences&v))
+        ||(0U!=(types&((0x01U << DATA_TYPE_STRING)|(0x01U << DATA_TYPE_STRUCT)
+                      |(0x01U << DATA_TYPE_POINTER))))
     ) {
         data_array=malloc(sizeof(struct data_struct)*sz);
         if (NULL==data_array) errs++;
@@ -2772,7 +2894,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 ((char *)data_array)+sizeof(struct data_struct)*sz);
 #endif /* DEBUG_CODE */
             /* offset for ratio alignment is deferred */
-        if (0UL!=flags['P']) {
+        if (0U!=(types&(0x01U << DATA_TYPE_POINTER))) {
             parray=malloc(sizeof(struct data_struct *)*sz);
 #if DEBUG_CODE
         if (DEBUGGING(MEMORY_DEBUG))
@@ -2812,7 +2934,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 ((char *)data_array)+sizeof(struct data_struct)*sz);
 #endif /* DEBUG_CODE */
     }
-    if (0UL!=flags['F']) {
+    if (0U!=(types&(0x01U << DATA_TYPE_DOUBLE))) {
         darray=malloc(sizeof(double)*sz);
         if (NULL==darray) errs++;
         if (0U<errs) {
@@ -2834,7 +2956,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 (void *)darray, ((char *)darray)+sizeof(double)*sz);
 #endif /* DEBUG_CODE */
     }
-    if ((0U!=flags['L'])||(0U!=flags[';'])) {
+    if ((0U!=(types&(0x01U << DATA_TYPE_LONG)))||(0U!=flags[';'])) {
         larray=malloc(sizeof(long)*sz);
         if (NULL==larray) errs++;
         if (0U<errs) {
@@ -2856,7 +2978,7 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
                 (void *)larray, ((char *)larray)+sizeof(long)*sz);
 #endif /* DEBUG_CODE */
     }
-    if (0U!=flags['$']) {
+    if (0U!=(types&(0x01U << DATA_TYPE_SHORT))) {
         sharray=malloc(sizeof(short)*sz);
         if (NULL==sharray) errs++;
         if (0U<errs) {
@@ -2951,9 +3073,9 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
 #endif /* DEBUG_CODE */
         /* save input data for reuse */
         /* reset counts to correspond to number of data read */
-        for (ul=0UL; ul<(size_t)i; ul++)
-            input_data[ul]=refarray[ul];
-        startn=ul;
+        for (ul2=0UL; ul2<(size_t)i; ul2++)
+            input_data[ul2]=refarray[ul2];
+        startn=ul2;
         /* emit revised counts if header is not suppressed */
         if (0U==flags['h'])
             (V)fprintf(stdout,
@@ -2987,15 +3109,15 @@ if (DEBUGGING(SORT_SELECT_DEBUG)) (V)fprintf(stderr,
     if (0U==flags['R']) {
         c=5; /* boilerplate */
         /* longest data type name */
-        if (0U!=flags['S']) {
+        if (0U!=(types&(0x01U << DATA_TYPE_STRUCT))) {
             c+=10; /* "structure" */
-        } else if ((0U!=flags['P'])||(0U!=flags['I'])) {
+        } else if (0U!=(types&((0x01U << DATA_TYPE_INT)|(0x01U << DATA_TYPE_POINTER)))) {
             c+=8; /* "integer" or "pointer" */
-        } else if ((0U!=flags['F'])||(0U!=flags['A'])) {
+        } else if (0U!=(types&((0x01U << DATA_TYPE_DOUBLE)|(0x01U << DATA_TYPE_STRING)))) {
             c+=7; /* "double" or "string" */
-        } else if (0U!=flags['$']) {
+        } else if (0U!=(types&(0x01U << DATA_TYPE_SHORT))) {
             c+=6; /* "short" */
-        } else if (0U!=flags['L']) {
+        } else if (0U!=(types&(0x01U << DATA_TYPE_LONG))) {
             c+=5; /* "long" */
         }
         if (0U!=flags['[']) {

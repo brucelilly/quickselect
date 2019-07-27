@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is db.c version 1.3 dated 2019-03-16T15:37:11Z. \ $ */
+/* $Id: ~|^` @(#)   This is db.c version 1.4 dated 2019-07-25T00:10:22Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.db.c */
@@ -53,8 +53,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: db.c ~|^` @(#)"
 #define SOURCE_MODULE "db.c"
-#define MODULE_VERSION "1.3"
-#define MODULE_DATE "2019-03-16T15:37:11Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2019-07-25T00:10:22Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2018-2019"
 
@@ -68,26 +68,31 @@
 void index_to_path(unsigned long indx, const char *prefix, char *path, unsigned int sz)
 {
     char buf1[PATH_MAX], buf2[PATH_MAX], buf3[PATH_MAX], buf4[PATH_MAX], *p;
+    int i;
+    long l;
     unsigned long ul;
 
     buf1[0] = buf3[0] = buf4[0] = '\0';
     ul=indx%256UL; /* for final text component */
     snul(buf3,PATH_MAX,NULL,NULL,ul,16,'0',2,NULL,NULL);
     (void)concatenate_path(NULL,buf3,"txt",buf2,PATH_MAX);
-    do {
+    for (l=LONG_MAX/256L; 0L<l; l/=256L) {
         indx-=ul;
         indx/=256UL;
         ul=indx%256UL;
-        if ((0UL!=ul)||('\0'==buf1[0])) {
-            snul(buf4,PATH_MAX,NULL,".d",ul,16,'0',2,NULL,NULL);
-            (void)concatenate_path(buf4,buf2,NULL,buf1,PATH_MAX);
-            (void)strncpy(buf2,buf1,PATH_MAX);
-        }
-    } while (indx>0UL);
+        snul(buf4,PATH_MAX,NULL,".d",ul,16,'0',2,NULL,NULL);
+        (void)concatenate_path(buf4,buf2,NULL,buf1,PATH_MAX);
+        (void)strncpy(buf2,buf1,PATH_MAX);
+    }
     (V)concatenate_path(prefix,buf1,NULL,path,sz);
     for (p=strchr(path,'/'); NULL!=p; p=strchr(++p,'/')) {
         *p='\0';
-        if (0!=access(path,F_OK)) mkdir(path,0777);
+        if (0!=access(path,F_OK)) {
+            i=mkdir(path,0777);
+            if (0!=i)
+                (void)fprintf(stderr,"%s line %d: mkdir(%s,0777) failed: %s\n",
+                    __func__,__LINE__,path,strerror(errno));
+	}
         *p='/';
     }
 }
@@ -98,7 +103,7 @@ void read_text_file(const char *path, char *buf, unsigned int sz)
     FILE *f;
 
     f=fopen(path,"r");
-    if (NULL==f) return 0U;
+    if (NULL==f) return;
     if (NULL==fgets(buf,sz,f)) { fclose(f); return; }
     /* elide trailing newline */
     endptr=strchr(buf,'\n');

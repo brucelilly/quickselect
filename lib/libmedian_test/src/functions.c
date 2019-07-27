@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is functions.c version 1.25 dated 2019-04-17T23:01:49Z. \ $ */
+/* $Id: ~|^` @(#)   This is functions.c version 1.26 dated 2019-07-25T00:13:35Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.functions.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: functions.c ~|^` @(#)"
 #define SOURCE_MODULE "functions.c"
-#define MODULE_VERSION "1.25"
-#define MODULE_DATE "2019-04-17T23:01:49Z"
+#define MODULE_VERSION "1.26"
+#define MODULE_DATE "2019-07-25T00:13:35Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
 #define COPYRIGHT_DATE "2016-2019"
 
@@ -343,7 +343,7 @@ const char *type_name(unsigned int type)
         break;
         case DATA_TYPE_SHORT :          ret = "short";
         break;
-        case DATA_TYPE_INT :            ret = "int";
+        case DATA_TYPE_INT :            ret = "plain int";
         break;
         case DATA_TYPE_LONG :           ret = "long";
         break;
