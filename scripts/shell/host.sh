@@ -161,16 +161,24 @@ fi
 
 # check for availability of required programs
 prog=awk
-path=`whence ${prog} 2>/dev/null'`
-if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+path=`whence ${prog} 2>/dev/null`
+if test -z "${path}" ; then path=`which ${prog} 2>/dev/null` ; fi
 if test -z "${path}" ; then
+	if test ${degug} -gt 0
+	then
+		echo prog"=${prog}" path"=${path}"
+	fi
 	prog=nawk
-	path=`whence ${prog} 2>/dev/null'`
-	if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+	path=`whence ${prog} 2>/dev/null`
+	if test -z "${path}" ; then path=`which ${prog} 2>/dev/null` ; fi
 	if test -z "${path}" ; then
+		if test ${degug} -gt 0
+		then
+			echo prog"=${prog}" path"=${path}"
+		fi
 		prog=mawk
-		path=`whence ${prog} 2>/dev/null'`
-		if test -z "${path}" ; then path=`which ${prog} 2>/dev/null'` ; fi
+		path=`whence ${prog} 2>/dev/null`
+		if test -z "${path}" ; then path=`which ${prog} 2>/dev/null` ; fi
 		if test -z "${path}" ; then echo mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
 	fi
 fi

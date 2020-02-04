@@ -245,7 +245,7 @@ case ${OS} in
 		DEFAULT_ROUTE=`netstat -r -f inet -n | grep "^default[ 	]" | awk '{print $2}'`
 	;;
 	*bsd)
-		NETWORKS=`netstat -r -f inet -n | egrep -v "^127|fwip[0-9]" | grep "^[0-9][0-9./]*[ 	]" | awk '{print $1}' | sed -e "s,/24,.0," | head -1`
+		NETWORKS=`netstat -r -f inet -n | egrep -v "^127|fwip[0-9]" | grep "^[0-9][0-9./]*[ 	]" | awk '{print $1}' | sed -e "s,/24,.0," | awk -F . '{print $1 "." $2 "." $3 "." $4}' | head -1`
 		DEFAULT_ROUTE=`netstat -r -f inet -n | grep "^default[ 	]" | awk '{print $2}'`
 		# try to fix missing default route
 		if test -z "${DEFAULT_ROUTE}"
@@ -293,8 +293,24 @@ fi
 #export ADDRESS=`${DIG} +short ${FQDN} A` 
 #if test -z "${ADDRESS}"
 #then
-	export ADDRESS=`grep ${FQDN} /etc/hosts | grep -v '^#' | awk '{print $1}'`
+	export ADDRESS=`grep ${FQDN} /etc/hosts | grep -v '^#' | grep -v "::" | grep -v "^127." | awk '{print $1}'`
 #fi
+if test -z "${ADDRESS}"
+then
+	prog=ifconfig
+	path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
+	if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+	if test -z "${path}" ; then echo ${thisfile}: mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
+	prog=tail
+	path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
+	if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
+	if test -z "${path}" ; then echo ${thisfile}: mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
+	export ADDRESS=`ifconfig -a | grep "[ 	]*inet " | tail -1 | awk '{print $2 }'`
+fi
+if test ${debug} -gt 0
+then
+	echo ADDRESS \"${ADDRESS}\"
+fi
 if test -z "${ADDRESS}"
 then
 	prog=nslookup
@@ -305,7 +321,7 @@ then
 	path=`whence -v ${prog} 2>/dev/null | awk '{ print $NF }'`
 	if test -z "${path}" ; then path=`which -a ${prog} 2>/dev/null | awk '{ print $NF }'` ; fi
 	if test -z "${path}" ; then echo ${thisfile}: mandatory program ${prog} cannot be found ; return 1 2>/dev/null || exit 1 ; fi
-	export ADDRESS=`nslookup -type=A ${FQDN} | grep "^Address" | tail -1 | awk '{print $NF }'`
+	export ADDRESS=`nslookup -type=A ${FQDN} | grep "^Address" | grep -v "#53" | tail -1 | awk '{print $NF }'`
 fi
 if test ${debug} -gt 0
 then

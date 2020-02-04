@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    random64n.c copyright 2016-2017 Bruce Lilly.   \ random64n.c $
+* $Id: ~|^` @(#)    random64n.c copyright 2016-2020 Bruce Lilly.   \ random64n.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is random64n.c version 1.6 dated 2017-09-01T02:24:35Z. \ $ */
+/* $Id: ~|^` @(#)   This is random64n.c version 1.8 dated 2020-01-05T14:38:10Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "random64n" */
 /*****************************************************************************/
 /* maintenance note: master file  /data/weather/lib/librandom/src/s.random64n.c */
@@ -49,10 +49,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: random64n.c ~|^` @(#)"
 #define SOURCE_MODULE "random64n.c"
-#define MODULE_VERSION "1.6"
-#define MODULE_DATE "2017-09-01T02:24:35Z"
+#define MODULE_VERSION "1.8"
+#define MODULE_DATE "2020-01-05T14:38:10Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2017"
+#define COPYRIGHT_DATE "2016-2020"
 
 /* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
@@ -98,6 +98,7 @@
 #endif
 #include <string.h>             /* strrchr */
 #include <time.h>               /* clock_gettime CLOCK_* struct timespec */
+#include <sys/time.h>           /* CLOCK_REALTIME (e.g. on FreeBSD) */
 
 /* static data and function definitions */
 static char random64n_initialized = (char)0;

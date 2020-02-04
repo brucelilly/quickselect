@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    quickselect.h copyright 2016-2019 Bruce Lilly. \ quickselect.h $
+* $Id: ~|^` @(#)    quickselect.h copyright 2016-2020 Bruce Lilly. \ quickselect.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,13 +30,13 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is quickselect.h version 1.30 dated 2019-04-19T19:53:35Z. \ $ */
+/* $Id: ~|^` @(#)   This is quickselect.h version 1.31 dated 2020-02-03T15:32:08Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.quickselect.h */
 
 /* version-controlled header file version information */
-#define QUICKSELECT_H_VERSION "quickselect.h 1.30 2019-04-19T19:53:35Z"
+#define QUICKSELECT_H_VERSION "quickselect.h 1.31 2020-02-03T15:32:08Z"
 
 /* FreeBSD requires feature test macros to properly define type errno_t */
 #ifndef __STDC_WANT_LIB_EXT1__
@@ -259,18 +259,10 @@ QUICKSELECT_FLOOR_LOG3 ;
 #ifndef QUICKSELECT_FMED3_INLINE
 # define QUICKSELECT_FMED3_INLINE /* */
 #endif
-#if LIBMEDIAN_TEST_CODE
-# define QUICKSELECT_FMED3 QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *d_fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *), unsigned int options, char *base, size_t size)
-#else
-# define QUICKSELECT_FMED3 QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *), unsigned int options)
-#endif
+#define QUICKSELECT_FMED3 QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *fmed3(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *), unsigned int options)
 QUICKSELECT_FMED3 ;
 #if __STDC_WANT_LIB_EXT1__
-# if LIBMEDIAN_TEST_CODE
-#  define QUICKSELECT_FMED3_S QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *d_fmed3_s(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *,const void *),const void *context, unsigned int options, char *base, size_t size)
-# else
-#  define QUICKSELECT_FMED3_S QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *fmed3_s(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *,const void *),const void *context, unsigned int options)
-# endif
+# define QUICKSELECT_FMED3_S QUICKSELECT_FMED3_STATIC QUICKSELECT_FMED3_INLINE char *fmed3_s(register /*const*/char *pa, register /*const*/char *pb, register /*const*/char *pc, int(*compar)(const void *,const void *,const void *),const void *context, unsigned int options)
 QUICKSELECT_FMED3_S ;
 #endif
 /* d_* variants when building libmedian_test objects */

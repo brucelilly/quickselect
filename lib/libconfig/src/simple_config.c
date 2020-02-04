@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    simple_config.c copyright 2011-2017 Bruce Lilly.   \ $
+* $Id: ~|^` @(#)    simple_config.c copyright 2011-2020 Bruce Lilly.   \ $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is simple_config.c version 2.6 2017-09-21T16:32:45Z. \ $ */
+/* $Id: ~|^` @(#)   This is simple_config.c version 2.8 2020-01-05T14:38:58Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "simple_config" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libconfig/src/s.simple_config.c */
@@ -50,10 +50,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: simple_config.c ~|^` @(#)"
 #define SOURCE_MODULE "simple_config.c"
-#define MODULE_VERSION "2.6"
-#define MODULE_DATE "2017-09-21T16:32:45Z"
+#define MODULE_VERSION "2.8"
+#define MODULE_DATE "2020-01-05T14:38:58Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2011-2017"
+#define COPYRIGHT_DATE "2011-2020"
 
 /* configuration (which might affect feature test macros) */
 /* to include a main entry point for testing, compile with -DTESTING=1 */
@@ -108,6 +108,7 @@
 #include <strings.h>            /* strcasecmp (some systems) */
 #include <syslog.h>             /* LOG_* */
 #include <time.h>               /* clock_gettime CLOCK_REALTIME struct timespec */
+#include <sys/time.h>           /* CLOCK_REALTIME (e.g. on FreeBSD) */
 #include <unistd.h>             /* access close unlink */
 
 /* local macros and structure definitions */

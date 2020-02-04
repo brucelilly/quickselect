@@ -11,7 +11,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    median_test_config.h copyright 2017-2019 Bruce Lilly.   \ median_test_config.h $
+* $Id: ~|^` @(#)    median_test_config.h copyright 2017-2020 Bruce Lilly.   \ median_test_config.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -30,7 +30,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is median_test_config.h version 1.44 dated 2019-04-19T19:46:51Z. \ $ */
+/* $Id: ~|^` @(#)   This is median_test_config.h version 1.45 dated 2020-02-03T20:36:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/include/s.median_test_config.h */
@@ -168,8 +168,9 @@ extern size_t nrotations[];
 #define MEMORY_DEBUG             0x00200000U
 #define PIVOT_METHOD_DEBUG       0x00400000U
 #define CORRECTNESS_DEBUG        0x00800000U
+#define HISTOGRAM_DEBUG          0x01000000U
 
-#define DEBUG_VALUE_COUNT 24
+#define DEBUG_VALUE_COUNT 25
 #if DEBUG_VALUE_COUNT > 32
 # error "DEBUG_VALUE_COUNT " xbuildstr(DEBUG_VALUE_COUNT) " is incompatible with 32-bit unsigned integers"
 #endif

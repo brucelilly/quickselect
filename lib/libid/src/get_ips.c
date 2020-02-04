@@ -10,7 +10,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    get_ips.c copyright 2015-2018 Bruce Lilly.   \ get_ips.c $
+* $Id: ~|^` @(#)    get_ips.c copyright 2015-2019 Bruce Lilly.   \ get_ips.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -29,7 +29,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is get_ips.c version 1.5 dated 2018-12-25T16:23:20Z. \ $ */
+/* $Id: ~|^` @(#)   This is get_ips.c version 1.6 dated 2019-11-16T23:49:33Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "get_ips" */
 /*****************************************************************************/
 /* maintenance note: master file  /src/radioclk/radioclk-1.0/lib/libid/src/s.get_ips.c */
@@ -50,10 +50,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: get_ips.c ~|^` @(#)"
 #define SOURCE_MODULE "get_ips.c"
-#define MODULE_VERSION "1.5"
-#define MODULE_DATE "2018-12-25T16:23:20Z"
+#define MODULE_VERSION "1.6"
+#define MODULE_DATE "2019-11-16T23:49:33Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2015-2018"
+#define COPYRIGHT_DATE "2015-2019"
 
 /* feature test macros defined before any header files are included */
 /* Minimum _XOPEN_SOURCE version for C99 (else compilers on illumos have a tantrum) */
@@ -104,6 +104,9 @@
 
 /* system header files needed for code which are not included with declaration header */
 #include <arpa/inet.h>          /* inet_ntop ntohl */
+#ifdef __POSIX_VISIBLE
+# undef __POSIX_VISIBLE
+#endif
 #define __POSIX_VISIBLE 200112 /* for FreeBSD */
 #include <netinet/in.h>         /* struct sockaddr_in struct sockaddr_in6 */
 #include <errno.h>              /* errno */

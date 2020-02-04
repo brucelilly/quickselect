@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    illumos.c modifications copyright 2019 Bruce Lilly.   \ illumos.c $
+* $Id: ~|^` @(#)    illumos.c modifications copyright 2019-2020 Bruce Lilly.   \ illumos.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is illumos.c version 1.11 dated 2019-04-18T02:02:40Z. \ $ */
+/* $Id: ~|^` @(#)   This is illumos.c version 1.12 dated 2020-02-03T15:35:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.illumos.c */
@@ -46,8 +46,8 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: illumos.c ~|^` @(#)"
 #define SOURCE_MODULE "illumos.c"
-#define MODULE_VERSION "1.11"
-#define MODULE_DATE "2019-04-18T02:02:40Z"
+#define MODULE_VERSION "1.12"
+#define MODULE_DATE "2020-02-03T15:35:29Z"
 #define COPYRIGHT_HOLDER "Sun Microsystems, Inc"
 #define COPYRIGHT_DATE "2008"
 
@@ -97,7 +97,7 @@ extern size_t quickselect_cache_size; /* BL */
  * Use is subject to license terms.
  */
 
-#pragma ident	"@(#)illumos.c	1.11	2019-04-18 SMI"
+#pragma ident	"@(#)illumos.c	1.12	2020-02-03 SMI"
 
 #if !defined(_KERNEL) && !defined(_KMDB)
 # if 0 /* non-standard header file excluded BL */
@@ -146,7 +146,7 @@ extern size_t quickselect_cache_size; /* BL */
 #ifndef	_QSORT_H
 #define	_QSORT_H
 
-#pragma ident	"@(#)illumos.c	1.11	2019-04-18 SMI"
+#pragma ident	"@(#)illumos.c	1.12	2020-02-03 SMI"
 
 /*
  * Declarations for qsort().
@@ -567,9 +567,9 @@ yields (BL)
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
                                 mid = b_lim + i;
                                 offset = (nrec / 3) * rsiz;
-			        m2 = d_fmed3(mid - offset, mid, mid + offset, cmp,options,basep,rsiz);
+			        m2 = fmed3(mid - offset, mid, mid + offset, cmp,options);
                             } else {
-			        m2 = d_fmed3(b_lim, b_lim + i, b_lim + 2 * i, cmp,options,basep,rsiz);
+			        m2 = fmed3(b_lim, b_lim + i, b_lim + 2 * i, cmp,options);
                             }
                         } else {
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {
@@ -587,16 +587,16 @@ yields (BL)
                                 mid = b_lim + ((nrec - 1) / 2) * rsiz;
                                 offset = (nrec / 3) * rsiz;
                                 i = (nrec / 9) * rsiz;
-			        m1 = d_fmed3(mid - offset - i, mid - i, mid + offset - i, cmp,options,basep,rsiz);
-			        m2 = d_fmed3(mid - offset, mid, mid + offset, cmp,options,basep,rsiz);
-			        m3 = d_fmed3(mid - offset + i, mid + i, mid + offset + i, cmp,options,basep,rsiz);
-			        m2 = d_fmed3(m1, m2, m3, cmp,options,basep,rsiz);
+			        m1 = fmed3(mid - offset - i, mid - i, mid + offset - i, cmp,options);
+			        m2 = fmed3(mid - offset, mid, mid + offset, cmp,options);
+			        m3 = fmed3(mid - offset + i, mid + i, mid + offset + i, cmp,options);
+			        m2 = fmed3(m1, m2, m3, cmp,options);
                             } else {
 			        i = ((nrec - 1) / 8) * rsiz;
-			        m1 = d_fmed3(b_lim, b_lim +  i, b_lim + 2 * i, cmp,options,basep,rsiz);
-			        m2 = d_fmed3(b_lim + 3 * i, b_lim + 4 * i, b_lim + 5 * i, cmp,options,basep,rsiz);
-			        m3 = d_fmed3(b_lim + 6 * i, b_lim + 7 * i, b_lim + 8 * i, cmp,options,basep,rsiz);
-			        m2 = d_fmed3(m1, m2, m3, cmp,options,basep,rsiz);
+			        m1 = fmed3(b_lim, b_lim +  i, b_lim + 2 * i, cmp,options);
+			        m2 = fmed3(b_lim + 3 * i, b_lim + 4 * i, b_lim + 5 * i, cmp,options);
+			        m3 = fmed3(b_lim + 6 * i, b_lim + 7 * i, b_lim + 8 * i, cmp,options);
+			        m2 = fmed3(m1, m2, m3, cmp,options);
                             }
                         } else {
                             if (MOD_SAMPLE_QUALITY==(options&(MOD_SAMPLE_QUALITY))) {

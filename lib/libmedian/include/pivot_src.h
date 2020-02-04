@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    pivot_src.h copyright 2017-2019 Bruce Lilly.   \ pivot_src.h $
+* $Id: ~|^` @(#)    pivot_src.h copyright 2017-2020 Bruce Lilly.   \ pivot_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is pivot_src.h version 1.32 dated 2019-04-22T21:21:13Z. \ $ */
+/* $Id: ~|^` @(#)   This is pivot_src.h version 1.33 dated 2020-02-03T15:32:08Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "quickselect" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.pivot_src.h */
@@ -108,10 +108,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: pivot_src.h ~|^` @(#)"
 #define SOURCE_MODULE "pivot_src.h"
-#define MODULE_VERSION "1.32"
-#define MODULE_DATE "2019-04-22T21:21:13Z"
+#define MODULE_VERSION "1.33"
+#define MODULE_DATE "2020-02-03T15:32:08Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2017-2019"
+#define COPYRIGHT_DATE "2017-2020"
 
 /* local header files needed */
 #include "exchange.h"           /* EXCHANGE_SWAP */
@@ -213,10 +213,6 @@
 #endif
 
 /* Remedian (base 3) of samples, recursive implementation.
-   The function does not modify the value pointed to by middle, but it is not
-   declared as const to avoid spurious compiler warnings about discarding the
-   const qualifier when passing middle to fmed3 (which also doesn't make
-   modifications, but see the rationale there)
 
    Row and sample spacings are in elements.
    The variable idx is the index into the sampling table (with number of samples
@@ -331,18 +327,10 @@ char *
             options);
         if (0U!=(options&(QUICKSELECT_INDIRECT))) {
             char *pr= 
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
-                d_fmed3_s
-# else
-                d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
+#if __STDC_WANT_LIB_EXT1__
                 fmed3_s
-# else
+#else
                 fmed3
-# endif
 #endif
                 (*((char **)pa),
                 *((char **)pb), *((char **)pc),
@@ -352,27 +340,16 @@ char *
             compar,
 #endif
             options
-#if LIBMEDIAN_TEST_CODE
-            , middle, size
-#endif
             );
             if (pr==*((char **)pa)) return pa;
             if (pr==*((char **)pc)) return pc;
             return pb;
         } else
             return 
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
-                d_fmed3_s
-# else
-                d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
+#if __STDC_WANT_LIB_EXT1__
                 fmed3_s
-# else
+#else
                 fmed3
-# endif
 #endif
                     (pa,pb,pc,
 #if __STDC_WANT_LIB_EXT1__
@@ -381,9 +358,6 @@ char *
                     compar,
 #endif
                     options
-#if LIBMEDIAN_TEST_CODE
-                , middle, size
-#endif
                 );
     }
     o=row_spacing*size;
@@ -391,18 +365,10 @@ char *
         char *pr;
         pa=middle-o, pc=middle+o;
         pr = 
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
-                d_fmed3_s
-# else
-                d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
+#if __STDC_WANT_LIB_EXT1__
                 fmed3_s
-# else
+#else
                 fmed3
-# endif
 #endif
             (*((char **)pa),*((char **)middle),
             *((char **)pc),
@@ -412,27 +378,16 @@ char *
             compar,
 #endif
             options
-#if LIBMEDIAN_TEST_CODE
-             , middle, size
-#endif
             );
         if (pr==*((char **)pa)) return pa;
         if (pr==*((char **)pc)) return pc;
         return middle;
     } else
         return 
-#if LIBMEDIAN_TEST_CODE
-# if __STDC_WANT_LIB_EXT1__
-                d_fmed3_s
-# else
-                d_fmed3
-# endif
-#else
-# if __STDC_WANT_LIB_EXT1__
+#if __STDC_WANT_LIB_EXT1__
                 fmed3_s
-# else
+#else
                 fmed3
-# endif
 #endif
                 (middle-o,middle,middle+o,
 #if __STDC_WANT_LIB_EXT1__
@@ -441,9 +396,6 @@ char *
                  compar,
 #endif
                  options
-#if LIBMEDIAN_TEST_CODE
-                 , middle, size
-#endif
                  );
 }
 
@@ -727,18 +679,10 @@ QUICKSELECT_SELECT_PIVOT
                     }
 # endif /* LIBMEDIAN_TEST_CODE */
                     pm=
-# if LIBMEDIAN_TEST_CODE
-#  if __STDC_WANT_LIB_EXT1__
-                        d_fmed3_s
-#  else
-                        d_fmed3
-#  endif
-# else
-#  if __STDC_WANT_LIB_EXT1__
+# if __STDC_WANT_LIB_EXT1__
                         fmed3_s
-#  else
+# else
                         fmed3
-#  endif
 # endif
                         (*((char **)pb),*((char **)pa),
                         *((char **)(pb+r)),
@@ -748,9 +692,6 @@ QUICKSELECT_SELECT_PIVOT
                         compar,
 # endif
                         options
-# if LIBMEDIAN_TEST_CODE
-                        , base, size
-# endif
                         );
                     /* medians start at 1/3 of sub-array */
                     /*compare returned data pointer,swap indirect pointers*/
@@ -770,18 +711,10 @@ QUICKSELECT_SELECT_PIVOT
                     }
 # endif /* LIBMEDIAN_TEST_CODE */
                     if ((pa!=(pm=(char *)
-# if LIBMEDIAN_TEST_CODE
-#  if __STDC_WANT_LIB_EXT1__
-                        d_fmed3_s
-#  else
-                        d_fmed3
-#  endif
-# else
-#  if __STDC_WANT_LIB_EXT1__
+# if __STDC_WANT_LIB_EXT1__
                         fmed3_s
-#  else
+# else
                         fmed3
-#  endif
 # endif
                                        (pb,pa,pb+r,
                                        
@@ -791,9 +724,6 @@ QUICKSELECT_SELECT_PIVOT
                                         compar,
 # endif
                                         options
-# if LIBMEDIAN_TEST_CODE
-                        , base, size
-# endif
                                         ))) /*bias to pa*/
                     ) { /* place medians in first row of sub-array */
                         EXCHANGE_SWAP(swapf,pm,pa,size,alignsize,size_ratio,

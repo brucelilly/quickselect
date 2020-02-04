@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    sequences.c copyright 2016-2019 Bruce Lilly.   \ sequences.c $
+* $Id: ~|^` @(#)    sequences.c copyright 2016-2020 Bruce Lilly.   \ sequences.c $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is sequences.c version 1.14 dated 2019-03-15T14:05:59Z. \ $ */
+/* $Id: ~|^` @(#)   This is sequences.c version 1.15 dated 2020-02-03T20:36:29Z. \ $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian_test/src/s.sequences.c */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: sequences.c ~|^` @(#)"
 #define SOURCE_MODULE "sequences.c"
-#define MODULE_VERSION "1.14"
-#define MODULE_DATE "2019-03-15T14:05:59Z"
+#define MODULE_VERSION "1.15"
+#define MODULE_DATE "2020-02-03T20:36:29Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2019"
+#define COPYRIGHT_DATE "2016-2020"
 
 #define __STDC_WANT_LIB_EXT1__ 0
 #define LIBMEDIAN_TEST_CODE 1
@@ -634,6 +634,114 @@ void permute(long *p, size_t l, size_t r, size_t *c, size_t *pt)
     }
 }
 
+/* output a histogram of some random (long integer) data distribution
+*/
+static void print_histogram(long *p, size_t n, void(*f)(int, void *, const char *, ...),
+    void *log_arg)
+{
+    auto long *pmin, *pmax;
+    long min_val, max_val;
+    size_t b, *bins, nbins, range, w, x;
+
+    d_find_minmax(p, 0UL, n, sizeof(long), longcmp, 0U, &pmin, &pmax);
+    /* for constant data range is 1, binary data range is 2, etc. */
+    min_val=*pmin, max_val=*pmax, range=1UL+(unsigned long)max_val-(unsigned long)min_val;
+    nbins=ulsqrt(n);
+    if (nbins>range) nbins=range; /* can't have more bins than range */
+    if (100UL<nbins) nbins=100UL; /* upper limit on output */
+    /* allocate and initialize bin counters */
+    bins=calloc(nbins,sizeof(size_t));
+    if (NULL==bins) {
+        if (NULL != f)
+            f(LOG_INFO, log_arg, "%s: %s line %d: callocs(%lu,%lu) returned NULL", __func__, source_file, __LINE__, nbins, sizeof(size_t));
+        else
+            (V)fprintf(stderr, "%s: %s line %d: callocs(%lu,%lu) returned NULL\n", __func__, source_file, __LINE__, nbins, sizeof(size_t));
+    } else {
+            w=range/nbins;
+	    (V)fprintf(stderr, "data range %lu in %lu bins, bin width %lu\n", range, nbins, w);
+            /* update counts */
+            for (x=0UL; x<n; x++) {
+                b=(p[x]-min_val)/w;
+                bins[b]++;
+            }
+            /* output counts */
+            for (b=0UL; b<nbins; b++) {
+                (V)fprintf(stderr, "bin[%lu]: %lu\n", b, bins[b]);
+            }
+            /* free bin counters */
+            free(bins);
+    }
+}
+
+unsigned int sequence_is_randomized(unsigned int sequence)
+{
+    if ((char)0==file_initialized) initialize_file(__FILE__);
+    switch (sequence) {
+        case TEST_SEQUENCE_STDIN :
+        return 0U;
+        case TEST_SEQUENCE_SORTED :
+        return 0U;
+        case TEST_SEQUENCE_REVERSE :
+        return 0U;
+        case TEST_SEQUENCE_ROTATED :
+        return 0U;
+        case TEST_SEQUENCE_SHIFTED :
+        return 0U;
+        case TEST_SEQUENCE_ORGAN_PIPE :
+        return 0U;
+        case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
+        return 0U;
+        case TEST_SEQUENCE_SAWTOOTH :
+        return 0U;
+        case TEST_SEQUENCE_TERNARY :
+        return 1U;
+        case TEST_SEQUENCE_BINARY :
+        return 1U;
+        case TEST_SEQUENCE_CONSTANT :
+        return 0U;
+        case TEST_SEQUENCE_MEDIAN3KILLER :
+        return 0U;
+        case TEST_SEQUENCE_RANDOM_DISTINCT :
+        return 1U;
+        case TEST_SEQUENCE_RANDOM_VALUES :
+        return 1U;
+        case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :
+        return 1U;
+        case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :
+        return 1U;
+        case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :
+        return 1U;
+        case TEST_SEQUENCE_RANDOM_VALUES_RECIPROCAL :
+        return 1U;
+        case TEST_SEQUENCE_HISTOGRAM :
+        return 1U;
+        case TEST_SEQUENCE_MANY_EQUAL_LEFT :
+        return 1U;
+        case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :
+        return 1U;
+        case TEST_SEQUENCE_MANY_EQUAL_RIGHT :
+        return 1U;
+        case TEST_SEQUENCE_MANY_EQUAL_SHUFFLED :
+        return 1U;
+        case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
+        return 0U;
+        case TEST_SEQUENCE_JUMBLE :
+        return 0U;
+        case TEST_SEQUENCE_PERMUTATIONS :
+        return 0U;
+        case TEST_SEQUENCE_COMBINATIONS :
+        return 0U;
+        case TEST_SEQUENCE_ADVERSARY :
+        return 0U;
+        case TEST_SEQUENCE_WORST :
+        return 0U;
+        default:
+            (V)fprintf(stderr, "// %s: %s line %d: unrecognized sequence %u\n", __func__, source_file, __LINE__, sequence);
+        break;
+    }
+    return 2U;
+}
+
 /* Generate specified test sequence in long array at p, index 0UL through n-1UL
       with maximum value limited to max_val.
 */
@@ -871,6 +979,12 @@ int generate_long_test_array(long *p, size_t n, unsigned int testnum, long incr,
                 ret = 7;
             break;
         }
+#if DEBUG_CODE
+        if (DEBUGGING(HISTOGRAM_DEBUG) && sequence_is_randomized(testnum)) {
+            (V)fprintf(stderr, "histogram data for %s:\n", sequence_name(testnum));
+            print_histogram(p, n, f, log_arg);
+        }
+#endif
         if (0 > ret) ret = 0;
     }
     return ret;
@@ -944,73 +1058,4 @@ const char *sequence_name(unsigned int sequence)
         break;
     }
     return "invalid sequence";
-}
-
-unsigned int sequence_is_randomized(unsigned int sequence)
-{
-    if ((char)0==file_initialized) initialize_file(__FILE__);
-    switch (sequence) {
-        case TEST_SEQUENCE_STDIN :
-        return 0U;
-        case TEST_SEQUENCE_SORTED :
-        return 0U;
-        case TEST_SEQUENCE_REVERSE :
-        return 0U;
-        case TEST_SEQUENCE_ROTATED :
-        return 0U;
-        case TEST_SEQUENCE_SHIFTED :
-        return 0U;
-        case TEST_SEQUENCE_ORGAN_PIPE :
-        return 0U;
-        case TEST_SEQUENCE_INVERTED_ORGAN_PIPE :
-        return 0U;
-        case TEST_SEQUENCE_SAWTOOTH :
-        return 0U;
-        case TEST_SEQUENCE_TERNARY :
-        return 1U;
-        case TEST_SEQUENCE_BINARY :
-        return 1U;
-        case TEST_SEQUENCE_CONSTANT :
-        return 0U;
-        case TEST_SEQUENCE_MEDIAN3KILLER :
-        return 0U;
-        case TEST_SEQUENCE_RANDOM_DISTINCT :
-        return 1U;
-        case TEST_SEQUENCE_RANDOM_VALUES :
-        return 1U;
-        case TEST_SEQUENCE_RANDOM_VALUES_LIMITED :
-        return 1U;
-        case TEST_SEQUENCE_RANDOM_VALUES_RESTRICTED :
-        return 1U;
-        case TEST_SEQUENCE_RANDOM_VALUES_NORMAL :
-        return 1U;
-        case TEST_SEQUENCE_RANDOM_VALUES_RECIPROCAL :
-        return 1U;
-        case TEST_SEQUENCE_HISTOGRAM :
-        return 1U;
-        case TEST_SEQUENCE_MANY_EQUAL_LEFT :
-        return 1U;
-        case TEST_SEQUENCE_MANY_EQUAL_MIDDLE :
-        return 1U;
-        case TEST_SEQUENCE_MANY_EQUAL_RIGHT :
-        return 1U;
-        case TEST_SEQUENCE_MANY_EQUAL_SHUFFLED :
-        return 1U;
-        case TEST_SEQUENCE_DUAL_PIVOT_KILLER :
-        return 0U;
-        case TEST_SEQUENCE_JUMBLE :
-        return 0U;
-        case TEST_SEQUENCE_PERMUTATIONS :
-        return 0U;
-        case TEST_SEQUENCE_COMBINATIONS :
-        return 0U;
-        case TEST_SEQUENCE_ADVERSARY :
-        return 0U;
-        case TEST_SEQUENCE_WORST :
-        return 0U;
-        default:
-            (V)fprintf(stderr, "// %s: %s line %d: unrecognized sequence %u\n", __func__, source_file, __LINE__, sequence);
-        break;
-    }
-    return 2U;
 }

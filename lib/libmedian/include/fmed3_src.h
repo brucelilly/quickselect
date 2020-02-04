@@ -9,7 +9,7 @@
 * the Free Software Foundation: https://directory.fsf.org/wiki/License:Zlib
 *******************************************************************************
 ******************* Copyright notice (part of the license) ********************
-* $Id: ~|^` @(#)    fmed3_src.h copyright 2016-2019 Bruce Lilly.   \ fmed3_src.h $
+* $Id: ~|^` @(#)    fmed3_src.h copyright 2016-2020 Bruce Lilly.   \ fmed3_src.h $
 * This software is provided 'as-is', without any express or implied warranty.
 * In no event will the authors be held liable for any damages arising from the
 * use of this software.
@@ -28,7 +28,7 @@
 *
 * 3. This notice may not be removed or altered from any source distribution.
 ****************************** (end of license) ******************************/
-/* $Id: ~|^` @(#)   This is fmed3_src.h version 1.2 dated 2019-03-26T20:40:52Z. \ fmed3_src.h $ */
+/* $Id: ~|^` @(#)   This is fmed3_src.h version 1.4 dated 2020-02-03T15:22:21Z. \ fmed3_src.h $ */
 /* You may send bug reports to bruce.lilly@gmail.com with subject "median_test" */
 /*****************************************************************************/
 /* maintenance note: master file /data/projects/automation/940/lib/libmedian/include/s.fmed3_src.h */
@@ -46,10 +46,10 @@
 #undef COPYRIGHT_DATE
 #define ID_STRING_PREFIX "$Id: fmed3_src.h ~|^` @(#)"
 #define SOURCE_MODULE "fmed3_src.h"
-#define MODULE_VERSION "1.2"
-#define MODULE_DATE "2019-03-26T20:40:52Z"
+#define MODULE_VERSION "1.4"
+#define MODULE_DATE "2020-02-03T15:22:21Z"
 #define COPYRIGHT_HOLDER "Bruce Lilly"
-#define COPYRIGHT_DATE "2016-2019"
+#define COPYRIGHT_DATE "2016-2020"
 
 /* local header files needed */
 #include "initialize_src.h"
@@ -86,13 +86,23 @@ QUICKSELECT_FMED3
 #if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(MEDIAN_DEBUG)) {
     if ((char)0==file_initialized) initialize_file(__FILE__);
-(V)fprintf(stderr, "/* %s: %s line %d: pa=%p[%lu], pb=%p[%lu], pc=%p[%lu] */\n",__func__,source_file,__LINE__,(void *)pa,(pa-base)/size,(void *)pb,(pb-base)/size,(void *)pc,(pc-base)/size);
+(V)fprintf(stderr, "/* %s: %s line %d: pa=%p, pb=%p, pc=%p, c=%d */\n",__func__,source_file,__LINE__,(void *)pa,(void *)pb,(void *)pc,c);
 }
 #endif
     A(0U==(options&(QUICKSELECT_INDIRECT)));
     if (0!=c) {
         register int d=COMPAR(pb,pc);
+#if LIBMEDIAN_TEST_CODE
+if (DEBUGGING(MEDIAN_DEBUG)) {
+(V)fprintf(stderr, "/* %s: %s line %d: pa=%p, pb=%p, pc=%p, d=%d */\n",__func__,source_file,__LINE__,(void *)pa,(void *)pb,(void *)pc,d);
+}
+#endif
         if (0!=d) {
+#if LIBMEDIAN_TEST_CODE
+if (DEBUGGING(MEDIAN_DEBUG)) {
+(V)fprintf(stderr, "/* %s: %s line %d: pa=%p, pb=%p, pc=%p, c=%d, d=%d */\n",__func__,source_file,__LINE__,(void *)pa,(void *)pb,(void *)pc,c,d);
+}
+#endif
             if ((0<d)&&(0>c)) {
 #if LIBMEDIAN_TEST_CODE
                 if (0>COMPAR(pa,pc)) pb=pc;
@@ -114,7 +124,7 @@ if (DEBUGGING(MEDIAN_DEBUG)) {
     }
 #if LIBMEDIAN_TEST_CODE
 if (DEBUGGING(MEDIAN_DEBUG)) {
-(V)fprintf(stderr, "/* %s: %s line %d: pb=%p[%lu] */\n",__func__,source_file,__LINE__,(void *)pb,(pb-base)/size);
+(V)fprintf(stderr, "/* %s: %s line %d: pb=%p */\n",__func__,source_file,__LINE__,(void *)pb);
 }
 #endif
     return pb;
